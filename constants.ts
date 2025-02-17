@@ -3,7 +3,7 @@ export const DEFAULT_RELAYS = [
     'wss://nostr.wine',
     'wss://relay.nostr.net',
     'wss://nos.lol',
-    'wss://nostr-pub.wellorder.net',
+    // 'wss://nostr-pub.wellorder.net',
     'wss://njump.me',
     'wss://relay.primal.net'
 ];

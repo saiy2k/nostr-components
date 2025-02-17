@@ -9,30 +9,32 @@ import {
   Primary,
   Controls,
 } from '@storybook/addon-docs';
+import { DEFAULT_RELAYS } from '../constants';
 
 const PARAMETERS = [
   {
     variable: 'npub',
-    description: `Nostr public key but in bech32 format`,
+    description: 'Nostr public key but in bech32 format.<br/><b>Precedence:</b> npub, nip05, pubkey',
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'nip05',
-    description: `Nostr NIP-05 URI`,
+    description: 'Nostr NIP-05 URI.<br/><b>Precedence:</b> npub, nip05, pubkey',
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'pubkey',
-    description: `Raw pubkey provided by Nostr`,
+    description: 'Raw pubkey provided by Nostr.<br/><b>Precedence:</b> npub, nip05, pubkey',
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
+    // defaultValue: 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
+    defaultValue: DEFAULT_RELAYS.join(",\n"),
     control: 'text',
   },
   {
@@ -256,14 +258,40 @@ export default meta;
 type Story = StoryObj;
 
 export const Default: Story = {
-  name: 'Default',
+  name: 'Fiatjaf - Default',
   argTypes: {
     width: { contro: 'number' },
     npub: { control: 'text' },
   },
   args: {
     width: 300,
-    npub: 'npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs',
+    npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
+  }
+};
+
+export const Odell: Story = {
+  name: 'Odell - Dark theme',
+  argTypes: {
+    width: { contro: 'number' },
+    npub: { control: 'text' },
+  },
+  args: {
+    width: 300,
+    npub: 'npub1qny3tkh0acurzla8x3zy4nhrjz5zd8l9sy9jys09umwng00manysew95gx',
+    theme: 'dark',
+  }
+};
+
+export const Lyn: Story = {
+  name: 'Lyn Alden - nip05',
+  argTypes: {
+    width: { contro: 'number' },
+    npub: { control: 'text' },
+  },
+  args: {
+    width: 300,
+    nip05: 'lyn@primal.net',
     theme: 'light',
   }
 };
+

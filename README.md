@@ -6,135 +6,112 @@
 
 Nostr Components makes it easy to embed **Nostr profiles, posts, and follow buttons** in any website. Inspired by [fiatjaf's Nostr Web Components](https://unpkg.com/nostr-web-components@0.0.6/demo.html). this project **adds a beautiful UI, a storybook component generator (for webmasters),** and expands the usability of Nostr across the web.
 
-## ✨ Features
-
-- **Embed your Nostr Identity** – Display your profile on any website.
-- **Follow Button** – Let visitors follow you on Nostr with one click.
-- **Embed Nostr Posts** – Share any Nostr post outside of Nostr apps.
-
 ## 🏗️ Available Components
 
-🔹 **[Nostr Profile Badge](#-nostr-profile-badge)** – Compact badge-style profile display  
-🔹 **[Nostr Profile](#-nostr-profile)** – Full Nostr profile with more details  
-🔹 **[Nostr Post](#-nostr-post)** – Embed a specific Nostr post  
-🔹 **[Nostr Follow](#-nostr-follow)** – Follow button for Nostr
+🔹 **[Nostr Profile Badge](#-nostr-profile-badge)** - Compact badge-style profile display  
+🔹 **[Nostr Profile](#-nostr-profile)** - Full Nostr profile with more details  
+🔹 **[Nostr Post](#-nostr-post)** - Embed a specific Nostr post  
+🔹 **[Nostr Follow](#-nostr-follow)** - Follow button for Nostr  
 🔹 More coming
 
 ## 📌 Why Use Nostr Components?
 
-✅ **No Dependencies** – Just a simple script to include.  
-✅ **Lightweight & Fast** – Works on any modern browser.  
-✅ **Fully Customizable** – Match your website’s style with ease.  
-✅ **Decentralized Friendly** – Works seamlessly with any Nostr relay.  
+✅ **No Dependencies** - Just a simple script to include.  
+✅ **Lightweight & Fast** - Works on any modern browser.  
+✅ **Fully Customizable** - Match your website’s style with ease.  
+✅ **Decentralized Friendly** - Works seamlessly with any custom set of Nostr relays.
 
 ## 🛠️ Usage
 
-### 1️⃣ Add the script to your HTML
-```html
-<script src="https://yourcdn.com/nostr-components.js"></script>
-```
-
-
-### 2️⃣ Use Components Anywhere
-
----
-
-## 🔖 Nostr Profile Badge
+## 1. Nostr Profile Badge 🔖 
 
 A small badge displaying a Nostr profile with a username and avatar.
 
 **Usage:**
-\`\`\`html
-<nostr-profile-badge pubkey="npub1...."></nostr-profile-badge>
-\`\`\`
+```
+<head>
+  <script src="./dist/nostr-profile-badge.js"></script>
+</head>
+<body>
+  <nostr-profile-badge pubkey="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"></nostr-profile-badge>
+</body>
+```
 
-✅ Displays a compact version of a Nostr profile.  
-✅ Ideal for sidebars, author badges, or quick profile references.  
-
-[🔗 View Demo](#-demo)
+**Preview:**
+![Preview of profile badge](images/profile-badge-preview.png)
 
 ---
 
-## 👤 Nostr Profile
+## 2. Nostr Profile 👤
 
-A detailed profile card showing avatar, name, bio, and other Nostr details.
+A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
 **Usage:**
-\`\`\`html
-<nostr-profile pubkey="npub1...."></nostr-profile>
-\`\`\`
 
-✅ Full profile information including name, display picture, and bio.  
-✅ Supports custom themes and sizes.  
+```
+<head>
+  <script src="./dist/nostr-profile.js"></script>
+</head>
+<body>
+  <nostr-profile pubkey="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"></nostr-profile>
+</body>
+```
 
-[🔗 View Demo](#-demo)
+**Preview:**
+![Preview of profile](images/profile-preview.png)
 
 ---
 
-## 📝 Nostr Post
+## 3. Nostr Post 📝 
 
 Embed any Nostr post by providing the event ID.
 
 **Usage:**
-\`\`\`html
-<nostr-post event-id="note1...."></nostr-post>
-\`\`\`
 
-✅ Displays any public Nostr post with formatting.  
-✅ Auto-updates when the post changes.  
+```
+<head>
+  <script src="./dist/nostr-post.js"></script>
+</head>
+<body>
+  <nostr-profile pubkey="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"></nostr-profile>
+</body>
+```
 
-[🔗 View Demo](#-demo)
+**Preview:**
+![Preview of post](images/post-preview.png)
 
 ---
 
-## ➕ Nostr Follow
+## 4. Nostr Follow ➕ 
 
 A simple button that allows users to follow a Nostr profile.
 
 **Usage:**
-\`\`\`html
-<nostr-follow pubkey="npub1...."></nostr-follow>
-\`\`\`
 
-✅ One-click follow button for any Nostr identity.  
-✅ Perfect for personal websites, blogs, and profile pages.  
+```
+<head>
+  <script src="./dist/nostr-follow-button.js"></script>
+</head>
+<body>
+  <nostr-follow-button pubkey="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"></nostr-follow-button>
+</body>
+```
 
-[🔗 View Demo](#-demo)
-
----
-
-## 🎨 Customization
-
-You can customize components with attributes like `theme`, `size`, and `style`.  
-Example:
-\`\`\`html
-<nostr-profile pubkey="npub1...." theme="dark" size="large"></nostr-profile>
-\`\`\`
-
-Available options:
-- `theme`: `"light"`, `"dark"`
-- `size`: `"small"`, `"medium"`, `"large"`
+**Preview:**
+![Preview of follow button](images/follow-button-preview.png)
 
 ---
 
-## 📖 Documentation & Examples
+## 📖 Documentation, Examples and Demo
 
-Check out our full documentation [here](https://yourwebsite.com/docs).  
-Use the **Storybook Component Generator** to preview and tweak components before embedding.
-
----
-
-## 🎬 Demo
-
-Try the live demo showcasing all components:  
-👉 **[Live Demo](https://yourwebsite.com/demo)**
+Check out our full documentation [here](https://nostrcomponents.web.app).  
 
 ---
 
 ## 🤝 Contributing
 
 We welcome contributions!  
-Feel free to submit issues, feature requests, or PRs on [GitHub](https://github.com/your-repo/nostr-components).
+Feel free to submit issues, feature requests, or PRs on [GitHub](https://github.com/saiy2k/nostr-components).
 
 ---
 

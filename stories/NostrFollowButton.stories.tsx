@@ -174,7 +174,7 @@ const generateCode = (args) => {
   }
 
   let component = '';
-  component += `<nostr-follow-button\n  ${attributes}\n></nostr-follow-button>`;
+  component += `To follow saiy2k: <br/><nostr-follow-button\n  ${attributes}\n></nostr-follow-button>`;
 
   return `${followButtonScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
 }
@@ -236,7 +236,7 @@ export const Default: Story = {
     npub: { control: 'text' },
   },
   args: {
-    npub: 'npub1ltt9gry09lf2z6396rvzmk2a8wkh3yx5xhgkjzzg5znh62yr53rs0hk97y',
+    nip05: 'saiy2k@iris.to',
     theme: 'light',
   }
 };

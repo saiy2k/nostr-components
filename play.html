@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 
-    <script src="/dist/nostr-profile-badge.js"></script>
+    <script type="module" src="/dist/nostr-profile-badge.js"></script>
     <script type="module" src="/dist/nostr-profile.js"></script>
     <script type="module" src="/dist/nostr-post.js"></script>
     <script type="module" src="./dist/nostr-follow-button.js"></script>
@@ -75,14 +75,14 @@
 
         <!-- nip05="lyn@primal.net" -->
         <!-- npub="npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2" -->
-        <!--
         <nostr-profile-badge
           id="nbadge"
-          npub="npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2"
-          relays="ws://nas.yunierrodriguez.com:4848"
+          npub="npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs"
+          pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8"
+          nip05="lyn@primal.net"
           onClick="onProfileClick"
         ></nostr-profile-badge>
-        -->
+        Booo
 
         <!--
         <nostr-profile-badge
@@ -101,22 +101,48 @@
             showNpub="true"
         ></nostr-profile-badge> -->
 
+        <!--
         <nostr-profile-badge
             npub="npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2"
             relays="wss://relay.nostrasia.net"
         ></nostr-profile-badge>
+        -->
 
         <br/>
 
+        <!--
         <nostr-follow-button
           npub="npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs"
           relays="wss://relay.nostrasia.net"
         ></nostr-follow-button>
+        -->
 
-        <nostr-profile
-          npub="npub1t4zz0g9d4ejums338vjrgw2vwsahznqxajer6argu4zcf8d4kvqsxgn4w5"
-            relays="wss://relay.mememaps.net"
+        <br/>
+        <br/>
+        <br/>
+
+        <!-- npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a" -->
+        <!-- nip05="lyn@primal.net" -->
+        <nostr-profile nip05="lyn@primal.net" 
+          show-follow="false"
         ></nostr-profile>
+
+        <nostr-profile pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8" 
+          show-follow="false"
+          relays="wss://relay.nostrasia.net"
+        ></nostr-profile>
+
+        <br/>
+        <br/>
+        <br/>
+
+        <nostr-post 
+          id="nevent1qvzqqqqqqypzpmnw5yatnljuff5w47d35d87q99xddqpzlzsac4xzn6vm22ekmn5qqs94fx96xq7gphpnty7rnr3lqd2ppxdc4rwwpaz0wa63f6l2pn7vfqflmlyh"
+        ></nostr-post>
+
+        <br/>
+        <br/>
+        <br/>
 
       <!--
       <nostr-profile

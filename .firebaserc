@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "sat-the-standard"
+  },
+  "targets": {
+    "sat-the-standard": {
+      "hosting": {
+        "storybook": [
+          "nostr-components"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

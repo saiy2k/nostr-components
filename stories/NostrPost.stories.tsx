@@ -240,7 +240,33 @@ export const Default: Story = {
   },
   args: {
     width: 600,
-    id: 'note1rmmhlzpwz8f6qxnzafa3txpylztf2dnhy2a4urrj6wnkfzrdkxlsjhutsz',
-    theme: 'light',
+    id: 'note1kmf8n3c8fxfm3q26ys6vgrg306w05yrddt3txd4jtln47tunhscqp09muz',
+    'show-stats': true
+  }
+};
+
+export const UTXO: Story = {
+  name: 'Utxo - Dark theme',
+  argTypes: {
+    width: { contro: 'number' },
+    id: { control: 'text' },
+  },
+  args: {
+    width: 600,
+    id: 'note13qzmyaseurn0n7tlfvax62ymdssac55ls99qu6053l0e2mtsy9nqp8c4nc',
+    theme: 'dark',
+    'show-stats': true
+  }
+};
+
+export const Nvk : Story = {
+  name: 'Nvk - No Stats',
+  argTypes: {
+    width: { contro: 'number' },
+    id: { control: 'text' },
+  },
+  args: {
+    width: 600,
+    id: 'note1u6pg7p09y7w9x3n9yqeutzx9pqfc80w3dst3h6x3m2550s4w4j9sgn5wga',
   }
 };

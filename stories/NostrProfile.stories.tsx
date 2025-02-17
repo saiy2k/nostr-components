@@ -9,30 +9,31 @@ import {
   Primary,
   Controls,
 } from '@storybook/addon-docs';
+import { DEFAULT_RELAYS } from '../constants';
 
 const PARAMETERS = [
   {
     variable: 'npub',
-    description: `Nostr public key but in bech32 format`,
+    description: `Nostr public key but in bech32 format.<br/><b>Precedence:</b> npub, nip05, pubkey`,
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'nip05',
-    description: `Nostr NIP-05 URI`,
+    description: `Nostr NIP-05 URI.<br/><b>Precedence:</b> npub, nip05, pubkey`,
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'pubkey',
-    description: `Raw pubkey provided by Nostr`,
+    description: `Raw pubkey provided by Nostr.<br/><b>Precedence:</b> npub, nip05, pubkey`,
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
+    defaultValue: DEFAULT_RELAYS.join(",\n"),
     control: 'text',
   },
   {
@@ -51,7 +52,7 @@ const PARAMETERS = [
   {
     variable: 'show-follow',
     description: 'Whether need to show the follow button in the profile badge or not\n\n<b style="background-color: orange; color: white; padding: 0 4px; border-radius: 4px">NOTE:</b> To show the follow button, you need to include the &lt;nostr-follow-button&gt; component from the CDN.\n\nInclude like this,\n&lt;script type="module" src="./dist/nostr-follow-button.js"&gt;&lt;/script&gt;',
-    defaultValue: 'false',
+    defaultValue: 'null',
     control: 'boolean',
   },
 ];
@@ -150,7 +151,6 @@ const CSS_VARIABLES = [
 ];
 
 const generateCode = (args, forCodeGen=false) => {
-  console.log('show-follow', args['show-follow'])
   const attributes = [
     args.npub ? `npub="${args.npub}"` : '',
     args.nip05 ? `nip05="${args.nip05}"` : '',
@@ -252,14 +252,40 @@ export default meta;
 type Story = StoryObj;
 
 export const Default: Story = {
-  name: 'Default',
+  name: 'jb55 - Default',
   argTypes: {
     width: { contro: 'number' },
     npub: { control: 'text' },
   },
   args: {
     width: 600,
-    npub: 'npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs',
-    theme: 'light',
+    npub: 'npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s',
   }
 };
+
+export const Jack: Story = {
+  name: 'Jack Dorsey - Dark theme',
+  argTypes: {
+    width: { contro: 'number' },
+    npub: { control: 'text' },
+  },
+  args: {
+    width: 600,
+    npub: 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m',
+    theme: 'dark'
+  }
+};
+
+export const Gigi: Story = {
+  name: 'Dergigi - nip05, follow button',
+  argTypes: {
+    width: { contro: 'number' },
+    npub: { control: 'text' },
+  },
+  args: {
+    width: 600,
+    nip05: 'dergigi@npub.cash',
+    'show-follow': true
+  }
+};
+

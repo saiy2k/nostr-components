@@ -225,6 +225,7 @@ export default class NostrProfile extends HTMLElement {
       //   }, 0);
       // }
 
+      /*
       promiseArray.push(
         this.ndk.fetchEvent({
           kinds: [NDKKind.RelayList],
@@ -245,6 +246,7 @@ export default class NostrProfile extends HTMLElement {
           return numberOfRelays;
         })
       );
+      */
 
       const stats = await Promise.all(promiseArray);
 
@@ -254,7 +256,7 @@ export default class NostrProfile extends HTMLElement {
         notes: stats[2].notes,
         replies: stats[2].replies,
         zaps: stats[3],
-        relays: stats[4],
+        relays: 0, // stats[4],
       }
 
     } catch(err) {
@@ -802,6 +804,10 @@ export default class NostrProfile extends HTMLElement {
       return '';
     }
 
+    if (this.ndkUser == null) {
+      return '';
+    }
+
     if(!npubAttribute && !this.ndkUser.npub) {
       console.warn('Cannot use showNpub without providing a nPub');
       return '';
@@ -894,7 +900,7 @@ export default class NostrProfile extends HTMLElement {
         date = dayjs(this.userProfile.created_at * 1000).format('MMM D, YYYY');
     }
 
-    const showFollow = this.getAttribute('show-follow') === "true" || this.getAttribute('show-follow') === null;
+    const showFollow = this.getAttribute('show-follow') === "true";
 
     if(!this.isLoading && this.isError) {
         this.innerHTML += 
@@ -1103,6 +1109,7 @@ export default class NostrProfile extends HTMLElement {
                             </div>
                         </button>
                         
+                        <!--
                         <button class="stat" data-orientation="horizontal">
                             <div class="stat-inner">
                                 <div class="stat-value">
@@ -1115,6 +1122,7 @@ export default class NostrProfile extends HTMLElement {
                                 <div class="stat-name">Relays</div>
                             </div>
                         </button>
+                        -->
                       `
                     }
                 </div>
