@@ -645,7 +645,7 @@ export default class NostrPost extends HTMLElement {
                         </div>
                       </div>
                     `
-                  : this.isError
+                  : this.isError || this.stats == null
                     ? ''
                     : `
                       <div class='stats-container'>
