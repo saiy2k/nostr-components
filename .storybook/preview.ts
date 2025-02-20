@@ -8,6 +8,10 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+   options: {
+    brandTitle: 'Nostr Components',
+    brandUrl: 'https://nostr-components.web.app/',
+  },
   },
 };
 

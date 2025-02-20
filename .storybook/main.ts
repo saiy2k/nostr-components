@@ -14,5 +14,8 @@ const config: StorybookConfig = {
     name: "@storybook/web-components-vite",
     options: {},
   },
+  docs: {
+    autodocs: true,
+  },
 };
 export default config;
