@@ -11,8 +11,11 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Profile Badge](#-nostr-profile-badge)** - Compact badge-style profile display  
 🔹 **[Nostr Profile](#-nostr-profile)** - Full Nostr profile with more details  
 🔹 **[Nostr Post](#-nostr-post)** - Embed a specific Nostr post  
-🔹 **[Nostr Follow](#-nostr-follow)** - Follow button for Nostr  
-🔹 More coming
+🔹 **[Nostr Follow](#-nostr-follow)** - Follow button for Nostr
+
+### Future roadmap:
+🔹 Zap button.  
+🔹 Wordpress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.  
 
 ## 📌 Why Use Nostr Components?
 
@@ -38,6 +41,7 @@ A small badge displaying a Nostr profile with a username and avatar.
 ```
 
 **Preview:**
+
 ![Preview of profile badge](images/profile-badge-preview.png)
 
 ---
@@ -58,6 +62,7 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 ```
 
 **Preview:**
+
 ![Preview of profile](images/profile-preview.png)
 
 ---
@@ -78,6 +83,7 @@ Embed any Nostr post by providing the event ID.
 ```
 
 **Preview:**
+
 ![Preview of post](images/post-preview.png)
 
 ---
@@ -98,20 +104,21 @@ A simple button that allows users to follow a Nostr profile.
 ```
 
 **Preview:**
+
 ![Preview of follow button](images/follow-button-preview.png)
 
 ---
 
 ## 📖 Documentation, Examples and Demo
 
-Check out our full documentation [here](https://nostrcomponents.web.app).  
+Check out our full documentation [here](https://nostr-components.web.app).  
 
 ---
 
 ## 🤝 Contributing
 
 We welcome contributions!  
-Feel free to submit issues, feature requests, or PRs on [GitHub](https://github.com/saiy2k/nostr-components).
+Feel free to submit issues, feature requests, or PRs on [GitHub](https://github.com/saiy2k/nostr-components/issues).
 
 ---
 
