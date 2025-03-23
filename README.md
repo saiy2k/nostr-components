@@ -38,6 +38,7 @@ A small badge displaying a Nostr profile with a username and avatar.
 ```
 
 **Preview:**
+
 ![Preview of profile badge](images/profile-badge-preview.png)
 
 ---
@@ -58,6 +59,7 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 ```
 
 **Preview:**
+
 ![Preview of profile](images/profile-preview.png)
 
 ---
@@ -78,6 +80,7 @@ Embed any Nostr post by providing the event ID.
 ```
 
 **Preview:**
+
 ![Preview of post](images/post-preview.png)
 
 ---
@@ -98,6 +101,7 @@ A simple button that allows users to follow a Nostr profile.
 ```
 
 **Preview:**
+
 ![Preview of follow button](images/follow-button-preview.png)
 
 ---
