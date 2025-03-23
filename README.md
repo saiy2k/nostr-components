@@ -14,8 +14,8 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Follow](#-nostr-follow)** - Follow button for Nostr
 
 ### Future roadmap:
-🔹 Zap button. 
-🔹 Wordpress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts. 
+🔹 Zap button.  
+🔹 Wordpress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.  
 
 ## 📌 Why Use Nostr Components?
 
