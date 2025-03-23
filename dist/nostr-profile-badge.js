@@ -17126,7 +17126,6 @@
       min-height: 15px;
       align-items: center;
       justify-content: center;
-      background-color: hsl(var(--nstrc-profile-badge-skeleton-min-hsl));
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;

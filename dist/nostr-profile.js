@@ -17291,6 +17291,10 @@
     theme = "light";
     isLoading = true;
     isStatsLoading = true;
+    isStatsFollowsLoading = true;
+    isStatsFollowersLoading = true;
+    isStatsNotesLoading = true;
+    isStatsRelaysLoading = true;
     isError = false;
     isStatsError = false;
     stats = {
@@ -17367,53 +17371,60 @@
       }
     };
     getProfileStats = async () => {
-      const promiseArray = [];
       try {
+        this.isStatsFollowsLoading = true;
+        this.isStatsFollowersLoading = true;
+        this.isStatsNotesLoading = true;
+        this.isStatsError = false;
+        this.render();
         const userHex = this.ndkUser.pubkey;
-        this.ndk.fetchEvents({
+        const followsPromise = this.ndkUser.follows().then((follows2) => {
+          this.stats.follows = follows2.size;
+          this.isStatsFollowsLoading = false;
+        }).catch((err) => {
+          console.log("Error fetching follows:", err);
+          this.isStatsFollowsLoading = false;
+        });
+        const followersPromise = this.ndk.fetchEvents({
+          kinds: [NDKKind.Contacts],
+          "#p": [userHex || ""]
+        }).then((followers) => {
+          this.stats.followers = followers.size;
+          this.isStatsFollowersLoading = false;
+        }).catch((err) => {
+          console.log("Error fetching followers:", err);
+          this.isStatsFollowersLoading = false;
+        });
+        const notesPromise = this.ndk.fetchEvents({
           kinds: [NDKKind.Text],
           authors: [userHex]
-        }).then((notes) => console.log("notes", notes));
-        promiseArray.push(this.ndkUser.follows());
-        promiseArray.push(
-          this.ndk.fetchEvents({
-            kinds: [NDKKind.Contacts],
-            "#p": [userHex || ""]
-          })
-        );
-        promiseArray.push(
-          this.ndk.fetchEvents({
-            kinds: [NDKKind.Text],
-            authors: [userHex]
-          }).then((notes) => {
-            let replies = 0;
-            notes.forEach((note) => {
-              if (note.hasTag("e")) {
-                replies += 1;
-              }
-            });
-            return {
-              replies,
-              notes: notes.size - replies
-            };
-          })
-        );
-        let zaps = 0;
-        promiseArray.push(
-          new Promise((resolve) => resolve(zaps))
-        );
-        const stats = await Promise.all(promiseArray);
-        return {
-          follows: stats[0].size,
-          followers: stats[1].size,
-          notes: stats[2].notes,
-          replies: stats[2].replies,
-          zaps: stats[3],
-          relays: 0
-          // stats[4],
-        };
+        }).then((notes) => {
+          let replies = 0;
+          notes.forEach((note) => {
+            if (note.hasTag("e")) {
+              replies += 1;
+            }
+          });
+          this.stats.replies = replies;
+          this.stats.notes = notes.size - replies;
+          this.isStatsNotesLoading = false;
+        }).catch((err) => {
+          console.log("Error fetching notes:", err);
+          this.isStatsNotesLoading = false;
+        });
+        await Promise.all([
+          followsPromise,
+          followersPromise,
+          notesPromise
+        ]);
+        this.stats.zaps = 0;
+        this.stats.relays = 0;
+        this.render();
+        return this.stats;
       } catch (err) {
         console.log("getProfileStats", err);
+        this.isStatsError = true;
+        this.render();
         throw new Error("Error fetching stats");
       }
     };
@@ -17878,7 +17889,6 @@
         min-height: 15px;
         align-items: center;
         justify-content: center;
-        background-color: hsl(var(--nstrc-profile-skeleton-min-hsl));
         border-radius: 5px;
         cursor: pointer;
         font-weight: bold;
@@ -18105,7 +18115,7 @@
                         <button class="stat" data-orientation="horizontal">
                             <div class="stat-inner">
                                 <div class="stat-value">
-                                    ${this.isStatsLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.notes}
+                                    ${this.isStatsNotesLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.notes}
                                 </div>
                                 <div class="stat-name">Notes</div>
                             </div>
@@ -18114,7 +18124,7 @@
                         <button class="stat" data-orientation="horizontal">
                             <div class="stat-inner">
                                 <div class="stat-value">
-                                    ${this.isStatsLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.replies}
+                                    ${this.isStatsNotesLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.replies}
                                 </div>
                                 <div class="stat-name">Replies</div>
                             </div></button>
@@ -18133,7 +18143,7 @@
                         <button class="stat" data-orientation="horizontal">
                             <div class="stat-inner">
                                 <div class="stat-value">
-                                    ${this.isStatsLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.follows}
+                                    ${this.isStatsFollowsLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.follows}
                                 </div>
                                 <div class="stat-name">Following</div>
                             </div>
@@ -18142,7 +18152,7 @@
                         <button class="stat" data-orientation="horizontal">
                             <div class="stat-inner">
                                 <div class="stat-value">
-                                    ${this.isStatsLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.followers}
+                                    ${this.isStatsFollowersLoading ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.followers}
                                 </div>
                                 <div class="stat-name">Followers</div>
                             </div>
@@ -18152,7 +18162,7 @@
                         <button class="stat" data-orientation="horizontal">
                             <div class="stat-inner">
                                 <div class="stat-value">
-                                    ${this.isStatsLoading ? '<div style="width: 20px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.relays}
+                                    ${this.isStatsRelaysLoading ? '<div style="width: 20px; height: 28px; border-radius: 5px" class="skeleton"></div>' : this.stats.relays}
                                 </div>
                                 <div class="stat-name">Relays</div>
                             </div>

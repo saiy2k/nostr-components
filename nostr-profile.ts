@@ -20,6 +20,14 @@ export default class NostrProfile extends HTMLElement {
 
   private isLoading: boolean = true;
   private isStatsLoading: boolean = true;
+
+  private isStatsFollowsLoading: boolean = true;
+  private isStatsFollowersLoading: boolean = true;
+  private isStatsNotesLoading: boolean = true;
+  private isStatsRepliesLoading: boolean = true;
+  private isStatsZapsLoading: boolean = true;
+  private isStatsRelaysLoading: boolean = true;
+
   private isError: boolean = false; 
   private isStatsError: boolean = false; 
 
@@ -73,6 +81,7 @@ export default class NostrProfile extends HTMLElement {
   getUserProfile = async () => {
     try {
       this.isLoading = true;
+
       this.render();
 
       const user = await this.getNDKUser();
@@ -119,145 +128,67 @@ export default class NostrProfile extends HTMLElement {
   }
 
   getProfileStats = async (): Promise<any> => {
-    const promiseArray: any[] = [];
     try {
+      this.isStatsFollowsLoading = true;
+      this.isStatsFollowersLoading = true;
+      this.isStatsNotesLoading = true;
       const userHex = this.ndkUser.pubkey as string;
  
-      
+      // Get follows
+      this.ndkUser.follows()
+        .then((follows) => {
+          this.stats.follows = follows.size;
+          this.isStatsFollowsLoading = false;
+          this.render();
+        })
+        .catch((err) => {
+          console.log('Error fetching follows:', err);
+        });
+  
+      // Get followers
+      this.ndk.fetchEvents({
+        kinds: [NDKKind.Contacts],
+        '#p': [userHex || ''],
+      })
+        .then((followers) => {
+          this.stats.followers = followers.size;
+          this.isStatsFollowersLoading = false;
+          this.render();
+        })
+        .catch((err) => {
+          console.log('Error fetching followers:', err);
+        });
+
+      // Get notes and replies
       this.ndk.fetchEvents({
         kinds: [NDKKind.Text],
         authors: [userHex],
-      }).then(notes => console.log('notes', notes))
-
-      // const follows = await this.ndkUser.follows();
-      promiseArray.push(this.ndkUser.follows());
-  
-      // const followers = await this.ndk.fetchEvents({
-      //   kinds: [NDKKind.Contacts],
-      //   '#p': [userHex || ''],
-      // });
-
-      promiseArray.push(
-        this.ndk.fetchEvents({
-          kinds: [NDKKind.Contacts],
-          '#p': [userHex || ''],
-        })
-      );
-
-      // const notes = await this.ndk.fetchEvents({
-      //   kinds: [NDKKind.Text],
-      //   authors: [userHex],
-      // });
-
-      // let replies = 0;
-      // notes.forEach(note => {
-      //   if(note.hasTag('e')) {
-      //     replies += 1;
-      //   }
-      // })      
-
-      promiseArray.push(
-        this.ndk.fetchEvents({
-          kinds: [NDKKind.Text],
-          authors: [userHex],
-        }).then((notes) => {
+      })
+        .then((notes) => {
           let replies = 0;
-
           notes.forEach(note => {
             if(note.hasTag('e')) {
               replies += 1;
             }
           });
-
-          return {
-            replies,
-            notes: notes.size - replies,
-          };
+          this.stats.replies = replies;
+          this.stats.notes = notes.size - replies;
+          this.isStatsNotesLoading = false;
+          this.render();
         })
-      );
+        .catch((err) => {
+          console.log('Error fetching notes:', err);
+        });
 
-      let zaps = 0;
-      // TODO: Put actual implementation here
-      promiseArray.push(
-        new Promise((resolve) => resolve(zaps))
-      );
+      // Zaps (placeholder for now)
+      this.stats.zaps = 0;
+      this.render();
 
-      // const zapPubkey = await this.ndkUser.getZapperPubkey();
-      // // TODO: Add zap receipt validation - https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-f-validating-zap-receipts
-      // if(zapPubkey) {
-      //   // Zaps
-      //   const zapEvents = await this.ndk.fetchEvents({
-      //     kinds: [NDKKind.Zap],
-      //     '#p': [userHex || ''],
-      //   });
+      // Relays (placeholder for now)
+      this.stats.relays = 0;
+      this.render();
 
-      //   console.log(zapEvents)
-
-      //   zapEvents.forEach(zapEvent => {
-      //     if(zapEvent.pubkey === zapPubkey) {
-
-      //     }
-
-      //     console.log('event tag', zapEvent.getMatchingTags('e')[0][1]);
-      //     this.ndk.fetchEvents({
-      //       kinds: [NDKKind.ZapRequest],
-      //       '#e': [zapEvent.getMatchingTags('e')[0][1]]
-      //     }).then((zapRequest) => console.log('zapRequest', zapRequest))
-      //   })
-      // }
-
-
-      // Relays
-      // let numberOfRelays = 0;
-
-      // const relayListEvent = await this.ndk.fetchEvent({
-      //   kinds: [NDKKind.RelayList],
-      //   authors: [userHex]
-      // });
-
-      // if(relayListEvent) {
-      //   numberOfRelays = relayListEvent.tags.reduce((prev, curr) => {
-      //     if(curr[0] === 'r') {
-      //       return prev + 1;
-      //     }
-
-      //     return prev;
-      //   }, 0);
-      // }
-
-      /*
-      promiseArray.push(
-        this.ndk.fetchEvent({
-          kinds: [NDKKind.RelayList],
-          authors: [userHex]
-        }).then(relayListEvent => {
-          let numberOfRelays = 0;
-
-          if(relayListEvent) {
-            numberOfRelays = relayListEvent.tags.reduce((prev, curr) => {
-              if(curr[0] === 'r') {
-                return prev + 1;
-              }
-    
-              return prev;
-            }, 0);
-          }
-
-          return numberOfRelays;
-        })
-      );
-      */
-
-      const stats = await Promise.all(promiseArray);
-
-      return {
-        follows: stats[0].size,
-        followers: stats[1].size,
-        notes: stats[2].notes,
-        replies: stats[2].replies,
-        zaps: stats[3],
-        relays: 0, // stats[4],
-      }
+      return this.stats;
 
     } catch(err) {
       console.log('getProfileStats', err);
@@ -752,7 +683,6 @@ export default class NostrProfile extends HTMLElement {
         min-height: 15px;
         align-items: center;
         justify-content: center;
-        background-color: hsl(var(--nstrc-profile-skeleton-min-hsl));
         border-radius: 5px;
         cursor: pointer;
         font-weight: bold;
@@ -1047,7 +977,7 @@ export default class NostrProfile extends HTMLElement {
                             <div class="stat-inner">
                                 <div class="stat-value">
                                     ${
-                                        this.isStatsLoading
+                                        this.isStatsNotesLoading
                                         ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
                                         : this.stats.notes
                                     }
@@ -1060,7 +990,7 @@ export default class NostrProfile extends HTMLElement {
                             <div class="stat-inner">
                                 <div class="stat-value">
                                     ${
-                                        this.isStatsLoading
+                                        this.isStatsNotesLoading
                                         ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
                                         : this.stats.replies
                                     }
@@ -1087,7 +1017,7 @@ export default class NostrProfile extends HTMLElement {
                             <div class="stat-inner">
                                 <div class="stat-value">
                                     ${
-                                        this.isStatsLoading
+                                        this.isStatsFollowsLoading
                                         ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
                                         : this.stats.follows
                                     }
@@ -1100,7 +1030,7 @@ export default class NostrProfile extends HTMLElement {
                             <div class="stat-inner">
                                 <div class="stat-value">
                                     ${
-                                        this.isStatsLoading
+                                        this.isStatsFollowersLoading
                                         ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
                                         : this.stats.followers
                                     }
@@ -1114,7 +1044,7 @@ export default class NostrProfile extends HTMLElement {
                             <div class="stat-inner">
                                 <div class="stat-value">
                                     ${
-                                        this.isStatsLoading
+                                        this.isStatsRelaysLoading
                                         ? '<div style="width: 20px; height: 28px; border-radius: 5px" class="skeleton"></div>'
                                         : this.stats.relays
                                     }

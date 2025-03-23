@@ -20086,29 +20086,45 @@
 
   // utils.ts
   async function getPostStats(ndk, postId) {
-    const reposts = await ndk.fetchEvents({
-      kinds: [NDKKind.Repost],
-      "#e": [postId || ""]
-    });
-    const repostsCount = Array.from(reposts).filter((repost2) => {
-      const pTagCounts = repost2.tags.filter((tag) => tag[0] === "p").length;
-      return pTagCounts === 1;
-    }).length;
-    const likes = await ndk.fetchEvents({
-      kinds: [NDKKind.Reaction],
-      "#e": [postId || ""]
-    });
+    debugger;
+    var repostsCount = 0;
+    var reactionCount = 0;
+    var replyCount = 0;
+    try {
+      const reposts = await ndk.fetchEvents({
+        kinds: [NDKKind.Repost],
+        "#e": [postId || ""]
+      });
+      repostsCount = Array.from(reposts).filter((repost2) => {
+        const pTagCounts = repost2.tags.filter((tag) => tag[0] === "p").length;
+        return pTagCounts === 1;
+      }).length;
+    } catch {
+      console.error("Fetching reposts count failed");
+    }
+    try {
+      reactionCount = (await ndk.fetchEvents({
+        kinds: [NDKKind.Reaction],
+        "#e": [postId || ""]
+      })).values.length;
+    } catch {
+      console.error("Fetching reactions count failed");
+    }
     const zapAmount = 0;
-    const replies = await ndk.fetchEvents({
-      kinds: [NDKKind.Text],
-      "#e": [postId || ""]
-    });
-    const replyCount = Array.from(replies).filter((reply) => {
-      const eTagsCount = reply.tags.filter((tag) => tag[0] === "e").length;
-      return eTagsCount === 1;
-    }).length;
+    try {
+      const replies = await ndk.fetchEvents({
+        kinds: [NDKKind.Text],
+        "#e": [postId || ""]
+      });
+      replyCount = Array.from(replies).filter((reply) => {
+        const eTagsCount = reply.tags.filter((tag) => tag[0] === "e").length;
+        return eTagsCount === 1;
+      }).length;
+    } catch {
+      console.error("Fetching replies count failed");
+    }
     return {
-      likes: likes.size,
+      likes: reactionCount,
       reposts: repostsCount,
       zaps: zapAmount / MILLISATS_PER_SAT,
       replies: replyCount
@@ -20215,9 +20231,14 @@
             }
             const shouldShowStats = this.getAttribute("show-stats");
             if (this.post && shouldShowStats) {
-              const stats = await getPostStats(this.ndk, this.post.id);
-              if (stats) {
-                this.stats = stats;
+              debugger;
+              try {
+                const stats = await getPostStats(this.ndk, this.post.id);
+                if (stats) {
+                  this.stats = stats;
+                }
+              } catch (e) {
+                console.error("Error fetching stats:", e);
               }
             }
             this.isError = false;
