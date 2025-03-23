@@ -118,7 +118,7 @@ Check out our full documentation [here](https://nostr-components.web.app).
 ## 🤝 Contributing
 
 We welcome contributions!  
-Feel free to submit issues, feature requests, or PRs on [GitHub](https://github.com/saiy2k/nostr-components).
+Feel free to submit issues, feature requests, or PRs on [GitHub](https://github.com/saiy2k/nostr-components/issues).
 
 ---
 
