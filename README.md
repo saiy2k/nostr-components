@@ -108,7 +108,7 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
-## Wordpress Integration
+## 5. Wordpress Integration
 
 ![Integrating with Wordpress](images/wordpress_help.png)
 
