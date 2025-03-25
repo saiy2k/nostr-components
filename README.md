@@ -12,7 +12,7 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
-🔹 **[Wordpress Integration](#5-wordpress-integration)** - Wordpress Integration
+🔹 **[Wordpress Integration](#5-wordpress-integration-)** - Wordpress Integration
 
 ### Future roadmap:
 🔹 Zap button.  
