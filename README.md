@@ -27,7 +27,7 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 
 ## 🛠️ Usage
 
-##1. Nostr Profile Badge 🔖 
+## 1. Nostr Profile Badge 🔖 
 
 A small badge displaying a Nostr profile with a username and avatar.
 
@@ -47,7 +47,7 @@ A small badge displaying a Nostr profile with a username and avatar.
 
 ---
 
-##2. Nostr Profile 👤
+## 2. Nostr Profile 👤
 
 A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
@@ -68,7 +68,7 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
 ---
 
-##3. Nostr Post 📝 
+## 3. Nostr Post 📝 
 
 Embed any Nostr post by providing the event ID.
 
@@ -89,7 +89,7 @@ Embed any Nostr post by providing the event ID.
 
 ---
 
-##4. Nostr Follow ➕ 
+## 4. Nostr Follow ➕ 
 
 A simple button that allows users to follow a Nostr profile.
 
@@ -108,7 +108,7 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
-##Wordpress Integration
+## Wordpress Integration
 
 ![Integrating with Wordpress](images/wordpress_help.png)
 
