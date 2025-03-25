@@ -8,10 +8,11 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 
 ## 🏗️ Available Components
 
-🔹 **[Nostr Profile Badge](#-nostr-profile-badge)** - Compact badge-style profile display  
-🔹 **[Nostr Profile](#-nostr-profile)** - Full Nostr profile with more details  
-🔹 **[Nostr Post](#-nostr-post)** - Embed a specific Nostr post  
-🔹 **[Nostr Follow](#-nostr-follow)** - Follow button for Nostr
+🔹 **[Nostr Profile Badge](#1-nostr-profile-badge-)** - Compact badge-style profile display  
+🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
+🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
+🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
+🔹 **[Wordpress Integration](#5-wordpress-integration)** - Wordpress Integration  
 
 ### Future roadmap:
 🔹 Zap button.  
@@ -106,6 +107,28 @@ A simple button that allows users to follow a Nostr profile.
 **Preview:**
 
 ![Preview of follow button](images/follow-button-preview.png)
+
+## 5. Wordpress Integration
+
+![Integrating with Wordpress](images/wordpress_help.png)
+
+1. In your WP dashboard, navigate to `Appearance -> Theme file editor` 
+2. Select your current theme
+3. Open `functions.php`
+4. Include nostr-components script with this code:
+```
+function my_custom_js() {
+    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-profile.js"></script>';
+    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-profile-badge.js"></script>';
+    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-post.js"></script>';
+    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-follow-button.js"></script>';
+}
+
+add_action( 'wp_head', 'my_custom_js' );
+```
+5. (Optional) Rather than hotlinking, you can upload the JS files to your server and link to it as well.
+6. Now you can use the components anywhere in your post, sidebar by adding the html as shown here:
+![Integrating in wordpress post](images/wordpress_post.png)
 
 ---
 
