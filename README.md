@@ -8,11 +8,11 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 
 ## 🏗️ Available Components
 
-🔹 **[Nostr Profile Badge](#1.-nostr-profile-badge)** - Compact badge-style profile display  
-🔹 **[Nostr Profile](#-nostr-profile)** - Full Nostr profile with more details  
-🔹 **[Nostr Post](#-nostr-post)** - Embed a specific Nostr post  
-🔹 **[Nostr Follow](#-nostr-follow)** - Follow button for Nostr
-🔹 **[Nostr Follow](#wordpress-integration)** - Follow button for Nostr
+🔹 **[Nostr Profile Badge](#1-nostr-profile-badge-)** - Compact badge-style profile display  
+🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
+🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
+🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr
+🔹 **[Nostr Follow](#5-wordpress-integration)** - Follow button for Nostr
 
 ### Future roadmap:
 🔹 Zap button.  
