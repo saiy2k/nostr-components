@@ -8,10 +8,11 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 
 ## 🏗️ Available Components
 
-🔹 **[Nostr Profile Badge](#-nostr-profile-badge)** - Compact badge-style profile display  
+🔹 **[Nostr Profile Badge](#1.-nostr-profile-badge)** - Compact badge-style profile display  
 🔹 **[Nostr Profile](#-nostr-profile)** - Full Nostr profile with more details  
 🔹 **[Nostr Post](#-nostr-post)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#-nostr-follow)** - Follow button for Nostr
+🔹 **[Nostr Follow](#wordpress-integration)** - Follow button for Nostr
 
 ### Future roadmap:
 🔹 Zap button.  
@@ -26,7 +27,7 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 
 ## 🛠️ Usage
 
-## 1. Nostr Profile Badge 🔖 
+##1. Nostr Profile Badge 🔖 
 
 A small badge displaying a Nostr profile with a username and avatar.
 
@@ -46,7 +47,7 @@ A small badge displaying a Nostr profile with a username and avatar.
 
 ---
 
-## 2. Nostr Profile 👤
+##2. Nostr Profile 👤
 
 A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
@@ -67,7 +68,7 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
 ---
 
-## 3. Nostr Post 📝 
+##3. Nostr Post 📝 
 
 Embed any Nostr post by providing the event ID.
 
@@ -88,7 +89,7 @@ Embed any Nostr post by providing the event ID.
 
 ---
 
-## 4. Nostr Follow ➕ 
+##4. Nostr Follow ➕ 
 
 A simple button that allows users to follow a Nostr profile.
 
@@ -107,7 +108,7 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
-## Wordpress Integration
+##Wordpress Integration
 
 ![Integrating with Wordpress](images/wordpress_help.png)
 
@@ -120,8 +121,7 @@ function my_custom_js() {
     echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-profile.js"></script>';
     echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-profile-badge.js"></script>';
     echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-post.js"></script>';
-	echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-follow-button.js"></script>';
-
+    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-follow-button.js"></script>';
 }
 
 add_action( 'wp_head', 'my_custom_js' );
