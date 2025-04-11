@@ -13939,7 +13939,7 @@ class NostrProfileBadge extends HTMLElement {
         this.isLoading = !0, this.render();
         const e = await this.getNDKUser();
         if (e != null && e.npub)
-          this.ndkUser = e, await e.fetchProfile(), e.profile ? (this.userProfile = e.profile, this.userProfile.image || (this.userProfile.image = "./assets/default_dp.png"), this.isError = !1) : (console.warn(`Could not fetch profile for user ${e.npub}`), this.userProfile.image = "./assets/default_dp.png", this.userProfile.name = "", this.userProfile.nip05 = "", this.isError = !1);
+          this.ndkUser = e, await e.fetchProfile(), e.profile ? (this.userProfile = e.profile, this.userProfile.image || (this.userProfile.image = "./assets/default_dp.png"), this.isError = !1) : (console.warn(`Could not fetch profile initially for user ${e.npub}`), this.userProfile.image || (this.userProfile.image = "./assets/default_dp.png"), this.isError = !1);
         else
           throw new Error("Either npub or nip05 should be provided");
       } catch (e) {
@@ -16455,9 +16455,6 @@ class NostrPost extends HTMLElement {
     const a = this.getAttribute("show-stats") === "true";
     this.innerHTML = `
     ${getPostStylesLegacy(this.theme)}
-    <link rel="stylesheet" href="node_modules/@glidejs/glide/dist/css/glide.core.min.css">
-    <link rel="stylesheet" href="node_modules/@glidejs/glide/dist/css/glide.theme.min.css">
-
     <div class="post-container">
         <div class="post-header">
           <div class="post-header-left">

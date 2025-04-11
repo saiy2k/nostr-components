@@ -83,13 +83,15 @@ export default class NostrProfileBadge extends HTMLElement {
             }
             this.isError = false;
         } else {
-            // Profile not found or fetch failed, use default image
-            console.warn(`Could not fetch profile for user ${user.npub}`);
-            this.userProfile.image = './assets/default_dp.png';
-            // Keep other profile fields empty/default
-            this.userProfile.name = '';
-            this.userProfile.nip05 = '';
-            this.isError = false; // Or true? Let's keep false for now.
+            // Profile not found initially, just log and ensure default image if needed.
+            // DO NOT reset name/nip05 here, as NDK might provide them later.
+            console.warn(`Could not fetch profile initially for user ${user.npub}`);
+            if (!this.userProfile.image) { // Only set default if absolutely no image is set yet
+                 this.userProfile.image = './assets/default_dp.png';
+            }
+            // Consider setting this.isError = true if profile is truly expected but not found?
+            // For now, let's keep it false.
+            this.isError = false; // Keep consistent with previous logic for now
         }
 
       } else {
