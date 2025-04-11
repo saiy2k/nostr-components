@@ -15,6 +15,11 @@ export default class NostrFollowButton extends HTMLElement {
 
   private isFollowed: boolean = false;
 
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
   connectToNostr = async () => {
     await this.ndk.connect();
   };
@@ -81,7 +86,7 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   attachEventListeners() {
-    this.querySelector('.nostr-follow-button')?.addEventListener('click', async () => {
+    this.shadowRoot!.querySelector('.nostr-follow-button')?.addEventListener('click', async () => {
       this.isError = false;
 
       const nip07signer = new NDKNip07Signer();
@@ -157,9 +162,9 @@ export default class NostrFollowButton extends HTMLElement {
 
     const buttonText = this.isFollowed ? 'Followed' : 'Follow';
 
-    this.innerHTML = getFollowButtonStyles(this.theme, this.isLoading);
+    this.shadowRoot!.innerHTML = getFollowButtonStyles(this.theme, this.isLoading);
  
-    this.innerHTML += `
+    this.shadowRoot!.innerHTML += `
       <div class="nostr-follow-button-container ${this.isError ? 'nostr-follow-button-error': ''}">
         <div class="nostr-follow-button-wrapper">
           <button class="nostr-follow-button">

@@ -9,7 +9,7 @@ import {
   Primary,
   Controls,
 } from '@storybook/addon-docs';
-import { DEFAULT_RELAYS } from '../constants';
+import { DEFAULT_RELAYS } from '../src/common/constants.ts';
 
 const PARAMETERS = [
   {
@@ -173,8 +173,7 @@ const generateCode = (args, forCodeGen=false) => {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
-  const profileBadgeScript = `<script type="module" src="./dist/nostr-profile-badge.js"></script>`;
-  const followButtonScript = `<script type="module" src="./dist/nostr-follow-button.js"></script>`;
+  const bundleScript = `<script type="module" src="/nostr-components.es.js"></script>`;
   let component = '';
 
   // if(!forCodeGen) {
@@ -191,7 +190,7 @@ const generateCode = (args, forCodeGen=false) => {
   //   component += '\n</div>';
   // }
 
-  return `${showFollow ? `${followButtonScript}\n`: ''}${profileBadgeScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
+  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
 }
 
 
@@ -294,4 +293,3 @@ export const Lyn: Story = {
     theme: 'light',
   }
 };
-

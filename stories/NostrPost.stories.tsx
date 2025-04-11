@@ -160,7 +160,7 @@ const generateCode = (args, forCodeGen=false) => {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
-  const postScript = `<script type="module" src="./dist/nostr-post.js"></script>`;
+  const bundleScript = `<script type="module" src="/nostr-components.es.js"></script>`;
   let component = '';
 
   // if(!forCodeGen) {
@@ -177,7 +177,7 @@ const generateCode = (args, forCodeGen=false) => {
   //   component += '\n</div>';
   // }
 
-  return `${postScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
+  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
 }
 
 

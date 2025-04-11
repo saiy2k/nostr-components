@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "buildes": "node build.js",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
@@ -30,7 +30,6 @@
   "dependencies": {
     "@glidejs/glide": "^3.7.1",
     "@nostr-dev-kit/ndk": "^2.10.0",
-    "dayjs": "^1.11.13",
     "light-bolt11-decoder": "^3.2.0",
     "nostr-tools": "^2.7.2"
   }

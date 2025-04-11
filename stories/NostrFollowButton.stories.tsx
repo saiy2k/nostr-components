@@ -158,7 +158,7 @@ const generateCode = (args) => {
   .filter(Boolean) // Remove empty strings
   .join('\n  ');
 
-  const followButtonScript = `<script type="module" src="./dist/nostr-follow-button.js"></script>`;
+  const bundleScript = `<script type="module" src="/nostr-components.es.js"></script>`;
 
   const cssVariables = CSS_VARIABLES.map(cssVariable => {
     console.log(args[cssVariable.variable])
@@ -176,7 +176,7 @@ const generateCode = (args) => {
   let component = '';
   component += `To follow saiy2k: <br/><nostr-follow-button\n  ${attributes}\n></nostr-follow-button>`;
 
-  return `${followButtonScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
+  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
 }
 
 const argTypes: Partial<ArgTypes> = {}

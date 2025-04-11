@@ -20,23 +20,52 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 
 ## 📌 Why Use Nostr Components?
 
-✅ **No Dependencies** - Just a simple script to include.  
-✅ **Lightweight & Fast** - Works on any modern browser.  
-✅ **Fully Customizable** - Match your website’s style with ease.  
+✅ **No Dependencies** - Just a simple script to include.
+✅ **Lightweight & Fast** - Works on any modern browser.
+✅ **Fully Customizable** - Match your website’s style with ease.
 ✅ **Decentralized Friendly** - Works seamlessly with any custom set of Nostr relays.
 
 ## 🛠️ Usage
+
+1.  **Include the Script:** Add the compiled component script to your HTML's `<head>`.
+
+    *   **Option 1: UMD (Universal Module Definition) - Recommended for simple script tags**
+        ```html
+        <head>
+          <!-- Include Nostr Components -->
+          <script src="./dist/nostr-components.umd.js"></script>
+          <script>
+            // Initialize components (only needed for UMD build)
+            NostrComponents.default.init();
+          </script>
+        </head>
+        ```
+
+    *   **Option 2: ES Module**
+        ```html
+        <head>
+          <!-- Include Nostr Components as an ES Module -->
+          <script type="module">
+            import NostrComponents from './dist/nostr-components.es.js';
+            NostrComponents.init();
+          </script>
+        </head>
+        ```
+
+    *Note: Replace `./dist/nostr-components.*.js` with the actual path to the file on your server or use a CDN link if available (e.g., `https://nostr-components.web.app/dist/nostr-components.umd.js`).*
+
+2.  **Use the Components:** Place the component tags anywhere in your `<body>`.
+
+---
 
 ## 1. Nostr Profile Badge 🔖 
 
 A small badge displaying a Nostr profile with a username and avatar.
 
 **Usage:**
-```
-<head>
-  <script src="./dist/nostr-profile-badge.js"></script>
-</head>
+```html
 <body>
+  <!-- Make sure you included the script in <head> as shown above -->
   <nostr-profile-badge pubkey="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"></nostr-profile-badge>
 </body>
 ```
@@ -53,11 +82,9 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
 **Usage:**
 
-```
-<head>
-  <script src="./dist/nostr-profile.js"></script>
-</head>
+```html
 <body>
+  <!-- Make sure you included the script in <head> as shown above -->
   <nostr-profile pubkey="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"></nostr-profile>
 </body>
 ```
@@ -74,12 +101,11 @@ Embed any Nostr post by providing the event ID.
 
 **Usage:**
 
-```
-<head>
-  <script src="./dist/nostr-post.js"></script>
-</head>
+```html
 <body>
-  <nostr-profile pubkey="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"></nostr-profile>
+  <!-- Make sure you included the script in <head> as shown above -->
+  <nostr-post eventId="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"></nostr-post>
+  <!-- Note: The previous example incorrectly used a pubkey, use eventId for posts -->
 </body>
 ```
 
@@ -95,11 +121,9 @@ A simple button that allows users to follow a Nostr profile.
 
 **Usage:**
 
-```
-<head>
-  <script src="./dist/nostr-follow-button.js"></script>
-</head>
+```html
 <body>
+  <!-- Make sure you included the script in <head> as shown above -->
   <nostr-follow-button pubkey="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"></nostr-follow-button>
 </body>
 ```
@@ -116,18 +140,27 @@ A simple button that allows users to follow a Nostr profile.
 2. Select your current theme
 3. Open `functions.php`
 4. Include nostr-components script with this code:
-```
+```php
 function my_custom_js() {
-    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-profile.js"></script>';
-    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-profile-badge.js"></script>';
-    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-post.js"></script>';
-    echo '<script type="module" src="https://nostr-components.web.app/dist/nostr-follow-button.js"></script>';
+    // Include Nostr Components (choose UMD or ES Module)
+    // Option 1: UMD
+    echo '<script src="https://nostr-components.web.app/dist/nostr-components.umd.js"></script>';
+    // Initialize if using UMD
+    echo '<script>NostrComponents.default.init();</script>';
+
+    /* --- OR Option 2: ES Module --- */
+    /*
+    echo '<script type="module">';
+    echo "  import NostrComponents from 'https://nostr-components.web.app/dist/nostr-components.es.js';";
+    echo "  NostrComponents.init();";
+    echo '</script>';
+    */
 }
 
 add_action( 'wp_head', 'my_custom_js' );
 ```
-5. (Optional) Rather than hotlinking, you can upload the JS files to your server and link to it as well.
-6. Now you can use the components anywhere in your post, sidebar by adding the html as shown here:
+5. (Optional) Rather than hotlinking from `nostr-components.web.app`, you can download the `dist/nostr-components.umd.js` (or `.es.js`) file, upload it to your own server/WordPress media library, and update the `src` path in the code above.
+6. Now you can use the components anywhere in your post or sidebar by adding the HTML tags (e.g., `<nostr-profile-badge pubkey="..."></nostr-profile-badge>`).
 ![Integrating in wordpress post](images/wordpress_post.png)
 
 ---

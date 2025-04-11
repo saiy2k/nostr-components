@@ -1,7 +1,7 @@
-import NostrProfileBadge from './nostr-profile-badge';
-import NostrPost from './nostr-post';
-import NostrProfile from './nostr-profile';
-import NostrFollowButton from './nostr-follow-button';
+import NostrProfileBadge from './nostr-profile-badge/nostr-profile-badge.ts';
+import NostrPost from './nostr-post/nostr-post.ts';
+import NostrProfile from './nostr-profile/nostr-profile.ts';
+import NostrFollowButton from './nostr-follow-button/nostr-follow-button.ts';
 
 export {
   NostrProfileBadge,

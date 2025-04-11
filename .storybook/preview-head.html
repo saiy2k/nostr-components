@@ -1,5 +1,11 @@
-<script type="module" src="./dist/nostr-follow-button.js"></script>
-<script type="module" src="./dist/nostr-post.js"></script>
-<script type="module" src="./dist/nostr-profile.js"></script>
-<script type="module" src="./dist/nostr-profile-badge.js"></script>
+<!-- Import Map to resolve bare module specifiers -->
+<script type="importmap">
+{
+  "imports": {
+    "dayjs": "https://cdn.jsdelivr.net/npm/dayjs@1/+esm"
+  }
+}
+</script>
 
+<!-- Load our component bundle -->
+<script type="module" src="/nostr-components.es.js"></script>

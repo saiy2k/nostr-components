@@ -9,7 +9,7 @@ import {
   Primary,
   Controls,
 } from '@storybook/addon-docs';
-import { DEFAULT_RELAYS } from '../constants';
+import { DEFAULT_RELAYS } from '../src/common/constants.ts';
 
 const PARAMETERS = [
   {
@@ -51,7 +51,7 @@ const PARAMETERS = [
   },
   {
     variable: 'show-follow',
-    description: 'Whether need to show the follow button in the profile badge or not\n\n<b style="background-color: orange; color: white; padding: 0 4px; border-radius: 4px">NOTE:</b> To show the follow button, you need to include the &lt;nostr-follow-button&gt; component from the CDN.\n\nInclude like this,\n&lt;script type="module" src="./dist/nostr-follow-button.js"&gt;&lt;/script&gt;',
+    description: 'Whether need to show the follow button in the profile badge or not\n\n<b style="background-color: orange; color: white; padding: 0 4px; border-radius: 4px">NOTE:</b> To show the follow button, you need to include the &lt;nostr-follow-button&gt; component from the CDN.\n\nInclude like this,\n&lt;script type="module" src="/nostr-follow-button.js"&gt;&lt;/script&gt;',
     defaultValue: 'null',
     control: 'boolean',
   },
@@ -170,21 +170,15 @@ const generateCode = (args, forCodeGen=false) => {
   .filter(Boolean)
   .join('\n    ');
 
-  const showFollow = args['show-follow'] === undefined || args['show-follow'];
-
+  const showFollow = args['show-follow'];
+  const bundleScript = `<script type="module" src="/nostr-components.es.js"></script>`;
   let styles = '';
 
   if(cssVariables.length > 0) {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
-  const profileScript = `<script type="module" src="./dist/nostr-profile.js"></script>`;
-  const followButtonScript = `<script type="module" src="./dist/nostr-follow-button.js"></script>`;
   let component = '';
-
-  // if(!forCodeGen) {
-  //   component += '<div style="width: 350px">\n  ';
-  // }
 
   component += `<div style="width: ${args.width ? `${args.width}px`: "600px"}">\n`;
 
@@ -192,11 +186,7 @@ const generateCode = (args, forCodeGen=false) => {
 
   component += '\n</div>';
 
-  // if(!forCodeGen) {
-  //   component += '\n</div>';
-  // }
-
-  return `${showFollow ? `${followButtonScript}\n`: ''}${profileScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
+  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
 }
 
 
@@ -288,4 +278,3 @@ export const Gigi: Story = {
     'show-follow': true
   }
 };
-

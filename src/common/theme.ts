@@ -176,367 +176,373 @@ export function getFollowButtonStyles(theme: Theme, isLoading: boolean) {
     `;
 }
 
-export function getPostStyles(theme: Theme) {
-  let variables = '';
+// Function for NostrPost styles (legacy/innerHTML)
+export function getPostStylesLegacy(theme: Theme): string {
+  let variables = ``;
+    if(theme === 'dark') {
+      variables = `
+        --nstrc-post-background: var(--nstrc-post-background-dark);
+        --nstrc-post-name-color: var(--nstrc-post-name-color-dark);
+        --nstrc-post-nip05-color: var(--nstrc-post-nip05-color-dark);
+        --nstrc-post-skeleton-min-hsl: var(--nstrc-post-skeleton-min-hsl-dark);
+        --nstrc-post-skeleton-max-hsl: var(--nstrc-post-skeleton-max-hsl-dark);
+        --nstrc-post-text-color: var(--nstrc-post-text-color-dark);
+        --nstrc-post-stats-color: var(--nstrc-post-stat-text-color-dark);
+        `;
+    } else {
+      variables = `
+        --nstrc-post-background: var(--nstrc-post-background-light);
+        --nstrc-post-name-color: var(--nstrc-post-name-color-light);
+        --nstrc-post-nip05-color: var(--nstrc-post-nip05-color-light);
+        --nstrc-post-skeleton-min-hsl: var(--nstrc-post-skeleton-min-hsl-light);
+        --nstrc-post-skeleton-max-hsl: var(--nstrc-post-skeleton-max-hsl-light);
+        --nstrc-post-text-color: var(--nstrc-post-text-color-light);
+        --nstrc-post-stats-color: var(--nstrc-post-stat-text-color-light);
+      `;
+    }
 
-  if (theme === 'dark') {
-    variables = `
-      --nstrc-post-background-color: var(--nstrc-post-background-color-dark, #000000);
-      --nstrc-post-border: var(--nstrc-post-border-dark, 1px solid #333333);
-      --nstrc-post-text-color: var(--nstrc-post-text-color-dark, #FFFFFF);
-      --nstrc-post-link-color: var(--nstrc-post-link-color-dark, #2A76FF);
-      --nstrc-post-author-link-color: var(--nstrc-post-author-link-color-dark, #FFFFFF);
-      --nstrc-post-nip05-color: var(--nstrc-post-nip05-color-dark, #ABABAB);
-      --nstrc-post-time-color: var(--nstrc-post-time-color-dark, #ABABAB);
-      --nstrc-post-stats-color: var(--nstrc-post-stats-color-dark, #ABABAB);
-      --nstrc-post-loading-background: var(--nstrc-post-loading-background-dark, #333333);
-      --nstrc-post-loading-foreground: var(--nstrc-post-loading-foreground-dark, #555555);
-      --nstrc-post-carousel-arrow-color: var(--nstrc-post-carousel-arrow-color-dark, #ABABAB);
-      --nstrc-post-carousel-arrow-background: var(--nstrc-post-carousel-arrow-background-dark, rgba(0,0,0,0.5));
-    `;
-  } else {
-    variables = `
-      --nstrc-post-background-color: var(--nstrc-post-background-color-light, #FFFFFF);
-      --nstrc-post-border: var(--nstrc-post-border-light, 1px solid #DDDDDD);
-      --nstrc-post-text-color: var(--nstrc-post-text-color-light, #000000);
-      --nstrc-post-link-color: var(--nstrc-post-link-color-light, #2A76FF);
-      --nstrc-post-author-link-color: var(--nstrc-post-author-link-color-light, #000000);
-      --nstrc-post-nip05-color: var(--nstrc-post-nip05-color-light, #ABABAB);
-      --nstrc-post-time-color: var(--nstrc-post-time-color-light, #ABABAB);
-      --nstrc-post-stats-color: var(--nstrc-post-stats-color-light, #ABABAB);
-      --nstrc-post-loading-background: var(--nstrc-post-loading-background-light, #DDDDDD);
-      --nstrc-post-loading-foreground: var(--nstrc-post-loading-foreground-light, #BBBBBB);
-      --nstrc-post-carousel-arrow-color: var(--nstrc-post-carousel-arrow-color-light, #ABABAB);
-      --nstrc-post-carousel-arrow-background: var(--nstrc-post-carousel-arrow-background-light, rgba(255,255,255,0.5));
-    `;
-  }
+      // NOTE: Glide CSS links are handled directly in NostrPost.render() for this legacy version
+      return `
+          <style>
+            nostr-post { /* Use host tag selector for scoping */
+              --nstrc-post-background-light: #f5f5f5;
+              --nstrc-post-background-dark: #000000;
+              --nstrc-post-name-color-light: #444;
+              --nstrc-post-name-color-dark: #CCC;
+              --nstrc-post-nip05-color-light: #808080;
+              --nstrc-post-nip05-color-dark: #757575;
+              --nstrc-post-skeleton-min-hsl-light: 200, 20%, 80%;
+              --nstrc-post-skeleton-min-hsl-dark: 200, 20%, 20%;
+              --nstrc-post-skeleton-max-hsl-light: 200, 20%, 95%;
+              --nstrc-post-skeleton-max-hsl-dark: 200, 20%, 30%;
+              --nstrc-post-text-color-light: #222;
+              --nstrc-post-text-color-dark: #d4d4d4;
+              --nstrc-post-stat-text-color-light: #222;
+              --nstrc-post-stat-text-color-dark: #d0d0d0;
 
-  return `
-      <style>
-          :host {
-            ${variables}
+              --nstrc-post-name-font-weight: 700;
+              --nstrc-post-nip05-font-weight: 400;
 
-            --nstrc-post-font-family: Inter, sans-serif;
+              --nstrc-post-accent: #ca077c;
 
-            --nstrc-post-container-width: 640px;
-            --nstrc-post-container-border-radius: 10px;
-            --nstrc-post-container-padding: 10px;
-
-            --nstrc-post-image-border-radius: 10px;
-            --nstrc-post-loading-border-radius: 10px;
-
-            --nstrc-post-horizontal-alignment: start;
-          }
-
-          .loading-placeholder {
-            display: block;
-            width: var(--nstrc-post-container-width);
-            max-width: 100%;
-            border-radius: var(--nstrc-post-loading-border-radius);
-            background: linear-gradient(90deg, var(--nstrc-post-loading-background) 25%, var(--nstrc-post-loading-foreground) 50%, var(--nstrc-post-loading-background) 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            min-height: 100px; 
-          }
-
-          @keyframes loading {
-            0% {
-              background-position: 200% 0;
+              ${variables}
             }
-            100% {
-              background-position: -200% 0;
+            
+            nostr-post a { /* Scope link color */
+              color: var(--nstrc-post-accent);
             }
-          }
 
-          .post-container {
-            font-family: var(--nstrc-post-font-family);
-            max-width: 100%;
-            width: var(--nstrc-post-container-width);
-            border-radius: var(--nstrc-post-container-border-radius);
-            padding: var(--nstrc-post-container-padding);
-            border: var(--nstrc-post-border);
-            background-color: var(--nstrc-post-background-color);
-            color: var(--nstrc-post-text-color);
-            cursor: pointer;
-            display: flex;
-            justify-content: var(--nstrc-post-horizontal-alignment);
-          }
+            /* Keep other styles targeting elements within nostr-post */
+            nostr-post .post-container {
+                font-family: sans-serif;
+                padding: 20px;
 
-          .post-container:hover {
-            border-color: var(--nstrc-post-link-color);
-          }
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
 
-          .post-container-wrapper {
-            width: 100%;
-          }
+                border: 1px solid #d9d9d9;
+                border-radius: 10px;
 
-          .post-header {
+                background-color: var(--nstrc-post-background);
+
+                color: var(--nstrc-post-text-color);
+
+                cursor: pointer;
+            }
+
+            nostr-post .post-container .post-header {
+                display: flex;
+                gap: 10px;
+            }
+            
+            nostr-post .post-body {
+              display: block;
+              width: 100%;
+            }
+
+            nostr-post .post-header-left {
+                width: 35px;
+            }
+
+            nostr-post .post-header-left img {
+                width: 35px;
+                border-radius: 50%;
+            }
+
+            nostr-post .post-header-middle {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                gap: 5px;
+            }
+
+            nostr-post .post-header-right {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: end;
+            }
+
+            nostr-post .author-name {
+              color: var(--nstrc-post-name-color);
+              font-weight: var(--nstrc-post-name-font-weight);
+                  word-break: break-word;
+            }
+
+            nostr-post .author-username {
+                font-weight: var(--nstrc-post-nip05-font-weight);
+                color: var(--nstrc-post-nip05-color);
+                font-size: 14px;
+                word-break: break-all;
+            }
+
+            nostr-post .text-content {
+              word-break: break-word;
+            }
+
+            nostr-post .glide__slide {
+                width: 100%;
+            }
+
+            nostr-post .glide__slide * {
+                border-radius: 10px;
+            }
+
+            nostr-post .glide__bullets button {
+                border: 1px solid #000; /* Example, adjust as needed */
+            }
+
+            nostr-post .post-container .skeleton {
+              animation: post-skeleton-loading 0.5s linear infinite alternate;
+            }
+
+            @keyframes post-skeleton-loading {
+              0% {
+                background-color: hsl(var(--nstrc-post-skeleton-min-hsl));
+              }
+              100% {
+                background-color: hsl(var(--nstrc-post-skeleton-max-hsl));
+              }
+            }
+
+          nostr-post .error-container {
             display: flex;
             align-items: center;
-            margin-bottom: 10px;
+            justify-content: center;
+            gap: 20px;
           }
 
-          .post-header-left img {
-            width: 50px;
-            height: 50px;
+          nostr-post .error {
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
-            margin-right: 10px;
-          }
-
-          .post-header-middle {
+            background-color: red;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            color: #FFF;
           }
 
-          .post-header-middle .author-name {
+          nostr-post .error-text {
+            color: red;
             font-weight: bold;
-            color: var(--nstrc-post-author-link-color);
           }
 
-          .post-header-middle .nip05 {
-            color: var(--nstrc-post-nip05-color);
-            font-size: 0.9em;
+          nostr-post .post-footer {
+            margin-top: 20px; /* Adjusted margin based on isError logic removal */
+            display: block; /* Ensure it takes full width */
+            width: 100%;    /* Ensure it takes full width */
           }
 
-          .post-header-right {
-            margin-left: auto;
-            color: var(--nstrc-post-time-color);
-            font-size: 0.9em;
-          }
-
-          .post-content {
-            margin-bottom: 10px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-          }
-
-          .post-content a {
-            color: var(--nstrc-post-link-color);
-            text-decoration: none;
-          }
-
-          .post-content a:hover {
-            text-decoration: underline;
-          }
-
-          .post-image img, .post-video video {
-            max-width: 100%;
-            border-radius: var(--nstrc-post-image-border-radius);
-            margin-top: 10px;
-            display: block;
-          }
-
-          .post-stats {
+          nostr-post .stats-container {
             display: flex;
-            justify-content: space-around;
-            color: var(--nstrc-post-stats-color);
-            margin-top: 10px;
-            font-size: 0.9em;
+            gap: 20px;
           }
 
-          .post-stats div {
+          nostr-post .stat {
             display: flex;
             align-items: center;
             gap: 5px;
+            color: var(--nstrc-post-stats-color);
           }
-
-          .glide__arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background-color: var(--nstrc-post-carousel-arrow-background);
-            border: none;
-            border-radius: 50%;
-            padding: 10px;
-            cursor: pointer;
-            color: var(--nstrc-post-carousel-arrow-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
-          }
-
-          .glide__arrow:hover {
-            opacity: 1;
-          }
-
-          .glide__arrow--left {
-            left: 10px;
-          }
-
-          .glide__arrow--right {
-            right: 10px;
-          }
-
-          .glide__slide img {
-            display: block;
-            width: 100%;
-            height: auto;
-            max-height: 500px; /* Adjust as needed */
-            object-fit: contain;
-            border-radius: var(--nstrc-post-image-border-radius);
-          }
-      </style>
-    `;
+        </style>
+      `;
 }
 
-export function getProfileBadgeStyles(theme: Theme) {
-    let variables = ``;
+// New function for NostrProfileBadge styles (legacy/innerHTML)
+export const getProfileBadgeStylesLegacy = (theme: Theme) => {
+  // Define base variables and styles, scoped to 'nostr-profile-badge'
+  let styles = `
+    nostr-profile-badge {
+      /* Base Variables */
+      --nstrc-profile-badge-background-light: #f5f5f5;
+      --nstrc-profile-badge-background-dark: #121212;
+      --nstrc-profile-badge-text-color-light: #000;
+      --nstrc-profile-badge-text-color-dark: #fff;
+      --nstrc-profile-badge-border-color-light: #ddd;
+      --nstrc-profile-badge-border-color-dark: #333;
+      --nstrc-profile-badge-hover-background-color-light: #f0f0f0;
+      --nstrc-profile-badge-hover-background-color-dark: #151515;
+      --nstrc-profile-badge-hover-text-color-light: #333;
+      --nstrc-profile-badge-hover-text-color-dark: #ccc;
+      --nstrc-profile-badge-focus-background-color-light: #e0e0e0;
+      --nstrc-profile-badge-focus-background-color-dark: #1a1a1a;
+      --nstrc-profile-badge-focus-text-color-light: #666;
+      --nstrc-profile-badge-focus-text-color-dark: #aaa;
+      --nstrc-profile-badge-error-color: #f44336;
+      --nstrc-profile-badge-error-background-color: #fbe9e7;
+      --nstrc-profile-badge-error-border-color: #f44336;
+      --nstrc-profile-badge-error-text-color: #f44336;
+      --nstrc-profile-badge-loading-color: #2196f3;
+      --nstrc-profile-badge-loading-background-color: #e0e0e0;
+      --nstrc-profile-badge-loading-border-color: #2196f3;
+      --nstrc-profile-badge-loading-text-color: #2196f3;
 
-    if(theme === 'dark') {
-      variables = `
-      --nstrc-profile-badge-background: var(--nstrc-profile-badge-background-dark, #121212);
-      --nstrc-profile-badge-name-color: var(--nstrc-profile-badge-name-color-dark, #CCC);
-      --nstrc-profile-badge-nip05-color: var(--nstrc-profile-badge-nip05-color-dark, #757575);
-      --nstrc-profile-badge-skeleton-min-hsl: var(--nstrc-profile-badge-skeleton-min-hsl-dark, 200, 20%, 20%);
-      --nstrc-profile-badge-skeleton-max-hsl: var(--nstrc-profile-badge-skeleton-max-hsl-dark, 200, 20%, 30%);
-      --nstrc-profile-badge-copy-foreground-color: var(--nstrc-profile-badge-copy-foreground-color-dark, #CCC);
-      `;
-    } else {
-      variables = `
-      --nstrc-profile-badge-background: var(--nstrc-profile-badge-background-light, #f5f5f5);
-      --nstrc-profile-badge-name-color: var(--nstrc-profile-badge-name-color-light, #444);
-      --nstrc-profile-badge-nip05-color: var(--nstrc-profile-badge-nip05-color-light, #808080);
-      --nstrc-profile-badge-skeleton-min-hsl: var(--nstrc-profile-badge-skeleton-min-hsl-light, 200, 20%, 80%);
-      --nstrc-profile-badge-skeleton-max-hsl: var(--nstrc-profile-badge-skeleton-max-hsl-light, 200, 20%, 95%);
-      --nstrc-profile-badge-copy-foreground-color: var(--nstrc-profile-badge-copy-foreground-color-light, #222);
-      `;
+      /* Base Styles */
+      display: inline-flex; /* Changed from flex to inline-flex */
+      align-items: center;
+      padding: 5px 10px; /* Adjusted padding */
+      border: 1px solid var(--nstrc-profile-badge-border-color-light);
+      border-radius: 15px; /* Adjusted border-radius */
+      background-color: var(--nstrc-profile-badge-background-light);
+      color: var(--nstrc-profile-badge-text-color-light);
+      cursor: pointer;
+      font-family: sans-serif; /* Added default font */
+      max-width: 300px; /* Added max-width */
+      overflow: hidden; /* Prevent content overflow */
+      text-overflow: ellipsis; /* Add ellipsis for overflow */
+      white-space: nowrap; /* Keep content on one line */
     }
 
-    return `
-    <style>
-      :host {
-        --nstrc-profile-badge-name-font-weight: 700;
-        --nstrc-profile-badge-nip05-font-weight: 400;
-
-        /* Override follow button styles for badge context */
-        --nstrc-follow-btn-padding: 4px 10px !important;
-        --nstrc-follow-btn-font-size: 10px !important;
-        --nstrc-follow-btn-border-radius: 8px !important;
-        --nstrc-follow-btn-error-font-size: 8px !important;
-        --nstrc-follow-btn-error-line-height: 1em !important;
-        --nstrc-follow-btn-horizontal-alignment: start !important;
-        --nstrc-follow-btn-min-height: auto !important;
-
-        ${variables}
-      }
-
-    .nostr-profile-badge-container {
+    nostr-profile-badge .nostr-profile-badge-container {
       display: flex;
       align-items: center;
-      border-radius: 100px;
-      background-color: var(--nstrc-profile-badge-background);
-      gap: 10px;
-      font-size: 12px;
-      min-height: 48px;
-      padding: 8px 10px;
-      font-family: Nacelle,sans-serif;
-      cursor: pointer;
+      width: 100%; /* Ensure container takes full width */
     }
 
-    .nostr-profile-badge-container:has(.npub-container) {
-      padding: 10px 12px;
+    nostr-profile-badge .nostr-profile-badge-left-container {
+      margin-right: 8px; /* Adjusted margin */
+      flex-shrink: 0; /* Prevent image from shrinking */
     }
 
-    .nostr-profile-badge-left-container {
-      border-radius: 50%;
+    nostr-profile-badge img {
+        width: 25px; /* Adjusted size */
+        height: 25px; /* Adjusted size */
+        border-radius: 50%;
+        object-fit: cover; /* Ensure image covers the area */
     }
 
-    .nostr-profile-badge-left-container img {
-      width: 35px;
-      height: 35px;
-      border-radius: 50%;
-    }
-
-    .nostr-profile-badge-container:has(.npub-container) .nostr-profile-badge-left-container img {
-      width: 64px !important;
-      height: 64px !important;
-    }
-
-    .nostr-profile-badge-right-container {
-      width: 100%;
+    nostr-profile-badge .nostr-profile-badge-right-container {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 3px;
+      overflow: hidden; /* Hide overflow */
+      min-width: 0; /* Allow shrinking */
     }
 
-    .nostr-profile-badge-right-container .nostr-profile-badge-name {
-      color: var(--nstrc-profile-badge-name-color);
-      font-weight: var(--nstrc-profile-badge-name-font-weight);
-    }
-
-    .nostr-profile-badge-right-container .nostr-profile-badge-nip05 {
-      color: var(--nstrc-profile-badge-nip05-color);
-      font-weight: var(--nstrc-profile-badge-nip05-font-weight);
-    }
-
-    .skeleton {
-      animation: profile-badge-skeleton-loading 0.5s linear infinite alternate;
-    }
-
-    @keyframes profile-badge-skeleton-loading {
-      0% {
-        background-color: hsl(var(--nstrc-profile-badge-skeleton-min-hsl));
-      }
-      100% {
-        background-color: hsl(var(--nstrc-profile-badge-skeleton-max-hsl));
-      }
-    }
-
-    .error {
-      width: 35px;
-      height: 35px;
-      border-radius: 50%;
-      background-color: red;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 20px;
-      color: #FFF;
-    }
-
-    .error-text {
-      color: red;
+    nostr-profile-badge .nostr-profile-badge-name {
       font-weight: bold;
+      font-size: 14px; /* Adjusted font size */
+      margin-bottom: 2px; /* Adjusted margin */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .copy-button {
-      display: flex;
-      font-size: 16px;
-      min-width: 15px;
-      min-height: 15px;
-      align-items: center;
-      justify-content: center;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      color: var(--nstrc-profile-badge-copy-foreground-color);
+    nostr-profile-badge .nostr-profile-badge-nip05 {
+      font-size: 12px; /* Adjusted font size */
+      color: grey; /* Adjusted color */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .npub-container, .nip05-container {
-      display: flex;
-      align-items: center;
-      gap: 4px;
+    nostr-profile-badge .nostr-profile-badge-nip05 a {
+      text-decoration: none;
+      color: inherit; /* Inherit color */
     }
 
-    .npub-container .npub {
-      color: #a2a2a2;
-    }
-    
-    .npub-container .nostr-profile-badge-nip05 {
-      word-break: break-all;
+    nostr-profile-badge .nostr-profile-badge-nip05 a:hover {
+      text-decoration: underline;
     }
 
-    .name-container {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      padding: 3px 0; /* To equalize flex height with other items */
+    /* Loading State */
+    nostr-profile-badge.loading {
+      background-color: var(--nstrc-profile-badge-loading-background-color);
+      border-color: var(--nstrc-profile-badge-loading-border-color);
+      color: var(--nstrc-profile-badge-loading-text-color);
     }
-    </style>
+
+    nostr-profile-badge .skeleton {
+        background-color: #e0e0e0; /* Simplified skeleton color */
+        border-radius: 4px;
+        display: inline-block;
+        line-height: 1;
+    }
+
+    nostr-profile-badge .skeleton.img-skeleton {
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+    }
+
+    nostr-profile-badge .skeleton.text-skeleton-name {
+        width: 70%;
+        height: 14px;
+        margin-bottom: 2px;
+    }
+
+    nostr-profile-badge .skeleton.text-skeleton-nip05 {
+        width: 90%;
+        height: 12px;
+    }
+
+    /* Error State */
+    nostr-profile-badge.error-container {
+      background-color: var(--nstrc-profile-badge-error-background-color);
+      border-color: var(--nstrc-profile-badge-error-border-color);
+      color: var(--nstrc-profile-badge-error-text-color);
+    }
+    nostr-profile-badge .error {
+      color: var(--nstrc-profile-badge-error-color);
+      font-size: 18px; /* Adjusted size */
+    }
+    nostr-profile-badge .error-text {
+        font-size: 12px;
+        margin-left: 5px;
+    }
+
+    /* Dark Theme */
+    nostr-profile-badge.dark {
+      background-color: var(--nstrc-profile-badge-background-dark);
+      border-color: var(--nstrc-profile-badge-border-color-dark);
+      color: var(--nstrc-profile-badge-text-color-dark);
+    }
+    nostr-profile-badge.dark .nostr-profile-badge-nip05 {
+        color: #aaa; /* Adjusted dark theme nip05 color */
+    }
+    nostr-profile-badge.dark .skeleton {
+        background-color: #424242; /* Darker skeleton */
+    }
+  `;
+
+  // Append theme-specific overrides
+  if (theme === 'dark') {
+    styles += `
+      nostr-profile-badge {
+        border-color: var(--nstrc-profile-badge-border-color-dark);
+        background-color: var(--nstrc-profile-badge-background-dark);
+        color: var(--nstrc-profile-badge-text-color-dark);
+      }
     `;
-}
+  }
 
+  return `<style>${styles}</style>`;
+};
+
+// Function for NostrProfile styles
 export function getProfileStyles(theme: Theme) {
   let variables = ``;
 
@@ -577,6 +583,7 @@ export function getProfileStyles(theme: Theme) {
       --nstrc-follow-btn-border-dark: 1px solid #DDDDDD !important;
       --nstrc-follow-btn-border-light: 1px solid #DDDDDD !important;
       --nstrc-follow-btn-horizontal-alignment: end !important;
+      --nstrc-follow-btn-min-height: auto !important;
     }
 
       .nostr-profile .skeleton {

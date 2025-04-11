@@ -1,7 +1,6 @@
 import NDK, { NDKKind, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { maskNPub } from '../common/utils';
-import dayjs from 'dayjs';
 import { Theme } from '../common/types';
 import { getProfileStyles } from '../common/theme';
 
@@ -43,6 +42,11 @@ export default class NostrProfile extends HTMLElement {
   private onClick: Function | null = null;
 
   private ndkUser: NDKUser;
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
 
   connectToNostr = async () => {
     await this.ndk.connect();
@@ -91,29 +95,43 @@ export default class NostrProfile extends HTMLElement {
 
         await user.fetchProfile();
 
-        this.userProfile = user.profile as NDKUserProfile;
+        // Check if profile was fetched successfully
+        if (user.profile) {
+            this.userProfile = user.profile as NDKUserProfile;
 
-        if(this.userProfile) {
-          // const stats = await this.getProfileStats();
-          this.getProfileStats()
-          .then((stats) => {
-            this.isStatsError = false;
-            this.stats = stats;
-          })
-          .catch((err) => {
-            console.log(err);
-            this.isStatsError = true;
-          })
-          .finally(() => {
-            this.isStatsLoading = false;
-            this.render();
-          });
+            // Fetch stats only if profile exists
+            this.getProfileStats()
+              .then((stats) => {
+                this.isStatsError = false;
+                this.stats = stats;
+              })
+              .catch((err) => {
+                console.log(err);
+                this.isStatsError = true;
+              })
+              .finally(() => {
+                this.isStatsLoading = false;
+                this.render();
+              });
+
+            // Set default image only if profile exists but image is missing
+            if(!this.userProfile.image) {
+                this.userProfile.image = './assets/default_dp.png'
+            }
+            this.isError = false;
+        } else {
+            // Profile not found or fetch failed, use default image and clear stats
+            console.warn(`Could not fetch profile for user ${user.npub}`);
+            this.userProfile.image = './assets/default_dp.png'; 
+            this.userProfile.name = '';
+            this.userProfile.nip05 = '';
+            // Reset stats or show error state for stats?
+            this.stats = { follows: 0, followers: 0, notes: 0, replies: 0, zaps: 0, relays: 0 };
+            this.isStatsLoading = false; // No longer loading stats
+            this.isError = false; // Or true? Let's keep false, but log warning
+            this.isStatsError = true; // Indicate stats couldn't be loaded
         }
 
-        if(!this.userProfile.image) {
-          this.userProfile.image = './assets/default_dp.png'
-        }
-        this.isError = false;
       } else {
         throw new Error('Either npub or nip05 should be provided');
       }
@@ -212,22 +230,12 @@ export default class NostrProfile extends HTMLElement {
     }
   }
 
-  connectedCallback() {
-
-    if(this.getAttribute("onClick") !== null) {
-      this.onClick = window['onClick'];
-    }
-
+  async connectedCallback() {
     if (!this.rendered) {
-      this.ndk = new NDK({
-        explicitRelayUrls: this.getRelays(),
-      });
-
       this.getTheme();
-
-      this.connectToNostr();
-
-      this.getUserProfile();
+      this.ndk.explicitRelayUrls = this.getRelays();
+      await this.connectToNostr(); // Wait for connection attempt
+      this.getUserProfile(); // Now fetch profile
 
       this.rendered = true;
     }
@@ -351,18 +359,18 @@ export default class NostrProfile extends HTMLElement {
   }
 
   attachEventListeners() {
-    this.querySelector('.nostr-profile')?.addEventListener('click', (e) => {
+    this.shadowRoot!.querySelector('.nostr-profile')?.addEventListener('click', (e) => {
       if(!(e.target as HTMLElement).closest('.nostr-follow-button-container')) {
         this.onProfileClick()
       }
     });
 
-    this.querySelector('#npub-copy')?.addEventListener('click', (e) => {
+    this.shadowRoot!.querySelector('#npub-copy')?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.copy(this.getAttribute('npub') || this.ndkUser.npub || '')
     });
 
-    this.querySelector('#nip05-copy')?.addEventListener('click', (e) => {
+    this.shadowRoot!.querySelector('#nip05-copy')?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.copy(this.getAttribute('nip05') || this.userProfile.nip05 || '')
     });
@@ -373,7 +381,7 @@ export default class NostrProfile extends HTMLElement {
     const showFollow = this.getAttribute('show-follow') !== 'false';
 
     if(this.isLoading) {
-      this.innerHTML = `
+      this.shadowRoot!.innerHTML = `
         ${getProfileStyles(this.theme)}
         <div class="nostr-profile">
           <div id="profile">
@@ -517,7 +525,7 @@ export default class NostrProfile extends HTMLElement {
     }
 
     if(this.isError) {
-      this.innerHTML = `
+      this.shadowRoot!.innerHTML = `
         ${getProfileStyles(this.theme)}
         <div class="nostr-profile error-container">
           <div class="error">!</div>
@@ -527,7 +535,7 @@ export default class NostrProfile extends HTMLElement {
       return;
     }
 
-    this.innerHTML = `
+    this.shadowRoot!.innerHTML = `
       ${getProfileStyles(this.theme)}
       <div class="nostr-profile">
         <div id="profile">
