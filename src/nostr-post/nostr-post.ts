@@ -1,12 +1,11 @@
 import NDK, { NDKEvent, NDKKind, NDKUserProfile, ProfilePointer } from '@nostr-dev-kit/ndk';
 import { nip21 } from 'nostr-tools';
 import Glide from '@glidejs/glide';
-import { DEFAULT_RELAYS } from './constants';
+import { DEFAULT_RELAYS } from '../common/constants';
 import dayjs from 'dayjs';
-import { getPostStats, Stats } from './utils';
-
-// TODO: Move to a common file
-type Theme = 'light' | 'dark';
+import { getPostStats, Stats } from '../common/utils';
+import { Theme } from '../common/types';
+import { getPostStyles } from '../common/theme';
 
 export default class NostrPost extends HTMLElement {
   private rendered: boolean = false;
@@ -340,197 +339,6 @@ export default class NostrPost extends HTMLElement {
         return html.join('');
     }
 
-    getStyles = () => {
-
-      let variables = ``;
-
-      if(this.theme === 'dark') {
-        variables = `
-        --nstrc-post-background: var(--nstrc-post-background-dark);
-        --nstrc-post-name-color: var(--nstrc-post-name-color-dark);
-        --nstrc-post-nip05-color: var(--nstrc-post-nip05-color-dark);
-        --nstrc-post-skeleton-min-hsl: var(--nstrc-post-skeleton-min-hsl-dark);
-        --nstrc-post-skeleton-max-hsl: var(--nstrc-post-skeleton-max-hsl-dark);
-        --nstrc-post-text-color: var(--nstrc-post-text-color-dark);
-        --nstrc-post-stat-text-color: var(--nstrc-post-stat-text-color-dark);
-        `;
-      } else {
-        variables = `
-        --nstrc-post-background: var(--nstrc-post-background-light);
-        --nstrc-post-name-color: var(--nstrc-post-name-color-light);
-        --nstrc-post-nip05-color: var(--nstrc-post-nip05-color-light);
-        --nstrc-post-skeleton-min-hsl: var(--nstrc-post-skeleton-min-hsl-light);
-        --nstrc-post-skeleton-max-hsl: var(--nstrc-post-skeleton-max-hsl-light);
-        --nstrc-post-text-color: var(--nstrc-post-text-color-light);
-        --nstrc-post-stat-text-color: var(--nstrc-post-stat-text-color-light);
-        `;
-      }
-
-        return `
-            <link rel="stylesheet" href="node_modules/@glidejs/glide/dist/css/glide.core.min.css">
-            <link rel="stylesheet" href="node_modules/@glidejs/glide/dist/css/glide.theme.min.css">
-
-            <style>
-              :root {
-                --nstrc-post-background-light: #f5f5f5;
-                --nstrc-post-background-dark: #000000;
-                --nstrc-post-name-color-light: #444;
-                --nstrc-post-name-color-dark: #CCC;
-                --nstrc-post-nip05-color-light: #808080;
-                --nstrc-post-nip05-color-dark: #757575;
-                --nstrc-post-skeleton-min-hsl-light: 200, 20%, 80%;
-                --nstrc-post-skeleton-min-hsl-dark: 200, 20%, 20%;
-                --nstrc-post-skeleton-max-hsl-light: 200, 20%, 95%;
-                --nstrc-post-skeleton-max-hsl-dark: 200, 20%, 30%;
-                --nstrc-post-text-color-light: #222;
-                --nstrc-post-text-color-dark: #d4d4d4;
-                --nstrc-post-stat-text-color-light: #222;
-                --nstrc-post-stat-text-color-dark: #d0d0d0;
-
-                --nstrc-post-name-font-weight: 700;
-                --nstrc-post-nip05-font-weight: 400;
-
-                --nstrc-post-accent: #ca077c;
-
-                ${variables}
-              }
-              
-              a {
-                color: var(--nstrc-post-accent);
-              }
-
-              .post-container {
-                  font-family: sans-serif;
-                  padding: 20px;
-
-                  display: flex;
-                  flex-direction: column;
-                  gap: 20px;
-
-                  border: 1px solid #d9d9d9;
-                  border-radius: 10px;
-
-                  background-color: var(--nstrc-post-background);
-
-                  color: var(--nstrc-post-text-color);
-
-                  cursor: pointer;
-              }
-
-              .post-container .post-header {
-                  display: flex;
-                  gap: 10px;
-              }
-
-              .post-header-left {
-                  width: 35px;
-              }
-
-              .post-header-left img {
-                  width: 35px;
-                  border-radius: 50%;
-              }
-
-              .post-header-middle {
-                  display: flex;
-                  flex-direction: column;
-                  width: 100%;
-                  gap: 5px;
-              }
-
-              .post-header-right {
-                  width: 100%;
-                  display: flex;
-                  align-items: center;
-                  justify-content: end;
-              }
-
-              .author-name {
-                color: var(--nstrc-post-name-color);
-                font-weight: var(--nstrc-post-name-font-weight);
-                    word-break: break-word;
-              }
-
-              .author-username {
-                  font-weight: var(--nstrc-post-nip05-font-weight);
-                  color: #808080;
-                  font-size: 14px;
-                  word-break: break-all;
-              }
-
-              .text-content {
-                word-break: break-word;
-              }
-
-              .glide__slide {
-                  width: 100%;
-              }
-
-              .glide__slide * {
-                  border-radius: 10px;
-              }
-
-              .glide__bullets button {
-                  border: 1px solid #000;
-              }
-
-              .post-container .skeleton {
-                animation: post-skeleton-loading 0.5s linear infinite alternate;
-              }
-
-              @keyframes post-skeleton-loading {
-                0% {
-                  background-color: hsl(var(--nstrc-post-skeleton-min-hsl));
-                }
-                100% {
-                  background-color: hsl(var(--nstrc-post-skeleton-max-hsl));
-                }
-              }
-
-            .error-container {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 20px;
-            }
-
-            .error {
-              width: 35px;
-              height: 35px;
-              border-radius: 50%;
-              background-color: red;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              font-size: 20px;
-              color: #FFF;
-            }
-
-            .error-text {
-              color: red;
-              font-weight: bold;
-            }
-
-            .post-footer {
-              margin-top: ${this.isError ? '0px': '20px'};
-            }
-
-            .stats-container {
-              display: flex;
-              gap: 20px;
-            }
-
-            .stat {
-              display: flex;
-              align-items: center;
-              gap: 5px;
-              color: var(--nstrc-post-stat-text-color);
-            }
-          </style>
-        `;
-    }
-
-
     async render() {
         const content = this.post?.content ||  '';
         const parsedContent = await this.parseText(content);
@@ -543,8 +351,10 @@ export default class NostrPost extends HTMLElement {
 
         const shouldShowStats = this.getAttribute('show-stats') === "true";
 
-        this.innerHTML = `
-        ${this.getStyles()}
+        this.innerHTML = ``;
+
+        this.innerHTML += `
+        ${getPostStyles(this.theme)}
 
         <div class="post-container">
             <div class="post-header">
@@ -660,7 +470,7 @@ export default class NostrPost extends HTMLElement {
                         <div class="stat">
                           <svg width="18" height="18">
                             <g xmlns="http://www.w3.org/2000/svg">
-                              <path fill="#ffaf00" fill-rule="evenodd" clip-rule="evenodd" d="M8.93212 1.2218C9.2036 1.33964 9.36488 1.62235 9.32818 1.91602L8.75518 6.5L12.8852 6.49999C13.0458 6.49996 13.2086 6.49993 13.3415 6.51197C13.4673 6.52336 13.708 6.55347 13.9168 6.72221C14.1559 6.91539 14.2928 7.20776 14.2882 7.51507C14.2841 7.78351 14.1531 7.98776 14.0814 8.09164C14.0055 8.20149 13.9013 8.32648 13.7984 8.44989L7.84547 15.5935C7.65601 15.8208 7.33934 15.896 7.06786 15.7782C6.79638 15.6604 6.6351 15.3776 6.6718 15.084L7.2448 10.5L3.11481 10.5C2.95415 10.5 2.79142 10.5001 2.65847 10.488C2.53273 10.4766 2.29195 10.4465 2.08314 10.2778C1.84409 10.0846 1.70715 9.79223 1.71178 9.48492C1.71583 9.21648 1.84684 9.01223 1.91859 8.90835C1.99445 8.79851 2.09866 8.67351 2.20153 8.55011C2.20663 8.54399 2.21172 8.53788 2.21681 8.53178L8.15451 1.40654C8.34397 1.17918 8.66064 1.10395 8.93212 1.2218Z"/>
+                              <path fill="#ffaf00" fill-rule="evenodd" clip-rule="evenodd" d="M9.49466 2.78774C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
                             </g>
                           </svg>
                           <span>${this.stats!.zaps}</span>
@@ -670,20 +480,11 @@ export default class NostrPost extends HTMLElement {
                         <div class="stat">
                           <svg width="18" height="18">
                             <g xmlns="http://www.w3.org/2000/svg">
-                              <path fill="#ff006d" fill-rule="evenodd" clip-rule="evenodd" d="M9.49466 2.78774C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
-                            </g>
-                          </svg>
-                          <span>${this.stats!.likes}</span>
-                        </div>
-
-                        <div class="stat">
-                          <svg width="18" height="18">
-                            <g xmlns="http://www.w3.org/2000/svg">
-                              <path fill="#1ded00" d="M12.2197 1.65717C12.5126 1.36428 12.9874 1.36428 13.2803 1.65717L16.2803 4.65717C16.5732 4.95006 16.5732 5.42494 16.2803 5.71783L13.2803 8.71783C12.9874 9.01072 12.5126 9.01072 12.2197 8.71783C11.9268 8.42494 11.9268 7.95006 12.2197 7.65717L13.9393 5.9375H5.85C5.20757 5.9375 4.77085 5.93808 4.43328 5.96566C4.10447 5.99253 3.93632 6.04122 3.81902 6.10099C3.53677 6.2448 3.3073 6.47427 3.16349 6.75652C3.10372 6.87381 3.05503 7.04197 3.02816 7.37078C3.00058 7.70835 3 8.14507 3 8.7875V8.9375C3 9.35171 2.66421 9.6875 2.25 9.6875C1.83579 9.6875 1.5 9.35171 1.5 8.9375V8.75653C1.49999 8.15281 1.49998 7.65452 1.53315 7.24863C1.56759 6.82706 1.64151 6.43953 1.82698 6.07553C2.1146 5.51104 2.57354 5.0521 3.13803 4.76448C3.50203 4.57901 3.88956 4.50509 4.31113 4.47065C4.71703 4.43748 5.2153 4.43749 5.81903 4.4375L13.9393 4.4375L12.2197 2.71783C11.9268 2.42494 11.9268 1.95006 12.2197 1.65717Z"/>
+                              <path fill="#ff006d" d="M12.2197 1.65717C12.5126 1.36428 12.9874 1.36428 13.2803 1.65717L16.2803 4.65717C16.5732 4.95006 16.5732 5.42494 16.2803 5.71783L13.2803 8.71783C12.9874 9.01072 12.5126 9.01072 12.2197 8.71783C11.9268 8.42494 11.9268 7.95006 12.2197 7.65717L13.9393 5.9375H5.85C5.20757 5.9375 4.77085 5.93808 4.43328 5.96566C4.10447 5.99253 3.93632 6.04122 3.81902 6.10099C3.53677 6.2448 3.3073 6.47427 3.16349 6.75652C3.10372 6.87381 3.05503 7.04197 3.02816 7.37078C3.00058 7.70835 3 8.14507 3 8.7875V8.9375C3 9.35171 2.66421 9.6875 2.25 9.6875C1.83579 9.6875 1.5 9.35171 1.5 8.9375V8.75653C1.49999 8.15281 1.49998 7.65452 1.53315 7.24863C1.56759 6.82706 1.64151 6.43953 1.82698 6.07553C2.1146 5.51104 2.57354 5.0521 3.13803 4.76448C3.50203 4.57901 3.88956 4.50509 4.31113 4.47065C4.71703 4.43748 5.2153 4.43749 5.81903 4.4375L13.9393 4.4375L12.2197 2.71783C11.9268 2.42494 11.9268 1.95006 12.2197 1.65717Z"/>
                               <path fill="#1ded00" d="M15.75 9.6875C15.3358 9.6875 15 10.0233 15 10.4375V10.5875C15 11.2299 14.9994 11.6667 14.9718 12.0042C14.945 12.333 14.8963 12.5012 14.8365 12.6185C14.6927 12.9007 14.4632 13.1302 14.181 13.274C14.0637 13.3338 13.8955 13.3825 13.5667 13.4093C13.2292 13.4369 12.7924 13.4375 12.15 13.4375H4.06066L5.78033 11.7178C6.07322 11.4249 6.07322 10.9501 5.78033 10.6572C5.48744 10.3643 5.01256 10.3643 4.71967 10.6572L1.71967 13.6572C1.42678 13.9501 1.42678 14.4249 1.71967 14.7178L4.71967 17.7178C5.01256 18.0107 5.48744 18.0107 5.78033 17.7178C6.07322 17.4249 6.07322 16.9501 5.78033 16.6572L4.06066 14.9375H12.181C12.7847 14.9375 13.283 14.9375 13.6889 14.9044C14.1104 14.8699 14.498 14.796 14.862 14.6105C15.4265 14.3229 15.8854 13.864 16.173 13.2995C16.3585 12.9355 16.4324 12.5479 16.4669 12.1264C16.5 11.7205 16.5 11.2222 16.5 10.6185V10.4375C16.5 10.0233 16.1642 9.6875 15.75 9.6875Z"/>
                             </g>
                           </svg>
-                          <span>${this.stats!.reposts}</span>
+                          <span>${this.stats!.likes}</span>
                         </div>
                       </div>
                     `

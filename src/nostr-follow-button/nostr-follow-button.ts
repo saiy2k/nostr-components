@@ -1,7 +1,7 @@
 import NDK, { NDKNip07Signer, NDKUser, NDKUserProfile } from "@nostr-dev-kit/ndk";
-import { DEFAULT_RELAYS } from "./constants";
-import { getLoadingNostrich, getNostrLogo, getSuccessAnimation } from "./utils";
-import { Theme } from "./types";
+import { DEFAULT_RELAYS } from "../common/constants";
+import { getLoadingNostrich, getNostrLogo, getSuccessAnimation, getFollowButtonStyles } from "../common/theme";
+import { Theme } from "../common/types";
 
 export default class NostrFollowButton extends HTMLElement {
   private rendered: boolean = false;
@@ -148,102 +148,6 @@ export default class NostrFollowButton extends HTMLElement {
     });
   }
 
-  getStyles() {
-    let variables = ``;
-
-    if (this.theme === "dark") {
-      variables = `
-          --nstrc-follow-btn-background: var(--nstrc-follow-btn-background-dark);
-          --nstrc-follow-btn-hover-background: var(--nstrc-follow-btn-hover-background-dark);
-    
-          --nstrc-follow-btn-text-color: var(--nstrc-follow-btn-text-color-dark);
-          --nstrc-follow-btn-border: var(--nstrc-follow-btn-border-dark);
-      `;
-    } else {
-      variables = `
-          --nstrc-follow-btn-background: var(--nstrc-follow-btn-background-light);
-          --nstrc-follow-btn-hover-background: var(--nstrc-follow-btn-hover-background-light);
-    
-          --nstrc-follow-btn-text-color: var(--nstrc-follow-btn-text-color-light);
-          --nstrc-follow-btn-border: var(--nstrc-follow-btn-border-light);
-      `;
-    }
-
-    return `
-        <style>
-          :root {
-            ${variables}
-
-            --nstrc-follow-btn-padding: 10px 16px;
-            --nstrc-follow-btn-font-size: 16px;
-            --nstrc-follow-btn-background-dark: #000000;
-            --nstrc-follow-btn-background-light: #FFFFFF;
-            --nstrc-follow-btn-hover-background-dark: #222222;
-            --nstrc-follow-btn-hover-background-light: #F9F9F9;
-            --nstrc-follow-btn-border-dark: none;
-            --nstrc-follow-btn-border-light: 1px solid #DDDDDD;
-            --nstrc-follow-btn-text-color-dark: #FFFFFF;
-            --nstrc-follow-btn-text-color-light: #000000;
-            --nstrc-follow-btn-border-radius: 8px;
-            --nstrc-follow-btn-error-font-size: 12px;
-            --nstrc-follow-btn-error-line-height: 1em;
-            --nstrc-follow-btn-error-max-width: 250px;
-            --nstrc-follow-btn-horizontal-alignment: start;
-            --nstrc-follow-btn-min-height: 47px;
-          }
-
-          .nostr-follow-button-container {
-            display: flex;
-            flex-direction: column;
-            font-family: Inter,sans-serif;
-            flex-direction: column;
-            gap: 8px;
-            width: fit-content;
-          }
-
-          .nostr-follow-button-wrapper {
-            display: flex;
-            justify-content: var(--nstrc-follow-btn-horizontal-alignment);
-          }
-    
-          .nostr-follow-button {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-radius: var(--nstrc-follow-btn-border-radius);
-            background-color: var(--nstrc-follow-btn-background);
-            cursor: pointer;
-
-            min-height: var(--nstrc-follow-btn-min-height);
-
-            border: var(--nstrc-follow-btn-border);
-
-            padding: var(--nstrc-follow-btn-padding);
-            font-size: var(--nstrc-follow-btn-font-size);
-            color: var(--nstrc-follow-btn-text-color);
-
-            ${
-              this.isLoading
-              ? 'pointer-events: none; user-select: none; background-color: var(--nstrc-follow-btn-hover-background);'
-              : ''
-            }
-          }
-
-          .nostr-follow-button:hover {
-            background-color: var(--nstrc-follow-btn-hover-background);
-          }
-
-          .nostr-follow-button-error small {
-            justify-content: flex-end;
-            color: red;
-            font-size: var(--nstrc-follow-btn-error-font-size);
-            line-height: var(--nstrc-follow-btn-error-line-height);
-            max-width: var(--nstrc-follow-btn-error-max-width);
-          }
-        </style>
-    `;
-  }
-
   render() {
     const iconWidthAttribute = this.getAttribute('icon-width');
     const iconHeightAttribute = this.getAttribute('icon-height');
@@ -251,8 +155,10 @@ export default class NostrFollowButton extends HTMLElement {
     const iconWidth = iconWidthAttribute !== null ? Number(iconWidthAttribute): 25;
     const iconHeight = iconHeightAttribute !== null ? Number(iconHeightAttribute): 25;
 
-    this.innerHTML = this.getStyles();
+    const buttonText = this.isFollowed ? 'Followed' : 'Follow';
 
+    this.innerHTML = getFollowButtonStyles(this.theme, this.isLoading);
+ 
     this.innerHTML += `
       <div class="nostr-follow-button-container ${this.isError ? 'nostr-follow-button-error': ''}">
         <div class="nostr-follow-button-wrapper">
@@ -261,7 +167,7 @@ export default class NostrFollowButton extends HTMLElement {
               this.isLoading
               ? `${getLoadingNostrich(this.theme, iconWidth, iconHeight)} <span>Following...</span>`
               : this.isFollowed
-                ? `${getSuccessAnimation(this.theme, iconWidth, iconHeight)} Followed!`
+                ? `${getSuccessAnimation(this.theme, iconWidth, iconHeight)} ${buttonText}`
                 : `${getNostrLogo(this.theme, iconWidth, iconHeight)} <span>Follow me on Nostr</span>`
             }
           </button>

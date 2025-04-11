@@ -1,8 +1,8 @@
 import NDK, { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { DEFAULT_RELAYS } from './constants';
-import { maskNPub } from './utils';
-
-type Theme = 'light' | 'dark';
+import { DEFAULT_RELAYS } from '../common/constants';
+import { maskNPub } from '../common/utils';
+import { Theme } from '../common/types';
+import { getProfileBadgeStyles } from '../common/theme';
 
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;
@@ -164,174 +164,7 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   getStyles() {
-    let variables = ``;
-
-    if(this.theme === 'dark') {
-      variables = `
-      --nstrc-profile-badge-background: var(--nstrc-profile-badge-background-dark);
-      --nstrc-profile-badge-name-color: var(--nstrc-profile-badge-name-color-dark);
-      --nstrc-profile-badge-nip05-color: var(--nstrc-profile-badge-nip05-color-dark);
-      --nstrc-profile-badge-skeleton-min-hsl: var(--nstrc-profile-badge-skeleton-min-hsl-dark);
-      --nstrc-profile-badge-skeleton-max-hsl: var(--nstrc-profile-badge-skeleton-max-hsl-dark);
-      --nstrc-profile-badge-copy-foreground-color: var(--nstrc-profile-badge-copy-foreground-color-dark);
-      `;
-    } else {
-      variables = `
-      --nstrc-profile-badge-background: var(--nstrc-profile-badge-background-light);
-      --nstrc-profile-badge-name-color: var(--nstrc-profile-badge-name-color-light);
-      --nstrc-profile-badge-nip05-color: var(--nstrc-profile-badge-nip05-color-light);
-      --nstrc-profile-badge-skeleton-min-hsl: var(--nstrc-profile-badge-skeleton-min-hsl-light);
-      --nstrc-profile-badge-skeleton-max-hsl: var(--nstrc-profile-badge-skeleton-max-hsl-light);
-      --nstrc-profile-badge-copy-foreground-color: var(--nstrc-profile-badge-copy-foreground-color-light);
-      `;
-    }
-
-
-    return `
-    <style>
-      :root {
-
-        --nstrc-profile-badge-background-light: #f5f5f5;
-        --nstrc-profile-badge-background-dark: #121212;
-        --nstrc-profile-badge-name-color-light: #444;
-        --nstrc-profile-badge-name-color-dark: #CCC;
-        --nstrc-profile-badge-nip05-color-light: #808080;
-        --nstrc-profile-badge-nip05-color-dark: #757575;
-        --nstrc-profile-badge-skeleton-min-hsl-light: 200, 20%, 80%;
-        --nstrc-profile-badge-skeleton-min-hsl-dark: 200, 20%, 20%;
-        --nstrc-profile-badge-skeleton-max-hsl-light: 200, 20%, 95%;
-        --nstrc-profile-badge-skeleton-max-hsl-dark: 200, 20%, 30%;
-        --nstrc-profile-badge-copy-foreground-color-light: #222;
-        --nstrc-profile-badge-copy-foreground-color-dark: #CCC;
-        --nstrc-profile-badge-name-font-weight: 700;
-        --nstrc-profile-badge-nip05-font-weight: 400;
-
-        ${variables}
-
-        --nstrc-follow-btn-padding: 4px 10px !important;
-        --nstrc-follow-btn-font-size: 10px !important;
-        --nstrc-follow-btn-border-radius: 8px !important;
-        --nstrc-follow-btn-error-font-size: 8px !important;
-        --nstrc-follow-btn-error-line-height: 1em !important;
-        --nstrc-follow-btn-horizontal-alignment: start !important;
-        --nstrc-follow-btn-min-height: auto !important;
-      }
-
-    .nostr-profile-badge-container {
-      display: flex;
-      align-items: center;
-      border-radius: 100px;
-      background-color: var(--nstrc-profile-badge-background);
-      gap: 10px;
-      font-size: 12px;
-      min-height: 48px;
-      padding: 8px 10px;
-      font-family: Nacelle,sans-serif;
-      cursor: pointer;
-    }
-
-    .nostr-profile-badge-container:has(.npub-container) {
-      padding: 10px 12px;
-    }
-
-    .nostr-profile-badge-left-container {
-      border-radius: 50%;
-    }
-
-    .nostr-profile-badge-left-container img {
-      width: 35px;
-      height: 35px;
-      border-radius: 50%;
-    }
-
-    .nostr-profile-badge-container:has(.npub-container) .nostr-profile-badge-left-container img {
-      width: 64px !important;
-      height: 64px !important;
-    }
-
-    .nostr-profile-badge-right-container {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 3px;
-    }
-
-    .nostr-profile-badge-right-container .nostr-profile-badge-name {
-      color: var(--nstrc-profile-badge-name-color);
-      font-weight: var(--nstrc-profile-badge-name-font-weight);
-    }
-
-    .nostr-profile-badge-right-container .nostr-profile-badge-nip05 {
-      color: var(--nstrc-profile-badge-nip05-color);
-      font-weight: var(--nstrc-profile-badge-nip05-font-weight);
-    }
-
-    .skeleton {
-      animation: profile-badge-skeleton-loading 0.5s linear infinite alternate;
-    }
-
-    @keyframes profile-badge-skeleton-loading {
-      0% {
-        background-color: hsl(var(--nstrc-profile-badge-skeleton-min-hsl));
-      }
-      100% {
-        background-color: hsl(var(--nstrc-profile-badge-skeleton-max-hsl));
-      }
-    }
-
-    .error {
-      width: 35px;
-      height: 35px;
-      border-radius: 50%;
-      background-color: red;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 20px;
-      color: #FFF;
-    }
-
-    .error-text {
-      color: red;
-      font-weight: bold;
-    }
-
-    .copy-button {
-      display: flex;
-      font-size: 16px;
-      min-width: 15px;
-      min-height: 15px;
-      align-items: center;
-      justify-content: center;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      color: var(--nstrc-profile-badge-copy-foreground-color);
-    }
-
-    .npub-container, .nip05-container {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .npub-container .npub {
-      color: #a2a2a2;
-    }
-    
-    .npub-container .nostr-profile-badge-nip05 {
-      word-break: break-all;
-    }
-
-    .name-container {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      padding: 3px 0; // To equalize flex height with other items
-    }
-    </style>
-    `;
+    return '';
   }
 
   renderNpub() {
@@ -405,7 +238,7 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   render() {
-    this.innerHTML = this.getStyles();
+    this.innerHTML = getProfileBadgeStyles(this.theme);
 
     if(this.userProfile === undefined || this.userProfile.image === undefined || (this.userProfile.displayName === undefined && this.userProfile.name === undefined)) {
       this.isError = true;

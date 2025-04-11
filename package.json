@@ -20,6 +20,7 @@
     "@storybook/test": "^8.4.7",
     "@storybook/web-components": "^8.4.7",
     "@storybook/web-components-vite": "^8.4.7",
+    "@types/glidejs__glide": "^3.6.6",
     "esbuild": "0.23.1",
     "lit": "^3.2.1",
     "storybook": "^8.4.7",
