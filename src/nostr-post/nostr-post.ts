@@ -362,9 +362,6 @@ export default class NostrPost extends HTMLElement {
 
     this.innerHTML = `
     ${getPostStylesLegacy(this.theme)}
-    <link rel="stylesheet" href="node_modules/@glidejs/glide/dist/css/glide.core.min.css">
-    <link rel="stylesheet" href="node_modules/@glidejs/glide/dist/css/glide.theme.min.css">
-
     <div class="post-container">
         <div class="post-header">
           <div class="post-header-left">

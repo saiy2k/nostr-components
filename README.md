@@ -20,37 +20,33 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 
 ## 📌 Why Use Nostr Components?
 
-✅ **No Dependencies** - Just a simple script to include.
+✅ **Simplified Integration** - Nostr Development Kit (NDK) and related Nostr libraries are bundled in. Just include our script!
 ✅ **Lightweight & Fast** - Works on any modern browser.
 ✅ **Fully Customizable** - Match your website’s style with ease.
 ✅ **Decentralized Friendly** - Works seamlessly with any custom set of Nostr relays.
 
 ## 🛠️ Usage
 
-1.  **Include the Script:** Add the compiled component script to your HTML's `<head>`.
+1.  **Include the Script(s):** Add the compiled component script to your HTML's `<head>`. If using the `nostr-post` component with multiple images/videos, also include Glide.js CSS for the carousel feature.
 
-    *   **Option 1: UMD (Universal Module Definition) - Recommended for simple script tags**
-        ```html
-        <head>
-          <!-- Include Nostr Components -->
-          <script src="./dist/nostr-components.umd.js"></script>
-          <script>
-            // Initialize components (only needed for UMD build)
-            NostrComponents.default.init();
-          </script>
-        </head>
-        ```
+    ```html
+    <head>
+      <!-- Required: Nostr Components Script (choose UMD or ES) -->
+      <script src="./dist/nostr-components.umd.js"></script> <!-- Or nostr-components.es.js -->
+      <script>
+        // Initialize components (only needed for UMD build)
+        NostrComponents.default.init();
+      </script>
 
-    *   **Option 2: ES Module**
-        ```html
-        <head>
-          <!-- Include Nostr Components as an ES Module -->
-          <script type="module">
-            import NostrComponents from './dist/nostr-components.es.js';
-            NostrComponents.init();
-          </script>
-        </head>
-        ```
+      <!-- Optional: Glide.js CSS for Post Carousel -->
+      <!-- Needed only if displaying posts that might contain multiple images/videos -->
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css">
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css">
+    </head>
+    ```
+
+    *   **UMD (Universal Module Definition):** Use `<script src="./dist/nostr-components.umd.js"></script>` and the initialization script.
+    *   **ES Module:** Use `<script type="module">import NostrComponents from './dist/nostr-components.es.js'; NostrComponents.init();</script>`.
 
     *Note: Replace `./dist/nostr-components.*.js` with the actual path to the file on your server or use a CDN link if available (e.g., `https://nostr-components.web.app/dist/nostr-components.umd.js`).*
 
@@ -155,6 +151,10 @@ function my_custom_js() {
     echo "  NostrComponents.init();";
     echo '</script>';
     */
+
+    // Optional: Glide.js CSS for Post Carousel (if needed)
+    echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css">';
+    echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css">';
 }
 
 add_action( 'wp_head', 'my_custom_js' );
