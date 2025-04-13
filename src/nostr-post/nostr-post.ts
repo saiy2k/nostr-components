@@ -17,6 +17,7 @@ export default class NostrPost extends HTMLElement {
 
   private post: NDKEvent | null = null;
   private stats: Stats | null = null;
+  private embeddedPosts: Map<string, NDKEvent> = new Map();
 
   private receivedData: boolean = false;
 
@@ -28,6 +29,7 @@ export default class NostrPost extends HTMLElement {
 
   private onClick: Function | null = null;
   private onAuthorClick: Function | null = null;
+  private onMentionClick: Function | null = null;
 
   connectToNostr = async () => {
     await this.ndk.connect();
@@ -70,6 +72,11 @@ export default class NostrPost extends HTMLElement {
       this.onAuthorClick = window[onAuthorClick];
     }
 
+    const onMentionClick = this.getAttribute("onMentionClick");
+    if(onMentionClick !== null) {
+      this.onMentionClick = window[onMentionClick];
+    }
+
     this.render();
 
     if (!this.rendered) {
@@ -85,7 +92,7 @@ export default class NostrPost extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['relays', 'id', 'theme', 'show-stats', 'onClick', 'onAuthorClick'];
+    return ['relays', 'id', 'theme', 'show-stats', 'onClick', 'onAuthorClick', 'onMentionClick'];
   }
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
@@ -104,6 +111,10 @@ export default class NostrPost extends HTMLElement {
 
     if(name === "onAuthorClick") {
       this.onAuthorClick = window[newValue];
+    }
+
+    if(name === "onMentionClick") {
+      this.onMentionClick = window[newValue];
     }
 
     if(name === 'theme') {
@@ -188,161 +199,367 @@ export default class NostrPost extends HTMLElement {
     window.open(`https://njump.me/${this.post?.author.npub}`, '_blank');
   }
 
-  attachEventListeners() {
-    this.querySelector('.post-container')?.addEventListener('click', (e) => {
-      const targetElement = e.target as HTMLElement;
-
-      if(targetElement.closest('.post-header-left') || targetElement.closest('.post-header-middle')) {
-        this.#_onAuthorClick();
-      } else {
-        this.#_onPostClick();
-      }
-    });
-  }
-
-  initGlide() {
-    const glideElement = this.querySelector('.glide');
-    if (glideElement) {
-      new Glide(glideElement as HTMLElement).mount();
+  #_onMentionClick(username: string, event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Custom mention handler if provided
+    const onMentionClick = this.getAttribute('onMentionClick');
+    if(onMentionClick !== null && window[onMentionClick] && typeof window[onMentionClick] === 'function') {
+      window[onMentionClick](username);
+      return;
     }
+    
+    // Default behavior: try to find user with this username
+    window.open(`https://njump.me/search?q=${encodeURIComponent('@' + username)}`, '_blank');
   }
 
-  parseText = async (text: string) => {
+  async parseText(text: string) {
 
     let textContent = text;
+    let embeddedNotes: {id: string, position: number}[] = [];
 
-    const nostrURISchemaMatches = textContent.matchAll(new RegExp(nip21.NOSTR_URI_REGEX, 'g'));
-        for(let match of nostrURISchemaMatches) {
-          const parsedNostrURI = nip21.parse(match[0]);
-          const decordedData = parsedNostrURI.decoded.data;
-
-          let pubkey = '';
-          if(typeof decordedData === "string") {
-            pubkey = decordedData;
-          } else {
-            pubkey = (decordedData as ProfilePointer).pubkey;
+    // First capture embedded note references before other processing
+    // Example note1abcdef... or nostr:note1abcdef...
+    const noteRegex = /(nostr:)?(note[a-zA-Z0-9]{59,60})/g;
+    const noteMatches = [...textContent.matchAll(noteRegex)];
+    
+    for (const match of noteMatches) {
+      const fullMatch = match[0];
+      const noteId = match[2];
+      const position = match.index || 0;
+      
+      // Store the note ID and its position for later processing
+      embeddedNotes.push({
+        id: noteId,
+        position: position
+      });
+      
+      // Fetch the embedded post
+      try {
+        if (!this.embeddedPosts.has(noteId)) {
+          const embeddedPost = await this.ndk.fetchEvent(noteId);
+          if (embeddedPost) {
+            this.embeddedPosts.set(noteId, embeddedPost);
           }
-
-          const user = await this.ndk.getUser({pubkey: pubkey}).fetchProfile();
-          const name = user?.displayName || '';
-
-          textContent = textContent.replace(match[0], `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`);
         }
-
-        const regex = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
-        const matches = textContent.match(regex);
-        const result: any[] = [];
-
-        if ( matches) {
-          let lastIndex = 0;
-          for (const match of matches) {
-            const startIndex = textContent.indexOf(match, lastIndex);
-            const endIndex = startIndex + match.length;
+      } catch (error) {
+        console.error(`Failed to fetch embedded post ${noteId}:`, error);
+      }
       
-            if (startIndex > lastIndex) {
-              result.push({ type: 'text', value: textContent.substring(lastIndex, startIndex) });
-            }
-      
-            const url = new URL(match);
-            let type;
-      
-            if (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.jpeg') || url.pathname.endsWith('.png')) {
-              type = 'image';
-            } else if (url.pathname.endsWith('.gif')) {
-              type = 'gif';
-            } else if (url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')) {
-              type = 'video';
-            } else {
-              type = 'link';
-            }
-      
-            result.push({ type, value: match });
-      
-            lastIndex = endIndex;
-          }
-      
-          if (lastIndex < textContent.length) {
-            result.push({ type: 'text', value: textContent.substring(lastIndex) });
-          }
-        } else {
-          result.push({ type: 'text', value: textContent });
-        }
-      
-        return result;
+      // Remove the note reference from the text to prevent @ symbols being added
+      textContent = textContent.replace(fullMatch, '');
     }
 
-    // TODO: Fix types
-    renderContent = (content: any[]) => {
-        const html: string[] = [];
-        let mediaCount = 0;
-        let textBuffer = '';
+    // Handle Nostr URI schema for mentions
+    const nostrURISchemaMatches = textContent.matchAll(new RegExp(nip21.NOSTR_URI_REGEX, 'g'));
+    for(let match of nostrURISchemaMatches) {
+      const parsedNostrURI = nip21.parse(match[0]);
+      const decordedData = parsedNostrURI.decoded.data;
 
-        for (const item of content) {
-          if (item.type === 'text') {
-            textBuffer += item.value;
-          } else {
-            if (textBuffer) {
-              html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
-              textBuffer = '';
-            }
+      let pubkey = '';
+      if(typeof decordedData === "string") {
+        pubkey = decordedData;
+      } else {
+        pubkey = (decordedData as ProfilePointer).pubkey;
+      }
 
-            switch (item.type) {
-              case 'image':
-                html.push(`<img width="100%" src="${item.value}" alt="Image">`);
-                mediaCount++;
-                break;
-              case 'gif':
-                html.push(`<img width="100%" src="${item.value}" alt="GIF">`);
-                mediaCount++;
-                break;
-              case 'video':
-                html.push(`<video width="100%" src="${item.value}" controls></video>`);
-                mediaCount++;
-                break;
-              case 'link':
-                html.push(`<a href="${item.value}">${item.value}</a>`);
-                break;
-            }
+      const user = await this.ndk.getUser({pubkey: pubkey}).fetchProfile();
+      const name = user?.displayName || '';
+
+      textContent = textContent.replace(match[0], `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`);
+    }
+
+    // Handle Twitter-like mentions (@username)
+    const mentionRegex = /(\s|^)@(\w+)/g;
+    const mentionMatches = [...textContent.matchAll(mentionRegex)];
+    
+    for (const match of mentionMatches) {
+      const fullMatch = match[0];
+      const username = match[2];
+      
+      // Replace with styled mention
+      textContent = textContent.replace(
+        fullMatch, 
+        `${match[1]}<span class="nostr-mention" data-username="${username}">@${username}</span>`
+      );
+    }
+    
+    // Handle URLs
+    const regex = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
+    const matches = textContent.match(regex);
+    const result: any[] = [];
+
+    if (matches) {
+      let lastIndex = 0;
+      for (const match of matches) {
+        const startIndex = textContent.indexOf(match, lastIndex);
+        const endIndex = startIndex + match.length;
+  
+        if (startIndex > lastIndex) {
+          result.push({ type: 'text', value: textContent.substring(lastIndex, startIndex) });
+        }
+  
+        const url = new URL(match);
+        let type;
+  
+        if (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.jpeg') || url.pathname.endsWith('.png')) {
+          type = 'image';
+        } else if (url.pathname.endsWith('.gif')) {
+          type = 'gif';
+        } else if (url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')) {
+          type = 'video';
+        } else {
+          type = 'link';
+        }
+  
+        result.push({ type, value: match });
+  
+        lastIndex = endIndex;
+      }
+  
+      if (lastIndex < textContent.length) {
+        result.push({ type: 'text', value: textContent.substring(lastIndex) });
+      }
+    } else {
+      result.push({ type: 'text', value: textContent });
+    }
+
+    // Add embedded notes to the result
+    if (embeddedNotes.length > 0) {
+      // Sort by position in descending order to avoid affecting earlier positions
+      embeddedNotes.sort((a, b) => b.position - a.position);
+      
+      for (const note of embeddedNotes) {
+        result.push({ 
+          type: 'embedded-note', 
+          noteId: note.id
+        });
+      }
+    }
+  
+    return result;
+  }
+
+  async replaceEmbeddedPostPlaceholders() {
+    const placeholders = this.querySelectorAll('.embedded-post-placeholder');
+    
+    for (const placeholder of placeholders) {
+      const noteId = placeholder.getAttribute('data-note-id');
+      if (noteId) {
+        const embedHtml = await this.renderEmbeddedPost(noteId);
+        
+        // Create a temporary container
+        const temp = document.createElement('div');
+        temp.innerHTML = embedHtml;
+        
+        // Replace the placeholder with the embedded post
+        placeholder.parentNode?.replaceChild(temp.firstElementChild!, placeholder);
+        
+        // Add click handlers to the author elements in this embedded post
+        const embeddedPost = temp.firstElementChild;
+        const authorAvatar = embeddedPost?.querySelector('.embedded-author-avatar');
+        const authorInfo = embeddedPost?.querySelector('.embedded-author-info');
+        
+        if (embeddedPost && authorAvatar && authorInfo) {
+          const noteId = embeddedPost.getAttribute('data-note-id');
+          if (noteId && this.embeddedPosts.has(noteId)) {
+            const post = this.embeddedPosts.get(noteId)!;
+            const authorNpub = post.author.npub;
+            
+            const handleAuthorClick = (e: Event) => {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              // Open the author's profile
+              window.open(`https://njump.me/${authorNpub}`, '_blank');
+            };
+            
+            authorAvatar.addEventListener('click', handleAuthorClick);
+            authorInfo.addEventListener('click', handleAuthorClick);
           }
         }
-      
+      }
+    }
+  }
+
+  // TODO: Fix types
+  renderContent = (content: any[]) => {
+    const html: string[] = [];
+    let mediaCount = 0;
+    let textBuffer = '';
+
+    for (const item of content) {
+      if (item.type === 'text') {
+        textBuffer += item.value;
+      } else if (item.type === 'embedded-note') {
+        // Handle embedded note placeholder
         if (textBuffer) {
           html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
+          textBuffer = '';
         }
-      
-        if (mediaCount > 1) {
-          const carouselHtml: string[] = [];
-          let bullets = '';
-
-          for (let i = 0; i < html.length; i++) {
-            const item = html[i];
-            if (item.startsWith('<img') || item.startsWith('<video')) {
-              carouselHtml.push(`<li class="glide__slide">${item}</li>`);
-              
-              bullets += `<button class="glide__bullet" data-glide-dir="=${i}"></button>`;
-
-              html.splice(i, 1);
-              i--;
-            }
-          }
-      
-          html.push(`
-            <div class="glide" style="margin-top: 20px">
-                <div class="glide__track" data-glide-el="track">
-                    <ul class="glide__slides">
-                        ${carouselHtml.join('')}
-                    </ul>
-                </div>
-
-                  <div class="glide__bullets" data-glide-el="controls[nav]">
-                    ${bullets}
-                </div>
-            </div>
-          `);
+        
+        html.push(`<div class="embedded-post-placeholder" data-note-id="${item.noteId}"></div>`);
+      } else {
+        if (textBuffer) {
+          html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
+          textBuffer = '';
         }
-      
-        return html.join('');
+
+        switch (item.type) {
+          case 'image':
+            html.push(`<img width="100%" src="${item.value}" alt="Image">`);
+            mediaCount++;
+            break;
+          case 'gif':
+            html.push(`<img width="100%" src="${item.value}" alt="GIF">`);
+            mediaCount++;
+            break;
+          case 'video':
+            // Leave the thumbnail handling to the browser for regular posts
+            // This preserves the original behavior that was working
+            html.push(`<video width="100%" src="${item.value}" controls></video>`);
+            mediaCount++;
+            break;
+          case 'link':
+            html.push(`<a href="${item.value}">${item.value}</a>`);
+            break;
+        }
+      }
     }
+  
+    if (textBuffer) {
+      html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
+    }
+  
+    return html.join('');
+  }
+
+  async renderEmbeddedPost(noteId: string) {
+    if (!this.embeddedPosts.has(noteId)) {
+      return `<div class="embedded-post-error">Unable to load embedded post</div>`;
+    }
+
+    const post = this.embeddedPosts.get(noteId)!;
+    
+    // Fetch author profile
+    let authorProfile: NDKUserProfile | null = null;
+    try {
+      authorProfile = await post.author.fetchProfile();
+    } catch (error) {
+      console.error("Failed to fetch author profile for embedded post:", error);
+    }
+
+    // Format date
+    const date = new Date(post.created_at * 1000).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+
+    // Process content for media and proper line breaks
+    let processedContent = '';
+    let mediaHtml = '';
+    let mediaItems: {type: string, url: string}[] = [];
+    
+    // Extract media from content if present
+    const urlRegex = /(https:\/\/[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
+    const urlMatches = post.content.match(urlRegex);
+    let contentWithoutMedia = post.content;
+    
+    if (urlMatches) {
+      for (const url of urlMatches) {
+        try {
+          // Check if this is an image or video
+          if (url.match(/\.(jpeg|jpg|gif|png)$/i)) {
+            mediaItems.push({type: 'image', url: url});
+            // Remove the URL from content to avoid duplication
+            contentWithoutMedia = contentWithoutMedia.replace(url, ' ');
+          } else if (url.match(/\.(mp4|webm)$/i)) {
+            mediaItems.push({type: 'video', url: url});
+            // Remove the URL from content to avoid duplication
+            contentWithoutMedia = contentWithoutMedia.replace(url, ' ');
+          }
+        } catch (error) {
+          console.error("Error processing URL in embedded post:", error);
+        }
+      }
+    }
+    
+    // Process remaining content with proper line breaks
+    let content = contentWithoutMedia.trim();
+    if (content.length > 280) {
+      content = content.substring(0, 277) + '...';
+    }
+    
+    // Replace newlines with <br> tags
+    processedContent = content.replace(/\n/g, '<br>');
+
+    // Generate HTML for media - render each media item vertically one after another
+    if (mediaItems.length > 0) {
+      mediaHtml = `<div class="embedded-media-list">`;
+      for (const item of mediaItems) {
+        if (item.type === 'image') {
+          mediaHtml += `<div class="embedded-media-item"><img src="${item.url}" alt="Embedded image" loading="lazy" /></div>`;
+        } else if (item.type === 'video') {
+          mediaHtml += `<div class="embedded-media-item"><video src="${item.url}" controls preload="none"></video></div>`;
+        }
+      }
+      mediaHtml += `</div>`;
+    }
+
+    return `
+      <div class="embedded-post" data-note-id="${noteId}">
+        <div class="embedded-post-header">
+          <div class="embedded-author-avatar" style="cursor: pointer;">
+            ${authorProfile?.image ? `<img src="${authorProfile.image}" alt="Profile">` : ''}
+          </div>
+          <div class="embedded-author-info" style="cursor: pointer;">
+            <span class="embedded-author-name">${authorProfile?.displayName || 'Unknown'}</span>
+            ${authorProfile?.nip05 ? `<span class="embedded-author-username">${authorProfile.nip05}</span>` : ''}
+          </div>
+          <div class="embedded-post-date">${date}</div>
+        </div>
+        <div class="embedded-post-content">
+          ${processedContent}
+          ${mediaHtml ? `<div class="embedded-post-media">${mediaHtml}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  setupMentionClickHandlers() {
+    // Add direct click handlers to each mention element
+    const mentions = this.querySelectorAll('.nostr-mention');
+    mentions.forEach(mention => {
+      mention.addEventListener('click', (event) => {
+        const username = mention.getAttribute('data-username') || mention.textContent?.slice(1);
+        if (username) {
+          this.#_onMentionClick(username, event);
+        }
+      });
+    });
+    
+    // Also add direct click handlers to the main post author header for the main post
+    const authorAvatar = this.querySelector('.post-header-left');
+    const authorInfo = this.querySelector('.post-header-middle');
+    
+    if (authorAvatar) {
+      authorAvatar.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.#_onAuthorClick();
+      });
+    }
+    
+    if (authorInfo) {
+      authorInfo.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.#_onAuthorClick();
+      });
+    }
+  }
 
   async render() {
     const content = this.post?.content ||  '';
@@ -362,6 +579,104 @@ export default class NostrPost extends HTMLElement {
 
     this.innerHTML = `
     ${getPostStylesLegacy(this.theme)}
+    <style>
+      .nostr-mention {
+        color: #1DA1F2;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      
+      /* Embedded post styles */
+      .embedded-post {
+        margin: 10px 0;
+        padding: 12px;
+        border: 1px solid ${this.theme === 'light' ? '#e1e8ed' : '#38444d'};
+        border-radius: 12px;
+        background: ${this.theme === 'light' ? '#f8f9fa' : '#192734'};
+      }
+      
+      .embedded-post-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      
+      .embedded-author-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        overflow: hidden;
+        margin-right: 8px;
+      }
+      
+      .embedded-author-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      
+      .embedded-author-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      
+      .embedded-author-name {
+        font-weight: bold;
+        font-size: 14px;
+        color: ${this.theme === 'light' ? '#14171a' : '#ffffff'};
+      }
+      
+      .embedded-author-username {
+        font-size: 12px;
+        color: ${this.theme === 'light' ? '#657786' : '#8899a6'};
+      }
+      
+      .embedded-post-date {
+        font-size: 12px;
+        color: ${this.theme === 'light' ? '#657786' : '#8899a6'};
+      }
+      
+      .embedded-post-content {
+        font-size: 14px;
+        color: ${this.theme === 'light' ? '#14171a' : '#ffffff'};
+        line-height: 1.4;
+        white-space: pre-line;
+      }
+      
+      .embedded-post-media {
+        margin-top: 10px;
+      }
+      
+      .embedded-media-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .embedded-media-item {
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      
+      .embedded-media-item img,
+      .embedded-media-item video {
+        width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        display: block;
+      }
+      
+      .embedded-post-error {
+        padding: 10px;
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+    </style>
     <div class="post-container">
         <div class="post-header">
           <div class="post-header-left">
@@ -446,12 +761,6 @@ export default class NostrPost extends HTMLElement {
                       <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
                     </div>
 
-                    <!-- TODO: Add zaps after resolving the doubts
-                    <div class="stat">
-                      <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
-                    </div>
-                    -->
-
                     <div class="stat">
                       <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
                     </div>
@@ -472,22 +781,10 @@ export default class NostrPost extends HTMLElement {
                       <span>${this.stats!.replies}</span>
                     </div>
 
-                    <!-- TODO: Add zaps after resolving the doubts
                     <div class="stat">
                       <svg width="18" height="18">
                         <g xmlns="http://www.w3.org/2000/svg">
-                          <path fill="#ffaf00" fill-rule="evenodd" clip-rule="evenodd" d="M9.49466 2.78774C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
-                        </g>
-                      </svg>
-                      <span>${this.stats!.zaps}</span>
-                    </div>
-                    -->
-
-                    <div class="stat">
-                      <svg width="18" height="18">
-                        <g xmlns="http://www.w3.org/2000/svg">
-                          <path fill="#ff006d" d="M12.2197 1.65717C12.5126 1.36428 12.9874 1.36428 13.2803 1.65717L16.2803 4.65717C16.5732 4.95006 16.5732 5.42494 16.2803 5.71783L13.2803 8.71783C12.9874 9.01072 12.5126 9.01072 12.2197 8.71783C11.9268 8.42494 11.9268 7.95006 12.2197 7.65717L13.9393 5.9375H5.85C5.20757 5.9375 4.77085 5.93808 4.43328 5.96566C4.10447 5.99253 3.93632 6.04122 3.81902 6.10099C3.53677 6.2448 3.3073 6.47427 3.16349 6.75652C3.10372 6.87381 3.05503 7.04197 3.02816 7.37078C3.00058 7.70835 3 8.14507 3 8.7875V8.9375C3 9.35171 2.66421 9.6875 2.25 9.6875C1.83579 9.6875 1.5 9.35171 1.5 8.9375V8.75653C1.49999 8.15281 1.49998 7.65452 1.53315 7.24863C1.56759 6.82706 1.64151 6.43953 1.82698 6.07553C2.1146 5.51104 2.57354 5.0521 3.13803 4.76448C3.50203 4.57901 3.88956 4.50509 4.31113 4.47065C4.71703 4.43748 5.2153 4.43749 5.81903 4.4375L13.9393 4.4375L12.2197 2.71783C11.9268 2.42494 11.9268 1.95006 12.2197 1.65717Z"/>
-                          <path fill="#1ded00" d="M15.75 9.6875C15.3358 9.6875 15 10.0233 15 10.4375V10.5875C15 11.2299 14.9994 11.6667 14.9718 12.0042C14.945 12.333 14.8963 12.5012 14.8365 12.6185C14.6927 12.9007 14.4632 13.1302 14.181 13.274C14.0637 13.3338 13.8955 13.3825 13.5667 13.4093C13.2292 13.4369 12.7924 13.4375 12.15 13.4375H4.06066L5.78033 11.7178C6.07322 11.4249 6.07322 10.9501 5.78033 10.6572C5.48744 10.3643 5.01256 10.3643 4.71967 10.6572L1.71967 13.6572C1.42678 13.9501 1.42678 14.4249 1.71967 14.7178L4.71967 17.7178C5.01256 18.0107 5.48744 18.0107 5.78033 17.7178C6.07322 17.4249 6.07322 16.9501 5.78033 16.6572L4.06066 14.9375H12.181C12.7847 14.9375 13.283 14.9375 13.6889 14.9044C14.1104 14.8699 14.498 14.796 14.862 14.6105C15.4265 14.3229 15.8854 13.864 16.173 13.2995C16.3585 12.9355 16.4324 12.5479 16.4669 12.1264C16.5 11.7205 16.5 11.2222 16.5 10.6185V10.4375C16.5 10.0233 16.1642 9.6875 15.75 9.6875Z"/>
+                          <path fill="#ff006d" d="M12.2197 1.65717C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
                         </g>
                       </svg>
                       <span>${this.stats!.likes}</span>
@@ -501,12 +798,11 @@ export default class NostrPost extends HTMLElement {
     </div>
     `;
 
-    if (htmlToRender.includes('class="glide"')) {
-      // Need a slight delay for browser to render innerHTML before querying
-      setTimeout(() => this.initGlide(), 0); 
-    }
-
-    this.attachEventListeners();
+    // Process embedded posts after rendering the main content
+    setTimeout(async () => {
+      await this.replaceEmbeddedPostPlaceholders();
+      this.setupMentionClickHandlers();
+    }, 0);
   }
 }
 

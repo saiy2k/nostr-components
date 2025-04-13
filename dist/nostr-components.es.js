@@ -1,11 +1,11 @@
 var Pe = Object.defineProperty;
-var $e = (n) => {
+var Ae = (n) => {
   throw TypeError(n);
 };
 var Ne = (n, e, t) => e in n ? Pe(n, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[e] = t;
-var y = (n, e, t) => Ne(n, typeof e != "symbol" ? e + "" : e, t), Ie = (n, e, t) => e.has(n) || $e("Cannot " + t);
-var Te = (n, e, t) => e.has(n) ? $e("Cannot add the same private member more than once") : e instanceof WeakSet ? e.add(n) : e.set(n, t);
-var Ee = (n, e, t) => (Ie(n, e, "access private method"), t);
+var y = (n, e, t) => Ne(n, typeof e != "symbol" ? e + "" : e, t), Ie = (n, e, t) => e.has(n) || Ae("Cannot " + t);
+var Te = (n, e, t) => e.has(n) ? Ae("Cannot add the same private member more than once") : e instanceof WeakSet ? e.add(n) : e.set(n, t);
+var ve = (n, e, t) => (Ie(n, e, "access private method"), t);
 var commonjsGlobal = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {};
 function getDefaultExportFromCjs(n) {
   return n && n.__esModule && Object.prototype.hasOwnProperty.call(n, "default") ? n.default : n;
@@ -352,32 +352,32 @@ function emitHasOnce(n, e, t, r, s, o) {
       a.call.apply(void 0, c);
     }
   }
-  var h = this.onceEvents[n];
-  if (h) {
-    if (typeof h == "function")
+  var f = this.onceEvents[n];
+  if (f) {
+    if (typeof f == "function")
       if (this.onceEvents[n] = void 0, arguments.length < 6)
-        h(e, t, r, s, o);
+        f(e, t, r, s, o);
       else {
         if (c === void 0) {
           c = new Array(arguments.length - 1);
           for (var l = 0, u = c.length; l < u; ++l)
             c[l] = arguments[l + 1];
         }
-        h.apply(void 0, c);
+        f.apply(void 0, c);
       }
     else {
-      var f = h;
+      var h = f;
       if (this.onceEvents[n] = void 0, arguments.length < 6)
-        for (var l = 0; l < f.length; ++l)
-          f[l](e, t, r, s, o);
+        for (var l = 0; l < h.length; ++l)
+          h[l](e, t, r, s, o);
       else {
         if (c === void 0) {
           c = new Array(arguments.length - 1);
           for (var l = 0, u = c.length; l < u; ++l)
             c[l] = arguments[l + 1];
         }
-        for (var l = 0; l < f.length; ++l)
-          f[l].apply(void 0, c);
+        for (var l = 0; l < h.length; ++l)
+          h[l].apply(void 0, c);
       }
     }
     return !0;
@@ -517,24 +517,24 @@ function requireMs() {
   if (hasRequiredMs) return ms;
   hasRequiredMs = 1;
   var n = 1e3, e = n * 60, t = e * 60, r = t * 24, s = r * 7, o = r * 365.25;
-  ms = function(h, f) {
-    f = f || {};
-    var p = typeof h;
-    if (p === "string" && h.length > 0)
-      return a(h);
-    if (p === "number" && isFinite(h))
-      return f.long ? l(h) : c(h);
+  ms = function(f, h) {
+    h = h || {};
+    var p = typeof f;
+    if (p === "string" && f.length > 0)
+      return a(f);
+    if (p === "number" && isFinite(f))
+      return h.long ? l(f) : c(f);
     throw new Error(
-      "val is not a non-empty string or a valid number. val=" + JSON.stringify(h)
+      "val is not a non-empty string or a valid number. val=" + JSON.stringify(f)
     );
   };
-  function a(h) {
-    if (h = String(h), !(h.length > 100)) {
-      var f = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
-        h
+  function a(f) {
+    if (f = String(f), !(f.length > 100)) {
+      var h = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
+        f
       );
-      if (f) {
-        var p = parseFloat(f[1]), m = (f[2] || "ms").toLowerCase();
+      if (h) {
+        var p = parseFloat(h[1]), m = (h[2] || "ms").toLowerCase();
         switch (m) {
           case "years":
           case "year":
@@ -580,101 +580,101 @@ function requireMs() {
       }
     }
   }
-  function c(h) {
-    var f = Math.abs(h);
-    return f >= r ? Math.round(h / r) + "d" : f >= t ? Math.round(h / t) + "h" : f >= e ? Math.round(h / e) + "m" : f >= n ? Math.round(h / n) + "s" : h + "ms";
+  function c(f) {
+    var h = Math.abs(f);
+    return h >= r ? Math.round(f / r) + "d" : h >= t ? Math.round(f / t) + "h" : h >= e ? Math.round(f / e) + "m" : h >= n ? Math.round(f / n) + "s" : f + "ms";
   }
-  function l(h) {
-    var f = Math.abs(h);
-    return f >= r ? u(h, f, r, "day") : f >= t ? u(h, f, t, "hour") : f >= e ? u(h, f, e, "minute") : f >= n ? u(h, f, n, "second") : h + " ms";
+  function l(f) {
+    var h = Math.abs(f);
+    return h >= r ? u(f, h, r, "day") : h >= t ? u(f, h, t, "hour") : h >= e ? u(f, h, e, "minute") : h >= n ? u(f, h, n, "second") : f + " ms";
   }
-  function u(h, f, p, m) {
-    var E = f >= p * 1.5;
-    return Math.round(h / p) + " " + m + (E ? "s" : "");
+  function u(f, h, p, m) {
+    var E = h >= p * 1.5;
+    return Math.round(f / p) + " " + m + (E ? "s" : "");
   }
   return ms;
 }
 function setup(n) {
-  t.debug = t, t.default = t, t.coerce = l, t.disable = a, t.enable = s, t.enabled = c, t.humanize = requireMs(), t.destroy = u, Object.keys(n).forEach((h) => {
-    t[h] = n[h];
+  t.debug = t, t.default = t, t.coerce = l, t.disable = a, t.enable = s, t.enabled = c, t.humanize = requireMs(), t.destroy = u, Object.keys(n).forEach((f) => {
+    t[f] = n[f];
   }), t.names = [], t.skips = [], t.formatters = {};
-  function e(h) {
-    let f = 0;
-    for (let p = 0; p < h.length; p++)
-      f = (f << 5) - f + h.charCodeAt(p), f |= 0;
-    return t.colors[Math.abs(f) % t.colors.length];
+  function e(f) {
+    let h = 0;
+    for (let p = 0; p < f.length; p++)
+      h = (h << 5) - h + f.charCodeAt(p), h |= 0;
+    return t.colors[Math.abs(h) % t.colors.length];
   }
   t.selectColor = e;
-  function t(h) {
-    let f, p = null, m, E;
+  function t(f) {
+    let h, p = null, m, E;
     function g(...b) {
       if (!g.enabled)
         return;
-      const w = g, $ = Number(/* @__PURE__ */ new Date()), B = $ - (f || $);
-      w.diff = B, w.prev = f, w.curr = $, f = $, b[0] = t.coerce(b[0]), typeof b[0] != "string" && b.unshift("%O");
+      const w = g, $ = Number(/* @__PURE__ */ new Date()), B = $ - (h || $);
+      w.diff = B, w.prev = h, w.curr = $, h = $, b[0] = t.coerce(b[0]), typeof b[0] != "string" && b.unshift("%O");
       let P = 0;
-      b[0] = b[0].replace(/%([a-zA-Z%])/g, (R, C) => {
-        if (R === "%%")
+      b[0] = b[0].replace(/%([a-zA-Z%])/g, (C, S) => {
+        if (C === "%%")
           return "%";
         P++;
-        const L = t.formatters[C];
+        const L = t.formatters[S];
         if (typeof L == "function") {
-          const M = b[P];
-          R = L.call(w, M), b.splice(P, 1), P--;
+          const F = b[P];
+          C = L.call(w, F), b.splice(P, 1), P--;
         }
-        return R;
+        return C;
       }), t.formatArgs.call(w, b), (w.log || t.log).apply(w, b);
     }
-    return g.namespace = h, g.useColors = t.useColors(), g.color = t.selectColor(h), g.extend = r, g.destroy = t.destroy, Object.defineProperty(g, "enabled", {
+    return g.namespace = f, g.useColors = t.useColors(), g.color = t.selectColor(f), g.extend = r, g.destroy = t.destroy, Object.defineProperty(g, "enabled", {
       enumerable: !0,
       configurable: !1,
-      get: () => p !== null ? p : (m !== t.namespaces && (m = t.namespaces, E = t.enabled(h)), E),
+      get: () => p !== null ? p : (m !== t.namespaces && (m = t.namespaces, E = t.enabled(f)), E),
       set: (b) => {
         p = b;
       }
     }), typeof t.init == "function" && t.init(g), g;
   }
-  function r(h, f) {
-    const p = t(this.namespace + (typeof f > "u" ? ":" : f) + h);
+  function r(f, h) {
+    const p = t(this.namespace + (typeof h > "u" ? ":" : h) + f);
     return p.log = this.log, p;
   }
-  function s(h) {
-    t.save(h), t.namespaces = h, t.names = [], t.skips = [];
-    const f = (typeof h == "string" ? h : "").trim().replace(" ", ",").split(",").filter(Boolean);
-    for (const p of f)
+  function s(f) {
+    t.save(f), t.namespaces = f, t.names = [], t.skips = [];
+    const h = (typeof f == "string" ? f : "").trim().replace(" ", ",").split(",").filter(Boolean);
+    for (const p of h)
       p[0] === "-" ? t.skips.push(p.slice(1)) : t.names.push(p);
   }
-  function o(h, f) {
+  function o(f, h) {
     let p = 0, m = 0, E = -1, g = 0;
-    for (; p < h.length; )
-      if (m < f.length && (f[m] === h[p] || f[m] === "*"))
-        f[m] === "*" ? (E = m, g = p, m++) : (p++, m++);
+    for (; p < f.length; )
+      if (m < h.length && (h[m] === f[p] || h[m] === "*"))
+        h[m] === "*" ? (E = m, g = p, m++) : (p++, m++);
       else if (E !== -1)
         m = E + 1, g++, p = g;
       else
         return !1;
-    for (; m < f.length && f[m] === "*"; )
+    for (; m < h.length && h[m] === "*"; )
       m++;
-    return m === f.length;
+    return m === h.length;
   }
   function a() {
-    const h = [
+    const f = [
       ...t.names,
-      ...t.skips.map((f) => "-" + f)
+      ...t.skips.map((h) => "-" + h)
     ].join(",");
-    return t.enable(""), h;
+    return t.enable(""), f;
   }
-  function c(h) {
-    for (const f of t.skips)
-      if (o(h, f))
+  function c(f) {
+    for (const h of t.skips)
+      if (o(f, h))
         return !1;
-    for (const f of t.names)
-      if (o(h, f))
+    for (const h of t.names)
+      if (o(f, h))
         return !0;
     return !1;
   }
-  function l(h) {
-    return h instanceof Error ? h.stack || h.message : h;
+  function l(f) {
+    return f instanceof Error ? f.stack || f.message : f;
   }
   function u() {
     console.warn("Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
@@ -783,10 +783,10 @@ var common = setup;
       return;
     const u = "color: " + this.color;
     l.splice(1, 0, u, "color: inherit");
-    let h = 0, f = 0;
+    let f = 0, h = 0;
     l[0].replace(/%[a-zA-Z%]/g, (p) => {
-      p !== "%%" && (h++, p === "%c" && (f = h));
-    }), l.splice(f, 0, u);
+      p !== "%%" && (f++, p === "%c" && (h = f));
+    }), l.splice(h, 0, u);
   }
   e.log = console.debug || console.log || (() => {
   });
@@ -920,17 +920,17 @@ let SHA2$1 = class extends Hash$2 {
     const { buffer: t, view: r, blockLen: s, isLE: o } = this;
     let { pos: a } = this;
     t[a++] = 128, this.buffer.subarray(a).fill(0), this.padOffset > s - a && (this.process(r, 0), a = 0);
-    for (let f = a; f < s; f++)
-      t[f] = 0;
+    for (let h = a; h < s; h++)
+      t[h] = 0;
     setBigUint64$2(r, s - 8, BigInt(this.length * 8), o), this.process(r, 0);
     const c = createView$2(e), l = this.outputLen;
     if (l % 4)
       throw new Error("_sha2: outputLen should be aligned to 32bit");
-    const u = l / 4, h = this.get();
-    if (u > h.length)
+    const u = l / 4, f = this.get();
+    if (u > f.length)
       throw new Error("_sha2: outputLen bigger than state");
-    for (let f = 0; f < u; f++)
-      c.setUint32(4 * f, h[f], o);
+    for (let h = 0; h < u; h++)
+      c.setUint32(4 * h, f[h], o);
   }
   digest() {
     const { buffer: e, outputLen: t } = this;
@@ -1032,18 +1032,18 @@ let SHA256$2 = class extends SHA2$1 {
     this.A = e | 0, this.B = t | 0, this.C = r | 0, this.D = s | 0, this.E = o | 0, this.F = a | 0, this.G = c | 0, this.H = l | 0;
   }
   process(e, t) {
-    for (let f = 0; f < 16; f++, t += 4)
-      SHA256_W$2[f] = e.getUint32(t, !1);
-    for (let f = 16; f < 64; f++) {
-      const p = SHA256_W$2[f - 15], m = SHA256_W$2[f - 2], E = rotr$2(p, 7) ^ rotr$2(p, 18) ^ p >>> 3, g = rotr$2(m, 17) ^ rotr$2(m, 19) ^ m >>> 10;
-      SHA256_W$2[f] = g + SHA256_W$2[f - 7] + E + SHA256_W$2[f - 16] | 0;
+    for (let h = 0; h < 16; h++, t += 4)
+      SHA256_W$2[h] = e.getUint32(t, !1);
+    for (let h = 16; h < 64; h++) {
+      const p = SHA256_W$2[h - 15], m = SHA256_W$2[h - 2], E = rotr$2(p, 7) ^ rotr$2(p, 18) ^ p >>> 3, g = rotr$2(m, 17) ^ rotr$2(m, 19) ^ m >>> 10;
+      SHA256_W$2[h] = g + SHA256_W$2[h - 7] + E + SHA256_W$2[h - 16] | 0;
     }
-    let { A: r, B: s, C: o, D: a, E: c, F: l, G: u, H: h } = this;
-    for (let f = 0; f < 64; f++) {
-      const p = rotr$2(c, 6) ^ rotr$2(c, 11) ^ rotr$2(c, 25), m = h + p + Chi$2(c, l, u) + SHA256_K$2[f] + SHA256_W$2[f] | 0, g = (rotr$2(r, 2) ^ rotr$2(r, 13) ^ rotr$2(r, 22)) + Maj$2(r, s, o) | 0;
-      h = u, u = l, l = c, c = a + m | 0, a = o, o = s, s = r, r = m + g | 0;
+    let { A: r, B: s, C: o, D: a, E: c, F: l, G: u, H: f } = this;
+    for (let h = 0; h < 64; h++) {
+      const p = rotr$2(c, 6) ^ rotr$2(c, 11) ^ rotr$2(c, 25), m = f + p + Chi$2(c, l, u) + SHA256_K$2[h] + SHA256_W$2[h] | 0, g = (rotr$2(r, 2) ^ rotr$2(r, 13) ^ rotr$2(r, 22)) + Maj$2(r, s, o) | 0;
+      f = u, u = l, l = c, c = a + m | 0, a = o, o = s, s = r, r = m + g | 0;
     }
-    r = r + this.A | 0, s = s + this.B | 0, o = o + this.C | 0, a = a + this.D | 0, c = c + this.E | 0, l = l + this.F | 0, u = u + this.G | 0, h = h + this.H | 0, this.set(r, s, o, a, c, l, u, h);
+    r = r + this.A | 0, s = s + this.B | 0, o = o + this.C | 0, a = a + this.D | 0, c = c + this.E | 0, l = l + this.F | 0, u = u + this.G | 0, f = f + this.H | 0, this.set(r, s, o, a, c, l, u, f);
   }
   roundClean() {
     SHA256_W$2.fill(0);
@@ -1163,22 +1163,22 @@ function createHmacDrbg$1(n, e, t) {
   let r = u8n$1(n), s = u8n$1(n), o = 0;
   const a = () => {
     r.fill(1), s.fill(0), o = 0;
-  }, c = (...f) => t(s, r, ...f), l = (f = u8n$1()) => {
-    s = c(u8fr$1([0]), f), r = c(), f.length !== 0 && (s = c(u8fr$1([1]), f), r = c());
+  }, c = (...h) => t(s, r, ...h), l = (h = u8n$1()) => {
+    s = c(u8fr$1([0]), h), r = c(), h.length !== 0 && (s = c(u8fr$1([1]), h), r = c());
   }, u = () => {
     if (o++ >= 1e3)
       throw new Error("drbg: tried 1000 values");
-    let f = 0;
+    let h = 0;
     const p = [];
-    for (; f < e; ) {
+    for (; h < e; ) {
       r = c();
       const m = r.slice();
-      p.push(m), f += r.length;
+      p.push(m), h += r.length;
     }
     return concatBytes$3(...p);
   };
-  return (f, p) => {
-    a(), l(f);
+  return (h, p) => {
+    a(), l(h);
     let m;
     for (; !(m = p(u())); )
       l();
@@ -1279,27 +1279,27 @@ function tonelliShanks$1(n) {
   if (r === 1) {
     const a = (n + _1n$8) / _4n$1;
     return function(l, u) {
-      const h = l.pow(u, a);
-      if (!l.eql(l.sqr(h), u))
+      const f = l.pow(u, a);
+      if (!l.eql(l.sqr(f), u))
         throw new Error("Cannot find square root");
-      return h;
+      return f;
     };
   }
   const o = (t + _1n$8) / _2n$4;
   return function(c, l) {
     if (c.pow(l, e) === c.neg(c.ONE))
       throw new Error("Cannot find square root");
-    let u = r, h = c.pow(c.mul(c.ONE, s), t), f = c.pow(l, o), p = c.pow(l, t);
+    let u = r, f = c.pow(c.mul(c.ONE, s), t), h = c.pow(l, o), p = c.pow(l, t);
     for (; !c.eql(p, c.ONE); ) {
       if (c.eql(p, c.ZERO))
         return c.ZERO;
       let m = 1;
       for (let g = c.sqr(p); m < u && !c.eql(g, c.ONE); m++)
         g = c.sqr(g);
-      const E = c.pow(h, _1n$8 << BigInt(u - m - 1));
-      h = c.sqr(E), f = c.mul(f, E), p = c.mul(p, h), u = m;
+      const E = c.pow(f, _1n$8 << BigInt(u - m - 1));
+      f = c.sqr(E), h = c.mul(h, E), p = c.mul(p, f), u = m;
     }
-    return f;
+    return h;
   };
 }
 function FpSqrt$1(n) {
@@ -1410,7 +1410,7 @@ function Field$1(n, e, t = !1, r = {}) {
     invertBatch: (l) => FpInvertBatch$1(c, l),
     // TODO: do we really need constant cmov?
     // We don't have const-time bigints anyway, so probably will be not very useful
-    cmov: (l, u, h) => h ? u : l,
+    cmov: (l, u, f) => f ? u : l,
     toBytes: (l) => t ? numberToBytesLE$1(l, o) : numberToBytesBE$1(l, o),
     fromBytes: (l) => {
       if (l.length !== o)
@@ -1468,12 +1468,12 @@ function wNAF$1(n, e) {
      */
     precomputeWindow(s, o) {
       const { windows: a, windowSize: c } = r(o), l = [];
-      let u = s, h = u;
-      for (let f = 0; f < a; f++) {
-        h = u, l.push(h);
+      let u = s, f = u;
+      for (let h = 0; h < a; h++) {
+        f = u, l.push(f);
         for (let p = 1; p < c; p++)
-          h = h.add(u), l.push(h);
-        u = h.double();
+          f = f.add(u), l.push(f);
+        u = f.double();
       }
       return l;
     },
@@ -1486,16 +1486,16 @@ function wNAF$1(n, e) {
      */
     wNAF(s, o, a) {
       const { windows: c, windowSize: l } = r(s);
-      let u = n.ZERO, h = n.BASE;
-      const f = BigInt(2 ** s - 1), p = 2 ** s, m = BigInt(s);
+      let u = n.ZERO, f = n.BASE;
+      const h = BigInt(2 ** s - 1), p = 2 ** s, m = BigInt(s);
       for (let E = 0; E < c; E++) {
         const g = E * l;
-        let b = Number(a & f);
+        let b = Number(a & h);
         a >>= m, b > l && (b -= p, a += _1n$7);
         const w = g, $ = g + Math.abs(b) - 1, B = E % 2 !== 0, P = b < 0;
-        b === 0 ? h = h.add(t(B, o[w])) : u = u.add(t(P, o[$]));
+        b === 0 ? f = f.add(t(B, o[w])) : u = u.add(t(P, o[$]));
       }
-      return { p: u, f: h };
+      return { p: u, f };
     },
     wNAFCached(s, o, a, c) {
       const l = s._WINDOW_SIZE || 1;
@@ -1579,8 +1579,8 @@ const { bytesToNumberBE: b2n$1, hexToBytes: h2b$1 } = ut$1, DER$1 = {
   },
   hexFromSig(n) {
     const e = (u) => Number.parseInt(u[0], 16) & 8 ? "00" + u : u, t = (u) => {
-      const h = u.toString(16);
-      return h.length & 1 ? `0${h}` : h;
+      const f = u.toString(16);
+      return f.length & 1 ? `0${f}` : f;
     }, r = e(t(n.s)), s = e(t(n.r)), o = r.length / 2, a = s.length / 2, c = t(o), l = t(a);
     return `30${t(a + o + 4)}02${l}${s}02${c}${r}`;
   }
@@ -1625,11 +1625,11 @@ function weierstrassPoints$1(n) {
     return w && (B = mod$1(B, $)), c(B), B;
   }
   const u = /* @__PURE__ */ new Map();
-  function h(E) {
-    if (!(E instanceof f))
+  function f(E) {
+    if (!(E instanceof h))
       throw new Error("ProjectivePoint expected");
   }
-  class f {
+  class h {
     constructor(g, b, w) {
       if (this.px = g, this.py = b, this.pz = w, g == null || !t.isValid(g))
         throw new Error("x required");
@@ -1644,10 +1644,10 @@ function weierstrassPoints$1(n) {
       const { x: b, y: w } = g || {};
       if (!g || !t.isValid(b) || !t.isValid(w))
         throw new Error("invalid affine point");
-      if (g instanceof f)
+      if (g instanceof h)
         throw new Error("projective point not allowed");
       const $ = (B) => t.eql(B, t.ZERO);
-      return $(b) && $(w) ? f.ZERO : new f(b, w, t.ONE);
+      return $(b) && $(w) ? h.ZERO : new h(b, w, t.ONE);
     }
     get x() {
       return this.toAffine().x;
@@ -1663,19 +1663,19 @@ function weierstrassPoints$1(n) {
      */
     static normalizeZ(g) {
       const b = t.invertBatch(g.map((w) => w.pz));
-      return g.map((w, $) => w.toAffine(b[$])).map(f.fromAffine);
+      return g.map((w, $) => w.toAffine(b[$])).map(h.fromAffine);
     }
     /**
      * Converts hash string or Uint8Array to Point.
      * @param hex short/long ECDSA hex
      */
     static fromHex(g) {
-      const b = f.fromAffine(s(ensureBytes$1("pointHex", g)));
+      const b = h.fromAffine(s(ensureBytes$1("pointHex", g)));
       return b.assertValidity(), b;
     }
     // Multiplies generator point by privateKey.
     static fromPrivateKey(g) {
-      return f.BASE.multiply(l(g));
+      return h.BASE.multiply(l(g));
     }
     // "Private method", don't use it directly
     _setWindowSize(g) {
@@ -1707,15 +1707,15 @@ function weierstrassPoints$1(n) {
      * Compare one point to another.
      */
     equals(g) {
-      h(g);
-      const { px: b, py: w, pz: $ } = this, { px: B, py: P, pz: U } = g, R = t.eql(t.mul(b, U), t.mul(B, $)), C = t.eql(t.mul(w, U), t.mul(P, $));
-      return R && C;
+      f(g);
+      const { px: b, py: w, pz: $ } = this, { px: B, py: P, pz: M } = g, C = t.eql(t.mul(b, M), t.mul(B, $)), S = t.eql(t.mul(w, M), t.mul(P, $));
+      return C && S;
     }
     /**
      * Flips point to one corresponding to (x, -y) in Affine coordinates.
      */
     negate() {
-      return new f(this.px, t.neg(this.py), this.pz);
+      return new h(this.px, t.neg(this.py), this.pz);
     }
     // Renes-Costello-Batina exception-free doubling formula.
     // There is 30% faster Jacobian formula, but it is not complete.
@@ -1723,33 +1723,33 @@ function weierstrassPoints$1(n) {
     // Cost: 8M + 3S + 3*a + 2*b3 + 15add.
     double() {
       const { a: g, b } = e, w = t.mul(b, _3n$2), { px: $, py: B, pz: P } = this;
-      let U = t.ZERO, R = t.ZERO, C = t.ZERO, L = t.mul($, $), M = t.mul(B, B), F = t.mul(P, P), x = t.mul($, B);
-      return x = t.add(x, x), C = t.mul($, P), C = t.add(C, C), U = t.mul(g, C), R = t.mul(w, F), R = t.add(U, R), U = t.sub(M, R), R = t.add(M, R), R = t.mul(U, R), U = t.mul(x, U), C = t.mul(w, C), F = t.mul(g, F), x = t.sub(L, F), x = t.mul(g, x), x = t.add(x, C), C = t.add(L, L), L = t.add(C, L), L = t.add(L, F), L = t.mul(L, x), R = t.add(R, L), F = t.mul(B, P), F = t.add(F, F), L = t.mul(F, x), U = t.sub(U, L), C = t.mul(F, M), C = t.add(C, C), C = t.add(C, C), new f(U, R, C);
+      let M = t.ZERO, C = t.ZERO, S = t.ZERO, L = t.mul($, $), F = t.mul(B, B), H = t.mul(P, P), k = t.mul($, B);
+      return k = t.add(k, k), S = t.mul($, P), S = t.add(S, S), M = t.mul(g, S), C = t.mul(w, H), C = t.add(M, C), M = t.sub(F, C), C = t.add(F, C), C = t.mul(M, C), M = t.mul(k, M), S = t.mul(w, S), H = t.mul(g, H), k = t.sub(L, H), k = t.mul(g, k), k = t.add(k, S), S = t.add(L, L), L = t.add(S, L), L = t.add(L, H), L = t.mul(L, k), C = t.add(C, L), H = t.mul(B, P), H = t.add(H, H), L = t.mul(H, k), M = t.sub(M, L), S = t.mul(H, F), S = t.add(S, S), S = t.add(S, S), new h(M, C, S);
     }
     // Renes-Costello-Batina exception-free addition formula.
     // There is 30% faster Jacobian formula, but it is not complete.
     // https://eprint.iacr.org/2015/1060, algorithm 1
     // Cost: 12M + 0S + 3*a + 3*b3 + 23add.
     add(g) {
-      h(g);
-      const { px: b, py: w, pz: $ } = this, { px: B, py: P, pz: U } = g;
-      let R = t.ZERO, C = t.ZERO, L = t.ZERO;
-      const M = e.a, F = t.mul(e.b, _3n$2);
-      let x = t.mul(b, B), _ = t.mul(w, P), S = t.mul($, U), T = t.add(b, w), v = t.add(B, P);
-      T = t.mul(T, v), v = t.add(x, _), T = t.sub(T, v), v = t.add(b, $);
-      let k = t.add(B, U);
-      return v = t.mul(v, k), k = t.add(x, S), v = t.sub(v, k), k = t.add(w, $), R = t.add(P, U), k = t.mul(k, R), R = t.add(_, S), k = t.sub(k, R), L = t.mul(M, v), R = t.mul(F, S), L = t.add(R, L), R = t.sub(_, L), L = t.add(_, L), C = t.mul(R, L), _ = t.add(x, x), _ = t.add(_, x), S = t.mul(M, S), v = t.mul(F, v), _ = t.add(_, S), S = t.sub(x, S), S = t.mul(M, S), v = t.add(v, S), x = t.mul(_, v), C = t.add(C, x), x = t.mul(k, v), R = t.mul(T, R), R = t.sub(R, x), x = t.mul(T, _), L = t.mul(k, L), L = t.add(L, x), new f(R, C, L);
+      f(g);
+      const { px: b, py: w, pz: $ } = this, { px: B, py: P, pz: M } = g;
+      let C = t.ZERO, S = t.ZERO, L = t.ZERO;
+      const F = e.a, H = t.mul(e.b, _3n$2);
+      let k = t.mul(b, B), _ = t.mul(w, P), T = t.mul($, M), A = t.add(b, w), v = t.add(B, P);
+      A = t.mul(A, v), v = t.add(k, _), A = t.sub(A, v), v = t.add(b, $);
+      let x = t.add(B, M);
+      return v = t.mul(v, x), x = t.add(k, T), v = t.sub(v, x), x = t.add(w, $), C = t.add(P, M), x = t.mul(x, C), C = t.add(_, T), x = t.sub(x, C), L = t.mul(F, v), C = t.mul(H, T), L = t.add(C, L), C = t.sub(_, L), L = t.add(_, L), S = t.mul(C, L), _ = t.add(k, k), _ = t.add(_, k), T = t.mul(F, T), v = t.mul(H, v), _ = t.add(_, T), T = t.sub(k, T), T = t.mul(F, T), v = t.add(v, T), k = t.mul(_, v), S = t.add(S, k), k = t.mul(x, v), C = t.mul(A, C), C = t.sub(C, k), k = t.mul(A, _), L = t.mul(x, L), L = t.add(L, k), new h(C, S, L);
     }
     subtract(g) {
       return this.add(g.negate());
     }
     is0() {
-      return this.equals(f.ZERO);
+      return this.equals(h.ZERO);
     }
     wNAF(g) {
       return m.wNAFCached(this, u, g, (b) => {
         const w = t.invertBatch(b.map(($) => $.pz));
-        return b.map(($, B) => $.toAffine(w[B])).map(f.fromAffine);
+        return b.map(($, B) => $.toAffine(w[B])).map(h.fromAffine);
       });
     }
     /**
@@ -1758,7 +1758,7 @@ function weierstrassPoints$1(n) {
      * an exposed private key e.g. sig verification, which works over *public* keys.
      */
     multiplyUnsafe(g) {
-      const b = f.ZERO;
+      const b = h.ZERO;
       if (g === _0n$6)
         return b;
       if (c(g), g === _1n$6)
@@ -1766,10 +1766,10 @@ function weierstrassPoints$1(n) {
       const { endo: w } = e;
       if (!w)
         return m.unsafeLadder(this, g);
-      let { k1neg: $, k1: B, k2neg: P, k2: U } = w.splitScalar(g), R = b, C = b, L = this;
-      for (; B > _0n$6 || U > _0n$6; )
-        B & _1n$6 && (R = R.add(L)), U & _1n$6 && (C = C.add(L)), L = L.double(), B >>= _1n$6, U >>= _1n$6;
-      return $ && (R = R.negate()), P && (C = C.negate()), C = new f(t.mul(C.px, w.beta), C.py, C.pz), R.add(C);
+      let { k1neg: $, k1: B, k2neg: P, k2: M } = w.splitScalar(g), C = b, S = b, L = this;
+      for (; B > _0n$6 || M > _0n$6; )
+        B & _1n$6 && (C = C.add(L)), M & _1n$6 && (S = S.add(L)), L = L.double(), B >>= _1n$6, M >>= _1n$6;
+      return $ && (C = C.negate()), P && (S = S.negate()), S = new h(t.mul(S.px, w.beta), S.py, S.pz), C.add(S);
     }
     /**
      * Constant time multiplication.
@@ -1785,14 +1785,14 @@ function weierstrassPoints$1(n) {
       let b = g, w, $;
       const { endo: B } = e;
       if (B) {
-        const { k1neg: P, k1: U, k2neg: R, k2: C } = B.splitScalar(b);
-        let { p: L, f: M } = this.wNAF(U), { p: F, f: x } = this.wNAF(C);
-        L = m.constTimeNegate(P, L), F = m.constTimeNegate(R, F), F = new f(t.mul(F.px, B.beta), F.py, F.pz), w = L.add(F), $ = M.add(x);
+        const { k1neg: P, k1: M, k2neg: C, k2: S } = B.splitScalar(b);
+        let { p: L, f: F } = this.wNAF(M), { p: H, f: k } = this.wNAF(S);
+        L = m.constTimeNegate(P, L), H = m.constTimeNegate(C, H), H = new h(t.mul(H.px, B.beta), H.py, H.pz), w = L.add(H), $ = F.add(k);
       } else {
-        const { p: P, f: U } = this.wNAF(b);
-        w = P, $ = U;
+        const { p: P, f: M } = this.wNAF(b);
+        w = P, $ = M;
       }
-      return f.normalizeZ([w, $])[0];
+      return h.normalizeZ([w, $])[0];
     }
     /**
      * Efficiently calculate `aP + bQ`. Unsafe, can expose private key, if used incorrectly.
@@ -1801,7 +1801,7 @@ function weierstrassPoints$1(n) {
      * @returns non-zero affine point
      */
     multiplyAndAddUnsafe(g, b, w) {
-      const $ = f.BASE, B = (U, R) => R === _0n$6 || R === _1n$6 || !U.equals($) ? U.multiplyUnsafe(R) : U.multiply(R), P = B(this, b).add(B(g, w));
+      const $ = h.BASE, B = (M, C) => C === _0n$6 || C === _1n$6 || !M.equals($) ? M.multiplyUnsafe(C) : M.multiply(C), P = B(this, b).add(B(g, w));
       return P.is0() ? void 0 : P;
     }
     // Converts Projective point to affine (x, y) coordinates.
@@ -1810,37 +1810,37 @@ function weierstrassPoints$1(n) {
     toAffine(g) {
       const { px: b, py: w, pz: $ } = this, B = this.is0();
       g == null && (g = B ? t.ONE : t.inv($));
-      const P = t.mul(b, g), U = t.mul(w, g), R = t.mul($, g);
+      const P = t.mul(b, g), M = t.mul(w, g), C = t.mul($, g);
       if (B)
         return { x: t.ZERO, y: t.ZERO };
-      if (!t.eql(R, t.ONE))
+      if (!t.eql(C, t.ONE))
         throw new Error("invZ was invalid");
-      return { x: P, y: U };
+      return { x: P, y: M };
     }
     isTorsionFree() {
       const { h: g, isTorsionFree: b } = e;
       if (g === _1n$6)
         return !0;
       if (b)
-        return b(f, this);
+        return b(h, this);
       throw new Error("isTorsionFree() has not been declared for the elliptic curve");
     }
     clearCofactor() {
       const { h: g, clearCofactor: b } = e;
-      return g === _1n$6 ? this : b ? b(f, this) : this.multiplyUnsafe(e.h);
+      return g === _1n$6 ? this : b ? b(h, this) : this.multiplyUnsafe(e.h);
     }
     toRawBytes(g = !0) {
-      return this.assertValidity(), r(f, this, g);
+      return this.assertValidity(), r(h, this, g);
     }
     toHex(g = !0) {
       return bytesToHex$3(this.toRawBytes(g));
     }
   }
-  f.BASE = new f(e.Gx, e.Gy, t.ONE), f.ZERO = new f(t.ZERO, t.ONE, t.ZERO);
-  const p = e.nBitLength, m = wNAF$1(f, e.endo ? Math.ceil(p / 2) : p);
+  h.BASE = new h(e.Gx, e.Gy, t.ONE), h.ZERO = new h(t.ZERO, t.ONE, t.ZERO);
+  const p = e.nBitLength, m = wNAF$1(h, e.endo ? Math.ceil(p / 2) : p);
   return {
     CURVE: e,
-    ProjectivePoint: f,
+    ProjectivePoint: h,
     normPrivateKeyToScalar: l,
     weierstrassEquation: o,
     isWithinCurveOrder: a
@@ -1869,51 +1869,51 @@ function weierstrass$1(n) {
   function l(v) {
     return invert$1(v, r);
   }
-  const { ProjectivePoint: u, normPrivateKeyToScalar: h, weierstrassEquation: f, isWithinCurveOrder: p } = weierstrassPoints$1({
+  const { ProjectivePoint: u, normPrivateKeyToScalar: f, weierstrassEquation: h, isWithinCurveOrder: p } = weierstrassPoints$1({
     ...e,
-    toBytes(v, k, A) {
-      const N = k.toAffine(), I = t.toBytes(N.x), D = concatBytes$3;
-      return A ? D(Uint8Array.from([k.hasEvenY() ? 2 : 3]), I) : D(Uint8Array.from([4]), I, t.toBytes(N.y));
+    toBytes(v, x, R) {
+      const N = x.toAffine(), I = t.toBytes(N.x), D = concatBytes$3;
+      return R ? D(Uint8Array.from([x.hasEvenY() ? 2 : 3]), I) : D(Uint8Array.from([4]), I, t.toBytes(N.y));
     },
     fromBytes(v) {
-      const k = v.length, A = v[0], N = v.subarray(1);
-      if (k === s && (A === 2 || A === 3)) {
+      const x = v.length, R = v[0], N = v.subarray(1);
+      if (x === s && (R === 2 || R === 3)) {
         const I = bytesToNumberBE$1(N);
         if (!a(I))
           throw new Error("Point is not on curve");
-        const D = f(I);
-        let O = t.sqrt(D);
-        const H = (O & _1n$6) === _1n$6;
-        return (A & 1) === 1 !== H && (O = t.neg(O)), { x: I, y: O };
-      } else if (k === o && A === 4) {
+        const D = h(I);
+        let U = t.sqrt(D);
+        const O = (U & _1n$6) === _1n$6;
+        return (R & 1) === 1 !== O && (U = t.neg(U)), { x: I, y: U };
+      } else if (x === o && R === 4) {
         const I = t.fromBytes(N.subarray(0, t.BYTES)), D = t.fromBytes(N.subarray(t.BYTES, 2 * t.BYTES));
         return { x: I, y: D };
       } else
-        throw new Error(`Point of length ${k} was invalid. Expected ${s} compressed bytes or ${o} uncompressed bytes`);
+        throw new Error(`Point of length ${x} was invalid. Expected ${s} compressed bytes or ${o} uncompressed bytes`);
     }
   }), m = (v) => bytesToHex$3(numberToBytesBE$1(v, e.nByteLength));
   function E(v) {
-    const k = r >> _1n$6;
-    return v > k;
+    const x = r >> _1n$6;
+    return v > x;
   }
   function g(v) {
     return E(v) ? c(-v) : v;
   }
-  const b = (v, k, A) => bytesToNumberBE$1(v.slice(k, A));
+  const b = (v, x, R) => bytesToNumberBE$1(v.slice(x, R));
   class w {
-    constructor(k, A, N) {
-      this.r = k, this.s = A, this.recovery = N, this.assertValidity();
+    constructor(x, R, N) {
+      this.r = x, this.s = R, this.recovery = N, this.assertValidity();
     }
     // pair (bytes of r, bytes of s)
-    static fromCompact(k) {
-      const A = e.nByteLength;
-      return k = ensureBytes$1("compactSignature", k, A * 2), new w(b(k, 0, A), b(k, A, 2 * A));
+    static fromCompact(x) {
+      const R = e.nByteLength;
+      return x = ensureBytes$1("compactSignature", x, R * 2), new w(b(x, 0, R), b(x, R, 2 * R));
     }
     // DER encoded ECDSA signature
     // https://bitcoin.stackexchange.com/questions/57644/what-are-the-parts-of-a-bitcoin-transaction-input-script
-    static fromDER(k) {
-      const { r: A, s: N } = DER$1.toSig(ensureBytes$1("DER", k));
-      return new w(A, N);
+    static fromDER(x) {
+      const { r: R, s: N } = DER$1.toSig(ensureBytes$1("DER", x));
+      return new w(R, N);
     }
     assertValidity() {
       if (!p(this.r))
@@ -1921,17 +1921,17 @@ function weierstrass$1(n) {
       if (!p(this.s))
         throw new Error("s must be 0 < s < CURVE.n");
     }
-    addRecoveryBit(k) {
-      return new w(this.r, this.s, k);
+    addRecoveryBit(x) {
+      return new w(this.r, this.s, x);
     }
-    recoverPublicKey(k) {
-      const { r: A, s: N, recovery: I } = this, D = C(ensureBytes$1("msgHash", k));
+    recoverPublicKey(x) {
+      const { r: R, s: N, recovery: I } = this, D = S(ensureBytes$1("msgHash", x));
       if (I == null || ![0, 1, 2, 3].includes(I))
         throw new Error("recovery id invalid");
-      const O = I === 2 || I === 3 ? A + e.n : A;
-      if (O >= t.ORDER)
+      const U = I === 2 || I === 3 ? R + e.n : R;
+      if (U >= t.ORDER)
         throw new Error("recovery id 2 or 3 invalid");
-      const H = I & 1 ? "03" : "02", z = u.fromHex(H + m(O)), V = l(O), W = c(-D * V), j = c(N * V), G = u.BASE.multiplyAndAddUnsafe(z, W, j);
+      const O = I & 1 ? "03" : "02", z = u.fromHex(O + m(U)), V = l(U), W = c(-D * V), j = c(N * V), G = u.BASE.multiplyAndAddUnsafe(z, W, j);
       if (!G)
         throw new Error("point at infinify");
       return G.assertValidity(), G;
@@ -1961,12 +1961,12 @@ function weierstrass$1(n) {
   const $ = {
     isValidPrivateKey(v) {
       try {
-        return h(v), !0;
+        return f(v), !0;
       } catch {
         return !1;
       }
     },
-    normPrivateKeyToScalar: h,
+    normPrivateKeyToScalar: f,
     /**
      * Produces cryptographically secure private key from random of size
      * (groupLen + ceil(groupLen / 2)) with modulo bias being negligible.
@@ -1983,51 +1983,51 @@ function weierstrass$1(n) {
      * const fast = utils.precompute(8, ProjectivePoint.fromHex(someonesPubKey));
      * fast.multiply(privKey); // much faster ECDH now
      */
-    precompute(v = 8, k = u.BASE) {
-      return k._setWindowSize(v), k.multiply(BigInt(3)), k;
+    precompute(v = 8, x = u.BASE) {
+      return x._setWindowSize(v), x.multiply(BigInt(3)), x;
     }
   };
-  function B(v, k = !0) {
-    return u.fromPrivateKey(v).toRawBytes(k);
+  function B(v, x = !0) {
+    return u.fromPrivateKey(v).toRawBytes(x);
   }
   function P(v) {
-    const k = v instanceof Uint8Array, A = typeof v == "string", N = (k || A) && v.length;
-    return k ? N === s || N === o : A ? N === 2 * s || N === 2 * o : v instanceof u;
+    const x = v instanceof Uint8Array, R = typeof v == "string", N = (x || R) && v.length;
+    return x ? N === s || N === o : R ? N === 2 * s || N === 2 * o : v instanceof u;
   }
-  function U(v, k, A = !0) {
+  function M(v, x, R = !0) {
     if (P(v))
       throw new Error("first arg must be private key");
-    if (!P(k))
+    if (!P(x))
       throw new Error("second arg must be public key");
-    return u.fromHex(k).multiply(h(v)).toRawBytes(A);
+    return u.fromHex(x).multiply(f(v)).toRawBytes(R);
   }
-  const R = e.bits2int || function(v) {
-    const k = bytesToNumberBE$1(v), A = v.length * 8 - e.nBitLength;
-    return A > 0 ? k >> BigInt(A) : k;
-  }, C = e.bits2int_modN || function(v) {
-    return c(R(v));
+  const C = e.bits2int || function(v) {
+    const x = bytesToNumberBE$1(v), R = v.length * 8 - e.nBitLength;
+    return R > 0 ? x >> BigInt(R) : x;
+  }, S = e.bits2int_modN || function(v) {
+    return c(C(v));
   }, L = bitMask$1(e.nBitLength);
-  function M(v) {
+  function F(v) {
     if (typeof v != "bigint")
       throw new Error("bigint expected");
     if (!(_0n$6 <= v && v < L))
       throw new Error(`bigint expected < 2^${e.nBitLength}`);
     return numberToBytesBE$1(v, e.nByteLength);
   }
-  function F(v, k, A = x) {
-    if (["recovered", "canonical"].some((Y) => Y in A))
+  function H(v, x, R = k) {
+    if (["recovered", "canonical"].some((Y) => Y in R))
       throw new Error("sign() legacy options not supported");
     const { hash: N, randomBytes: I } = e;
-    let { lowS: D, prehash: O, extraEntropy: H } = A;
-    D == null && (D = !0), v = ensureBytes$1("msgHash", v), O && (v = ensureBytes$1("prehashed msgHash", N(v)));
-    const z = C(v), V = h(k), W = [M(V), M(z)];
-    if (H != null) {
-      const Y = H === !0 ? I(t.BYTES) : H;
+    let { lowS: D, prehash: U, extraEntropy: O } = R;
+    D == null && (D = !0), v = ensureBytes$1("msgHash", v), U && (v = ensureBytes$1("prehashed msgHash", N(v)));
+    const z = S(v), V = f(x), W = [F(V), F(z)];
+    if (O != null) {
+      const Y = O === !0 ? I(t.BYTES) : O;
       W.push(ensureBytes$1("extraEntropy", Y));
     }
     const j = concatBytes$3(...W), G = z;
     function Z(Y) {
-      const K = R(Y);
+      const K = C(Y);
       if (!p(K))
         return;
       const re = l(K), J = u.BASE.multiply(K).toAffine(), q = c(J.x);
@@ -2036,56 +2036,56 @@ function weierstrass$1(n) {
       const X = c(re * c(G + q * V));
       if (X === _0n$6)
         return;
-      let te = (J.x === q ? 0 : 2) | Number(J.y & _1n$6), _e = X;
-      return D && E(X) && (_e = g(X), te ^= 1), new w(q, _e, te);
+      let te = (J.x === q ? 0 : 2) | Number(J.y & _1n$6), $e = X;
+      return D && E(X) && ($e = g(X), te ^= 1), new w(q, $e, te);
     }
     return { seed: j, k2sig: Z };
   }
-  const x = { lowS: e.lowS, prehash: !1 }, _ = { lowS: e.lowS, prehash: !1 };
-  function S(v, k, A = x) {
-    const { seed: N, k2sig: I } = F(v, k, A), D = e;
+  const k = { lowS: e.lowS, prehash: !1 }, _ = { lowS: e.lowS, prehash: !1 };
+  function T(v, x, R = k) {
+    const { seed: N, k2sig: I } = H(v, x, R), D = e;
     return createHmacDrbg$1(D.hash.outputLen, D.nByteLength, D.hmac)(N, I);
   }
   u.BASE._setWindowSize(8);
-  function T(v, k, A, N = _) {
+  function A(v, x, R, N = _) {
     var J;
     const I = v;
-    if (k = ensureBytes$1("msgHash", k), A = ensureBytes$1("publicKey", A), "strict" in N)
+    if (x = ensureBytes$1("msgHash", x), R = ensureBytes$1("publicKey", R), "strict" in N)
       throw new Error("options.strict was renamed to lowS");
-    const { lowS: D, prehash: O } = N;
-    let H, z;
+    const { lowS: D, prehash: U } = N;
+    let O, z;
     try {
       if (typeof I == "string" || I instanceof Uint8Array)
         try {
-          H = w.fromDER(I);
+          O = w.fromDER(I);
         } catch (q) {
           if (!(q instanceof DER$1.Err))
             throw q;
-          H = w.fromCompact(I);
+          O = w.fromCompact(I);
         }
       else if (typeof I == "object" && typeof I.r == "bigint" && typeof I.s == "bigint") {
         const { r: q, s: X } = I;
-        H = new w(q, X);
+        O = new w(q, X);
       } else
         throw new Error("PARSE");
-      z = u.fromHex(A);
+      z = u.fromHex(R);
     } catch (q) {
       if (q.message === "PARSE")
         throw new Error("signature must be Signature instance, Uint8Array or hex string");
       return !1;
     }
-    if (D && H.hasHighS())
+    if (D && O.hasHighS())
       return !1;
-    O && (k = e.hash(k));
-    const { r: V, s: W } = H, j = C(k), G = l(W), Z = c(j * G), Y = c(V * G), K = (J = u.BASE.multiplyAndAddUnsafe(z, Z, Y)) == null ? void 0 : J.toAffine();
+    U && (x = e.hash(x));
+    const { r: V, s: W } = O, j = S(x), G = l(W), Z = c(j * G), Y = c(V * G), K = (J = u.BASE.multiplyAndAddUnsafe(z, Z, Y)) == null ? void 0 : J.toAffine();
     return K ? c(K.x) === V : !1;
   }
   return {
     CURVE: e,
     getPublicKey: B,
-    getSharedSecret: U,
-    sign: S,
-    verify: T,
+    getSharedSecret: M,
+    sign: T,
+    verify: A,
     ProjectivePoint: u,
     Signature: w,
     utils: $
@@ -2143,10 +2143,10 @@ function createCurve$1(n, e) {
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
 const secp256k1P$1 = BigInt("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"), secp256k1N$1 = BigInt("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"), _1n$5 = BigInt(1), _2n$3 = BigInt(2), divNearest$1 = (n, e) => (n + e / _2n$3) / e;
 function sqrtMod$1(n) {
-  const e = secp256k1P$1, t = BigInt(3), r = BigInt(6), s = BigInt(11), o = BigInt(22), a = BigInt(23), c = BigInt(44), l = BigInt(88), u = n * n * n % e, h = u * u * n % e, f = pow2$1(h, t, e) * h % e, p = pow2$1(f, t, e) * h % e, m = pow2$1(p, _2n$3, e) * u % e, E = pow2$1(m, s, e) * m % e, g = pow2$1(E, o, e) * E % e, b = pow2$1(g, c, e) * g % e, w = pow2$1(b, l, e) * b % e, $ = pow2$1(w, c, e) * g % e, B = pow2$1($, t, e) * h % e, P = pow2$1(B, a, e) * E % e, U = pow2$1(P, r, e) * u % e, R = pow2$1(U, _2n$3, e);
-  if (!Fp.eql(Fp.sqr(R), n))
+  const e = secp256k1P$1, t = BigInt(3), r = BigInt(6), s = BigInt(11), o = BigInt(22), a = BigInt(23), c = BigInt(44), l = BigInt(88), u = n * n * n % e, f = u * u * n % e, h = pow2$1(f, t, e) * f % e, p = pow2$1(h, t, e) * f % e, m = pow2$1(p, _2n$3, e) * u % e, E = pow2$1(m, s, e) * m % e, g = pow2$1(E, o, e) * E % e, b = pow2$1(g, c, e) * g % e, w = pow2$1(b, l, e) * b % e, $ = pow2$1(w, c, e) * g % e, B = pow2$1($, t, e) * f % e, P = pow2$1(B, a, e) * E % e, M = pow2$1(P, r, e) * u % e, C = pow2$1(M, _2n$3, e);
+  if (!Fp.eql(Fp.sqr(C), n))
     throw new Error("Cannot find square root");
-  return R;
+  return C;
 }
 const Fp = Field$1(secp256k1P$1, void 0, void 0, { sqrt: sqrtMod$1 }), secp256k1$1 = createCurve$1({
   a: BigInt(0),
@@ -2168,11 +2168,11 @@ const Fp = Field$1(secp256k1P$1, void 0, void 0, { sqrt: sqrtMod$1 }), secp256k1
     beta: BigInt("0x7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee"),
     splitScalar: (n) => {
       const e = secp256k1N$1, t = BigInt("0x3086d221a7d46bcde86c90e49284eb15"), r = -_1n$5 * BigInt("0xe4437ed6010e88286f547fa90abfe4c3"), s = BigInt("0x114ca50f7a8e2f3f657c1108d9d44cfd8"), o = t, a = BigInt("0x100000000000000000000000000000000"), c = divNearest$1(o * n, e), l = divNearest$1(-r * n, e);
-      let u = mod$1(n - c * t - l * s, e), h = mod$1(-c * r - l * o, e);
-      const f = u > a, p = h > a;
-      if (f && (u = e - u), p && (h = e - h), u > a || h > a)
+      let u = mod$1(n - c * t - l * s, e), f = mod$1(-c * r - l * o, e);
+      const h = u > a, p = f > a;
+      if (h && (u = e - u), p && (f = e - f), u > a || f > a)
         throw new Error("splitScalar: Endomorphism failed, k=" + n);
-      return { k1neg: f, k1: u, k2neg: p, k2: h };
+      return { k1neg: h, k1: u, k2neg: p, k2: f };
     }
   }
 }, sha256$2), _0n$5 = BigInt(0), fe = (n) => typeof n == "bigint" && _0n$5 < n && n < secp256k1P$1, ge = (n) => typeof n == "bigint" && _0n$5 < n && n < secp256k1N$1, TAGGED_HASH_PREFIXES$1 = {};
@@ -2208,8 +2208,8 @@ function schnorrSign$1(n, e, t = randomBytes$2(32)) {
   const r = ensureBytes$1("message", n), { bytes: s, scalar: o } = schnorrGetExtPubKey$1(e), a = ensureBytes$1("auxRand", t, 32), c = numTo32b$1(o ^ bytesToNumberBE$1(taggedHash$1("BIP0340/aux", a))), l = taggedHash$1("BIP0340/nonce", c, s, r), u = modN$1(bytesToNumberBE$1(l));
   if (u === _0n$5)
     throw new Error("sign failed: k is zero");
-  const { bytes: h, scalar: f } = schnorrGetExtPubKey$1(u), p = challenge$1(h, s, r), m = new Uint8Array(64);
-  if (m.set(h, 0), m.set(numTo32b$1(modN$1(f + p * o)), 32), !schnorrVerify$1(m, r, s))
+  const { bytes: f, scalar: h } = schnorrGetExtPubKey$1(u), p = challenge$1(f, s, r), m = new Uint8Array(64);
+  if (m.set(f, 0), m.set(numTo32b$1(modN$1(h + p * o)), 32), !schnorrVerify$1(m, r, s))
     throw new Error("sign: Invalid signature produced");
   return m;
 }
@@ -2222,8 +2222,8 @@ function schnorrVerify$1(n, e, t) {
     const l = bytesToNumberBE$1(r.subarray(32, 64));
     if (!ge(l))
       return !1;
-    const u = challenge$1(numTo32b$1(c), pointToBytes$1(a), s), h = GmulAdd$1(a, l, modN$1(-u));
-    return !(!h || !h.hasEvenY() || h.toAffine().x !== c);
+    const u = challenge$1(numTo32b$1(c), pointToBytes$1(a), s), f = GmulAdd$1(a, l, modN$1(-u));
+    return !(!f || !f.hasEvenY() || f.toAffine().x !== c);
   } catch {
     return !1;
   }
@@ -2375,17 +2375,17 @@ class SHA2 extends Hash$1 {
     const { buffer: t, view: r, blockLen: s, isLE: o } = this;
     let { pos: a } = this;
     t[a++] = 128, this.buffer.subarray(a).fill(0), this.padOffset > s - a && (this.process(r, 0), a = 0);
-    for (let f = a; f < s; f++)
-      t[f] = 0;
+    for (let h = a; h < s; h++)
+      t[h] = 0;
     setBigUint64$1(r, s - 8, BigInt(this.length * 8), o), this.process(r, 0);
     const c = createView$1(e), l = this.outputLen;
     if (l % 4)
       throw new Error("_sha2: outputLen should be aligned to 32bit");
-    const u = l / 4, h = this.get();
-    if (u > h.length)
+    const u = l / 4, f = this.get();
+    if (u > f.length)
       throw new Error("_sha2: outputLen bigger than state");
-    for (let f = 0; f < u; f++)
-      c.setUint32(4 * f, h[f], o);
+    for (let h = 0; h < u; h++)
+      c.setUint32(4 * h, f[h], o);
   }
   digest() {
     const { buffer: e, outputLen: t } = this;
@@ -2487,18 +2487,18 @@ let SHA256$1 = class extends SHA2 {
     this.A = e | 0, this.B = t | 0, this.C = r | 0, this.D = s | 0, this.E = o | 0, this.F = a | 0, this.G = c | 0, this.H = l | 0;
   }
   process(e, t) {
-    for (let f = 0; f < 16; f++, t += 4)
-      SHA256_W$1[f] = e.getUint32(t, !1);
-    for (let f = 16; f < 64; f++) {
-      const p = SHA256_W$1[f - 15], m = SHA256_W$1[f - 2], E = rotr$1(p, 7) ^ rotr$1(p, 18) ^ p >>> 3, g = rotr$1(m, 17) ^ rotr$1(m, 19) ^ m >>> 10;
-      SHA256_W$1[f] = g + SHA256_W$1[f - 7] + E + SHA256_W$1[f - 16] | 0;
+    for (let h = 0; h < 16; h++, t += 4)
+      SHA256_W$1[h] = e.getUint32(t, !1);
+    for (let h = 16; h < 64; h++) {
+      const p = SHA256_W$1[h - 15], m = SHA256_W$1[h - 2], E = rotr$1(p, 7) ^ rotr$1(p, 18) ^ p >>> 3, g = rotr$1(m, 17) ^ rotr$1(m, 19) ^ m >>> 10;
+      SHA256_W$1[h] = g + SHA256_W$1[h - 7] + E + SHA256_W$1[h - 16] | 0;
     }
-    let { A: r, B: s, C: o, D: a, E: c, F: l, G: u, H: h } = this;
-    for (let f = 0; f < 64; f++) {
-      const p = rotr$1(c, 6) ^ rotr$1(c, 11) ^ rotr$1(c, 25), m = h + p + Chi$1(c, l, u) + SHA256_K$1[f] + SHA256_W$1[f] | 0, g = (rotr$1(r, 2) ^ rotr$1(r, 13) ^ rotr$1(r, 22)) + Maj$1(r, s, o) | 0;
-      h = u, u = l, l = c, c = a + m | 0, a = o, o = s, s = r, r = m + g | 0;
+    let { A: r, B: s, C: o, D: a, E: c, F: l, G: u, H: f } = this;
+    for (let h = 0; h < 64; h++) {
+      const p = rotr$1(c, 6) ^ rotr$1(c, 11) ^ rotr$1(c, 25), m = f + p + Chi$1(c, l, u) + SHA256_K$1[h] + SHA256_W$1[h] | 0, g = (rotr$1(r, 2) ^ rotr$1(r, 13) ^ rotr$1(r, 22)) + Maj$1(r, s, o) | 0;
+      f = u, u = l, l = c, c = a + m | 0, a = o, o = s, s = r, r = m + g | 0;
     }
-    r = r + this.A | 0, s = s + this.B | 0, o = o + this.C | 0, a = a + this.D | 0, c = c + this.E | 0, l = l + this.F | 0, u = u + this.G | 0, h = h + this.H | 0, this.set(r, s, o, a, c, l, u, h);
+    r = r + this.A | 0, s = s + this.B | 0, o = o + this.C | 0, a = a + this.D | 0, c = c + this.E | 0, l = l + this.F | 0, u = u + this.G | 0, f = f + this.H | 0, this.set(r, s, o, a, c, l, u, f);
   }
   roundClean() {
     SHA256_W$1.fill(0);
@@ -2619,10 +2619,10 @@ function convertRadix(n, e, t) {
   }); ; ) {
     let a = 0, c = !0;
     for (let l = r; l < o.length; l++) {
-      const u = o[l], h = e * a + u;
-      if (!Number.isSafeInteger(h) || e * a / e !== a || h - u !== e * a)
+      const u = o[l], f = e * a + u;
+      if (!Number.isSafeInteger(f) || e * a / e !== a || f - u !== e * a)
         throw new Error("convertRadix: carry overflow");
-      if (a = h % t, o[l] = Math.floor(h / t), !Number.isSafeInteger(o[l]) || o[l] * t + a !== h)
+      if (a = f % t, o[l] = Math.floor(f / t), !Number.isSafeInteger(o[l]) || o[l] * t + a !== f)
         throw new Error("convertRadix: carry overflow");
       if (c)
         o[l] ? c = !1 : r = l;
@@ -2758,40 +2758,40 @@ function bechChecksum(n, e, t = 1) {
 }
 function genBech32(n) {
   const e = n === "bech32" ? 1 : 734539939, t = radix2(5), r = t.decode, s = t.encode, o = unsafeWrapper(r);
-  function a(h, f, p = 90) {
-    if (typeof h != "string")
-      throw new Error(`bech32.encode prefix should be string, not ${typeof h}`);
-    if (!Array.isArray(f) || f.length && typeof f[0] != "number")
-      throw new Error(`bech32.encode words should be array of numbers, not ${typeof f}`);
-    const m = h.length + 7 + f.length;
+  function a(f, h, p = 90) {
+    if (typeof f != "string")
+      throw new Error(`bech32.encode prefix should be string, not ${typeof f}`);
+    if (!Array.isArray(h) || h.length && typeof h[0] != "number")
+      throw new Error(`bech32.encode words should be array of numbers, not ${typeof h}`);
+    const m = f.length + 7 + h.length;
     if (p !== !1 && m > p)
       throw new TypeError(`Length ${m} exceeds limit ${p}`);
-    return h = h.toLowerCase(), `${h}1${BECH_ALPHABET.encode(f)}${bechChecksum(h, f, e)}`;
+    return f = f.toLowerCase(), `${f}1${BECH_ALPHABET.encode(h)}${bechChecksum(f, h, e)}`;
   }
-  function c(h, f = 90) {
-    if (typeof h != "string")
-      throw new Error(`bech32.decode input should be string, not ${typeof h}`);
-    if (h.length < 8 || f !== !1 && h.length > f)
-      throw new TypeError(`Wrong string length: ${h.length} (${h}). Expected (8..${f})`);
-    const p = h.toLowerCase();
-    if (h !== p && h !== h.toUpperCase())
+  function c(f, h = 90) {
+    if (typeof f != "string")
+      throw new Error(`bech32.decode input should be string, not ${typeof f}`);
+    if (f.length < 8 || h !== !1 && f.length > h)
+      throw new TypeError(`Wrong string length: ${f.length} (${f}). Expected (8..${h})`);
+    const p = f.toLowerCase();
+    if (f !== p && f !== f.toUpperCase())
       throw new Error("String must be lowercase or uppercase");
-    h = p;
-    const m = h.lastIndexOf("1");
+    f = p;
+    const m = f.lastIndexOf("1");
     if (m === 0 || m === -1)
       throw new Error('Letter "1" must be present between prefix and data only');
-    const E = h.slice(0, m), g = h.slice(m + 1);
+    const E = f.slice(0, m), g = f.slice(m + 1);
     if (g.length < 6)
       throw new Error("Data must be at least 6 characters long");
     const b = BECH_ALPHABET.decode(g).slice(0, -6), w = bechChecksum(E, b, e);
     if (!g.endsWith(w))
-      throw new Error(`Invalid checksum in ${h}: expected "${w}"`);
+      throw new Error(`Invalid checksum in ${f}: expected "${w}"`);
     return { prefix: E, words: b };
   }
   const l = unsafeWrapper(c);
-  function u(h) {
-    const { prefix: f, words: p } = c(h, !1);
-    return { prefix: f, words: p, bytes: r(p) };
+  function u(f) {
+    const { prefix: h, words: p } = c(f, !1);
+    return { prefix: h, words: p, bytes: r(p) };
   }
   return { encode: a, decode: c, decodeToBytes: u, decodeUnsafe: l, fromWords: r, fromWordsUnsafe: o, toWords: s };
 }
@@ -2874,11 +2874,11 @@ const sbox = /* @__PURE__ */ (() => {
 function genTtable(n, e) {
   if (n.length !== 256)
     throw new Error("Wrong sbox length");
-  const t = new Uint32Array(256).map((u, h) => e(n[h])), r = t.map(rotl32_8), s = r.map(rotl32_8), o = s.map(rotl32_8), a = new Uint32Array(256 * 256), c = new Uint32Array(256 * 256), l = new Uint16Array(256 * 256);
+  const t = new Uint32Array(256).map((u, f) => e(n[f])), r = t.map(rotl32_8), s = r.map(rotl32_8), o = s.map(rotl32_8), a = new Uint32Array(256 * 256), c = new Uint32Array(256 * 256), l = new Uint16Array(256 * 256);
   for (let u = 0; u < 256; u++)
-    for (let h = 0; h < 256; h++) {
-      const f = u * 256 + h;
-      a[f] = t[u] ^ r[h], c[f] = s[u] ^ o[h], l[f] = n[u] << 8 | n[h];
+    for (let f = 0; f < 256; f++) {
+      const h = u * 256 + f;
+      a[h] = t[u] ^ r[f], c[h] = s[u] ^ o[f], l[h] = n[u] << 8 | n[f];
     }
   return { sbox: n, sbox2: l, T0: t, T1: r, T2: s, T3: o, T01: a, T23: c };
 }
@@ -2904,12 +2904,12 @@ function expandKeyLE(n) {
 function expandKeyDecLE(n) {
   const e = expandKeyLE(n), t = e.slice(), r = e.length, { sbox2: s } = tableEncoding, { T0: o, T1: a, T2: c, T3: l } = tableDecoding;
   for (let u = 0; u < r; u += 4)
-    for (let h = 0; h < 4; h++)
-      t[u + h] = e[r - u - 4 + h];
+    for (let f = 0; f < 4; f++)
+      t[u + f] = e[r - u - 4 + f];
   e.fill(0);
   for (let u = 4; u < r - 4; u++) {
-    const h = t[u], f = applySbox(s, h, h, h, h);
-    t[u] = o[f & 255] ^ a[f >>> 8 & 255] ^ c[f >>> 16 & 255] ^ l[f >>> 24];
+    const f = t[u], h = applySbox(s, f, f, f, f);
+    t[u] = o[h & 255] ^ a[h >>> 8 & 255] ^ c[h >>> 16 & 255] ^ l[h >>> 24];
   }
   return t;
 }
@@ -2928,8 +2928,8 @@ function encrypt$2(n, e, t, r, s) {
     const g = n[l++] ^ apply0123(a, c, e, t, r, s), b = n[l++] ^ apply0123(a, c, t, r, s, e), w = n[l++] ^ apply0123(a, c, r, s, e, t), $ = n[l++] ^ apply0123(a, c, s, e, t, r);
     e = g, t = b, r = w, s = $;
   }
-  const h = n[l++] ^ applySbox(o, e, t, r, s), f = n[l++] ^ applySbox(o, t, r, s, e), p = n[l++] ^ applySbox(o, r, s, e, t), m = n[l++] ^ applySbox(o, s, e, t, r);
-  return { s0: h, s1: f, s2: p, s3: m };
+  const f = n[l++] ^ applySbox(o, e, t, r, s), h = n[l++] ^ applySbox(o, t, r, s, e), p = n[l++] ^ applySbox(o, r, s, e, t), m = n[l++] ^ applySbox(o, s, e, t, r);
+  return { s0: f, s1: h, s2: p, s3: m };
 }
 function decrypt$2(n, e, t, r, s) {
   const { sbox2: o, T01: a, T23: c } = tableDecoding;
@@ -2940,8 +2940,8 @@ function decrypt$2(n, e, t, r, s) {
     const g = n[l++] ^ apply0123(a, c, e, s, r, t), b = n[l++] ^ apply0123(a, c, t, e, s, r), w = n[l++] ^ apply0123(a, c, r, t, e, s), $ = n[l++] ^ apply0123(a, c, s, r, t, e);
     e = g, t = b, r = w, s = $;
   }
-  const h = n[l++] ^ applySbox(o, e, s, r, t), f = n[l++] ^ applySbox(o, t, e, s, r), p = n[l++] ^ applySbox(o, r, t, e, s), m = n[l++] ^ applySbox(o, s, r, t, e);
-  return { s0: h, s1: f, s2: p, s3: m };
+  const f = n[l++] ^ applySbox(o, e, s, r, t), h = n[l++] ^ applySbox(o, t, e, s, r), p = n[l++] ^ applySbox(o, r, t, e, s), m = n[l++] ^ applySbox(o, s, r, t, e);
+  return { s0: f, s1: h, s2: p, s3: m };
 }
 function getDst(n, e) {
   if (!e)
@@ -2995,25 +2995,25 @@ const cbc = /* @__PURE__ */ wrapCipher({ blockSize: 16, nonceLength: 16 }, funct
   const s = !r.disablePadding;
   return {
     encrypt: (o, a) => {
-      const c = expandKeyLE(e), { b: l, o: u, out: h } = validateBlockEncrypt(o, s, a), f = u32(t);
-      let p = f[0], m = f[1], E = f[2], g = f[3], b = 0;
+      const c = expandKeyLE(e), { b: l, o: u, out: f } = validateBlockEncrypt(o, s, a), h = u32(t);
+      let p = h[0], m = h[1], E = h[2], g = h[3], b = 0;
       for (; b + 4 <= l.length; )
         p ^= l[b + 0], m ^= l[b + 1], E ^= l[b + 2], g ^= l[b + 3], { s0: p, s1: m, s2: E, s3: g } = encrypt$2(c, p, m, E, g), u[b++] = p, u[b++] = m, u[b++] = E, u[b++] = g;
       if (s) {
         const w = padPCKS(o.subarray(b * 4));
         p ^= w[0], m ^= w[1], E ^= w[2], g ^= w[3], { s0: p, s1: m, s2: E, s3: g } = encrypt$2(c, p, m, E, g), u[b++] = p, u[b++] = m, u[b++] = E, u[b++] = g;
       }
-      return c.fill(0), h;
+      return c.fill(0), f;
     },
     decrypt: (o, a) => {
       validateBlockDecrypt(o);
-      const c = expandKeyDecLE(e), l = u32(t), u = getDst(o.length, a), h = u32(o), f = u32(u);
+      const c = expandKeyDecLE(e), l = u32(t), u = getDst(o.length, a), f = u32(o), h = u32(u);
       let p = l[0], m = l[1], E = l[2], g = l[3];
-      for (let b = 0; b + 4 <= h.length; ) {
+      for (let b = 0; b + 4 <= f.length; ) {
         const w = p, $ = m, B = E, P = g;
-        p = h[b + 0], m = h[b + 1], E = h[b + 2], g = h[b + 3];
-        const { s0: U, s1: R, s2: C, s3: L } = decrypt$2(c, p, m, E, g);
-        f[b++] = U ^ w, f[b++] = R ^ $, f[b++] = C ^ B, f[b++] = L ^ P;
+        p = f[b + 0], m = f[b + 1], E = f[b + 2], g = f[b + 3];
+        const { s0: M, s1: C, s2: S, s3: L } = decrypt$2(c, p, m, E, g);
+        h[b++] = M ^ w, h[b++] = C ^ $, h[b++] = S ^ B, h[b++] = L ^ P;
       }
       return c.fill(0), validatePCKS(u, s);
     }
@@ -3028,17 +3028,17 @@ function isAligned32(n) {
 }
 const BLOCK_LEN = 64, BLOCK_LEN32 = 16, MAX_COUNTER = 2 ** 32 - 1, U32_EMPTY = new Uint32Array();
 function runCipher(n, e, t, r, s, o, a, c) {
-  const l = s.length, u = new Uint8Array(BLOCK_LEN), h = u32(u), f = isAligned32(s) && isAligned32(o), p = f ? u32(s) : U32_EMPTY, m = f ? u32(o) : U32_EMPTY;
+  const l = s.length, u = new Uint8Array(BLOCK_LEN), f = u32(u), h = isAligned32(s) && isAligned32(o), p = h ? u32(s) : U32_EMPTY, m = h ? u32(o) : U32_EMPTY;
   for (let E = 0; E < l; a++) {
-    if (n(e, t, r, h, a, c), a >= MAX_COUNTER)
+    if (n(e, t, r, f, a, c), a >= MAX_COUNTER)
       throw new Error("arx: counter overflow");
     const g = Math.min(BLOCK_LEN, l - E);
-    if (f && g === BLOCK_LEN) {
+    if (h && g === BLOCK_LEN) {
       const b = E / 4;
       if (E % 4 !== 0)
         throw new Error("arx: invalid block position");
       for (let w = 0, $; w < BLOCK_LEN32; w++)
-        $ = b + w, m[$] = p[$] ^ h[w];
+        $ = b + w, m[$] = p[$] ^ f[w];
       E += BLOCK_LEN;
       continue;
     }
@@ -3051,13 +3051,13 @@ function createCipher(n, e) {
   const { allowShortKeys: t, extendNonceFn: r, counterLength: s, counterRight: o, rounds: a } = checkOpts({ allowShortKeys: !1, counterLength: 8, counterRight: !1, rounds: 20 }, e);
   if (typeof n != "function")
     throw new Error("core must be a function");
-  return number(s), number(a), bool(o), bool(t), (c, l, u, h, f = 0) => {
+  return number(s), number(a), bool(o), bool(t), (c, l, u, f, h = 0) => {
     bytes(c), bytes(l), bytes(u);
     const p = u.length;
-    if (h || (h = new Uint8Array(p)), bytes(h), number(f), f < 0 || f >= MAX_COUNTER)
+    if (f || (f = new Uint8Array(p)), bytes(f), number(h), h < 0 || h >= MAX_COUNTER)
       throw new Error("arx: counter overflow");
-    if (h.length < p)
-      throw new Error(`arx: output (${h.length}) is shorter than data (${p})`);
+    if (f.length < p)
+      throw new Error(`arx: output (${f.length}) is shorter than data (${p})`);
     const m = [];
     let E = c.length, g, b;
     if (E === 32)
@@ -3081,17 +3081,17 @@ function createCipher(n, e) {
       P.set(l, o ? 0 : 12 - l.length), l = P, m.push(l);
     }
     const B = u32(l);
-    for (runCipher(n, b, w, B, u, h, f, a); m.length > 0; )
+    for (runCipher(n, b, w, B, u, f, h, a); m.length > 0; )
       m.pop().fill(0);
-    return h;
+    return f;
   };
 }
 function chachaCore(n, e, t, r, s, o = 20) {
-  let a = n[0], c = n[1], l = n[2], u = n[3], h = e[0], f = e[1], p = e[2], m = e[3], E = e[4], g = e[5], b = e[6], w = e[7], $ = s, B = t[0], P = t[1], U = t[2], R = a, C = c, L = l, M = u, F = h, x = f, _ = p, S = m, T = E, v = g, k = b, A = w, N = $, I = B, D = P, O = U;
+  let a = n[0], c = n[1], l = n[2], u = n[3], f = e[0], h = e[1], p = e[2], m = e[3], E = e[4], g = e[5], b = e[6], w = e[7], $ = s, B = t[0], P = t[1], M = t[2], C = a, S = c, L = l, F = u, H = f, k = h, _ = p, T = m, A = E, v = g, x = b, R = w, N = $, I = B, D = P, U = M;
   for (let z = 0; z < o; z += 2)
-    R = R + F | 0, N = rotl(N ^ R, 16), T = T + N | 0, F = rotl(F ^ T, 12), R = R + F | 0, N = rotl(N ^ R, 8), T = T + N | 0, F = rotl(F ^ T, 7), C = C + x | 0, I = rotl(I ^ C, 16), v = v + I | 0, x = rotl(x ^ v, 12), C = C + x | 0, I = rotl(I ^ C, 8), v = v + I | 0, x = rotl(x ^ v, 7), L = L + _ | 0, D = rotl(D ^ L, 16), k = k + D | 0, _ = rotl(_ ^ k, 12), L = L + _ | 0, D = rotl(D ^ L, 8), k = k + D | 0, _ = rotl(_ ^ k, 7), M = M + S | 0, O = rotl(O ^ M, 16), A = A + O | 0, S = rotl(S ^ A, 12), M = M + S | 0, O = rotl(O ^ M, 8), A = A + O | 0, S = rotl(S ^ A, 7), R = R + x | 0, O = rotl(O ^ R, 16), k = k + O | 0, x = rotl(x ^ k, 12), R = R + x | 0, O = rotl(O ^ R, 8), k = k + O | 0, x = rotl(x ^ k, 7), C = C + _ | 0, N = rotl(N ^ C, 16), A = A + N | 0, _ = rotl(_ ^ A, 12), C = C + _ | 0, N = rotl(N ^ C, 8), A = A + N | 0, _ = rotl(_ ^ A, 7), L = L + S | 0, I = rotl(I ^ L, 16), T = T + I | 0, S = rotl(S ^ T, 12), L = L + S | 0, I = rotl(I ^ L, 8), T = T + I | 0, S = rotl(S ^ T, 7), M = M + F | 0, D = rotl(D ^ M, 16), v = v + D | 0, F = rotl(F ^ v, 12), M = M + F | 0, D = rotl(D ^ M, 8), v = v + D | 0, F = rotl(F ^ v, 7);
-  let H = 0;
-  r[H++] = a + R | 0, r[H++] = c + C | 0, r[H++] = l + L | 0, r[H++] = u + M | 0, r[H++] = h + F | 0, r[H++] = f + x | 0, r[H++] = p + _ | 0, r[H++] = m + S | 0, r[H++] = E + T | 0, r[H++] = g + v | 0, r[H++] = b + k | 0, r[H++] = w + A | 0, r[H++] = $ + N | 0, r[H++] = B + I | 0, r[H++] = P + D | 0, r[H++] = U + O | 0;
+    C = C + H | 0, N = rotl(N ^ C, 16), A = A + N | 0, H = rotl(H ^ A, 12), C = C + H | 0, N = rotl(N ^ C, 8), A = A + N | 0, H = rotl(H ^ A, 7), S = S + k | 0, I = rotl(I ^ S, 16), v = v + I | 0, k = rotl(k ^ v, 12), S = S + k | 0, I = rotl(I ^ S, 8), v = v + I | 0, k = rotl(k ^ v, 7), L = L + _ | 0, D = rotl(D ^ L, 16), x = x + D | 0, _ = rotl(_ ^ x, 12), L = L + _ | 0, D = rotl(D ^ L, 8), x = x + D | 0, _ = rotl(_ ^ x, 7), F = F + T | 0, U = rotl(U ^ F, 16), R = R + U | 0, T = rotl(T ^ R, 12), F = F + T | 0, U = rotl(U ^ F, 8), R = R + U | 0, T = rotl(T ^ R, 7), C = C + k | 0, U = rotl(U ^ C, 16), x = x + U | 0, k = rotl(k ^ x, 12), C = C + k | 0, U = rotl(U ^ C, 8), x = x + U | 0, k = rotl(k ^ x, 7), S = S + _ | 0, N = rotl(N ^ S, 16), R = R + N | 0, _ = rotl(_ ^ R, 12), S = S + _ | 0, N = rotl(N ^ S, 8), R = R + N | 0, _ = rotl(_ ^ R, 7), L = L + T | 0, I = rotl(I ^ L, 16), A = A + I | 0, T = rotl(T ^ A, 12), L = L + T | 0, I = rotl(I ^ L, 8), A = A + I | 0, T = rotl(T ^ A, 7), F = F + H | 0, D = rotl(D ^ F, 16), v = v + D | 0, H = rotl(H ^ v, 12), F = F + H | 0, D = rotl(D ^ F, 8), v = v + D | 0, H = rotl(H ^ v, 7);
+  let O = 0;
+  r[O++] = a + C | 0, r[O++] = c + S | 0, r[O++] = l + L | 0, r[O++] = u + F | 0, r[O++] = f + H | 0, r[O++] = h + k | 0, r[O++] = p + _ | 0, r[O++] = m + T | 0, r[O++] = E + A | 0, r[O++] = g + v | 0, r[O++] = b + x | 0, r[O++] = w + R | 0, r[O++] = $ + N | 0, r[O++] = B + I | 0, r[O++] = P + D | 0, r[O++] = M + U | 0;
 }
 const chacha20 = /* @__PURE__ */ createCipher(chachaCore, {
   counterRight: !1,
@@ -3487,62 +3487,62 @@ function decodeNostrURI(n) {
   }
 }
 function decode(n) {
-  var s, o, a, c, l, u, h;
+  var s, o, a, c, l, u, f;
   let { prefix: e, words: t } = bech32$1.decode(n, Bech32MaxSize), r = new Uint8Array(bech32$1.fromWords(t));
   switch (e) {
     case "nprofile": {
-      let f = parseTLV(r);
-      if (!((s = f[0]) != null && s[0]))
+      let h = parseTLV(r);
+      if (!((s = h[0]) != null && s[0]))
         throw new Error("missing TLV 0 for nprofile");
-      if (f[0][0].length !== 32)
+      if (h[0][0].length !== 32)
         throw new Error("TLV 0 should be 32 bytes");
       return {
         type: "nprofile",
         data: {
-          pubkey: bytesToHex$2(f[0][0]),
-          relays: f[1] ? f[1].map((p) => utf8Decoder.decode(p)) : []
+          pubkey: bytesToHex$2(h[0][0]),
+          relays: h[1] ? h[1].map((p) => utf8Decoder.decode(p)) : []
         }
       };
     }
     case "nevent": {
-      let f = parseTLV(r);
-      if (!((o = f[0]) != null && o[0]))
+      let h = parseTLV(r);
+      if (!((o = h[0]) != null && o[0]))
         throw new Error("missing TLV 0 for nevent");
-      if (f[0][0].length !== 32)
+      if (h[0][0].length !== 32)
         throw new Error("TLV 0 should be 32 bytes");
-      if (f[2] && f[2][0].length !== 32)
+      if (h[2] && h[2][0].length !== 32)
         throw new Error("TLV 2 should be 32 bytes");
-      if (f[3] && f[3][0].length !== 4)
+      if (h[3] && h[3][0].length !== 4)
         throw new Error("TLV 3 should be 4 bytes");
       return {
         type: "nevent",
         data: {
-          id: bytesToHex$2(f[0][0]),
-          relays: f[1] ? f[1].map((p) => utf8Decoder.decode(p)) : [],
-          author: (a = f[2]) != null && a[0] ? bytesToHex$2(f[2][0]) : void 0,
-          kind: (c = f[3]) != null && c[0] ? parseInt(bytesToHex$2(f[3][0]), 16) : void 0
+          id: bytesToHex$2(h[0][0]),
+          relays: h[1] ? h[1].map((p) => utf8Decoder.decode(p)) : [],
+          author: (a = h[2]) != null && a[0] ? bytesToHex$2(h[2][0]) : void 0,
+          kind: (c = h[3]) != null && c[0] ? parseInt(bytesToHex$2(h[3][0]), 16) : void 0
         }
       };
     }
     case "naddr": {
-      let f = parseTLV(r);
-      if (!((l = f[0]) != null && l[0]))
+      let h = parseTLV(r);
+      if (!((l = h[0]) != null && l[0]))
         throw new Error("missing TLV 0 for naddr");
-      if (!((u = f[2]) != null && u[0]))
+      if (!((u = h[2]) != null && u[0]))
         throw new Error("missing TLV 2 for naddr");
-      if (f[2][0].length !== 32)
+      if (h[2][0].length !== 32)
         throw new Error("TLV 2 should be 32 bytes");
-      if (!((h = f[3]) != null && h[0]))
+      if (!((f = h[3]) != null && f[0]))
         throw new Error("missing TLV 3 for naddr");
-      if (f[3][0].length !== 4)
+      if (h[3][0].length !== 4)
         throw new Error("TLV 3 should be 4 bytes");
       return {
         type: "naddr",
         data: {
-          identifier: utf8Decoder.decode(f[0][0]),
-          pubkey: bytesToHex$2(f[2][0]),
-          kind: parseInt(bytesToHex$2(f[3][0]), 16),
-          relays: f[1] ? f[1].map((p) => utf8Decoder.decode(p)) : []
+          identifier: utf8Decoder.decode(h[0][0]),
+          pubkey: bytesToHex$2(h[2][0]),
+          kind: parseInt(bytesToHex$2(h[3][0]), 16),
+          relays: h[1] ? h[1].map((p) => utf8Decoder.decode(p)) : []
         }
       };
     }
@@ -3626,13 +3626,13 @@ __export(nip04_exports, {
 });
 function encrypt$1(n, e, t) {
   const r = n instanceof Uint8Array ? bytesToHex$2(n) : n, s = secp256k1$1.getSharedSecret(r, "02" + e), o = getNormalizedX(s);
-  let a = Uint8Array.from(randomBytes$1(16)), c = utf8Encoder.encode(t), l = cbc(o, a).encrypt(c), u = base64.encode(new Uint8Array(l)), h = base64.encode(new Uint8Array(a.buffer));
-  return `${u}?iv=${h}`;
+  let a = Uint8Array.from(randomBytes$1(16)), c = utf8Encoder.encode(t), l = cbc(o, a).encrypt(c), u = base64.encode(new Uint8Array(l)), f = base64.encode(new Uint8Array(a.buffer));
+  return `${u}?iv=${f}`;
 }
 function decrypt$1(n, e, t) {
   const r = n instanceof Uint8Array ? bytesToHex$2(n) : n;
-  let [s, o] = t.split("?iv="), a = secp256k1$1.getSharedSecret(r, "02" + e), c = getNormalizedX(a), l = base64.decode(o), u = base64.decode(s), h = cbc(c, l).decrypt(u);
-  return utf8Decoder.decode(h);
+  let [s, o] = t.split("?iv="), a = secp256k1$1.getSharedSecret(r, "02" + e), c = getNormalizedX(a), l = base64.decode(o), u = base64.decode(s), f = cbc(c, l).decrypt(u);
+  return utf8Decoder.decode(f);
 }
 function getNormalizedX(n) {
   return n.slice(1, 33);
@@ -3700,24 +3700,24 @@ function parse(n) {
   for (let s = n.tags.length - 1; s >= 0; s--) {
     const o = n.tags[s];
     if (o[0] === "e" && o[1]) {
-      const [a, c, l, u, h] = o, f = {
+      const [a, c, l, u, f] = o, h = {
         id: c,
         relays: l ? [l] : [],
-        author: h
+        author: f
       };
       if (u === "root") {
-        e.root = f;
+        e.root = h;
         continue;
       }
       if (u === "reply") {
-        e.reply = f;
+        e.reply = h;
         continue;
       }
       if (u === "mention") {
-        e.mentions.push(f);
+        e.mentions.push(h);
         continue;
       }
-      t ? r = f : t = f, e.mentions.push(f);
+      t ? r = h : t = h, e.mentions.push(h);
       continue;
     }
     if (o[0] === "q" && o[1]) {
@@ -3918,10 +3918,10 @@ var v2 = {
   },
   encrypt: encrypt2,
   decrypt: decrypt2
-}, TWO_DAYS = 2 * 24 * 60 * 60, now$1 = () => Math.round(Date.now() / 1e3), randomNow = () => Math.round(now$1() - Math.random() * TWO_DAYS), nip44ConversationKey = (n, e) => getConversationKey(n, e), nip44Encrypt = (n, e, t) => encrypt2(JSON.stringify(n), nip44ConversationKey(e, t)), nip44Decrypt = (n, e) => JSON.parse(decrypt2(n.content, nip44ConversationKey(e, n.pubkey)));
+}, TWO_DAYS = 2 * 24 * 60 * 60, now = () => Math.round(Date.now() / 1e3), randomNow = () => Math.round(now() - Math.random() * TWO_DAYS), nip44ConversationKey = (n, e) => getConversationKey(n, e), nip44Encrypt = (n, e, t) => encrypt2(JSON.stringify(n), nip44ConversationKey(e, t)), nip44Decrypt = (n, e) => JSON.parse(decrypt2(n.content, nip44ConversationKey(e, n.pubkey)));
 function createRumor(n, e) {
   const t = {
-    created_at: now$1(),
+    created_at: now(),
     content: "",
     tags: [],
     ...n,
@@ -4674,17 +4674,17 @@ class HashMD extends Hash {
     const { buffer: t, view: r, blockLen: s, isLE: o } = this;
     let { pos: a } = this;
     t[a++] = 128, this.buffer.subarray(a).fill(0), this.padOffset > s - a && (this.process(r, 0), a = 0);
-    for (let f = a; f < s; f++)
-      t[f] = 0;
+    for (let h = a; h < s; h++)
+      t[h] = 0;
     setBigUint64(r, s - 8, BigInt(this.length * 8), o), this.process(r, 0);
     const c = createView(e), l = this.outputLen;
     if (l % 4)
       throw new Error("_sha2: outputLen should be aligned to 32bit");
-    const u = l / 4, h = this.get();
-    if (u > h.length)
+    const u = l / 4, f = this.get();
+    if (u > f.length)
       throw new Error("_sha2: outputLen bigger than state");
-    for (let f = 0; f < u; f++)
-      c.setUint32(4 * f, h[f], o);
+    for (let h = 0; h < u; h++)
+      c.setUint32(4 * h, f[h], o);
   }
   digest() {
     const { buffer: e, outputLen: t } = this;
@@ -4786,18 +4786,18 @@ class SHA256 extends HashMD {
     this.A = e | 0, this.B = t | 0, this.C = r | 0, this.D = s | 0, this.E = o | 0, this.F = a | 0, this.G = c | 0, this.H = l | 0;
   }
   process(e, t) {
-    for (let f = 0; f < 16; f++, t += 4)
-      SHA256_W[f] = e.getUint32(t, !1);
-    for (let f = 16; f < 64; f++) {
-      const p = SHA256_W[f - 15], m = SHA256_W[f - 2], E = rotr(p, 7) ^ rotr(p, 18) ^ p >>> 3, g = rotr(m, 17) ^ rotr(m, 19) ^ m >>> 10;
-      SHA256_W[f] = g + SHA256_W[f - 7] + E + SHA256_W[f - 16] | 0;
+    for (let h = 0; h < 16; h++, t += 4)
+      SHA256_W[h] = e.getUint32(t, !1);
+    for (let h = 16; h < 64; h++) {
+      const p = SHA256_W[h - 15], m = SHA256_W[h - 2], E = rotr(p, 7) ^ rotr(p, 18) ^ p >>> 3, g = rotr(m, 17) ^ rotr(m, 19) ^ m >>> 10;
+      SHA256_W[h] = g + SHA256_W[h - 7] + E + SHA256_W[h - 16] | 0;
     }
-    let { A: r, B: s, C: o, D: a, E: c, F: l, G: u, H: h } = this;
-    for (let f = 0; f < 64; f++) {
-      const p = rotr(c, 6) ^ rotr(c, 11) ^ rotr(c, 25), m = h + p + Chi(c, l, u) + SHA256_K[f] + SHA256_W[f] | 0, g = (rotr(r, 2) ^ rotr(r, 13) ^ rotr(r, 22)) + Maj(r, s, o) | 0;
-      h = u, u = l, l = c, c = a + m | 0, a = o, o = s, s = r, r = m + g | 0;
+    let { A: r, B: s, C: o, D: a, E: c, F: l, G: u, H: f } = this;
+    for (let h = 0; h < 64; h++) {
+      const p = rotr(c, 6) ^ rotr(c, 11) ^ rotr(c, 25), m = f + p + Chi(c, l, u) + SHA256_K[h] + SHA256_W[h] | 0, g = (rotr(r, 2) ^ rotr(r, 13) ^ rotr(r, 22)) + Maj(r, s, o) | 0;
+      f = u, u = l, l = c, c = a + m | 0, a = o, o = s, s = r, r = m + g | 0;
     }
-    r = r + this.A | 0, s = s + this.B | 0, o = o + this.C | 0, a = a + this.D | 0, c = c + this.E | 0, l = l + this.F | 0, u = u + this.G | 0, h = h + this.H | 0, this.set(r, s, o, a, c, l, u, h);
+    r = r + this.A | 0, s = s + this.B | 0, o = o + this.C | 0, a = a + this.D | 0, c = c + this.E | 0, l = l + this.F | 0, u = u + this.G | 0, f = f + this.H | 0, this.set(r, s, o, a, c, l, u, f);
   }
   roundClean() {
     SHA256_W.fill(0);
@@ -4989,22 +4989,22 @@ function createHmacDrbg(n, e, t) {
   let r = u8n(n), s = u8n(n), o = 0;
   const a = () => {
     r.fill(1), s.fill(0), o = 0;
-  }, c = (...f) => t(s, r, ...f), l = (f = u8n()) => {
-    s = c(u8fr([0]), f), r = c(), f.length !== 0 && (s = c(u8fr([1]), f), r = c());
+  }, c = (...h) => t(s, r, ...h), l = (h = u8n()) => {
+    s = c(u8fr([0]), h), r = c(), h.length !== 0 && (s = c(u8fr([1]), h), r = c());
   }, u = () => {
     if (o++ >= 1e3)
       throw new Error("drbg: tried 1000 values");
-    let f = 0;
+    let h = 0;
     const p = [];
-    for (; f < e; ) {
+    for (; h < e; ) {
       r = c();
       const m = r.slice();
-      p.push(m), f += r.length;
+      p.push(m), h += r.length;
     }
     return concatBytes(...p);
   };
-  return (f, p) => {
-    a(), l(f);
+  return (h, p) => {
+    a(), l(h);
     let m;
     for (; !(m = p(u())); )
       l();
@@ -5128,27 +5128,27 @@ function tonelliShanks(n) {
   if (r === 1) {
     const a = (n + _1n$3) / _4n;
     return function(l, u) {
-      const h = l.pow(u, a);
-      if (!l.eql(l.sqr(h), u))
+      const f = l.pow(u, a);
+      if (!l.eql(l.sqr(f), u))
         throw new Error("Cannot find square root");
-      return h;
+      return f;
     };
   }
   const o = (t + _1n$3) / _2n$1;
   return function(c, l) {
     if (c.pow(l, e) === c.neg(c.ONE))
       throw new Error("Cannot find square root");
-    let u = r, h = c.pow(c.mul(c.ONE, s), t), f = c.pow(l, o), p = c.pow(l, t);
+    let u = r, f = c.pow(c.mul(c.ONE, s), t), h = c.pow(l, o), p = c.pow(l, t);
     for (; !c.eql(p, c.ONE); ) {
       if (c.eql(p, c.ZERO))
         return c.ZERO;
       let m = 1;
       for (let g = c.sqr(p); m < u && !c.eql(g, c.ONE); m++)
         g = c.sqr(g);
-      const E = c.pow(h, _1n$3 << BigInt(u - m - 1));
-      h = c.sqr(E), f = c.mul(f, E), p = c.mul(p, h), u = m;
+      const E = c.pow(f, _1n$3 << BigInt(u - m - 1));
+      f = c.sqr(E), h = c.mul(h, E), p = c.mul(p, f), u = m;
     }
-    return f;
+    return h;
   };
 }
 function FpSqrt(n) {
@@ -5261,7 +5261,7 @@ function Field(n, e, t = !1, r = {}) {
     invertBatch: (l) => FpInvertBatch(c, l),
     // TODO: do we really need constant cmov?
     // We don't have const-time bigints anyway, so probably will be not very useful
-    cmov: (l, u, h) => h ? u : l,
+    cmov: (l, u, f) => f ? u : l,
     toBytes: (l) => t ? numberToBytesLE(l, o) : numberToBytesBE(l, o),
     fromBytes: (l) => {
       if (l.length !== o)
@@ -5353,7 +5353,7 @@ function wNAF(n, e) {
       let c = t, l = c;
       for (let u = 0; u < s; u++) {
         l = c, a.push(l);
-        for (let h = 1; h < o; h++)
+        for (let f = 1; f < o; f++)
           l = l.add(c), a.push(l);
         c = l.double();
       }
@@ -5369,11 +5369,11 @@ function wNAF(n, e) {
     wNAF(t, r, s) {
       const { windows: o, windowSize: a } = calcWOpts(t, e);
       let c = n.ZERO, l = n.BASE;
-      const u = BigInt(2 ** t - 1), h = 2 ** t, f = BigInt(t);
+      const u = BigInt(2 ** t - 1), f = 2 ** t, h = BigInt(t);
       for (let p = 0; p < o; p++) {
         const m = p * a;
         let E = Number(s & u);
-        s >>= f, E > a && (E -= h, s += _1n$2);
+        s >>= h, E > a && (E -= f, s += _1n$2);
         const g = m, b = m + Math.abs(E) - 1, w = p % 2 !== 0, $ = E < 0;
         E === 0 ? l = l.add(constTimeNegate(w, r[g])) : c = c.add(constTimeNegate($, r[b]));
       }
@@ -5388,13 +5388,13 @@ function wNAF(n, e) {
      * @returns point
      */
     wNAFUnsafe(t, r, s, o = n.ZERO) {
-      const { windows: a, windowSize: c } = calcWOpts(t, e), l = BigInt(2 ** t - 1), u = 2 ** t, h = BigInt(t);
-      for (let f = 0; f < a; f++) {
-        const p = f * c;
+      const { windows: a, windowSize: c } = calcWOpts(t, e), l = BigInt(2 ** t - 1), u = 2 ** t, f = BigInt(t);
+      for (let h = 0; h < a; h++) {
+        const p = h * c;
         if (s === _0n$2)
           break;
         let m = Number(s & l);
-        if (s >>= h, m > c && (m -= u, s += _1n$2), m === 0)
+        if (s >>= f, m > c && (m -= u, s += _1n$2), m === 0)
           continue;
         let E = r[p + Math.abs(m) - 1];
         m < 0 && (E = E.negate()), o = o.add(E);
@@ -5425,21 +5425,21 @@ function pippenger(n, e, t, r) {
   if (validateMSMPoints(t, n), validateMSMScalars(r, e), t.length !== r.length)
     throw new Error("arrays of points and scalars must have equal length");
   const s = n.ZERO, o = bitLen(BigInt(t.length)), a = o > 12 ? o - 3 : o > 4 ? o - 2 : o ? 2 : 1, c = (1 << a) - 1, l = new Array(c + 1).fill(s), u = Math.floor((e.BITS - 1) / a) * a;
-  let h = s;
-  for (let f = u; f >= 0; f -= a) {
+  let f = s;
+  for (let h = u; h >= 0; h -= a) {
     l.fill(s);
     for (let m = 0; m < r.length; m++) {
-      const E = r[m], g = Number(E >> BigInt(f) & BigInt(c));
+      const E = r[m], g = Number(E >> BigInt(h) & BigInt(c));
       l[g] = l[g].add(t[m]);
     }
     let p = s;
     for (let m = l.length - 1, E = s; m > 0; m--)
       E = E.add(l[m]), p = p.add(E);
-    if (h = h.add(p), f !== 0)
+    if (f = f.add(p), h !== 0)
       for (let m = 0; m < a; m++)
-        h = h.double();
+        f = f.double();
   }
-  return h;
+  return f;
 }
 function validateBasic(n) {
   return validateField(n.Fp), validateObject(n, {
@@ -5529,8 +5529,8 @@ const DER = {
           throw new t("tlv.decode: length bytes not complete");
         if (u[0] === 0)
           throw new t("tlv.decode(long): zero leftmost byte");
-        for (const h of u)
-          a = a << 8 | h;
+        for (const f of u)
+          a = a << 8 | f;
         if (r += l, a < 128)
           throw new t("tlv.decode(long): not minimal encoding");
       }
@@ -5569,8 +5569,8 @@ const DER = {
     const { v: o, l: a } = r.decode(48, s);
     if (a.length)
       throw new e("invalid signature: left bytes after parsing");
-    const { v: c, l } = r.decode(2, o), { v: u, l: h } = r.decode(2, l);
-    if (h.length)
+    const { v: c, l } = r.decode(2, o), { v: u, l: f } = r.decode(2, l);
+    if (f.length)
       throw new e("invalid signature: left bytes after parsing");
     return { r: t.decode(c), s: t.decode(u) };
   },
@@ -5618,19 +5618,19 @@ function weierstrassPoints(n) {
     if (!(g instanceof p))
       throw new Error("ProjectivePoint expected");
   }
-  const h = memoized((g, b) => {
+  const f = memoized((g, b) => {
     const { px: w, py: $, pz: B } = g;
     if (t.eql(B, t.ONE))
       return { x: w, y: $ };
     const P = g.is0();
     b == null && (b = P ? t.ONE : t.inv(B));
-    const U = t.mul(w, b), R = t.mul($, b), C = t.mul(B, b);
+    const M = t.mul(w, b), C = t.mul($, b), S = t.mul(B, b);
     if (P)
       return { x: t.ZERO, y: t.ZERO };
-    if (!t.eql(C, t.ONE))
+    if (!t.eql(S, t.ONE))
       throw new Error("invZ was invalid");
-    return { x: U, y: R };
-  }), f = memoized((g) => {
+    return { x: M, y: C };
+  }), h = memoized((g) => {
     if (g.is0()) {
       if (e.allowInfinityPoint && !t.is0(g.py))
         return;
@@ -5705,7 +5705,7 @@ function weierstrassPoints(n) {
     }
     // A point on curve is valid if it conforms to equation.
     assertValidity() {
-      f(this);
+      h(this);
     }
     hasEvenY() {
       const { y: b } = this.toAffine();
@@ -5718,8 +5718,8 @@ function weierstrassPoints(n) {
      */
     equals(b) {
       u(b);
-      const { px: w, py: $, pz: B } = this, { px: P, py: U, pz: R } = b, C = t.eql(t.mul(w, R), t.mul(P, B)), L = t.eql(t.mul($, R), t.mul(U, B));
-      return C && L;
+      const { px: w, py: $, pz: B } = this, { px: P, py: M, pz: C } = b, S = t.eql(t.mul(w, C), t.mul(P, B)), L = t.eql(t.mul($, C), t.mul(M, B));
+      return S && L;
     }
     /**
      * Flips point to one corresponding to (x, -y) in Affine coordinates.
@@ -5732,9 +5732,9 @@ function weierstrassPoints(n) {
     // https://eprint.iacr.org/2015/1060, algorithm 3
     // Cost: 8M + 3S + 3*a + 2*b3 + 15add.
     double() {
-      const { a: b, b: w } = e, $ = t.mul(w, _3n), { px: B, py: P, pz: U } = this;
-      let R = t.ZERO, C = t.ZERO, L = t.ZERO, M = t.mul(B, B), F = t.mul(P, P), x = t.mul(U, U), _ = t.mul(B, P);
-      return _ = t.add(_, _), L = t.mul(B, U), L = t.add(L, L), R = t.mul(b, L), C = t.mul($, x), C = t.add(R, C), R = t.sub(F, C), C = t.add(F, C), C = t.mul(R, C), R = t.mul(_, R), L = t.mul($, L), x = t.mul(b, x), _ = t.sub(M, x), _ = t.mul(b, _), _ = t.add(_, L), L = t.add(M, M), M = t.add(L, M), M = t.add(M, x), M = t.mul(M, _), C = t.add(C, M), x = t.mul(P, U), x = t.add(x, x), M = t.mul(x, _), R = t.sub(R, M), L = t.mul(x, F), L = t.add(L, L), L = t.add(L, L), new p(R, C, L);
+      const { a: b, b: w } = e, $ = t.mul(w, _3n), { px: B, py: P, pz: M } = this;
+      let C = t.ZERO, S = t.ZERO, L = t.ZERO, F = t.mul(B, B), H = t.mul(P, P), k = t.mul(M, M), _ = t.mul(B, P);
+      return _ = t.add(_, _), L = t.mul(B, M), L = t.add(L, L), C = t.mul(b, L), S = t.mul($, k), S = t.add(C, S), C = t.sub(H, S), S = t.add(H, S), S = t.mul(C, S), C = t.mul(_, C), L = t.mul($, L), k = t.mul(b, k), _ = t.sub(F, k), _ = t.mul(b, _), _ = t.add(_, L), L = t.add(F, F), F = t.add(L, F), F = t.add(F, k), F = t.mul(F, _), S = t.add(S, F), k = t.mul(P, M), k = t.add(k, k), F = t.mul(k, _), C = t.sub(C, F), L = t.mul(k, H), L = t.add(L, L), L = t.add(L, L), new p(C, S, L);
     }
     // Renes-Costello-Batina exception-free addition formula.
     // There is 30% faster Jacobian formula, but it is not complete.
@@ -5742,13 +5742,13 @@ function weierstrassPoints(n) {
     // Cost: 12M + 0S + 3*a + 3*b3 + 23add.
     add(b) {
       u(b);
-      const { px: w, py: $, pz: B } = this, { px: P, py: U, pz: R } = b;
-      let C = t.ZERO, L = t.ZERO, M = t.ZERO;
-      const F = e.a, x = t.mul(e.b, _3n);
-      let _ = t.mul(w, P), S = t.mul($, U), T = t.mul(B, R), v = t.add(w, $), k = t.add(P, U);
-      v = t.mul(v, k), k = t.add(_, S), v = t.sub(v, k), k = t.add(w, B);
-      let A = t.add(P, R);
-      return k = t.mul(k, A), A = t.add(_, T), k = t.sub(k, A), A = t.add($, B), C = t.add(U, R), A = t.mul(A, C), C = t.add(S, T), A = t.sub(A, C), M = t.mul(F, k), C = t.mul(x, T), M = t.add(C, M), C = t.sub(S, M), M = t.add(S, M), L = t.mul(C, M), S = t.add(_, _), S = t.add(S, _), T = t.mul(F, T), k = t.mul(x, k), S = t.add(S, T), T = t.sub(_, T), T = t.mul(F, T), k = t.add(k, T), _ = t.mul(S, k), L = t.add(L, _), _ = t.mul(A, k), C = t.mul(v, C), C = t.sub(C, _), _ = t.mul(v, S), M = t.mul(A, M), M = t.add(M, _), new p(C, L, M);
+      const { px: w, py: $, pz: B } = this, { px: P, py: M, pz: C } = b;
+      let S = t.ZERO, L = t.ZERO, F = t.ZERO;
+      const H = e.a, k = t.mul(e.b, _3n);
+      let _ = t.mul(w, P), T = t.mul($, M), A = t.mul(B, C), v = t.add(w, $), x = t.add(P, M);
+      v = t.mul(v, x), x = t.add(_, T), v = t.sub(v, x), x = t.add(w, B);
+      let R = t.add(P, C);
+      return x = t.mul(x, R), R = t.add(_, A), x = t.sub(x, R), R = t.add($, B), S = t.add(M, C), R = t.mul(R, S), S = t.add(T, A), R = t.sub(R, S), F = t.mul(H, x), S = t.mul(k, A), F = t.add(S, F), S = t.sub(T, F), F = t.add(T, F), L = t.mul(S, F), T = t.add(_, _), T = t.add(T, _), A = t.mul(H, A), x = t.mul(k, x), T = t.add(T, A), A = t.sub(_, A), A = t.mul(H, A), x = t.add(x, A), _ = t.mul(T, x), L = t.add(L, _), _ = t.mul(R, x), S = t.mul(v, S), S = t.sub(S, _), _ = t.mul(v, T), F = t.mul(R, F), F = t.add(F, _), new p(S, L, F);
     }
     subtract(b) {
       return this.add(b.negate());
@@ -5774,10 +5774,10 @@ function weierstrassPoints(n) {
         return this;
       if (!w || E.hasPrecomputes(this))
         return E.wNAFCachedUnsafe(this, b, p.normalizeZ);
-      let { k1neg: P, k1: U, k2neg: R, k2: C } = w.splitScalar(b), L = B, M = B, F = this;
-      for (; U > _0n$1 || C > _0n$1; )
-        U & _1n$1 && (L = L.add(F)), C & _1n$1 && (M = M.add(F)), F = F.double(), U >>= _1n$1, C >>= _1n$1;
-      return P && (L = L.negate()), R && (M = M.negate()), M = new p(t.mul(M.px, w.beta), M.py, M.pz), L.add(M);
+      let { k1neg: P, k1: M, k2neg: C, k2: S } = w.splitScalar(b), L = B, F = B, H = this;
+      for (; M > _0n$1 || S > _0n$1; )
+        M & _1n$1 && (L = L.add(H)), S & _1n$1 && (F = F.add(H)), H = H.double(), M >>= _1n$1, S >>= _1n$1;
+      return P && (L = L.negate()), C && (F = F.negate()), F = new p(t.mul(F.px, w.beta), F.py, F.pz), L.add(F);
     }
     /**
      * Constant time multiplication.
@@ -5793,12 +5793,12 @@ function weierstrassPoints(n) {
       aInRange("scalar", b, _1n$1, $);
       let B, P;
       if (w) {
-        const { k1neg: U, k1: R, k2neg: C, k2: L } = w.splitScalar(b);
-        let { p: M, f: F } = this.wNAF(R), { p: x, f: _ } = this.wNAF(L);
-        M = E.constTimeNegate(U, M), x = E.constTimeNegate(C, x), x = new p(t.mul(x.px, w.beta), x.py, x.pz), B = M.add(x), P = F.add(_);
+        const { k1neg: M, k1: C, k2neg: S, k2: L } = w.splitScalar(b);
+        let { p: F, f: H } = this.wNAF(C), { p: k, f: _ } = this.wNAF(L);
+        F = E.constTimeNegate(M, F), k = E.constTimeNegate(S, k), k = new p(t.mul(k.px, w.beta), k.py, k.pz), B = F.add(k), P = H.add(_);
       } else {
-        const { p: U, f: R } = this.wNAF(b);
-        B = U, P = R;
+        const { p: M, f: C } = this.wNAF(b);
+        B = M, P = C;
       }
       return p.normalizeZ([B, P])[0];
     }
@@ -5809,14 +5809,14 @@ function weierstrassPoints(n) {
      * @returns non-zero affine point
      */
     multiplyAndAddUnsafe(b, w, $) {
-      const B = p.BASE, P = (R, C) => C === _0n$1 || C === _1n$1 || !R.equals(B) ? R.multiplyUnsafe(C) : R.multiply(C), U = P(this, w).add(P(b, $));
-      return U.is0() ? void 0 : U;
+      const B = p.BASE, P = (C, S) => S === _0n$1 || S === _1n$1 || !C.equals(B) ? C.multiplyUnsafe(S) : C.multiply(S), M = P(this, w).add(P(b, $));
+      return M.is0() ? void 0 : M;
     }
     // Converts Projective point to affine (x, y) coordinates.
     // Can accept precomputed Z^-1 - for example, from invertBatch.
     // (x, y, z) ∋ (x=x/z, y=y/z)
     toAffine(b) {
-      return h(this, b);
+      return f(this, b);
     }
     isTorsionFree() {
       const { h: b, isTorsionFree: w } = e;
@@ -5861,25 +5861,25 @@ function validateOpts(n) {
 }
 function weierstrass(n) {
   const e = validateOpts(n), { Fp: t, n: r } = e, s = t.BYTES + 1, o = 2 * t.BYTES + 1;
-  function a(T) {
-    return mod(T, r);
+  function a(A) {
+    return mod(A, r);
   }
-  function c(T) {
-    return invert(T, r);
+  function c(A) {
+    return invert(A, r);
   }
-  const { ProjectivePoint: l, normPrivateKeyToScalar: u, weierstrassEquation: h, isWithinCurveOrder: f } = weierstrassPoints({
+  const { ProjectivePoint: l, normPrivateKeyToScalar: u, weierstrassEquation: f, isWithinCurveOrder: h } = weierstrassPoints({
     ...e,
-    toBytes(T, v, k) {
-      const A = v.toAffine(), N = t.toBytes(A.x), I = concatBytes;
-      return abool("isCompressed", k), k ? I(Uint8Array.from([v.hasEvenY() ? 2 : 3]), N) : I(Uint8Array.from([4]), N, t.toBytes(A.y));
+    toBytes(A, v, x) {
+      const R = v.toAffine(), N = t.toBytes(R.x), I = concatBytes;
+      return abool("isCompressed", x), x ? I(Uint8Array.from([v.hasEvenY() ? 2 : 3]), N) : I(Uint8Array.from([4]), N, t.toBytes(R.y));
     },
-    fromBytes(T) {
-      const v = T.length, k = T[0], A = T.subarray(1);
-      if (v === s && (k === 2 || k === 3)) {
-        const N = bytesToNumberBE(A);
+    fromBytes(A) {
+      const v = A.length, x = A[0], R = A.subarray(1);
+      if (v === s && (x === 2 || x === 3)) {
+        const N = bytesToNumberBE(R);
         if (!inRange(N, _1n$1, t.ORDER))
           throw new Error("Point is not on curve");
-        const I = h(N);
+        const I = f(N);
         let D;
         try {
           D = t.sqrt(I);
@@ -5887,39 +5887,39 @@ function weierstrass(n) {
           const V = z instanceof Error ? ": " + z.message : "";
           throw new Error("Point is not on curve" + V);
         }
-        const O = (D & _1n$1) === _1n$1;
-        return (k & 1) === 1 !== O && (D = t.neg(D)), { x: N, y: D };
-      } else if (v === o && k === 4) {
-        const N = t.fromBytes(A.subarray(0, t.BYTES)), I = t.fromBytes(A.subarray(t.BYTES, 2 * t.BYTES));
+        const U = (D & _1n$1) === _1n$1;
+        return (x & 1) === 1 !== U && (D = t.neg(D)), { x: N, y: D };
+      } else if (v === o && x === 4) {
+        const N = t.fromBytes(R.subarray(0, t.BYTES)), I = t.fromBytes(R.subarray(t.BYTES, 2 * t.BYTES));
         return { x: N, y: I };
       } else {
         const N = s, I = o;
         throw new Error("invalid Point, expected length of " + N + ", or uncompressed " + I + ", got " + v);
       }
     }
-  }), p = (T) => bytesToHex(numberToBytesBE(T, e.nByteLength));
-  function m(T) {
+  }), p = (A) => bytesToHex(numberToBytesBE(A, e.nByteLength));
+  function m(A) {
     const v = r >> _1n$1;
-    return T > v;
+    return A > v;
   }
-  function E(T) {
-    return m(T) ? a(-T) : T;
+  function E(A) {
+    return m(A) ? a(-A) : A;
   }
-  const g = (T, v, k) => bytesToNumberBE(T.slice(v, k));
+  const g = (A, v, x) => bytesToNumberBE(A.slice(v, x));
   class b {
-    constructor(v, k, A) {
-      this.r = v, this.s = k, this.recovery = A, this.assertValidity();
+    constructor(v, x, R) {
+      this.r = v, this.s = x, this.recovery = R, this.assertValidity();
     }
     // pair (bytes of r, bytes of s)
     static fromCompact(v) {
-      const k = e.nByteLength;
-      return v = ensureBytes("compactSignature", v, k * 2), new b(g(v, 0, k), g(v, k, 2 * k));
+      const x = e.nByteLength;
+      return v = ensureBytes("compactSignature", v, x * 2), new b(g(v, 0, x), g(v, x, 2 * x));
     }
     // DER encoded ECDSA signature
     // https://bitcoin.stackexchange.com/questions/57644/what-are-the-parts-of-a-bitcoin-transaction-input-script
     static fromDER(v) {
-      const { r: k, s: A } = DER.toSig(ensureBytes("DER", v));
-      return new b(k, A);
+      const { r: x, s: R } = DER.toSig(ensureBytes("DER", v));
+      return new b(x, R);
     }
     assertValidity() {
       aInRange("r", this.r, _1n$1, r), aInRange("s", this.s, _1n$1, r);
@@ -5928,13 +5928,13 @@ function weierstrass(n) {
       return new b(this.r, this.s, v);
     }
     recoverPublicKey(v) {
-      const { r: k, s: A, recovery: N } = this, I = R(ensureBytes("msgHash", v));
+      const { r: x, s: R, recovery: N } = this, I = C(ensureBytes("msgHash", v));
       if (N == null || ![0, 1, 2, 3].includes(N))
         throw new Error("recovery id invalid");
-      const D = N === 2 || N === 3 ? k + e.n : k;
+      const D = N === 2 || N === 3 ? x + e.n : x;
       if (D >= t.ORDER)
         throw new Error("recovery id 2 or 3 invalid");
-      const O = N & 1 ? "03" : "02", H = l.fromHex(O + p(D)), z = c(D), V = a(-I * z), W = a(A * z), j = l.BASE.multiplyAndAddUnsafe(H, V, W);
+      const U = N & 1 ? "03" : "02", O = l.fromHex(U + p(D)), z = c(D), V = a(-I * z), W = a(R * z), j = l.BASE.multiplyAndAddUnsafe(O, V, W);
       if (!j)
         throw new Error("point at infinify");
       return j.assertValidity(), j;
@@ -5962,9 +5962,9 @@ function weierstrass(n) {
     }
   }
   const w = {
-    isValidPrivateKey(T) {
+    isValidPrivateKey(A) {
       try {
-        return u(T), !0;
+        return u(A), !0;
       } catch {
         return !1;
       }
@@ -5975,8 +5975,8 @@ function weierstrass(n) {
      * (groupLen + ceil(groupLen / 2)) with modulo bias being negligible.
      */
     randomPrivateKey: () => {
-      const T = getMinHashLength(e.n);
-      return mapHashToField(e.randomBytes(T), e.n);
+      const A = getMinHashLength(e.n);
+      return mapHashToField(e.randomBytes(A), e.n);
     },
     /**
      * Creates precompute table for an arbitrary EC point. Makes point "cached".
@@ -5986,50 +5986,50 @@ function weierstrass(n) {
      * const fast = utils.precompute(8, ProjectivePoint.fromHex(someonesPubKey));
      * fast.multiply(privKey); // much faster ECDH now
      */
-    precompute(T = 8, v = l.BASE) {
-      return v._setWindowSize(T), v.multiply(BigInt(3)), v;
+    precompute(A = 8, v = l.BASE) {
+      return v._setWindowSize(A), v.multiply(BigInt(3)), v;
     }
   };
-  function $(T, v = !0) {
-    return l.fromPrivateKey(T).toRawBytes(v);
+  function $(A, v = !0) {
+    return l.fromPrivateKey(A).toRawBytes(v);
   }
-  function B(T) {
-    const v = isBytes(T), k = typeof T == "string", A = (v || k) && T.length;
-    return v ? A === s || A === o : k ? A === 2 * s || A === 2 * o : T instanceof l;
+  function B(A) {
+    const v = isBytes(A), x = typeof A == "string", R = (v || x) && A.length;
+    return v ? R === s || R === o : x ? R === 2 * s || R === 2 * o : A instanceof l;
   }
-  function P(T, v, k = !0) {
-    if (B(T))
+  function P(A, v, x = !0) {
+    if (B(A))
       throw new Error("first arg must be private key");
     if (!B(v))
       throw new Error("second arg must be public key");
-    return l.fromHex(v).multiply(u(T)).toRawBytes(k);
+    return l.fromHex(v).multiply(u(A)).toRawBytes(x);
   }
-  const U = e.bits2int || function(T) {
-    if (T.length > 8192)
+  const M = e.bits2int || function(A) {
+    if (A.length > 8192)
       throw new Error("input is too large");
-    const v = bytesToNumberBE(T), k = T.length * 8 - e.nBitLength;
-    return k > 0 ? v >> BigInt(k) : v;
-  }, R = e.bits2int_modN || function(T) {
-    return a(U(T));
-  }, C = bitMask(e.nBitLength);
-  function L(T) {
-    return aInRange("num < 2^" + e.nBitLength, T, _0n$1, C), numberToBytesBE(T, e.nByteLength);
+    const v = bytesToNumberBE(A), x = A.length * 8 - e.nBitLength;
+    return x > 0 ? v >> BigInt(x) : v;
+  }, C = e.bits2int_modN || function(A) {
+    return a(M(A));
+  }, S = bitMask(e.nBitLength);
+  function L(A) {
+    return aInRange("num < 2^" + e.nBitLength, A, _0n$1, S), numberToBytesBE(A, e.nByteLength);
   }
-  function M(T, v, k = F) {
-    if (["recovered", "canonical"].some((Z) => Z in k))
+  function F(A, v, x = H) {
+    if (["recovered", "canonical"].some((Z) => Z in x))
       throw new Error("sign() legacy options not supported");
-    const { hash: A, randomBytes: N } = e;
-    let { lowS: I, prehash: D, extraEntropy: O } = k;
-    I == null && (I = !0), T = ensureBytes("msgHash", T), validateSigVerOpts(k), D && (T = ensureBytes("prehashed msgHash", A(T)));
-    const H = R(T), z = u(v), V = [L(z), L(H)];
-    if (O != null && O !== !1) {
-      const Z = O === !0 ? N(t.BYTES) : O;
+    const { hash: R, randomBytes: N } = e;
+    let { lowS: I, prehash: D, extraEntropy: U } = x;
+    I == null && (I = !0), A = ensureBytes("msgHash", A), validateSigVerOpts(x), D && (A = ensureBytes("prehashed msgHash", R(A)));
+    const O = C(A), z = u(v), V = [L(z), L(O)];
+    if (U != null && U !== !1) {
+      const Z = U === !0 ? N(t.BYTES) : U;
       V.push(ensureBytes("extraEntropy", Z));
     }
-    const W = concatBytes(...V), j = H;
+    const W = concatBytes(...V), j = O;
     function G(Z) {
-      const Y = U(Z);
-      if (!f(Y))
+      const Y = M(Z);
+      if (!h(Y))
         return;
       const K = c(Y), re = l.BASE.multiply(Y).toAffine(), J = a(re.x);
       if (J === _0n$1)
@@ -6042,43 +6042,43 @@ function weierstrass(n) {
     }
     return { seed: W, k2sig: G };
   }
-  const F = { lowS: e.lowS, prehash: !1 }, x = { lowS: e.lowS, prehash: !1 };
-  function _(T, v, k = F) {
-    const { seed: A, k2sig: N } = M(T, v, k), I = e;
-    return createHmacDrbg(I.hash.outputLen, I.nByteLength, I.hmac)(A, N);
+  const H = { lowS: e.lowS, prehash: !1 }, k = { lowS: e.lowS, prehash: !1 };
+  function _(A, v, x = H) {
+    const { seed: R, k2sig: N } = F(A, v, x), I = e;
+    return createHmacDrbg(I.hash.outputLen, I.nByteLength, I.hmac)(R, N);
   }
   l.BASE._setWindowSize(8);
-  function S(T, v, k, A = x) {
+  function T(A, v, x, R = k) {
     var X;
-    const N = T;
-    v = ensureBytes("msgHash", v), k = ensureBytes("publicKey", k);
-    const { lowS: I, prehash: D, format: O } = A;
-    if (validateSigVerOpts(A), "strict" in A)
+    const N = A;
+    v = ensureBytes("msgHash", v), x = ensureBytes("publicKey", x);
+    const { lowS: I, prehash: D, format: U } = R;
+    if (validateSigVerOpts(R), "strict" in R)
       throw new Error("options.strict was renamed to lowS");
-    if (O !== void 0 && O !== "compact" && O !== "der")
+    if (U !== void 0 && U !== "compact" && U !== "der")
       throw new Error("format must be compact or der");
-    const H = typeof N == "string" || isBytes(N), z = !H && !O && typeof N == "object" && N !== null && typeof N.r == "bigint" && typeof N.s == "bigint";
-    if (!H && !z)
+    const O = typeof N == "string" || isBytes(N), z = !O && !U && typeof N == "object" && N !== null && typeof N.r == "bigint" && typeof N.s == "bigint";
+    if (!O && !z)
       throw new Error("invalid signature, expected Uint8Array, hex string or Signature instance");
     let V, W;
     try {
-      if (z && (V = new b(N.r, N.s)), H) {
+      if (z && (V = new b(N.r, N.s)), O) {
         try {
-          O !== "compact" && (V = b.fromDER(N));
+          U !== "compact" && (V = b.fromDER(N));
         } catch (te) {
           if (!(te instanceof DER.Err))
             throw te;
         }
-        !V && O !== "der" && (V = b.fromCompact(N));
+        !V && U !== "der" && (V = b.fromCompact(N));
       }
-      W = l.fromHex(k);
+      W = l.fromHex(x);
     } catch {
       return !1;
     }
     if (!V || I && V.hasHighS())
       return !1;
     D && (v = e.hash(v));
-    const { r: j, s: G } = V, Z = R(v), Y = c(G), K = a(Z * Y), re = a(j * Y), J = (X = l.BASE.multiplyAndAddUnsafe(W, K, re)) == null ? void 0 : X.toAffine();
+    const { r: j, s: G } = V, Z = C(v), Y = c(G), K = a(Z * Y), re = a(j * Y), J = (X = l.BASE.multiplyAndAddUnsafe(W, K, re)) == null ? void 0 : X.toAffine();
     return J ? a(J.x) === j : !1;
   }
   return {
@@ -6086,7 +6086,7 @@ function weierstrass(n) {
     getPublicKey: $,
     getSharedSecret: P,
     sign: _,
-    verify: S,
+    verify: T,
     ProjectivePoint: l,
     Signature: b,
     utils: w
@@ -6107,10 +6107,10 @@ function createCurve(n, e) {
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
 const secp256k1P = BigInt("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"), secp256k1N = BigInt("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"), _1n = BigInt(1), _2n = BigInt(2), divNearest = (n, e) => (n + e / _2n) / e;
 function sqrtMod(n) {
-  const e = secp256k1P, t = BigInt(3), r = BigInt(6), s = BigInt(11), o = BigInt(22), a = BigInt(23), c = BigInt(44), l = BigInt(88), u = n * n * n % e, h = u * u * n % e, f = pow2(h, t, e) * h % e, p = pow2(f, t, e) * h % e, m = pow2(p, _2n, e) * u % e, E = pow2(m, s, e) * m % e, g = pow2(E, o, e) * E % e, b = pow2(g, c, e) * g % e, w = pow2(b, l, e) * b % e, $ = pow2(w, c, e) * g % e, B = pow2($, t, e) * h % e, P = pow2(B, a, e) * E % e, U = pow2(P, r, e) * u % e, R = pow2(U, _2n, e);
-  if (!Fpk1.eql(Fpk1.sqr(R), n))
+  const e = secp256k1P, t = BigInt(3), r = BigInt(6), s = BigInt(11), o = BigInt(22), a = BigInt(23), c = BigInt(44), l = BigInt(88), u = n * n * n % e, f = u * u * n % e, h = pow2(f, t, e) * f % e, p = pow2(h, t, e) * f % e, m = pow2(p, _2n, e) * u % e, E = pow2(m, s, e) * m % e, g = pow2(E, o, e) * E % e, b = pow2(g, c, e) * g % e, w = pow2(b, l, e) * b % e, $ = pow2(w, c, e) * g % e, B = pow2($, t, e) * f % e, P = pow2(B, a, e) * E % e, M = pow2(P, r, e) * u % e, C = pow2(M, _2n, e);
+  if (!Fpk1.eql(Fpk1.sqr(C), n))
     throw new Error("Cannot find square root");
-  return R;
+  return C;
 }
 const Fpk1 = Field(secp256k1P, void 0, void 0, { sqrt: sqrtMod }), secp256k1 = createCurve({
   a: BigInt(0),
@@ -6132,11 +6132,11 @@ const Fpk1 = Field(secp256k1P, void 0, void 0, { sqrt: sqrtMod }), secp256k1 = c
     beta: BigInt("0x7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee"),
     splitScalar: (n) => {
       const e = secp256k1N, t = BigInt("0x3086d221a7d46bcde86c90e49284eb15"), r = -_1n * BigInt("0xe4437ed6010e88286f547fa90abfe4c3"), s = BigInt("0x114ca50f7a8e2f3f657c1108d9d44cfd8"), o = t, a = BigInt("0x100000000000000000000000000000000"), c = divNearest(o * n, e), l = divNearest(-r * n, e);
-      let u = mod(n - c * t - l * s, e), h = mod(-c * r - l * o, e);
-      const f = u > a, p = h > a;
-      if (f && (u = e - u), p && (h = e - h), u > a || h > a)
+      let u = mod(n - c * t - l * s, e), f = mod(-c * r - l * o, e);
+      const h = u > a, p = f > a;
+      if (h && (u = e - u), p && (f = e - f), u > a || f > a)
         throw new Error("splitScalar: Endomorphism failed, k=" + n);
-      return { k1neg: f, k1: u, k2neg: p, k2: h };
+      return { k1neg: h, k1: u, k2neg: p, k2: f };
     }
   }
 }, sha256), _0n = BigInt(0), TAGGED_HASH_PREFIXES = {};
@@ -6172,8 +6172,8 @@ function schnorrSign(n, e, t = randomBytes(32)) {
   const r = ensureBytes("message", n), { bytes: s, scalar: o } = schnorrGetExtPubKey(e), a = ensureBytes("auxRand", t, 32), c = numTo32b(o ^ num(taggedHash("BIP0340/aux", a))), l = taggedHash("BIP0340/nonce", c, s, r), u = modN(num(l));
   if (u === _0n)
     throw new Error("sign failed: k is zero");
-  const { bytes: h, scalar: f } = schnorrGetExtPubKey(u), p = challenge(h, s, r), m = new Uint8Array(64);
-  if (m.set(h, 0), m.set(numTo32b(modN(f + p * o)), 32), !schnorrVerify(m, r, s))
+  const { bytes: f, scalar: h } = schnorrGetExtPubKey(u), p = challenge(f, s, r), m = new Uint8Array(64);
+  if (m.set(f, 0), m.set(numTo32b(modN(h + p * o)), 32), !schnorrVerify(m, r, s))
     throw new Error("sign: Invalid signature produced");
   return m;
 }
@@ -6186,8 +6186,8 @@ function schnorrVerify(n, e, t) {
     const l = num(r.subarray(32, 64));
     if (!inRange(l, _1n, secp256k1N))
       return !1;
-    const u = challenge(numTo32b(c), pointToBytes(a), s), h = GmulAdd(a, l, modN(-u));
-    return !(!h || !h.hasEvenY() || h.toAffine().x !== c);
+    const u = challenge(numTo32b(c), pointToBytes(a), s), f = GmulAdd(a, l, modN(-u));
+    return !(!f || !f.hasEvenY() || f.toAffine().x !== c);
   } catch {
     return !1;
   }
@@ -6211,10 +6211,10 @@ Object.defineProperty(LRUCacheNode$1, "__esModule", { value: !0 });
 LRUCacheNode$1.LRUCacheNode = void 0;
 class LRUCacheNode {
   constructor(e, t, r) {
-    const { entryExpirationTimeInMS: s = null, next: o = null, prev: a = null, onEntryEvicted: c, onEntryMarkedAsMostRecentlyUsed: l, clone: u, cloneFn: h } = r ?? {};
+    const { entryExpirationTimeInMS: s = null, next: o = null, prev: a = null, onEntryEvicted: c, onEntryMarkedAsMostRecentlyUsed: l, clone: u, cloneFn: f } = r ?? {};
     if (typeof s == "number" && (s <= 0 || Number.isNaN(s)))
       throw new Error("entryExpirationTimeInMS must either be null (no expiry) or greater than 0");
-    this.clone = u ?? !1, this.cloneFn = h ?? this.defaultClone, this.key = e, this.internalValue = this.clone ? this.cloneFn(t) : t, this.created = Date.now(), this.entryExpirationTimeInMS = s, this.next = o, this.prev = a, this.onEntryEvicted = c, this.onEntryMarkedAsMostRecentlyUsed = l;
+    this.clone = u ?? !1, this.cloneFn = f ?? this.defaultClone, this.key = e, this.internalValue = this.clone ? this.cloneFn(t) : t, this.created = Date.now(), this.entryExpirationTimeInMS = s, this.next = o, this.prev = a, this.onEntryEvicted = c, this.onEntryMarkedAsMostRecentlyUsed = l;
   }
   get value() {
     return this.clone ? this.cloneFn(this.internalValue) : this.internalValue;
@@ -6799,318 +6799,318 @@ var lib = {};
 (function(n) {
   /*! scure-base - MIT License (c) 2022 Paul Miller (paulmillr.com) */
   Object.defineProperty(n, "__esModule", { value: !0 }), n.bytes = n.stringToBytes = n.str = n.bytesToString = n.hex = n.utf8 = n.bech32m = n.bech32 = n.base58check = n.base58xmr = n.base58xrp = n.base58flickr = n.base58 = n.base64url = n.base64 = n.base32crockford = n.base32hex = n.base32 = n.base16 = n.utils = n.assertNumber = void 0;
-  function e(x) {
-    if (!Number.isSafeInteger(x))
-      throw new Error(`Wrong integer: ${x}`);
+  function e(k) {
+    if (!Number.isSafeInteger(k))
+      throw new Error(`Wrong integer: ${k}`);
   }
   n.assertNumber = e;
-  function t(...x) {
-    const _ = (v, k) => (A) => v(k(A)), S = Array.from(x).reverse().reduce((v, k) => v ? _(v, k.encode) : k.encode, void 0), T = x.reduce((v, k) => v ? _(v, k.decode) : k.decode, void 0);
-    return { encode: S, decode: T };
+  function t(...k) {
+    const _ = (v, x) => (R) => v(x(R)), T = Array.from(k).reverse().reduce((v, x) => v ? _(v, x.encode) : x.encode, void 0), A = k.reduce((v, x) => v ? _(v, x.decode) : x.decode, void 0);
+    return { encode: T, decode: A };
   }
-  function r(x) {
+  function r(k) {
     return {
       encode: (_) => {
         if (!Array.isArray(_) || _.length && typeof _[0] != "number")
           throw new Error("alphabet.encode input should be an array of numbers");
-        return _.map((S) => {
-          if (e(S), S < 0 || S >= x.length)
-            throw new Error(`Digit index outside alphabet: ${S} (alphabet: ${x.length})`);
-          return x[S];
+        return _.map((T) => {
+          if (e(T), T < 0 || T >= k.length)
+            throw new Error(`Digit index outside alphabet: ${T} (alphabet: ${k.length})`);
+          return k[T];
         });
       },
       decode: (_) => {
         if (!Array.isArray(_) || _.length && typeof _[0] != "string")
           throw new Error("alphabet.decode input should be array of strings");
-        return _.map((S) => {
-          if (typeof S != "string")
-            throw new Error(`alphabet.decode: not string element=${S}`);
-          const T = x.indexOf(S);
-          if (T === -1)
-            throw new Error(`Unknown letter: "${S}". Allowed: ${x}`);
-          return T;
+        return _.map((T) => {
+          if (typeof T != "string")
+            throw new Error(`alphabet.decode: not string element=${T}`);
+          const A = k.indexOf(T);
+          if (A === -1)
+            throw new Error(`Unknown letter: "${T}". Allowed: ${k}`);
+          return A;
         });
       }
     };
   }
-  function s(x = "") {
-    if (typeof x != "string")
+  function s(k = "") {
+    if (typeof k != "string")
       throw new Error("join separator should be string");
     return {
       encode: (_) => {
         if (!Array.isArray(_) || _.length && typeof _[0] != "string")
           throw new Error("join.encode input should be array of strings");
-        for (let S of _)
-          if (typeof S != "string")
-            throw new Error(`join.encode: non-string input=${S}`);
-        return _.join(x);
+        for (let T of _)
+          if (typeof T != "string")
+            throw new Error(`join.encode: non-string input=${T}`);
+        return _.join(k);
       },
       decode: (_) => {
         if (typeof _ != "string")
           throw new Error("join.decode input should be string");
-        return _.split(x);
+        return _.split(k);
       }
     };
   }
-  function o(x, _ = "=") {
-    if (e(x), typeof _ != "string")
+  function o(k, _ = "=") {
+    if (e(k), typeof _ != "string")
       throw new Error("padding chr should be string");
     return {
-      encode(S) {
-        if (!Array.isArray(S) || S.length && typeof S[0] != "string")
+      encode(T) {
+        if (!Array.isArray(T) || T.length && typeof T[0] != "string")
           throw new Error("padding.encode input should be array of strings");
-        for (let T of S)
-          if (typeof T != "string")
-            throw new Error(`padding.encode: non-string input=${T}`);
-        for (; S.length * x % 8; )
-          S.push(_);
-        return S;
+        for (let A of T)
+          if (typeof A != "string")
+            throw new Error(`padding.encode: non-string input=${A}`);
+        for (; T.length * k % 8; )
+          T.push(_);
+        return T;
       },
-      decode(S) {
-        if (!Array.isArray(S) || S.length && typeof S[0] != "string")
+      decode(T) {
+        if (!Array.isArray(T) || T.length && typeof T[0] != "string")
           throw new Error("padding.encode input should be array of strings");
-        for (let v of S)
+        for (let v of T)
           if (typeof v != "string")
             throw new Error(`padding.decode: non-string input=${v}`);
-        let T = S.length;
-        if (T * x % 8)
+        let A = T.length;
+        if (A * k % 8)
           throw new Error("Invalid padding: string should have whole number of bytes");
-        for (; T > 0 && S[T - 1] === _; T--)
-          if (!((T - 1) * x % 8))
+        for (; A > 0 && T[A - 1] === _; A--)
+          if (!((A - 1) * k % 8))
             throw new Error("Invalid padding: string has too much padding");
-        return S.slice(0, T);
+        return T.slice(0, A);
       }
     };
   }
-  function a(x) {
-    if (typeof x != "function")
+  function a(k) {
+    if (typeof k != "function")
       throw new Error("normalize fn should be function");
-    return { encode: (_) => _, decode: (_) => x(_) };
+    return { encode: (_) => _, decode: (_) => k(_) };
   }
-  function c(x, _, S) {
+  function c(k, _, T) {
     if (_ < 2)
       throw new Error(`convertRadix: wrong from=${_}, base cannot be less than 2`);
-    if (S < 2)
-      throw new Error(`convertRadix: wrong to=${S}, base cannot be less than 2`);
-    if (!Array.isArray(x))
+    if (T < 2)
+      throw new Error(`convertRadix: wrong to=${T}, base cannot be less than 2`);
+    if (!Array.isArray(k))
       throw new Error("convertRadix: data should be array");
-    if (!x.length)
+    if (!k.length)
       return [];
-    let T = 0;
-    const v = [], k = Array.from(x);
-    for (k.forEach((A) => {
-      if (e(A), A < 0 || A >= _)
-        throw new Error(`Wrong integer: ${A}`);
+    let A = 0;
+    const v = [], x = Array.from(k);
+    for (x.forEach((R) => {
+      if (e(R), R < 0 || R >= _)
+        throw new Error(`Wrong integer: ${R}`);
     }); ; ) {
-      let A = 0, N = !0;
-      for (let I = T; I < k.length; I++) {
-        const D = k[I], O = _ * A + D;
-        if (!Number.isSafeInteger(O) || _ * A / _ !== A || O - D !== _ * A)
+      let R = 0, N = !0;
+      for (let I = A; I < x.length; I++) {
+        const D = x[I], U = _ * R + D;
+        if (!Number.isSafeInteger(U) || _ * R / _ !== R || U - D !== _ * R)
           throw new Error("convertRadix: carry overflow");
-        if (A = O % S, k[I] = Math.floor(O / S), !Number.isSafeInteger(k[I]) || k[I] * S + A !== O)
+        if (R = U % T, x[I] = Math.floor(U / T), !Number.isSafeInteger(x[I]) || x[I] * T + R !== U)
           throw new Error("convertRadix: carry overflow");
         if (N)
-          k[I] ? N = !1 : T = I;
+          x[I] ? N = !1 : A = I;
         else continue;
       }
-      if (v.push(A), N)
+      if (v.push(R), N)
         break;
     }
-    for (let A = 0; A < x.length - 1 && x[A] === 0; A++)
+    for (let R = 0; R < k.length - 1 && k[R] === 0; R++)
       v.push(0);
     return v.reverse();
   }
-  const l = (x, _) => _ ? l(_, x % _) : x, u = (x, _) => x + (_ - l(x, _));
-  function h(x, _, S, T) {
-    if (!Array.isArray(x))
+  const l = (k, _) => _ ? l(_, k % _) : k, u = (k, _) => k + (_ - l(k, _));
+  function f(k, _, T, A) {
+    if (!Array.isArray(k))
       throw new Error("convertRadix2: data should be array");
     if (_ <= 0 || _ > 32)
       throw new Error(`convertRadix2: wrong from=${_}`);
-    if (S <= 0 || S > 32)
-      throw new Error(`convertRadix2: wrong to=${S}`);
-    if (u(_, S) > 32)
-      throw new Error(`convertRadix2: carry overflow from=${_} to=${S} carryBits=${u(_, S)}`);
-    let v = 0, k = 0;
-    const A = 2 ** S - 1, N = [];
-    for (const I of x) {
+    if (T <= 0 || T > 32)
+      throw new Error(`convertRadix2: wrong to=${T}`);
+    if (u(_, T) > 32)
+      throw new Error(`convertRadix2: carry overflow from=${_} to=${T} carryBits=${u(_, T)}`);
+    let v = 0, x = 0;
+    const R = 2 ** T - 1, N = [];
+    for (const I of k) {
       if (e(I), I >= 2 ** _)
         throw new Error(`convertRadix2: invalid data word=${I} from=${_}`);
-      if (v = v << _ | I, k + _ > 32)
-        throw new Error(`convertRadix2: carry overflow pos=${k} from=${_}`);
-      for (k += _; k >= S; k -= S)
-        N.push((v >> k - S & A) >>> 0);
-      v &= 2 ** k - 1;
+      if (v = v << _ | I, x + _ > 32)
+        throw new Error(`convertRadix2: carry overflow pos=${x} from=${_}`);
+      for (x += _; x >= T; x -= T)
+        N.push((v >> x - T & R) >>> 0);
+      v &= 2 ** x - 1;
     }
-    if (v = v << S - k & A, !T && k >= _)
+    if (v = v << T - x & R, !A && x >= _)
       throw new Error("Excess padding");
-    if (!T && v)
+    if (!A && v)
       throw new Error(`Non-zero padding: ${v}`);
-    return T && k > 0 && N.push(v >>> 0), N;
+    return A && x > 0 && N.push(v >>> 0), N;
   }
-  function f(x) {
-    return e(x), {
+  function h(k) {
+    return e(k), {
       encode: (_) => {
         if (!(_ instanceof Uint8Array))
           throw new Error("radix.encode input should be Uint8Array");
-        return c(Array.from(_), 2 ** 8, x);
+        return c(Array.from(_), 2 ** 8, k);
       },
       decode: (_) => {
         if (!Array.isArray(_) || _.length && typeof _[0] != "number")
           throw new Error("radix.decode input should be array of strings");
-        return Uint8Array.from(c(_, x, 2 ** 8));
+        return Uint8Array.from(c(_, k, 2 ** 8));
       }
     };
   }
-  function p(x, _ = !1) {
-    if (e(x), x <= 0 || x > 32)
+  function p(k, _ = !1) {
+    if (e(k), k <= 0 || k > 32)
       throw new Error("radix2: bits should be in (0..32]");
-    if (u(8, x) > 32 || u(x, 8) > 32)
+    if (u(8, k) > 32 || u(k, 8) > 32)
       throw new Error("radix2: carry overflow");
     return {
-      encode: (S) => {
-        if (!(S instanceof Uint8Array))
+      encode: (T) => {
+        if (!(T instanceof Uint8Array))
           throw new Error("radix2.encode input should be Uint8Array");
-        return h(Array.from(S), 8, x, !_);
+        return f(Array.from(T), 8, k, !_);
       },
-      decode: (S) => {
-        if (!Array.isArray(S) || S.length && typeof S[0] != "number")
+      decode: (T) => {
+        if (!Array.isArray(T) || T.length && typeof T[0] != "number")
           throw new Error("radix2.decode input should be array of strings");
-        return Uint8Array.from(h(S, x, 8, _));
+        return Uint8Array.from(f(T, k, 8, _));
       }
     };
   }
-  function m(x) {
-    if (typeof x != "function")
+  function m(k) {
+    if (typeof k != "function")
       throw new Error("unsafeWrapper fn should be function");
     return function(..._) {
       try {
-        return x.apply(null, _);
+        return k.apply(null, _);
       } catch {
       }
     };
   }
-  function E(x, _) {
-    if (e(x), typeof _ != "function")
+  function E(k, _) {
+    if (e(k), typeof _ != "function")
       throw new Error("checksum fn should be function");
     return {
-      encode(S) {
-        if (!(S instanceof Uint8Array))
+      encode(T) {
+        if (!(T instanceof Uint8Array))
           throw new Error("checksum.encode: input should be Uint8Array");
-        const T = _(S).slice(0, x), v = new Uint8Array(S.length + x);
-        return v.set(S), v.set(T, S.length), v;
+        const A = _(T).slice(0, k), v = new Uint8Array(T.length + k);
+        return v.set(T), v.set(A, T.length), v;
       },
-      decode(S) {
-        if (!(S instanceof Uint8Array))
+      decode(T) {
+        if (!(T instanceof Uint8Array))
           throw new Error("checksum.decode: input should be Uint8Array");
-        const T = S.slice(0, -x), v = _(T).slice(0, x), k = S.slice(-x);
-        for (let A = 0; A < x; A++)
-          if (v[A] !== k[A])
+        const A = T.slice(0, -k), v = _(A).slice(0, k), x = T.slice(-k);
+        for (let R = 0; R < k; R++)
+          if (v[R] !== x[R])
             throw new Error("Invalid checksum");
-        return T;
+        return A;
       }
     };
   }
-  n.utils = { alphabet: r, chain: t, checksum: E, radix: f, radix2: p, join: s, padding: o }, n.base16 = t(p(4), r("0123456789ABCDEF"), s("")), n.base32 = t(p(5), r("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"), o(5), s("")), n.base32hex = t(p(5), r("0123456789ABCDEFGHIJKLMNOPQRSTUV"), o(5), s("")), n.base32crockford = t(p(5), r("0123456789ABCDEFGHJKMNPQRSTVWXYZ"), s(""), a((x) => x.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1"))), n.base64 = t(p(6), r("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"), o(6), s("")), n.base64url = t(p(6), r("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), o(6), s(""));
-  const g = (x) => t(f(58), r(x), s(""));
+  n.utils = { alphabet: r, chain: t, checksum: E, radix: h, radix2: p, join: s, padding: o }, n.base16 = t(p(4), r("0123456789ABCDEF"), s("")), n.base32 = t(p(5), r("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"), o(5), s("")), n.base32hex = t(p(5), r("0123456789ABCDEFGHIJKLMNOPQRSTUV"), o(5), s("")), n.base32crockford = t(p(5), r("0123456789ABCDEFGHJKMNPQRSTVWXYZ"), s(""), a((k) => k.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1"))), n.base64 = t(p(6), r("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"), o(6), s("")), n.base64url = t(p(6), r("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), o(6), s(""));
+  const g = (k) => t(h(58), r(k), s(""));
   n.base58 = g("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"), n.base58flickr = g("123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"), n.base58xrp = g("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz");
   const b = [0, 2, 3, 5, 6, 7, 9, 10, 11];
   n.base58xmr = {
-    encode(x) {
+    encode(k) {
       let _ = "";
-      for (let S = 0; S < x.length; S += 8) {
-        const T = x.subarray(S, S + 8);
-        _ += n.base58.encode(T).padStart(b[T.length], "1");
+      for (let T = 0; T < k.length; T += 8) {
+        const A = k.subarray(T, T + 8);
+        _ += n.base58.encode(A).padStart(b[A.length], "1");
       }
       return _;
     },
-    decode(x) {
+    decode(k) {
       let _ = [];
-      for (let S = 0; S < x.length; S += 11) {
-        const T = x.slice(S, S + 11), v = b.indexOf(T.length), k = n.base58.decode(T);
-        for (let A = 0; A < k.length - v; A++)
-          if (k[A] !== 0)
+      for (let T = 0; T < k.length; T += 11) {
+        const A = k.slice(T, T + 11), v = b.indexOf(A.length), x = n.base58.decode(A);
+        for (let R = 0; R < x.length - v; R++)
+          if (x[R] !== 0)
             throw new Error("base58xmr: wrong padding");
-        _ = _.concat(Array.from(k.slice(k.length - v)));
+        _ = _.concat(Array.from(x.slice(x.length - v)));
       }
       return Uint8Array.from(_);
     }
   };
-  const w = (x) => t(E(4, (_) => x(x(_))), n.base58);
+  const w = (k) => t(E(4, (_) => k(k(_))), n.base58);
   n.base58check = w;
   const $ = t(r("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), s("")), B = [996825010, 642813549, 513874426, 1027748829, 705979059];
-  function P(x) {
-    const _ = x >> 25;
-    let S = (x & 33554431) << 5;
-    for (let T = 0; T < B.length; T++)
-      (_ >> T & 1) === 1 && (S ^= B[T]);
-    return S;
+  function P(k) {
+    const _ = k >> 25;
+    let T = (k & 33554431) << 5;
+    for (let A = 0; A < B.length; A++)
+      (_ >> A & 1) === 1 && (T ^= B[A]);
+    return T;
   }
-  function U(x, _, S = 1) {
-    const T = x.length;
+  function M(k, _, T = 1) {
+    const A = k.length;
     let v = 1;
-    for (let k = 0; k < T; k++) {
-      const A = x.charCodeAt(k);
-      if (A < 33 || A > 126)
-        throw new Error(`Invalid prefix (${x})`);
-      v = P(v) ^ A >> 5;
+    for (let x = 0; x < A; x++) {
+      const R = k.charCodeAt(x);
+      if (R < 33 || R > 126)
+        throw new Error(`Invalid prefix (${k})`);
+      v = P(v) ^ R >> 5;
     }
     v = P(v);
-    for (let k = 0; k < T; k++)
-      v = P(v) ^ x.charCodeAt(k) & 31;
-    for (let k of _)
-      v = P(v) ^ k;
-    for (let k = 0; k < 6; k++)
+    for (let x = 0; x < A; x++)
+      v = P(v) ^ k.charCodeAt(x) & 31;
+    for (let x of _)
+      v = P(v) ^ x;
+    for (let x = 0; x < 6; x++)
       v = P(v);
-    return v ^= S, $.encode(h([v % 2 ** 30], 30, 5, !1));
+    return v ^= T, $.encode(f([v % 2 ** 30], 30, 5, !1));
   }
-  function R(x) {
-    const _ = x === "bech32" ? 1 : 734539939, S = p(5), T = S.decode, v = S.encode, k = m(T);
-    function A(O, H, z = 90) {
-      if (typeof O != "string")
-        throw new Error(`bech32.encode prefix should be string, not ${typeof O}`);
-      if (!Array.isArray(H) || H.length && typeof H[0] != "number")
-        throw new Error(`bech32.encode words should be array of numbers, not ${typeof H}`);
-      const V = O.length + 7 + H.length;
+  function C(k) {
+    const _ = k === "bech32" ? 1 : 734539939, T = p(5), A = T.decode, v = T.encode, x = m(A);
+    function R(U, O, z = 90) {
+      if (typeof U != "string")
+        throw new Error(`bech32.encode prefix should be string, not ${typeof U}`);
+      if (!Array.isArray(O) || O.length && typeof O[0] != "number")
+        throw new Error(`bech32.encode words should be array of numbers, not ${typeof O}`);
+      const V = U.length + 7 + O.length;
       if (z !== !1 && V > z)
         throw new TypeError(`Length ${V} exceeds limit ${z}`);
-      return O = O.toLowerCase(), `${O}1${$.encode(H)}${U(O, H, _)}`;
+      return U = U.toLowerCase(), `${U}1${$.encode(O)}${M(U, O, _)}`;
     }
-    function N(O, H = 90) {
-      if (typeof O != "string")
-        throw new Error(`bech32.decode input should be string, not ${typeof O}`);
-      if (O.length < 8 || H !== !1 && O.length > H)
-        throw new TypeError(`Wrong string length: ${O.length} (${O}). Expected (8..${H})`);
-      const z = O.toLowerCase();
-      if (O !== z && O !== O.toUpperCase())
+    function N(U, O = 90) {
+      if (typeof U != "string")
+        throw new Error(`bech32.decode input should be string, not ${typeof U}`);
+      if (U.length < 8 || O !== !1 && U.length > O)
+        throw new TypeError(`Wrong string length: ${U.length} (${U}). Expected (8..${O})`);
+      const z = U.toLowerCase();
+      if (U !== z && U !== U.toUpperCase())
         throw new Error("String must be lowercase or uppercase");
-      O = z;
-      const V = O.lastIndexOf("1");
+      U = z;
+      const V = U.lastIndexOf("1");
       if (V === 0 || V === -1)
         throw new Error('Letter "1" must be present between prefix and data only');
-      const W = O.slice(0, V), j = O.slice(V + 1);
+      const W = U.slice(0, V), j = U.slice(V + 1);
       if (j.length < 6)
         throw new Error("Data must be at least 6 characters long");
-      const G = $.decode(j).slice(0, -6), Z = U(W, G, _);
+      const G = $.decode(j).slice(0, -6), Z = M(W, G, _);
       if (!j.endsWith(Z))
-        throw new Error(`Invalid checksum in ${O}: expected "${Z}"`);
+        throw new Error(`Invalid checksum in ${U}: expected "${Z}"`);
       return { prefix: W, words: G };
     }
     const I = m(N);
-    function D(O) {
-      const { prefix: H, words: z } = N(O, !1);
-      return { prefix: H, words: z, bytes: T(z) };
+    function D(U) {
+      const { prefix: O, words: z } = N(U, !1);
+      return { prefix: O, words: z, bytes: A(z) };
     }
-    return { encode: A, decode: N, decodeToBytes: D, decodeUnsafe: I, fromWords: T, fromWordsUnsafe: k, toWords: v };
+    return { encode: R, decode: N, decodeToBytes: D, decodeUnsafe: I, fromWords: A, fromWordsUnsafe: x, toWords: v };
   }
-  n.bech32 = R("bech32"), n.bech32m = R("bech32m"), n.utf8 = {
-    encode: (x) => new TextDecoder().decode(x),
-    decode: (x) => new TextEncoder().encode(x)
-  }, n.hex = t(p(4), r("0123456789abcdef"), s(""), a((x) => {
-    if (typeof x != "string" || x.length % 2)
-      throw new TypeError(`hex.decode: expected string, got ${typeof x} with length ${x.length}`);
-    return x.toLowerCase();
+  n.bech32 = C("bech32"), n.bech32m = C("bech32m"), n.utf8 = {
+    encode: (k) => new TextDecoder().decode(k),
+    decode: (k) => new TextEncoder().encode(k)
+  }, n.hex = t(p(4), r("0123456789abcdef"), s(""), a((k) => {
+    if (typeof k != "string" || k.length % 2)
+      throw new TypeError(`hex.decode: expected string, got ${typeof k} with length ${k.length}`);
+    return k.toLowerCase();
   }));
-  const C = {
+  const S = {
     utf8: n.utf8,
     hex: n.hex,
     base16: n.base16,
@@ -7119,22 +7119,22 @@ var lib = {};
     base64url: n.base64url,
     base58: n.base58,
     base58xmr: n.base58xmr
-  }, L = `Invalid encoding type. Available types: ${Object.keys(C).join(", ")}`, M = (x, _) => {
-    if (typeof x != "string" || !C.hasOwnProperty(x))
+  }, L = `Invalid encoding type. Available types: ${Object.keys(S).join(", ")}`, F = (k, _) => {
+    if (typeof k != "string" || !S.hasOwnProperty(k))
       throw new TypeError(L);
     if (!(_ instanceof Uint8Array))
       throw new TypeError("bytesToString() expects Uint8Array");
-    return C[x].encode(_);
+    return S[k].encode(_);
   };
-  n.bytesToString = M, n.str = n.bytesToString;
-  const F = (x, _) => {
-    if (!C.hasOwnProperty(x))
+  n.bytesToString = F, n.str = n.bytesToString;
+  const H = (k, _) => {
+    if (!S.hasOwnProperty(k))
       throw new TypeError(L);
     if (typeof _ != "string")
       throw new TypeError("stringToBytes() expects string");
-    return C[x].decode(_);
+    return S[k].decode(_);
   };
-  n.stringToBytes = F, n.bytes = n.stringToBytes;
+  n.stringToBytes = H, n.bytes = n.stringToBytes;
 })(lib);
 const { bech32, hex, utf8 } = lib;
 BigInt(1e3), BigInt(1e6), BigInt(1e9), BigInt(1e12);
@@ -7207,20 +7207,20 @@ function chooseRelayCombinationForPubkeys(n, e, t, { count: r, preferredRelays: 
   a.forEach((p) => {
     s == null || s.add(p.url);
   });
-  const c = /* @__PURE__ */ new Map(), { pubkeysToRelays: l, authorsMissingRelays: u } = getAllRelaysForAllPubkeys(n, e, t), h = getTopRelaysForAuthors(n, e), f = (p, m) => {
+  const c = /* @__PURE__ */ new Map(), { pubkeysToRelays: l, authorsMissingRelays: u } = getAllRelaysForAllPubkeys(n, e, t), f = getTopRelaysForAuthors(n, e), h = (p, m) => {
     const E = c.get(m) || [];
     E.push(p), c.set(m, E);
   };
   for (const [p, m] of l.entries()) {
     let E = r;
     for (const g of a)
-      m.has(g.url) && (f(p, g.url), E--);
+      m.has(g.url) && (h(p, g.url), E--);
     for (const g of m)
-      c.has(g) && (f(p, g), E--);
+      c.has(g) && (h(p, g), E--);
     if (!(E <= 0))
-      for (const g of h) {
+      for (const g of f) {
         if (E <= 0) break;
-        m.has(g) && (f(p, g), E--);
+        m.has(g) && (h(p, g), E--);
       }
   }
   for (const p of u)
@@ -7265,21 +7265,21 @@ var DATA_URL_DEFAULT_MIME_TYPE = "text/plain", DATA_URL_DEFAULT_CHARSET = "us-as
     return !1;
   }
 }, normalizeDataURL = (n, { stripHash: e }) => {
-  var f, p, m, E;
+  var h, p, m, E;
   const t = /^data:(?<type>[^,]*?),(?<data>[^#]*?)(?:#(?<hash>.*))?$/.exec(n);
   if (!t)
     throw new Error(`Invalid URL: ${n}`);
-  const r = ((f = t.groups) == null ? void 0 : f.type) ?? "", s = ((p = t.groups) == null ? void 0 : p.data) ?? "";
+  const r = ((h = t.groups) == null ? void 0 : h.type) ?? "", s = ((p = t.groups) == null ? void 0 : p.data) ?? "";
   let o = ((m = t.groups) == null ? void 0 : m.hash) ?? "";
   const a = r.split(";");
   o = e ? "" : o;
   let c = !1;
   a[a.length - 1] === "base64" && (a.pop(), c = !0);
-  const l = ((E = a.shift()) == null ? void 0 : E.toLowerCase()) ?? "", h = [...a.map((g) => {
+  const l = ((E = a.shift()) == null ? void 0 : E.toLowerCase()) ?? "", f = [...a.map((g) => {
     let [b, w = ""] = g.split("=").map(($) => $.trim());
     return b === "charset" && (w = w.toLowerCase(), w === DATA_URL_DEFAULT_CHARSET) ? "" : `${b}${w ? `=${w}` : ""}`;
   }).filter(Boolean)];
-  return c && h.push("base64"), (h.length > 0 || l && l !== DATA_URL_DEFAULT_MIME_TYPE) && h.unshift(l), `data:${h.join(";")},${c ? s.trim() : s}${o ? `#${o}` : ""}`;
+  return c && f.push("base64"), (f.length > 0 || l && l !== DATA_URL_DEFAULT_MIME_TYPE) && f.unshift(l), `data:${f.join(";")},${c ? s.trim() : s}${o ? `#${o}` : ""}`;
 };
 function normalizeUrl(n, e = {}) {
   if (e = {
@@ -7311,11 +7311,11 @@ function normalizeUrl(n, e = {}) {
     const a = /\b[a-z][a-z\d+\-.]{1,50}:\/\//g;
     let c = 0, l = "";
     for (; ; ) {
-      const h = a.exec(s.pathname);
-      if (!h)
+      const f = a.exec(s.pathname);
+      if (!f)
         break;
-      const f = h[0], p = h.index, m = s.pathname.slice(c, p);
-      l += m.replace(/\/{2,}/g, "/"), l += f, c = p + f.length;
+      const h = f[0], p = f.index, m = s.pathname.slice(c, p);
+      l += m.replace(/\/{2,}/g, "/"), l += h, c = p + h.length;
     }
     const u = s.pathname.slice(c, s.pathname.length);
     l += u.replace(/\/{2,}/g, "/"), s.pathname = l;
@@ -7747,30 +7747,30 @@ var MAX_RECONNECT_ATTEMPTS = 5, FLAPPING_THRESHOLD_MS = 1e3, NDKRelayConnectivit
    */
   async publish(n, e = 2500) {
     let t;
-    const r = () => new Promise((h, f) => {
+    const r = () => new Promise((f, h) => {
       try {
         this.publishEvent(n).then((p) => {
-          this.ndkRelay.emit("published", n), n.emit("relay:published", this.ndkRelay), h(!0);
-        }).catch(f);
+          this.ndkRelay.emit("published", n), n.emit("relay:published", this.ndkRelay), f(!0);
+        }).catch(h);
       } catch (p) {
-        f(p);
+        h(p);
       }
-    }), s = new Promise((h, f) => {
+    }), s = new Promise((f, h) => {
       t = setTimeout(() => {
-        t = void 0, f(new Error(`Timeout: ${e}ms`));
+        t = void 0, h(new Error(`Timeout: ${e}ms`));
       }, e);
     }), o = () => {
-      r().then((h) => a(h)).catch((h) => c(h));
+      r().then((f) => a(f)).catch((f) => c(f));
     };
     let a, c;
-    const l = (h) => {
-      throw this.ndkRelay.debug("Publish failed", h, n.id), this.ndkRelay.emit("publish:failed", n, h), n.emit("relay:publish:failed", this.ndkRelay, h), h;
+    const l = (f) => {
+      throw this.ndkRelay.debug("Publish failed", f, n.id), this.ndkRelay.emit("publish:failed", n, f), n.emit("relay:publish:failed", this.ndkRelay, f), f;
     }, u = () => {
       t && clearTimeout(t), this.ndkRelay.removeListener("connect", o);
     };
     return this.ndkRelay.status >= 5 ? Promise.race([r(), s]).catch(l).finally(u) : (this.ndkRelay.status <= 1 ? (console.warn("Relay is disconnected, trying to connect to publish an event", this.ndkRelay.url), this.ndkRelay.connect()) : console.warn("Relay not connected, waiting for connection to publish an event", this.ndkRelay.url), Promise.race([
-      new Promise((h, f) => {
-        a = h, c = f, this.ndkRelay.once("connect", o);
+      new Promise((f, h) => {
+        a = f, c = h, this.ndkRelay.once("connect", o);
       }),
       s
     ]).catch(l).finally(u));
@@ -8058,7 +8058,7 @@ var NDKRelaySubscription = class {
     let e = this.subscriptions.get(n.fingerprint) ?? [];
     e ? e.length === 1 ? this.subscriptions.delete(n.fingerprint) : (e = e.filter((t) => t.id !== n.id), this.subscriptions.set(n.fingerprint, e)) : console.warn("Unexpectedly did not find a subscription with fingerprint", n.fingerprint);
   }
-}, be, NDKRelay = (be = class extends lib$1.EventEmitter {
+}, me, NDKRelay = (me = class extends lib$1.EventEmitter {
   constructor(t, r, s) {
     super();
     y(this, "url");
@@ -8096,7 +8096,7 @@ var NDKRelaySubscription = class {
     y(this, "debug");
     y(this, "req");
     y(this, "close");
-    this.url = normalizeRelayUrl(t), this.scores = /* @__PURE__ */ new Map(), this.debug = createDebug5(`ndk:relay:${t}`), this.connectivity = new NDKRelayConnectivity(this, s), this.connectivity.netDebug = s == null ? void 0 : s.netDebug, this.req = this.connectivity.req.bind(this.connectivity), this.close = this.connectivity.close.bind(this.connectivity), this.subs = new NDKRelaySubscriptionManager(this, s.subManager), this.publisher = new NDKRelayPublisher(this), this.authPolicy = r, this.targetValidationRatio = s == null ? void 0 : s.initialValidationRatio, this.lowestValidationRatio = s == null ? void 0 : s.lowestValidationRatio, this.validationRatioFn = ((s == null ? void 0 : s.validationRatioFn) ?? be.defaultValidationRatioUpdateFn).bind(this), this.updateValidationRatio(), s || console.trace("relay created without ndk");
+    this.url = normalizeRelayUrl(t), this.scores = /* @__PURE__ */ new Map(), this.debug = createDebug5(`ndk:relay:${t}`), this.connectivity = new NDKRelayConnectivity(this, s), this.connectivity.netDebug = s == null ? void 0 : s.netDebug, this.req = this.connectivity.req.bind(this.connectivity), this.close = this.connectivity.close.bind(this.connectivity), this.subs = new NDKRelaySubscriptionManager(this, s.subManager), this.publisher = new NDKRelayPublisher(this), this.authPolicy = r, this.targetValidationRatio = s == null ? void 0 : s.initialValidationRatio, this.lowestValidationRatio = s == null ? void 0 : s.lowestValidationRatio, this.validationRatioFn = ((s == null ? void 0 : s.validationRatioFn) ?? me.defaultValidationRatioUpdateFn).bind(this), this.updateValidationRatio(), s || console.trace("relay created without ndk");
   }
   updateValidationRatio() {
     setTimeout(() => {
@@ -8165,7 +8165,7 @@ var NDKRelaySubscription = class {
   get connected() {
     return this.connectivity.connected;
   }
-}, y(be, "defaultValidationRatioUpdateFn", (t, r, s) => {
+}, y(me, "defaultValidationRatioUpdateFn", (t, r, s) => {
   if (t.lowestValidationRatio === void 0 || t.targetValidationRatio === void 0) return 1;
   let o = t.validationRatio;
   if (t.validationRatio > t.targetValidationRatio) {
@@ -8173,7 +8173,7 @@ var NDKRelaySubscription = class {
     o = Math.max(t.lowestValidationRatio, t.validationRatio - a);
   }
   return o < t.validationRatio ? o : t.validationRatio;
-}), be), NDKPublishError = class extends Error {
+}), me), NDKPublishError = class extends Error {
   constructor(e, t, r, s) {
     super(e);
     y(this, "errors");
@@ -8191,7 +8191,7 @@ var NDKRelaySubscription = class {
     return e.join(`
 `);
   }
-}, NDKRelaySet = class Se {
+}, NDKRelaySet = class Re {
   constructor(e, t, r) {
     y(this, "relays");
     y(this, "debug");
@@ -8231,7 +8231,7 @@ var NDKRelaySubscription = class {
         s.useTemporaryRelay(l, void 0, `requested from fromRelayUrls ${e}`), o.add(l);
       }
     }
-    return new Se(new Set(o), t, s);
+    return new Re(new Set(o), t, s);
   }
   /**
    * Publish an event to all relays in this relay set.
@@ -8289,25 +8289,25 @@ var NDKRelaySubscription = class {
     };
     e.on("relay:published", c);
     try {
-      const u = Array.from(this.relays).map((h) => new Promise((f) => {
+      const u = Array.from(this.relays).map((f) => new Promise((h) => {
         const p = t ? setTimeout(() => {
-          s.has(h) || (o.set(h, new Error(`Publish timeout after ${t}ms`)), f(!1));
+          s.has(f) || (o.set(f, new Error(`Publish timeout after ${t}ms`)), h(!1));
         }, t) : null;
-        h.publish(e, t).then((m) => {
-          p && clearTimeout(p), m ? (s.add(h), f(!0)) : f(!1);
+        f.publish(e, t).then((m) => {
+          p && clearTimeout(p), m ? (s.add(f), h(!0)) : h(!1);
         }).catch((m) => {
-          p && clearTimeout(p), a || o.set(h, m), f(!1);
+          p && clearTimeout(p), a || o.set(f, m), h(!1);
         });
       }));
       if (await Promise.all(u), s.size < r) {
         if (!a) {
-          const h = new NDKPublishError(
+          const f = new NDKPublishError(
             "Not enough relays received the event",
             o,
             s,
             this
           );
-          throw e.publishStatus = "error", e.publishError = h, (l = this.ndk) == null || l.emit("event:publish-failed", e, h, this.relayUrls), h;
+          throw e.publishStatus = "error", e.publishError = f, (l = this.ndk) == null || l.emit("event:publish-failed", e, f, this.relayUrls), f;
         }
       } else
         e.publishStatus = "success", e.emit("published", { relaySet: this, publishedToRelays: s });
@@ -8346,8 +8346,8 @@ async function calculateRelaySetFromEvent(n, e) {
       preferredRelays: new Set(r)
     }).keys()
   ).forEach((l) => {
-    var h;
-    const u = (h = n.pool) == null ? void 0 : h.getRelay(l, !1, !0);
+    var f;
+    const u = (f = n.pool) == null ? void 0 : f.getRelay(l, !1, !0);
     u && (d("Adding p-tagged relay %s", l), t.add(u));
   }) : d("Too many p-tags to consider %d", o.length), (a = n.pool) == null || a.permanentAndConnectedRelays().forEach((c) => t.add(c)), new NDKRelaySet(t, n);
 }
@@ -8363,7 +8363,7 @@ function calculateRelaySetsFromFilter(n, e, t) {
       if (a.authors)
         for (const [c, l] of o.entries()) {
           const u = a.authors.filter(
-            (h) => l.includes(h)
+            (f) => l.includes(f)
           );
           r.set(c, [
             ...r.get(c),
@@ -8415,43 +8415,43 @@ async function generateContentTags(n, e = []) {
   n = n.replace(t, (a) => {
     try {
       const c = a.split(/(@|nostr:)/)[2], { type: l, data: u } = nip19_exports.decode(c);
-      let h;
+      let f;
       switch (l) {
         case "npub":
-          h = ["p", u];
+          f = ["p", u];
           break;
         case "nprofile":
-          h = ["p", u.pubkey];
+          f = ["p", u.pubkey];
           break;
         case "note":
           r.push(
-            new Promise(async (f) => {
-              s(["q", u, await maybeGetEventRelayUrl(c)]), f();
+            new Promise(async (h) => {
+              s(["q", u, await maybeGetEventRelayUrl(c)]), h();
             })
           );
           break;
         case "nevent":
           r.push(
-            new Promise(async (f) => {
+            new Promise(async (h) => {
               const { id: p, author: m } = u;
               let { relays: E } = u;
-              (!E || E.length === 0) && (E = [await maybeGetEventRelayUrl(c)]), s(["q", p, E[0]]), m && s(["p", m]), f();
+              (!E || E.length === 0) && (E = [await maybeGetEventRelayUrl(c)]), s(["q", p, E[0]]), m && s(["p", m]), h();
             })
           );
           break;
         case "naddr":
           r.push(
-            new Promise(async (f) => {
+            new Promise(async (h) => {
               const p = [u.kind, u.pubkey, u.identifier].join(":");
               let m = u.relays ?? [];
-              m.length === 0 && (m = [await maybeGetEventRelayUrl(c)]), s(["q", p, m[0]]), s(["p", u.pubkey]), f();
+              m.length === 0 && (m = [await maybeGetEventRelayUrl(c)]), s(["q", p, m[0]]), s(["p", u.pubkey]), h();
             })
           );
           break;
         default:
           return a;
       }
-      return h && s(h), `nostr:${c}`;
+      return f && s(f), `nostr:${c}`;
     } catch {
       return a;
     }
@@ -8477,11 +8477,11 @@ async function encrypt(n, e, t = "nip44") {
   this.content = r;
 }
 async function decrypt(n, e, t) {
-  var c, l, u, h;
+  var c, l, u, f;
   if ((l = (c = this.ndk) == null ? void 0 : c.cacheAdapter) != null && l.getDecryptedEvent) {
-    let f = null;
-    if (typeof this.ndk.cacheAdapter.getDecryptedEvent == "function" && (f = this.ndk.cacheAdapter.getDecryptedEvent(this.id)), f) {
-      this.content = f.content;
+    let h = null;
+    if (typeof this.ndk.cacheAdapter.getDecryptedEvent == "function" && (h = this.ndk.cacheAdapter.getDecryptedEvent(this.id)), h) {
+      this.content = h.content;
       return;
     }
   }
@@ -8493,7 +8493,7 @@ async function decrypt(n, e, t) {
   if (!o) throw new Error("No sender provided and no author available");
   const a = t || (this.content.match(/\\?iv=/) ? "nip04" : "nip44");
   if ((a === "nip04" || this.kind === 4) && await isEncryptionEnabled(s, "nip04") && this.content.search("\\?iv=") && (r = await s.decrypt(o, this.content, "nip04")), !r && a === "nip44" && await isEncryptionEnabled(s, "nip44") && (r = await s.decrypt(o, this.content, "nip44")), !r) throw new Error("Failed to decrypt event.");
-  this.content = r, (h = (u = this.ndk) == null ? void 0 : u.cacheAdapter) != null && h.addDecryptedEvent && this.ndk.cacheAdapter.addDecryptedEvent(this);
+  this.content = r, (f = (u = this.ndk) == null ? void 0 : u.cacheAdapter) != null && f.addDecryptedEvent && this.ndk.cacheAdapter.addDecryptedEvent(this);
 }
 async function isEncryptionEnabled(n, e) {
   return n.encryptionEnabled ? e ? !!await n.encryptionEnabled(e) : !0 : !1;
@@ -8686,7 +8686,7 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
   9734,
   5
   /* EventDeletion */
-]), NDKEvent = class ye extends lib$1.EventEmitter {
+]), NDKEvent = class be extends lib$1.EventEmitter {
   constructor(t, r) {
     var s;
     super();
@@ -8771,7 +8771,7 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
      * @function
      */
     y(this, "repost", repost.bind(this));
-    this.ndk = t, this.created_at = r == null ? void 0 : r.created_at, this.content = (r == null ? void 0 : r.content) || "", this.tags = (r == null ? void 0 : r.tags) || [], this.id = (r == null ? void 0 : r.id) || "", this.sig = r == null ? void 0 : r.sig, this.pubkey = (r == null ? void 0 : r.pubkey) || "", this.kind = r == null ? void 0 : r.kind, r instanceof ye && (this.relay && (this.relay = r.relay, (s = this.ndk) == null || s.subManager.seenEvent(r.id, this.relay)), this.publishStatus = r.publishStatus, this.publishError = r.publishError);
+    this.ndk = t, this.created_at = r == null ? void 0 : r.created_at, this.content = (r == null ? void 0 : r.content) || "", this.tags = (r == null ? void 0 : r.tags) || [], this.id = (r == null ? void 0 : r.id) || "", this.sig = r == null ? void 0 : r.sig, this.pubkey = (r == null ? void 0 : r.pubkey) || "", this.kind = r == null ? void 0 : r.kind, r instanceof be && (this.relay && (this.relay = r.relay, (s = this.ndk) == null || s.subManager.seenEvent(r.id, this.relay)), this.publishStatus = r.publishStatus, this.publishError = r.publishError);
   }
   /**
    * The relays that this event was received from and/or successfully published to.
@@ -8787,7 +8787,7 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
    * @returns
    */
   static deserialize(t, r) {
-    return new ye(t, deserialize(r));
+    return new be(t, deserialize(r));
   }
   /**
    * Returns the event as is.
@@ -8891,11 +8891,11 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
       o ?? (o = "p");
       const l = [o, t.pubkey];
       r && l.push("", r), a.push(l);
-    } else if (t instanceof ye) {
+    } else if (t instanceof be) {
       const l = t;
       s ?? (s = (l == null ? void 0 : l.pubkey) === this.pubkey), a = l.referenceTags(r, s, o);
       for (const u of l.getMatchingTags("p"))
-        u[1] !== this.pubkey && (this.tags.find((h) => h[0] === "p" && h[1] === u[1]) || this.tags.push(["p", u[1]]));
+        u[1] !== this.pubkey && (this.tags.find((f) => f[0] === "p" && f[1] === u[1]) || this.tags.push(["p", u[1]]));
     } else if (Array.isArray(t))
       a = [t];
     else
@@ -9030,21 +9030,21 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
     var c, l, u;
     if (this.sig || await this.sign(), !this.ndk) throw new Error("NDKEvent must be associated with an NDK instance to publish");
     if ((!t || t.size === 0) && (t = this.ndk.devWriteRelaySet || await calculateRelaySetFromEvent(this.ndk, this)), this.kind === 5 && ((c = this.ndk.cacheAdapter) != null && c.deleteEventIds)) {
-      const h = this.getMatchingTags("e").map((f) => f[1]);
-      this.ndk.cacheAdapter.deleteEventIds(h);
+      const f = this.getMatchingTags("e").map((h) => h[1]);
+      this.ndk.cacheAdapter.deleteEventIds(f);
     }
     const o = this.rawEvent();
     if ((l = this.ndk.cacheAdapter) != null && l.addUnpublishedEvent && shouldTrackUnpublishedEvent(this))
       try {
         this.ndk.cacheAdapter.addUnpublishedEvent(this, t.relayUrls);
-      } catch (h) {
-        console.error("Error adding unpublished event to cache", h);
+      } catch (f) {
+        console.error("Error adding unpublished event to cache", f);
       }
-    this.kind === 5 && ((u = this.ndk.cacheAdapter) != null && u.deleteEventIds) && this.ndk.cacheAdapter.deleteEventIds(this.getMatchingTags("e").map((h) => h[1])), this.ndk.subManager.dispatchEvent(o, void 0, !0);
+    this.kind === 5 && ((u = this.ndk.cacheAdapter) != null && u.deleteEventIds) && this.ndk.cacheAdapter.deleteEventIds(this.getMatchingTags("e").map((f) => f[1])), this.ndk.subManager.dispatchEvent(o, void 0, !0);
     const a = await t.publish(this, r, s);
-    return a.forEach((h) => {
-      var f;
-      return (f = this.ndk) == null ? void 0 : f.subManager.seenEvent(this.id, h);
+    return a.forEach((f) => {
+      var h;
+      return (h = this.ndk) == null ? void 0 : h.subManager.seenEvent(this.id, f);
     }), a;
   }
   /**
@@ -9058,8 +9058,8 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
     const r = await generateContentTags(this.content, this.tags), s = r.content;
     if (t = r.tags, this.kind && this.isParamReplaceable() && !this.getMatchingTags("d")[0]) {
       const u = this.tagValue("title");
-      let f = [...Array(u ? 6 : 16)].map(() => Math.random().toString(36)[2]).join("");
-      u && u.length > 0 && (f = `${u.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")}-${f}`), t.push(["d", f]);
+      let h = [...Array(u ? 6 : 16)].map(() => Math.random().toString(36)[2]).join("");
+      u && u.length > 0 && (h = `${u.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")}-${h}`), t.push(["d", h]);
     }
     if (this.shouldAddClientTag) {
       const l = ["client", ((o = this.ndk) == null ? void 0 : o.clientName) ?? ""];
@@ -9210,7 +9210,7 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
     var o;
     if (!this.ndk) throw new Error("No NDK instance found");
     this.ndk.assertSigner();
-    const s = new ye(this.ndk, {
+    const s = new be(this.ndk, {
       kind: 5,
       content: t || ""
     });
@@ -9238,7 +9238,7 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
   async react(t, r = !0) {
     if (!this.ndk) throw new Error("No NDK instance found");
     this.ndk.assertSigner();
-    const s = new ye(this.ndk, {
+    const s = new be(this.ndk, {
       kind: 7,
       content: t
     });
@@ -9276,7 +9276,7 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
    */
   reply() {
     var r, s;
-    const t = new ye(this.ndk);
+    const t = new be(this.ndk);
     if (this.kind === 1)
       t.kind = 1, this.hasTag("e") ? t.tags = [
         ...t.tags,
@@ -9291,12 +9291,12 @@ var skipClientTagOnKinds = /* @__PURE__ */ new Set([
       if (a.length > 0) {
         const c = this.tagValue("K");
         t.tags.push(...a), c && t.tags.push(["K", c]);
-        const [l, u, h, ...f] = this.tagReference(), p = [l, u, ...f];
+        const [l, u, f, ...h] = this.tagReference(), p = [l, u, ...h];
         t.tags.push(p);
       } else {
-        const [c, l, u, h] = this.tagReference(), f = [c, l, h ?? ""];
-        c === "e" && f.push(this.pubkey), t.tags.push(f);
-        const p = [...f];
+        const [c, l, u, f] = this.tagReference(), h = [c, l, f ?? ""];
+        c === "e" && h.push(this.pubkey), t.tags.push(h);
+        const p = [...h];
         p[0] = p[0].toUpperCase(), t.tags.push(p), t.tags.push(["K", (r = this.kind) == null ? void 0 : r.toString()]), t.tags.push(["P", this.pubkey]);
       }
       t.tags.push(["k", (s = this.kind) == null ? void 0 : s.toString()]), t.tags.push(...this.getMatchingTags("p")), t.tags.push(["p", this.pubkey]);
@@ -9409,8 +9409,8 @@ var NDKPool = class extends lib$1.EventEmitter {
         a = !1;
       }
     }
-    const l = (w) => this.emit("notice", e, w), u = () => this.handleRelayConnect(c), h = () => this.handleRelayReady(e), f = () => this.emit("relay:disconnect", e), p = () => this.handleFlapping(e), m = (w) => this.emit("relay:auth", e, w), E = () => this.emit("relay:authed", e);
-    e.off("notice", l), e.off("connect", u), e.off("ready", h), e.off("disconnect", f), e.off("flapping", p), e.off("auth", m), e.off("authed", E), e.on("notice", l), e.on("connect", u), e.on("ready", h), e.on("disconnect", f), e.on("flapping", p), e.on("auth", m), e.on("authed", E), e.on("delayed-connect", (w) => {
+    const l = (w) => this.emit("notice", e, w), u = () => this.handleRelayConnect(c), f = () => this.handleRelayReady(e), h = () => this.emit("relay:disconnect", e), p = () => this.handleFlapping(e), m = (w) => this.emit("relay:auth", e, w), E = () => this.emit("relay:authed", e);
+    e.off("notice", l), e.off("connect", u), e.off("ready", f), e.off("disconnect", h), e.off("flapping", p), e.off("auth", m), e.off("authed", E), e.on("notice", l), e.on("connect", u), e.on("ready", f), e.on("disconnect", h), e.on("flapping", p), e.on("auth", m), e.on("authed", E), e.on("delayed-connect", (w) => {
       var $;
       ($ = this.ndk.cacheAdapter) != null && $.updateRelayStatus && this.ndk.cacheAdapter.updateRelayStatus(e.url, {
         dontConnectBefore: Date.now() + w
@@ -9476,8 +9476,8 @@ var NDKPool = class extends lib$1.EventEmitter {
         continue;
       const c = new Promise((l, u) => (this.emit("relay:connecting", a), a.connect(e).then(l).catch(u)));
       if (e) {
-        const l = new Promise((u, h) => {
-          setTimeout(() => h(`Timed out after ${e}ms`), e);
+        const l = new Promise((u, f) => {
+          setTimeout(() => f(`Timed out after ${e}ms`), e);
         });
         t.push(
           Promise.race([c, l]).catch((u) => {
@@ -9905,7 +9905,7 @@ var ce, NDKImage = (ce = class extends NDKEvent {
 }, y(ce, "kind", 20), y(ce, "kinds", [
   20
   /* Image */
-]), ce), me, NDKList = (me = class extends NDKEvent {
+]), ce), we, NDKList = (we = class extends NDKEvent {
   constructor(t, r) {
     super(t, r);
     y(this, "_encryptedTags");
@@ -9920,7 +9920,7 @@ var ce, NDKImage = (ce = class extends NDKEvent {
    * Wrap a NDKEvent into a NDKList
    */
   static from(t) {
-    return new me(t.ndk, t);
+    return new we(t.ndk, t);
   }
   /**
    * Returns the title of the list. Falls back on fetching the name tag value.
@@ -10106,8 +10106,8 @@ var ce, NDKImage = (ce = class extends NDKEvent {
       else if (o[0] === "a" && o[1]) {
         const [a, c, l] = o[1].split(":");
         if (!a || !c) continue;
-        const u = `${a}:${c}`, h = r.get(u) || [];
-        h.push(l || ""), r.set(u, h);
+        const u = `${a}:${c}`, f = r.get(u) || [];
+        f.push(l || ""), r.set(u, f);
       }
     if (t.size > 0 && s.push({ ids: Array.from(t) }), r.size > 0)
       for (const [o, a] of r.entries()) {
@@ -10120,7 +10120,7 @@ var ce, NDKImage = (ce = class extends NDKEvent {
       }
     return s;
   }
-}, y(me, "kinds", [
+}, y(we, "kinds", [
   10063,
   30001,
   10004,
@@ -10133,7 +10133,7 @@ var ce, NDKImage = (ce = class extends NDKEvent {
   10006,
   10003
   /* BookmarkList */
-]), me), lists_default = NDKList, ne, NDKNutzap = (ne = class extends NDKEvent {
+]), we), lists_default = NDKList, ne, NDKNutzap = (ne = class extends NDKEvent {
   constructor(t, r) {
     super(t, r);
     y(this, "debug");
@@ -10267,12 +10267,12 @@ var ce, NDKImage = (ce = class extends NDKEvent {
 }, y(le, "kind", 39002), y(le, "kinds", [
   39002
   /* GroupMembers */
-]), le), ue, NDKSimpleGroupMetadata = (ue = class extends NDKEvent {
+]), le), he, NDKSimpleGroupMetadata = (he = class extends NDKEvent {
   constructor(e, t) {
     super(e, t), this.kind ?? (this.kind = 39e3);
   }
   static from(e) {
-    return new ue(e.ndk, e);
+    return new he(e.ndk, e);
   }
   get name() {
     return this.tagValue("name");
@@ -10297,10 +10297,10 @@ var ce, NDKImage = (ce = class extends NDKEvent {
   set access(e) {
     this.removeTag("open"), this.removeTag("closed"), e === "open" ? this.tags.push(["open", ""]) : e === "closed" && this.tags.push(["closed", ""]);
   }
-}, y(ue, "kind", 39e3), y(ue, "kinds", [
+}, y(he, "kind", 39e3), y(he, "kinds", [
   39e3
   /* GroupMetadata */
-]), ue);
+]), he);
 function strToPosition(n) {
   const [e, t] = n.split(",").map(Number);
   return { x: e, y: t };
@@ -10388,7 +10388,7 @@ var Q, NDKStorySticker = (Q = class {
         t.push(`${r} ${s}`);
     return t;
   }
-}, y(Q, "Text", "text"), y(Q, "Pubkey", "pubkey"), y(Q, "Event", "event"), y(Q, "Prompt", "prompt"), y(Q, "Countdown", "countdown"), Q), he, NDKStory = (he = class extends NDKEvent {
+}, y(Q, "Text", "text"), y(Q, "Pubkey", "pubkey"), y(Q, "Event", "event"), y(Q, "Prompt", "prompt"), y(Q, "Countdown", "countdown"), Q), ue, NDKStory = (ue = class extends NDKEvent {
   constructor(t, r) {
     super(t, r);
     y(this, "_imeta");
@@ -10411,7 +10411,7 @@ var Q, NDKStorySticker = (Q = class {
    * @returns NDKStory
    */
   static from(t) {
-    return new he(t.ndk, t);
+    return new ue(t.ndk, t);
   }
   /**
    * Checks if the story is valid (has exactly one imeta tag).
@@ -10523,10 +10523,10 @@ var Q, NDKStorySticker = (Q = class {
         s++;
       }
   }
-}, y(he, "kind", 23), y(he, "kinds", [
+}, y(ue, "kind", 23), y(ue, "kinds", [
   23
   /* Story */
-]), he), coordinates = (n) => `${n.x},${n.y}`, dimension = (n) => `${n.width}x${n.height}`, possibleIntervalFrequencies = [
+]), ue), coordinates = (n) => `${n.x},${n.y}`, dimension = (n) => `${n.width}x${n.height}`, possibleIntervalFrequencies = [
   "daily",
   "weekly",
   "monthly",
@@ -10719,11 +10719,11 @@ var de, NDKSubscriptionTier = (de = class extends NDKArticle {
   22,
   21
   /* Video */
-]), pe), ve, NDKWiki = (ve = class extends NDKArticle {
-}, y(ve, "kind", 30818), y(ve, "kinds", [
+]), pe), Ee, NDKWiki = (Ee = class extends NDKArticle {
+}, y(Ee, "kind", 30818), y(Ee, "kinds", [
   30818
   /* Wiki */
-]), ve);
+]), Ee);
 function wrapEvent(n) {
   const e = /* @__PURE__ */ new Map();
   for (const r of [
@@ -11030,8 +11030,8 @@ var defaultOpts = {
     if (e instanceof NDKEvent && (c = e), a) {
       const u = Date.now() - (this.eventFirstSeen.get(o) || 0);
       if (this.emit("event:dup", e, t, u, this, r, s), t) {
-        const h = verifiedSignatures.get(o);
-        h && typeof h == "string" && e.sig === h && t.addValidatedEvent();
+        const f = verifiedSignatures.get(o);
+        f && typeof f == "string" && e.sig === f && t.addValidatedEvent();
       }
     } else {
       if (c ?? (c = new NDKEvent(this.ndk, e)), c.ndk = this.ndk, c.relay = t, !r && !s) {
@@ -11078,8 +11078,8 @@ var defaultOpts = {
       o("query filled or seen all");
     else if (this.relayFilters) {
       let c = 1e3;
-      const l = new Set(this.pool.connectedRelays().map((f) => f.url)), u = Array.from(this.relayFilters.keys()).filter(
-        (f) => l.has(f)
+      const l = new Set(this.pool.connectedRelays().map((h) => h.url)), u = Array.from(this.relayFilters.keys()).filter(
+        (h) => l.has(h)
       );
       if (u.length === 0) {
         this.debug(
@@ -11088,22 +11088,22 @@ var defaultOpts = {
         );
         return;
       }
-      const h = this.eosesSeen.size / u.length;
+      const f = this.eosesSeen.size / u.length;
       if (this.debug("Percentage of relays that have sent EOSE", {
         subId: this.subId,
-        percentageOfRelaysThatHaveSentEose: h,
+        percentageOfRelaysThatHaveSentEose: f,
         seen: this.eosesSeen.size,
         total: u.length
-      }), this.eosesSeen.size >= 2 && h >= 0.5) {
-        if (c = c * (1 - h), c === 0) {
+      }), this.eosesSeen.size >= 2 && f >= 0.5) {
+        if (c = c * (1 - f), c === 0) {
           o("time to wait was 0");
           return;
         }
         this.eoseTimeout && clearTimeout(this.eoseTimeout);
-        const f = () => {
-          t = this.lastEventReceivedAt ? Date.now() - this.lastEventReceivedAt : void 0, t !== void 0 && t < 20 ? this.eoseTimeout = setTimeout(f, c) : o(`send eose timeout: ${c}`);
+        const h = () => {
+          t = this.lastEventReceivedAt ? Date.now() - this.lastEventReceivedAt : void 0, t !== void 0 && t < 20 ? this.eoseTimeout = setTimeout(h, c) : o(`send eose timeout: ${c}`);
         };
-        this.eoseTimeout = setTimeout(f, c);
+        this.eoseTimeout = setTimeout(h, c);
       }
     }
   }
@@ -11131,15 +11131,15 @@ async function getNip05For(n, e, t = fetch, r = {}) {
   return await n.queuesNip05.add({
     id: e,
     func: async () => {
-      var l, u, h;
+      var l, u, f;
       if ((l = n.cacheAdapter) != null && l.loadNip05) {
-        const f = await n.cacheAdapter.loadNip05(e);
-        if (f !== "missing") {
-          if (f) {
+        const h = await n.cacheAdapter.loadNip05(e);
+        if (h !== "missing") {
+          if (h) {
             const p = new NDKUser({
-              pubkey: f.pubkey,
-              relayUrls: f.relays,
-              nip46Urls: f.nip46
+              pubkey: h.pubkey,
+              relayUrls: h.relays,
+              nip46Urls: h.nip46
             });
             return p.ndk = n, p;
           }
@@ -11151,11 +11151,11 @@ async function getNip05For(n, e, t = fetch, r = {}) {
       if (!s) return null;
       const [o, a = "_", c] = s;
       try {
-        const f = await t(`https://${c}/.well-known/nostr.json?name=${a}`, r), { names: p, relays: m, nip46: E } = parseNIP05Result(await f.json()), g = p[a.toLowerCase()];
+        const h = await t(`https://${c}/.well-known/nostr.json?name=${a}`, r), { names: p, relays: m, nip46: E } = parseNIP05Result(await h.json()), g = p[a.toLowerCase()];
         let b = null;
         return g && (b = { pubkey: g, relays: m == null ? void 0 : m[g], nip46: E == null ? void 0 : E[g] }), (u = n == null ? void 0 : n.cacheAdapter) != null && u.saveNip05 && n.cacheAdapter.saveNip05(e, b), b;
-      } catch (f) {
-        return (h = n == null ? void 0 : n.cacheAdapter) != null && h.saveNip05 && (n == null || n.cacheAdapter.saveNip05(e, null)), console.error("Failed to fetch NIP05 for", e, f), null;
+      } catch (h) {
+        return (f = n == null ? void 0 : n.cacheAdapter) != null && f.saveNip05 && (n == null || n.cacheAdapter.saveNip05(e, null)), console.error("Failed to fetch NIP05 for", e, h), null;
       }
     }
   });
@@ -11251,7 +11251,7 @@ function serializeProfile(n) {
     }
   return JSON.stringify(e);
 }
-var NDKUser = class Ae {
+var NDKUser = class Se {
   constructor(e) {
     y(this, "ndk");
     y(this, "profile");
@@ -11327,8 +11327,8 @@ var NDKUser = class Ae {
     const t = async (a) => {
       if (!e) return a;
       let c;
-      const l = new Promise((u, h) => {
-        c = setTimeout(() => h(new Error("Timeout")), e);
+      const l = new Promise((u, f) => {
+        c = setTimeout(() => f(new Error("Timeout")), e);
       });
       try {
         const u = await Promise.race([a, l]);
@@ -11376,7 +11376,7 @@ var NDKUser = class Ae {
     r && (s.cache = "no-cache");
     const o = await getNip05For(t, e, t == null ? void 0 : t.httpFetch, s);
     if (o) {
-      const a = new Ae({
+      const a = new Se({
         pubkey: o.pubkey,
         relayUrls: o.relays,
         nip46Urls: o.nip46
@@ -11490,12 +11490,12 @@ var NDKUser = class Ae {
     const t = await getNip05For(this.ndk, e);
     return t === null ? null : t.pubkey === this.pubkey;
   }
-}, READ_MARKER = "read", WRITE_MARKER = "write", NDKRelayList = class Re extends NDKEvent {
+}, READ_MARKER = "read", WRITE_MARKER = "write", NDKRelayList = class Ce extends NDKEvent {
   constructor(e, t) {
     super(e, t), this.kind ?? (this.kind = 10002);
   }
   static from(e) {
-    return new Re(e.ndk, e.rawEvent());
+    return new Ce(e.ndk, e.rawEvent());
   }
   get readRelayUrls() {
     return this.tags.filter((e) => e[0] === "r" || e[0] === "relay").filter((e) => !e[2] || e[2] && e[2] === READ_MARKER).map((e) => tryNormalizeRelayUrl(e[1])).filter((e) => !!e);
@@ -11555,7 +11555,7 @@ function relayListFromKind3(n, e) {
   } catch {
   }
 }
-var NDKPrivateKeySigner = class ke {
+var NDKPrivateKeySigner = class xe {
   /**
    * Create a new signer from a private key.
    * @param privateKey - The private key to use in hex form or nsec.
@@ -11611,7 +11611,7 @@ var NDKPrivateKeySigner = class ke {
    */
   static generate() {
     const e = generateSecretKey();
-    return new ke(e);
+    return new xe(e);
   }
   /**
    * Noop in NDKPrivateKeySigner.
@@ -11685,7 +11685,7 @@ var NDKPrivateKeySigner = class ke {
       throw new Error(`Invalid payload type: expected 'private-key', got ${r.type}`);
     if (!r.payload || typeof r.payload != "string")
       throw new Error("Invalid payload content for private-key signer");
-    return new ke(r.payload, t);
+    return new xe(r.payload, t);
   }
 };
 function disconnect(n, e) {
@@ -11717,7 +11717,7 @@ function signIn({ ndk: n, signer: e, debug: t } = {}) {
 var NDKRelayAuthPolicies = {
   disconnect,
   signIn
-}, NDKNip07Signer = class Ce {
+}, NDKNip07Signer = class Be {
   /**
    * @param waitTimeout - The timeout in milliseconds to wait for the NIP-07 to become available
    */
@@ -11810,7 +11810,7 @@ var NDKRelayAuthPolicies = {
     });
   }
   async processEncryptionQueue(e, t = 0) {
-    var h, f;
+    var f, h;
     if (!e && this.encryptionQueue.length === 0) {
       this.encryptionProcessing = !1;
       return;
@@ -11828,7 +11828,7 @@ var NDKRelayAuthPolicies = {
       value: c
     });
     try {
-      const p = await ((f = (h = window.nostr) == null ? void 0 : h[s]) == null ? void 0 : f[o](a, c));
+      const p = await ((h = (f = window.nostr) == null ? void 0 : f[s]) == null ? void 0 : h[o](a, c));
       if (!p) throw new Error("Failed to encrypt/decrypt");
       l(p);
     } catch (p) {
@@ -11886,7 +11886,7 @@ var NDKRelayAuthPolicies = {
     const r = JSON.parse(e);
     if (r.type !== "nip07")
       throw new Error(`Invalid payload type: expected 'nip07', got ${r.type}`);
-    return new Ce(void 0, t);
+    return new Be(void 0, t);
   }
 }, NDKNostrRpc = class extends lib$1.EventEmitter {
   constructor(e, t, r, s) {
@@ -11945,8 +11945,8 @@ var NDKRelayAuthPolicies = {
     try {
       r = await this.signer.decrypt(t, e.content, this.encryptionType);
     } catch {
-      const f = this.encryptionType === "nip04" ? "nip44" : "nip04";
-      r = await this.signer.decrypt(t, e.content, f), this.encryptionType = f;
+      const h = this.encryptionType === "nip04" ? "nip44" : "nip04";
+      r = await this.signer.decrypt(t, e.content, h), this.encryptionType = h;
     }
     const s = JSON.parse(r), { id: o, method: a, params: c, result: l, error: u } = s;
     return a ? { id: o, pubkey: e.pubkey, method: a, params: c, event: e } : { id: o, result: l, error: u, event: e };
@@ -11971,18 +11971,18 @@ var NDKRelayAuthPolicies = {
    * @param id
    */
   async sendRequest(e, t, r = [], s = 24133, o) {
-    const a = Math.random().toString(36).substring(7), c = await this.signer.user(), l = this.ndk.getUser({ pubkey: e }), u = { id: a, method: t, params: r }, h = new Promise(() => {
+    const a = Math.random().toString(36).substring(7), c = await this.signer.user(), l = this.ndk.getUser({ pubkey: e }), u = { id: a, method: t, params: r }, f = new Promise(() => {
       const p = (m) => {
         m.result === "auth_url" ? (this.once(`response-${a}`, p), this.emit("authUrl", m.error)) : o && o(m);
       };
       this.once(`response-${a}`, p);
-    }), f = new NDKEvent(this.ndk, {
+    }), h = new NDKEvent(this.ndk, {
       kind: s,
       content: JSON.stringify(u),
       tags: [["p", e]],
       pubkey: c.pubkey
     });
-    return f.content = await this.signer.encrypt(l, f.content, this.encryptionType), await f.sign(this.signer), await f.publish(this.relaySet), h;
+    return h.content = await this.signer.encrypt(l, h.content, this.encryptionType), await h.sign(this.signer), await h.publish(this.relaySet), f;
   }
 }, signerRegistry = /* @__PURE__ */ new Map();
 signerRegistry.set("private-key", NDKPrivateKeySigner);
@@ -12005,7 +12005,7 @@ async function ndkSignerFromPayload(n, e) {
     throw new Error(`Failed to deserialize signer type ${t.type}: ${o}`);
   }
 }
-var NDKNip46Signer = class xe extends lib$1.EventEmitter {
+var NDKNip46Signer = class ke extends lib$1.EventEmitter {
   /**
    * @param ndk - The NDK instance to use
    * @param userOrConnectionToken - The public key, or a connection token, of the npub that wants to be published as
@@ -12210,7 +12210,7 @@ var NDKNip46Signer = class xe extends lib$1.EventEmitter {
     if (!a)
       throw new Error("Failed to deserialize local signer for NIP-46");
     let c;
-    return o.nip05 ? (c = new xe(r, o.nip05, a), c.userPubkey = o.userPubkey, c.bunkerPubkey = o.bunkerPubkey, c.relayUrls = o.relayUrls, c.secret = o.secret) : (c = new xe(r, o.userPubkey, a), c.bunkerPubkey = o.bunkerPubkey, c.relayUrls = o.relayUrls, c.secret = o.secret), c;
+    return o.nip05 ? (c = new ke(r, o.nip05, a), c.userPubkey = o.userPubkey, c.bunkerPubkey = o.bunkerPubkey, c.relayUrls = o.relayUrls, c.secret = o.secret) : (c = new ke(r, o.userPubkey, a), c.bunkerPubkey = o.bunkerPubkey, c.relayUrls = o.relayUrls, c.secret = o.secret), c;
   }
 };
 function dedup(n, e) {
@@ -12220,11 +12220,11 @@ async function getRelayListForUser(n, e) {
   return (await getRelayListForUsers([n], e)).get(n);
 }
 async function getRelayListForUsers(n, e, t = !1, r = 1e3) {
-  var f;
+  var h;
   const s = e.outboxPool || e.pool, o = /* @__PURE__ */ new Set();
   for (const p of s.relays.values()) o.add(p);
   const a = /* @__PURE__ */ new Map(), c = /* @__PURE__ */ new Map(), l = new NDKRelaySet(o, e);
-  if ((f = e.cacheAdapter) != null && f.locking && !t) {
+  if ((h = e.cacheAdapter) != null && h.locking && !t) {
     const p = await e.fetchEvents(
       { kinds: [3, 10002], authors: Array.from(new Set(n)) },
       { cacheUsage: "ONLY_CACHE", subId: "ndk-relay-list-fetch" }
@@ -12240,7 +12240,7 @@ async function getRelayListForUsers(n, e, t = !1, r = 1e3) {
     n = n.filter((m) => !a.has(m) && !c.has(m));
   }
   if (n.length === 0) return a;
-  const u = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map();
+  const u = /* @__PURE__ */ new Map(), f = /* @__PURE__ */ new Map();
   return new Promise((p) => {
     (async () => {
       const E = {
@@ -12258,9 +12258,9 @@ async function getRelayListForUsers(n, e, t = !1, r = 1e3) {
             if (b && b.created_at > g.created_at) return;
             u.set(g.pubkey, g);
           } else if (g.kind === 3) {
-            const b = h.get(g.pubkey);
+            const b = f.get(g.pubkey);
             if (b && b.created_at > g.created_at) return;
-            h.set(g.pubkey, g);
+            f.set(g.pubkey, g);
           }
         },
         onEose: () => {
@@ -12268,7 +12268,7 @@ async function getRelayListForUsers(n, e, t = !1, r = 1e3) {
             a.set(g.pubkey, NDKRelayList.from(g));
           for (const g of n) {
             if (a.has(g)) continue;
-            const b = h.get(g);
+            const b = f.get(g);
             if (!b) continue;
             const w = relayListFromKind3(e, b);
             w && a.set(g, w);
@@ -12321,15 +12321,15 @@ var OutboxItem = class {
         r.push(
           new Promise((c) => {
             getRelayListForUsers(a, this.ndk, t).then((l) => {
-              for (const [u, h] of l) {
-                let f = this.data.get(u);
-                if (f ?? (f = new OutboxItem("user")), h) {
-                  f.readRelays = new Set(normalize(h.readRelayUrls)), f.writeRelays = new Set(normalize(h.writeRelayUrls));
-                  for (const p of f.readRelays)
-                    this.ndk.pool.blacklistRelayUrls.has(p) && f.readRelays.delete(p);
-                  for (const p of f.writeRelays)
-                    this.ndk.pool.blacklistRelayUrls.has(p) && f.writeRelays.delete(p);
-                  this.data.set(u, f);
+              for (const [u, f] of l) {
+                let h = this.data.get(u);
+                if (h ?? (h = new OutboxItem("user")), f) {
+                  h.readRelays = new Set(normalize(f.readRelayUrls)), h.writeRelays = new Set(normalize(f.writeRelayUrls));
+                  for (const p of h.readRelays)
+                    this.ndk.pool.blacklistRelayUrls.has(p) && h.readRelays.delete(p);
+                  for (const p of h.writeRelays)
+                    this.ndk.pool.blacklistRelayUrls.has(p) && h.writeRelays.delete(p);
+                  this.data.set(u, h);
                 }
               }
             }).finally(c);
@@ -12517,13 +12517,13 @@ async function fetchEventFromTag(n, e, t, r = {
     s("no author relays found for %s", e.pubkey, e);
   const u = calculateRelaySetsFromFilters(this, [{ ids: [a] }], this.pool);
   s("fetching event without relay hint", u);
-  const h = await this.fetchEvent(a, t);
-  if (h) return h;
+  const f = await this.fetchEvent(a, t);
+  if (f) return f;
   if (c && c !== "") {
     const g = await this.fetchEvent(a, t, this.pool.getRelay(c, !0, !0, [{ ids: [a] }]));
     if (g) return g;
   }
-  let f;
+  let h;
   const p = isValidHint(c) ? this.pool.getRelay(c, !1, !0, [{ ids: [a] }]) : void 0, m = new Promise((g) => {
     this.fetchEvent(a, t, p).then(g);
   });
@@ -12531,8 +12531,8 @@ async function fetchEventFromTag(n, e, t, r = {
     return m;
   const E = new Promise(async (g) => {
     const b = r.relaySet, w = r.timeout ?? 1500, $ = new Promise((B) => setTimeout(B, w));
-    if (r.type === "timeout" && await $, f)
-      g(f);
+    if (r.type === "timeout" && await $, h)
+      g(h);
     else {
       s("fallback fetch triggered");
       const B = await this.fetchEvent(a, t, b);
@@ -12543,7 +12543,7 @@ async function fetchEventFromTag(n, e, t, r = {
     case "timeout":
       return Promise.race([m, E]);
     case "eose":
-      return f = await m, f || E;
+      return h = await m, h || E;
   }
 }
 var Queue = class {
@@ -12889,13 +12889,13 @@ var Queue = class {
         // relaySet, // Removed: Passed via opts
         !1
         // autoStart = false
-      ), h = setTimeout(() => {
+      ), f = setTimeout(() => {
         u.stop(), a(c);
       }, 1e4);
-      u.on("event", (f) => {
-        f.ndk = this, f.isReplaceable() ? (!c || c.created_at < f.created_at) && (c = f) : (clearTimeout(h), a(f));
+      u.on("event", (h) => {
+        h.ndk = this, h.isReplaceable() ? (!c || c.created_at < h.created_at) && (c = h) : (clearTimeout(f), a(h));
       }), u.on("eose", () => {
-        clearTimeout(h), a(c);
+        clearTimeout(f), a(c);
       }), u.start();
     });
   }
@@ -12916,10 +12916,10 @@ var Queue = class {
         !1
         // autoStart = false
       ), l = (u) => {
-        let h;
-        u instanceof NDKEvent ? h = u : h = new NDKEvent(void 0, u);
-        const f = h.deduplicationKey(), p = o.get(f);
-        p && (h = dedup(p, h)), h.ndk = this, o.set(f, h);
+        let f;
+        u instanceof NDKEvent ? f = u : f = new NDKEvent(void 0, u);
+        const h = f.deduplicationKey(), p = o.get(h);
+        p && (f = dedup(p, f)), f.ndk = this, o.set(h, f);
       };
       c.on("event", l), c.on("eose", () => {
         s(new Set(o.values()));
@@ -12972,13 +12972,13 @@ async function getPostStats(n, e) {
   const t = await n.fetchEvents({
     kinds: [NDKKind.Repost],
     "#e": [e || ""]
-  }), r = Array.from(t).filter((l) => l.tags.filter((h) => h[0] === "p").length === 1).length, s = await n.fetchEvents({
+  }), r = Array.from(t).filter((l) => l.tags.filter((f) => f[0] === "p").length === 1).length, s = await n.fetchEvents({
     kinds: [NDKKind.Reaction],
     "#e": [e || ""]
   }), o = 0, a = await n.fetchEvents({
     kinds: [NDKKind.Text],
     "#e": [e || ""]
-  }), c = Array.from(a).filter((l) => l.tags.filter((h) => h[0] === "e").length === 1).length;
+  }), c = Array.from(a).filter((l) => l.tags.filter((f) => f[0] === "e").length === 1).length;
   return {
     likes: s.size,
     reposts: r,
@@ -14062,2256 +14062,16 @@ class NostrProfileBadge extends HTMLElement {
   }
 }
 customElements.define("nostr-profile-badge", NostrProfileBadge);
-/*!
- * Glide.js v3.7.1
- * (c) 2013-2024 Jędrzej Chałubek (https://github.com/jedrzejchalubek/)
- * Released under the MIT License.
- */
-function ownKeys(n, e) {
-  var t = Object.keys(n);
-  if (Object.getOwnPropertySymbols) {
-    var r = Object.getOwnPropertySymbols(n);
-    e && (r = r.filter(function(s) {
-      return Object.getOwnPropertyDescriptor(n, s).enumerable;
-    })), t.push.apply(t, r);
-  }
-  return t;
-}
-function _objectSpread2(n) {
-  for (var e = 1; e < arguments.length; e++) {
-    var t = arguments[e] != null ? arguments[e] : {};
-    e % 2 ? ownKeys(Object(t), !0).forEach(function(r) {
-      _defineProperty(n, r, t[r]);
-    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(n, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function(r) {
-      Object.defineProperty(n, r, Object.getOwnPropertyDescriptor(t, r));
-    });
-  }
-  return n;
-}
-function _typeof(n) {
-  "@babel/helpers - typeof";
-  return typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? _typeof = function(e) {
-    return typeof e;
-  } : _typeof = function(e) {
-    return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-  }, _typeof(n);
-}
-function _classCallCheck(n, e) {
-  if (!(n instanceof e))
-    throw new TypeError("Cannot call a class as a function");
-}
-function _defineProperties(n, e) {
-  for (var t = 0; t < e.length; t++) {
-    var r = e[t];
-    r.enumerable = r.enumerable || !1, r.configurable = !0, "value" in r && (r.writable = !0), Object.defineProperty(n, r.key, r);
-  }
-}
-function _createClass(n, e, t) {
-  return e && _defineProperties(n.prototype, e), n;
-}
-function _defineProperty(n, e, t) {
-  return e in n ? Object.defineProperty(n, e, {
-    value: t,
-    enumerable: !0,
-    configurable: !0,
-    writable: !0
-  }) : n[e] = t, n;
-}
-function _inherits(n, e) {
-  if (typeof e != "function" && e !== null)
-    throw new TypeError("Super expression must either be null or a function");
-  n.prototype = Object.create(e && e.prototype, {
-    constructor: {
-      value: n,
-      writable: !0,
-      configurable: !0
-    }
-  }), e && _setPrototypeOf(n, e);
-}
-function _getPrototypeOf(n) {
-  return _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function(t) {
-    return t.__proto__ || Object.getPrototypeOf(t);
-  }, _getPrototypeOf(n);
-}
-function _setPrototypeOf(n, e) {
-  return _setPrototypeOf = Object.setPrototypeOf || function(r, s) {
-    return r.__proto__ = s, r;
-  }, _setPrototypeOf(n, e);
-}
-function _isNativeReflectConstruct() {
-  if (typeof Reflect > "u" || !Reflect.construct || Reflect.construct.sham) return !1;
-  if (typeof Proxy == "function") return !0;
-  try {
-    return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {
-    })), !0;
-  } catch {
-    return !1;
-  }
-}
-function _assertThisInitialized(n) {
-  if (n === void 0)
-    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  return n;
-}
-function _possibleConstructorReturn(n, e) {
-  if (e && (typeof e == "object" || typeof e == "function"))
-    return e;
-  if (e !== void 0)
-    throw new TypeError("Derived constructors may only return object or undefined");
-  return _assertThisInitialized(n);
-}
-function _createSuper(n) {
-  var e = _isNativeReflectConstruct();
-  return function() {
-    var r = _getPrototypeOf(n), s;
-    if (e) {
-      var o = _getPrototypeOf(this).constructor;
-      s = Reflect.construct(r, arguments, o);
-    } else
-      s = r.apply(this, arguments);
-    return _possibleConstructorReturn(this, s);
-  };
-}
-function _superPropBase(n, e) {
-  for (; !Object.prototype.hasOwnProperty.call(n, e) && (n = _getPrototypeOf(n), n !== null); )
-    ;
-  return n;
-}
-function _get() {
-  return typeof Reflect < "u" && Reflect.get ? _get = Reflect.get : _get = function(e, t, r) {
-    var s = _superPropBase(e, t);
-    if (s) {
-      var o = Object.getOwnPropertyDescriptor(s, t);
-      return o.get ? o.get.call(arguments.length < 3 ? e : r) : o.value;
-    }
-  }, _get.apply(this, arguments);
-}
-var defaults = {
-  /**
-   * Type of the movement.
-   *
-   * Available types:
-   * `slider` - Rewinds slider to the start/end when it reaches the first or last slide.
-   * `carousel` - Changes slides without starting over when it reaches the first or last slide.
-   *
-   * @type {String}
-   */
-  type: "slider",
-  /**
-   * Start at specific slide number defined with zero-based index.
-   *
-   * @type {Number}
-   */
-  startAt: 0,
-  /**
-   * A number of slides visible on the single viewport.
-   *
-   * @type {Number}
-   */
-  perView: 1,
-  /**
-   * Focus currently active slide at a specified position in the track.
-   *
-   * Available inputs:
-   * `center` - Current slide will be always focused at the center of a track.
-   * `0,1,2,3...` - Current slide will be focused on the specified zero-based index.
-   *
-   * @type {String|Number}
-   */
-  focusAt: 0,
-  /**
-   * A size of the gap added between slides.
-   *
-   * @type {Number}
-   */
-  gap: 10,
-  /**
-   * Change slides after a specified interval. Use `false` for turning off autoplay.
-   *
-   * @type {Number|Boolean}
-   */
-  autoplay: !1,
-  /**
-   * Stop autoplay on mouseover event.
-   *
-   * @type {Boolean}
-   */
-  hoverpause: !0,
-  /**
-   * Allow for changing slides with left and right keyboard arrows.
-   *
-   * @type {Boolean}
-   */
-  keyboard: !0,
-  /**
-   * Stop running `perView` number of slides from the end. Use this
-   * option if you don't want to have an empty space after
-   * a slider. Works only with `slider` type and a
-   * non-centered `focusAt` setting.
-   *
-   * @type {Boolean}
-   */
-  bound: !1,
-  /**
-   * Minimal swipe distance needed to change the slide. Use `false` for turning off a swiping.
-   *
-   * @type {Number|Boolean}
-   */
-  swipeThreshold: 80,
-  /**
-   * Minimal mouse drag distance needed to change the slide. Use `false` for turning off a dragging.
-   *
-   * @type {Number|Boolean}
-   */
-  dragThreshold: 120,
-  /**
-   * A number of slides moved on single swipe.
-   *
-   * Available types:
-   * `` - Moves slider by one slide per swipe
-   * `|` - Moves slider between views per swipe (number of slides defined in `perView` options)
-   *
-   * @type {String}
-   */
-  perSwipe: "",
-  /**
-   * Moving distance ratio of the slides on a swiping and dragging.
-   *
-   * @type {Number}
-   */
-  touchRatio: 0.5,
-  /**
-   * Angle required to activate slides moving on swiping or dragging.
-   *
-   * @type {Number}
-   */
-  touchAngle: 45,
-  /**
-   * Duration of the animation in milliseconds.
-   *
-   * @type {Number}
-   */
-  animationDuration: 400,
-  /**
-   * Allows looping the `slider` type. Slider will rewind to the first/last slide when it's at the start/end.
-   *
-   * @type {Boolean}
-   */
-  rewind: !0,
-  /**
-   * Duration of the rewinding animation of the `slider` type in milliseconds.
-   *
-   * @type {Number}
-   */
-  rewindDuration: 800,
-  /**
-   * Easing function for the animation.
-   *
-   * @type {String}
-   */
-  animationTimingFunc: "cubic-bezier(.165, .840, .440, 1)",
-  /**
-   * Wait for the animation to finish until the next user input can be processed
-   *
-   * @type {boolean}
-   */
-  waitForTransition: !0,
-  /**
-   * Throttle costly events at most once per every wait milliseconds.
-   *
-   * @type {Number}
-   */
-  throttle: 10,
-  /**
-   * Moving direction mode.
-   *
-   * Available inputs:
-   * - 'ltr' - left to right movement,
-   * - 'rtl' - right to left movement.
-   *
-   * @type {String}
-   */
-  direction: "ltr",
-  /**
-   * The distance value of the next and previous viewports which
-   * have to peek in the current view. Accepts number and
-   * pixels as a string. Left and right peeking can be
-   * set up separately with a directions object.
-   *
-   * For example:
-   * `100` - Peek 100px on the both sides.
-   * { before: 100, after: 50 }` - Peek 100px on the left side and 50px on the right side.
-   *
-   * @type {Number|String|Object}
-   */
-  peek: 0,
-  /**
-   * Defines how many clones of current viewport will be generated.
-   *
-   * @type {Number}
-   */
-  cloningRatio: 1,
-  /**
-   * Collection of options applied at specified media breakpoints.
-   * For example: display two slides per view under 800px.
-   * `{
-   *   '800px': {
-   *     perView: 2
-   *   }
-   * }`
-   */
-  breakpoints: {},
-  /**
-   * Collection of internally used HTML classes.
-   *
-   * @todo Refactor `slider` and `carousel` properties to single `type: { slider: '', carousel: '' }` object
-   * @type {Object}
-   */
-  classes: {
-    swipeable: "glide--swipeable",
-    dragging: "glide--dragging",
-    direction: {
-      ltr: "glide--ltr",
-      rtl: "glide--rtl"
-    },
-    type: {
-      slider: "glide--slider",
-      carousel: "glide--carousel"
-    },
-    slide: {
-      clone: "glide__slide--clone",
-      active: "glide__slide--active"
-    },
-    arrow: {
-      disabled: "glide__arrow--disabled"
-    },
-    nav: {
-      active: "glide__bullet--active"
-    }
-  }
-};
-function warn(n) {
-  console.error("[Glide warn]: ".concat(n));
-}
-function toInt(n) {
-  return parseInt(n);
-}
-function toFloat(n) {
-  return parseFloat(n);
-}
-function isString(n) {
-  return typeof n == "string";
-}
-function isObject(n) {
-  var e = _typeof(n);
-  return e === "function" || e === "object" && !!n;
-}
-function isFunction(n) {
-  return typeof n == "function";
-}
-function isUndefined(n) {
-  return typeof n > "u";
-}
-function isArray(n) {
-  return n.constructor === Array;
-}
-function mount(n, e, t) {
-  var r = {};
-  for (var s in e)
-    isFunction(e[s]) ? r[s] = e[s](n, r, t) : warn("Extension must be a function");
-  for (var o in r)
-    isFunction(r[o].mount) && r[o].mount();
-  return r;
-}
-function define(n, e, t) {
-  Object.defineProperty(n, e, t);
-}
-function sortKeys(n) {
-  return Object.keys(n).sort().reduce(function(e, t) {
-    return e[t] = n[t], e[t], e;
-  }, {});
-}
-function mergeOptions(n, e) {
-  var t = Object.assign({}, n, e);
-  if (e.hasOwnProperty("classes")) {
-    t.classes = Object.assign({}, n.classes, e.classes);
-    var r = ["direction", "type", "slide", "arrow", "nav"];
-    r.forEach(function(s) {
-      e.classes.hasOwnProperty(s) && (t.classes[s] = _objectSpread2(_objectSpread2({}, n.classes[s]), e.classes[s]));
-    });
-  }
-  return e.hasOwnProperty("breakpoints") && (t.breakpoints = Object.assign({}, n.breakpoints, e.breakpoints)), t;
-}
-var EventsBus = /* @__PURE__ */ function() {
-  function n() {
-    var e = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-    _classCallCheck(this, n), this.events = e, this.hop = e.hasOwnProperty;
-  }
-  return _createClass(n, [{
-    key: "on",
-    value: function(t, r) {
-      if (isArray(t)) {
-        for (var s = 0; s < t.length; s++)
-          this.on(t[s], r);
-        return;
-      }
-      this.hop.call(this.events, t) || (this.events[t] = []);
-      var o = this.events[t].push(r) - 1;
-      return {
-        remove: function() {
-          delete this.events[t][o];
-        }
-      };
-    }
-    /**
-     * Runs registered handlers for specified event.
-     *
-     * @param {String|Array} event
-     * @param {Object=} context
-     */
-  }, {
-    key: "emit",
-    value: function(t, r) {
-      if (isArray(t)) {
-        for (var s = 0; s < t.length; s++)
-          this.emit(t[s], r);
-        return;
-      }
-      this.hop.call(this.events, t) && this.events[t].forEach(function(o) {
-        o(r || {});
-      });
-    }
-  }]), n;
-}(), Glide$1 = /* @__PURE__ */ function() {
-  function n(e) {
-    var t = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
-    _classCallCheck(this, n), this._c = {}, this._t = [], this._e = new EventsBus(), this.disabled = !1, this.selector = e, this.settings = mergeOptions(defaults, t), this.index = this.settings.startAt;
-  }
-  return _createClass(n, [{
-    key: "mount",
-    value: function() {
-      var t = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-      return this._e.emit("mount.before"), isObject(t) ? this._c = mount(this, t, this._e) : warn("You need to provide a object on `mount()`"), this._e.emit("mount.after"), this;
-    }
-    /**
-     * Collects an instance `translate` transformers.
-     *
-     * @param  {Array} transformers Collection of transformers.
-     * @return {Void}
-     */
-  }, {
-    key: "mutate",
-    value: function() {
-      var t = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : [];
-      return isArray(t) ? this._t = t : warn("You need to provide a array on `mutate()`"), this;
-    }
-    /**
-     * Updates glide with specified settings.
-     *
-     * @param {Object} settings
-     * @return {Glide}
-     */
-  }, {
-    key: "update",
-    value: function() {
-      var t = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-      return this.settings = mergeOptions(this.settings, t), t.hasOwnProperty("startAt") && (this.index = t.startAt), this._e.emit("update"), this;
-    }
-    /**
-     * Change slide with specified pattern. A pattern must be in the special format:
-     * `>` - Move one forward
-     * `<` - Move one backward
-     * `={i}` - Go to {i} zero-based slide (eq. '=1', will go to second slide)
-     * `>>` - Rewinds to end (last slide)
-     * `<<` - Rewinds to start (first slide)
-     * `|>` - Move one viewport forward
-     * `|<` - Move one viewport backward
-     *
-     * @param {String} pattern
-     * @return {Glide}
-     */
-  }, {
-    key: "go",
-    value: function(t) {
-      return this._c.Run.make(t), this;
-    }
-    /**
-     * Move track by specified distance.
-     *
-     * @param {String} distance
-     * @return {Glide}
-     */
-  }, {
-    key: "move",
-    value: function(t) {
-      return this._c.Transition.disable(), this._c.Move.make(t), this;
-    }
-    /**
-     * Destroy instance and revert all changes done by this._c.
-     *
-     * @return {Glide}
-     */
-  }, {
-    key: "destroy",
-    value: function() {
-      return this._e.emit("destroy"), this;
-    }
-    /**
-     * Start instance autoplaying.
-     *
-     * @param {Boolean|Number} interval Run autoplaying with passed interval regardless of `autoplay` settings
-     * @return {Glide}
-     */
-  }, {
-    key: "play",
-    value: function() {
-      var t = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : !1;
-      return t && (this.settings.autoplay = t), this._e.emit("play"), this;
-    }
-    /**
-     * Stop instance autoplaying.
-     *
-     * @return {Glide}
-     */
-  }, {
-    key: "pause",
-    value: function() {
-      return this._e.emit("pause"), this;
-    }
-    /**
-     * Sets glide into a idle status.
-     *
-     * @return {Glide}
-     */
-  }, {
-    key: "disable",
-    value: function() {
-      return this.disabled = !0, this;
-    }
-    /**
-     * Sets glide into a active status.
-     *
-     * @return {Glide}
-     */
-  }, {
-    key: "enable",
-    value: function() {
-      return this.disabled = !1, this;
-    }
-    /**
-     * Adds cuutom event listener with handler.
-     *
-     * @param  {String|Array} event
-     * @param  {Function} handler
-     * @return {Glide}
-     */
-  }, {
-    key: "on",
-    value: function(t, r) {
-      return this._e.on(t, r), this;
-    }
-    /**
-     * Checks if glide is a precised type.
-     *
-     * @param  {String} name
-     * @return {Boolean}
-     */
-  }, {
-    key: "isType",
-    value: function(t) {
-      return this.settings.type === t;
-    }
-    /**
-     * Gets value of the core options.
-     *
-     * @return {Object}
-     */
-  }, {
-    key: "settings",
-    get: function() {
-      return this._o;
-    },
-    set: function(t) {
-      isObject(t) ? this._o = t : warn("Options must be an `object` instance.");
-    }
-    /**
-     * Gets current index of the slider.
-     *
-     * @return {Object}
-     */
-  }, {
-    key: "index",
-    get: function() {
-      return this._i;
-    },
-    set: function(t) {
-      this._i = toInt(t);
-    }
-    /**
-     * Gets type name of the slider.
-     *
-     * @return {String}
-     */
-  }, {
-    key: "type",
-    get: function() {
-      return this.settings.type;
-    }
-    /**
-     * Gets value of the idle status.
-     *
-     * @return {Boolean}
-     */
-  }, {
-    key: "disabled",
-    get: function() {
-      return this._d;
-    },
-    set: function(t) {
-      this._d = !!t;
-    }
-  }]), n;
-}();
-function Run(n, e, t) {
-  var r = {
-    /**
-     * Initializes autorunning of the glide.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      this._o = !1;
-    },
-    /**
-     * Makes glides running based on the passed moving schema.
-     *
-     * @param {String} move
-     */
-    make: function(u) {
-      var h = this;
-      n.disabled || (!n.settings.waitForTransition || n.disable(), this.move = u, t.emit("run.before", this.move), this.calculate(), t.emit("run", this.move), e.Transition.after(function() {
-        h.isStart() && t.emit("run.start", h.move), h.isEnd() && t.emit("run.end", h.move), h.isOffset() && (h._o = !1, t.emit("run.offset", h.move)), t.emit("run.after", h.move), n.enable();
-      }));
-    },
-    /**
-     * Calculates current index based on defined move.
-     *
-     * @return {Number|Undefined}
-     */
-    calculate: function() {
-      var u = this.move, h = this.length, f = u.steps, p = u.direction, m = 1;
-      if (p === "=") {
-        if (n.settings.bound && toInt(f) > h) {
-          n.index = h;
-          return;
-        }
-        n.index = f;
-        return;
-      }
-      if (p === ">" && f === ">") {
-        n.index = h;
-        return;
-      }
-      if (p === "<" && f === "<") {
-        n.index = 0;
-        return;
-      }
-      if (p === "|" && (m = n.settings.perView || 1), p === ">" || p === "|" && f === ">") {
-        var E = s(m);
-        E > h && (this._o = !0), n.index = o(E, m);
-        return;
-      }
-      if (p === "<" || p === "|" && f === "<") {
-        var g = a(m);
-        g < 0 && (this._o = !0), n.index = c(g, m);
-        return;
-      }
-      warn("Invalid direction pattern [".concat(p).concat(f, "] has been used"));
-    },
-    /**
-     * Checks if we are on the first slide.
-     *
-     * @return {Boolean}
-     */
-    isStart: function() {
-      return n.index <= 0;
-    },
-    /**
-     * Checks if we are on the last slide.
-     *
-     * @return {Boolean}
-     */
-    isEnd: function() {
-      return n.index >= this.length;
-    },
-    /**
-     * Checks if we are making a offset run.
-     *
-     * @param {String} direction
-     * @return {Boolean}
-     */
-    isOffset: function() {
-      var u = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : void 0;
-      return u ? this._o ? u === "|>" ? this.move.direction === "|" && this.move.steps === ">" : u === "|<" ? this.move.direction === "|" && this.move.steps === "<" : this.move.direction === u : !1 : this._o;
-    },
-    /**
-     * Checks if bound mode is active
-     *
-     * @return {Boolean}
-     */
-    isBound: function() {
-      return n.isType("slider") && n.settings.focusAt !== "center" && n.settings.bound;
-    }
-  };
-  function s(l) {
-    var u = n.index;
-    return n.isType("carousel") ? u + l : u + (l - u % l);
-  }
-  function o(l, u) {
-    var h = r.length;
-    return l <= h ? l : n.isType("carousel") ? l - (h + 1) : n.settings.rewind ? r.isBound() && !r.isEnd() ? h : 0 : r.isBound() ? h : Math.floor(h / u) * u;
-  }
-  function a(l) {
-    var u = n.index;
-    if (n.isType("carousel"))
-      return u - l;
-    var h = Math.ceil(u / l);
-    return (h - 1) * l;
-  }
-  function c(l, u) {
-    var h = r.length;
-    return l >= 0 ? l : n.isType("carousel") ? l + (h + 1) : n.settings.rewind ? r.isBound() && r.isStart() ? h : Math.floor(h / u) * u : 0;
-  }
-  return define(r, "move", {
-    /**
-     * Gets value of the move schema.
-     *
-     * @returns {Object}
-     */
-    get: function() {
-      return this._m;
-    },
-    /**
-     * Sets value of the move schema.
-     *
-     * @returns {Object}
-     */
-    set: function(u) {
-      var h = u.substr(1);
-      this._m = {
-        direction: u.substr(0, 1),
-        steps: h ? toInt(h) ? toInt(h) : h : 0
-      };
-    }
-  }), define(r, "length", {
-    /**
-     * Gets value of the running distance based
-     * on zero-indexing number of slides.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      var u = n.settings, h = e.Html.slides.length;
-      return this.isBound() ? h - 1 - (toInt(u.perView) - 1) + toInt(u.focusAt) : h - 1;
-    }
-  }), define(r, "offset", {
-    /**
-     * Gets status of the offsetting flag.
-     *
-     * @return {Boolean}
-     */
-    get: function() {
-      return this._o;
-    }
-  }), r;
-}
-function now() {
-  return (/* @__PURE__ */ new Date()).getTime();
-}
-function throttle(n, e) {
-  var t = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {}, r, s, o, a, c = 0, l = function() {
-    c = t.leading === !1 ? 0 : now(), r = null, a = n.apply(s, o), r || (s = o = null);
-  }, u = function() {
-    var f = now();
-    !c && t.leading === !1 && (c = f);
-    var p = e - (f - c);
-    return s = this, o = arguments, p <= 0 || p > e ? (r && (clearTimeout(r), r = null), c = f, a = n.apply(s, o), r || (s = o = null)) : !r && t.trailing !== !1 && (r = setTimeout(l, p)), a;
-  };
-  return u.cancel = function() {
-    clearTimeout(r), c = 0, r = s = o = null;
-  }, u;
-}
-var MARGIN_TYPE = {
-  ltr: ["marginLeft", "marginRight"],
-  rtl: ["marginRight", "marginLeft"]
-};
-function Gaps(n, e, t) {
-  var r = {
-    /**
-     * Applies gaps between slides. First and last
-     * slides do not receive it's edge margins.
-     *
-     * @param {HTMLCollection} slides
-     * @return {Void}
-     */
-    apply: function(o) {
-      for (var a = 0, c = o.length; a < c; a++) {
-        var l = o[a].style, u = e.Direction.value;
-        a !== 0 ? l[MARGIN_TYPE[u][0]] = "".concat(this.value / 2, "px") : l[MARGIN_TYPE[u][0]] = "", a !== o.length - 1 ? l[MARGIN_TYPE[u][1]] = "".concat(this.value / 2, "px") : l[MARGIN_TYPE[u][1]] = "";
-      }
-    },
-    /**
-     * Removes gaps from the slides.
-     *
-     * @param {HTMLCollection} slides
-     * @returns {Void}
-    */
-    remove: function(o) {
-      for (var a = 0, c = o.length; a < c; a++) {
-        var l = o[a].style;
-        l.marginLeft = "", l.marginRight = "";
-      }
-    }
-  };
-  return define(r, "value", {
-    /**
-     * Gets value of the gap.
-     *
-     * @returns {Number}
-     */
-    get: function() {
-      return toInt(n.settings.gap);
-    }
-  }), define(r, "grow", {
-    /**
-     * Gets additional dimensions value caused by gaps.
-     * Used to increase width of the slides wrapper.
-     *
-     * @returns {Number}
-     */
-    get: function() {
-      return r.value * e.Sizes.length;
-    }
-  }), define(r, "reductor", {
-    /**
-     * Gets reduction value caused by gaps.
-     * Used to subtract width of the slides.
-     *
-     * @returns {Number}
-     */
-    get: function() {
-      var o = n.settings.perView;
-      return r.value * (o - 1) / o;
-    }
-  }), t.on(["build.after", "update"], throttle(function() {
-    r.apply(e.Html.wrapper.children);
-  }, 30)), t.on("destroy", function() {
-    r.remove(e.Html.wrapper.children);
-  }), r;
-}
-function siblings(n) {
-  if (n && n.parentNode) {
-    for (var e = n.parentNode.firstChild, t = []; e; e = e.nextSibling)
-      e.nodeType === 1 && e !== n && t.push(e);
-    return t;
-  }
-  return [];
-}
-function toArray(n) {
-  return Array.prototype.slice.call(n);
-}
-var TRACK_SELECTOR = '[data-glide-el="track"]';
-function Html(n, e, t) {
-  var r = {
-    /**
-     * Setup slider HTML nodes.
-     *
-     * @param {Glide} glide
-     */
-    mount: function() {
-      this.root = n.selector, this.track = this.root.querySelector(TRACK_SELECTOR), this.collectSlides();
-    },
-    /**
-     * Collect slides
-     */
-    collectSlides: function() {
-      this.slides = toArray(this.wrapper.children).filter(function(o) {
-        return !o.classList.contains(n.settings.classes.slide.clone);
-      });
-    }
-  };
-  return define(r, "root", {
-    /**
-     * Gets node of the glide main element.
-     *
-     * @return {Object}
-     */
-    get: function() {
-      return r._r;
-    },
-    /**
-     * Sets node of the glide main element.
-     *
-     * @return {Object}
-     */
-    set: function(o) {
-      isString(o) && (o = document.querySelector(o)), o !== null ? r._r = o : warn("Root element must be a existing Html node");
-    }
-  }), define(r, "track", {
-    /**
-     * Gets node of the glide track with slides.
-     *
-     * @return {Object}
-     */
-    get: function() {
-      return r._t;
-    },
-    /**
-     * Sets node of the glide track with slides.
-     *
-     * @return {Object}
-     */
-    set: function(o) {
-      r._t = o;
-    }
-  }), define(r, "wrapper", {
-    /**
-     * Gets node of the slides wrapper.
-     *
-     * @return {Object}
-     */
-    get: function() {
-      return r.track.children[0];
-    }
-  }), t.on("update", function() {
-    r.collectSlides();
-  }), r;
-}
-function Peek(n, e, t) {
-  var r = {
-    /**
-     * Setups how much to peek based on settings.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      this.value = n.settings.peek;
-    }
-  };
-  return define(r, "value", {
-    /**
-     * Gets value of the peek.
-     *
-     * @returns {Number|Object}
-     */
-    get: function() {
-      return r._v;
-    },
-    /**
-     * Sets value of the peek.
-     *
-     * @param {Number|Object} value
-     * @return {Void}
-     */
-    set: function(o) {
-      isObject(o) ? (o.before = toInt(o.before), o.after = toInt(o.after)) : o = toInt(o), r._v = o;
-    }
-  }), define(r, "reductor", {
-    /**
-     * Gets reduction value caused by peek.
-     *
-     * @returns {Number}
-     */
-    get: function() {
-      var o = r.value, a = n.settings.perView;
-      return isObject(o) ? o.before / a + o.after / a : o * 2 / a;
-    }
-  }), t.on(["resize", "update"], function() {
-    r.mount();
-  }), r;
-}
-function Move(n, e, t) {
-  var r = {
-    /**
-     * Constructs move component.
-     *
-     * @returns {Void}
-     */
-    mount: function() {
-      this._o = 0;
-    },
-    /**
-     * Calculates a movement value based on passed offset and currently active index.
-     *
-     * @param  {Number} offset
-     * @return {Void}
-     */
-    make: function() {
-      var o = this, a = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : 0;
-      this.offset = a, t.emit("move", {
-        movement: this.value
-      }), e.Transition.after(function() {
-        t.emit("move.after", {
-          movement: o.value
-        });
-      });
-    }
-  };
-  return define(r, "offset", {
-    /**
-     * Gets an offset value used to modify current translate.
-     *
-     * @return {Object}
-     */
-    get: function() {
-      return r._o;
-    },
-    /**
-     * Sets an offset value used to modify current translate.
-     *
-     * @return {Object}
-     */
-    set: function(o) {
-      r._o = isUndefined(o) ? 0 : toInt(o);
-    }
-  }), define(r, "translate", {
-    /**
-     * Gets a raw movement value.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      return e.Sizes.slideWidth * n.index;
-    }
-  }), define(r, "value", {
-    /**
-     * Gets an actual movement value corrected by offset.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      var o = this.offset, a = this.translate;
-      return e.Direction.is("rtl") ? a + o : a - o;
-    }
-  }), t.on(["build.before", "run"], function() {
-    r.make();
-  }), r;
-}
-function Sizes(n, e, t) {
-  var r = {
-    /**
-     * Setups dimensions of slides.
-     *
-     * @return {Void}
-     */
-    setupSlides: function() {
-      for (var o = "".concat(this.slideWidth, "px"), a = e.Html.slides, c = 0; c < a.length; c++)
-        a[c].style.width = o;
-    },
-    /**
-     * Setups dimensions of slides wrapper.
-     *
-     * @return {Void}
-     */
-    setupWrapper: function() {
-      e.Html.wrapper.style.width = "".concat(this.wrapperSize, "px");
-    },
-    /**
-     * Removes applied styles from HTML elements.
-     *
-     * @returns {Void}
-     */
-    remove: function() {
-      for (var o = e.Html.slides, a = 0; a < o.length; a++)
-        o[a].style.width = "";
-      e.Html.wrapper.style.width = "";
-    }
-  };
-  return define(r, "length", {
-    /**
-     * Gets count number of the slides.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      return e.Html.slides.length;
-    }
-  }), define(r, "width", {
-    /**
-     * Gets width value of the slider (visible area).
-     *
-     * @return {Number}
-     */
-    get: function() {
-      return e.Html.track.offsetWidth;
-    }
-  }), define(r, "wrapperSize", {
-    /**
-     * Gets size of the slides wrapper.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      return r.slideWidth * r.length + e.Gaps.grow + e.Clones.grow;
-    }
-  }), define(r, "slideWidth", {
-    /**
-     * Gets width value of a single slide.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      return r.width / n.settings.perView - e.Peek.reductor - e.Gaps.reductor;
-    }
-  }), t.on(["build.before", "resize", "update"], function() {
-    r.setupSlides(), r.setupWrapper();
-  }), t.on("destroy", function() {
-    r.remove();
-  }), r;
-}
-function Build(n, e, t) {
-  var r = {
-    /**
-     * Init glide building. Adds classes, sets
-     * dimensions and setups initial state.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      t.emit("build.before"), this.typeClass(), this.activeClass(), t.emit("build.after");
-    },
-    /**
-     * Adds `type` class to the glide element.
-     *
-     * @return {Void}
-     */
-    typeClass: function() {
-      e.Html.root.classList.add(n.settings.classes.type[n.settings.type]);
-    },
-    /**
-     * Sets active class to current slide.
-     *
-     * @return {Void}
-     */
-    activeClass: function() {
-      var o = n.settings.classes, a = e.Html.slides[n.index];
-      a && (a.classList.add(o.slide.active), siblings(a).forEach(function(c) {
-        c.classList.remove(o.slide.active);
-      }));
-    },
-    /**
-     * Removes HTML classes applied at building.
-     *
-     * @return {Void}
-     */
-    removeClasses: function() {
-      var o = n.settings.classes, a = o.type, c = o.slide;
-      e.Html.root.classList.remove(a[n.settings.type]), e.Html.slides.forEach(function(l) {
-        l.classList.remove(c.active);
-      });
-    }
-  };
-  return t.on(["destroy", "update"], function() {
-    r.removeClasses();
-  }), t.on(["resize", "update"], function() {
-    r.mount();
-  }), t.on("move.after", function() {
-    r.activeClass();
-  }), r;
-}
-function Clones(n, e, t) {
-  var r = {
-    /**
-     * Create pattern map and collect slides to be cloned.
-     */
-    mount: function() {
-      this.items = [], n.isType("carousel") && (this.items = this.collect());
-    },
-    /**
-     * Collect clones with pattern.
-     *
-     * @return {[]}
-     */
-    collect: function() {
-      var o = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : [], a = e.Html.slides, c = n.settings, l = c.perView, u = c.classes, h = c.cloningRatio;
-      if (a.length > 0)
-        for (var f = +!!n.settings.peek, p = l + f + Math.round(l / 2), m = a.slice(0, p).reverse(), E = a.slice(p * -1), g = 0; g < Math.max(h, Math.floor(l / a.length)); g++) {
-          for (var b = 0; b < m.length; b++) {
-            var w = m[b].cloneNode(!0);
-            w.classList.add(u.slide.clone), o.push(w);
-          }
-          for (var $ = 0; $ < E.length; $++) {
-            var B = E[$].cloneNode(!0);
-            B.classList.add(u.slide.clone), o.unshift(B);
-          }
-        }
-      return o;
-    },
-    /**
-     * Append cloned slides with generated pattern.
-     *
-     * @return {Void}
-     */
-    append: function() {
-      for (var o = this.items, a = e.Html, c = a.wrapper, l = a.slides, u = Math.floor(o.length / 2), h = o.slice(0, u).reverse(), f = o.slice(u * -1).reverse(), p = "".concat(e.Sizes.slideWidth, "px"), m = 0; m < f.length; m++)
-        c.appendChild(f[m]);
-      for (var E = 0; E < h.length; E++)
-        c.insertBefore(h[E], l[0]);
-      for (var g = 0; g < o.length; g++)
-        o[g].style.width = p;
-    },
-    /**
-     * Remove all cloned slides.
-     *
-     * @return {Void}
-     */
-    remove: function() {
-      for (var o = this.items, a = 0; a < o.length; a++)
-        e.Html.wrapper.removeChild(o[a]);
-    }
-  };
-  return define(r, "grow", {
-    /**
-     * Gets additional dimensions value caused by clones.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      return (e.Sizes.slideWidth + e.Gaps.value) * r.items.length;
-    }
-  }), t.on("update", function() {
-    r.remove(), r.mount(), r.append();
-  }), t.on("build.before", function() {
-    n.isType("carousel") && r.append();
-  }), t.on("destroy", function() {
-    r.remove();
-  }), r;
-}
-var EventsBinder = /* @__PURE__ */ function() {
-  function n() {
-    var e = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-    _classCallCheck(this, n), this.listeners = e;
-  }
-  return _createClass(n, [{
-    key: "on",
-    value: function(t, r, s) {
-      var o = arguments.length > 3 && arguments[3] !== void 0 ? arguments[3] : !1;
-      isString(t) && (t = [t]);
-      for (var a = 0; a < t.length; a++)
-        this.listeners[t[a]] = s, r.addEventListener(t[a], this.listeners[t[a]], o);
-    }
-    /**
-     * Removes event listeners from arrows HTML elements.
-     *
-     * @param  {String|Array} events
-     * @param  {Element|Window|Document} el
-     * @param  {Boolean|Object} capture
-     * @return {Void}
-     */
-  }, {
-    key: "off",
-    value: function(t, r) {
-      var s = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : !1;
-      isString(t) && (t = [t]);
-      for (var o = 0; o < t.length; o++)
-        r.removeEventListener(t[o], this.listeners[t[o]], s);
-    }
-    /**
-     * Destroy collected listeners.
-     *
-     * @returns {Void}
-     */
-  }, {
-    key: "destroy",
-    value: function() {
-      delete this.listeners;
-    }
-  }]), n;
-}();
-function Resize(n, e, t) {
-  var r = new EventsBinder(), s = {
-    /**
-     * Initializes window bindings.
-     */
-    mount: function() {
-      this.bind();
-    },
-    /**
-     * Binds `rezsize` listener to the window.
-     * It's a costly event, so we are debouncing it.
-     *
-     * @return {Void}
-     */
-    bind: function() {
-      r.on("resize", window, throttle(function() {
-        t.emit("resize");
-      }, n.settings.throttle));
-    },
-    /**
-     * Unbinds listeners from the window.
-     *
-     * @return {Void}
-     */
-    unbind: function() {
-      r.off("resize", window);
-    }
-  };
-  return t.on("destroy", function() {
-    s.unbind(), r.destroy();
-  }), s;
-}
-var VALID_DIRECTIONS = ["ltr", "rtl"], FLIPED_MOVEMENTS = {
-  ">": "<",
-  "<": ">",
-  "=": "="
-};
-function Direction(n, e, t) {
-  var r = {
-    /**
-     * Setups gap value based on settings.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      this.value = n.settings.direction;
-    },
-    /**
-     * Resolves pattern based on direction value
-     *
-     * @param {String} pattern
-     * @returns {String}
-     */
-    resolve: function(o) {
-      var a = o.slice(0, 1);
-      return this.is("rtl") ? o.split(a).join(FLIPED_MOVEMENTS[a]) : o;
-    },
-    /**
-     * Checks value of direction mode.
-     *
-     * @param {String} direction
-     * @returns {Boolean}
-     */
-    is: function(o) {
-      return this.value === o;
-    },
-    /**
-     * Applies direction class to the root HTML element.
-     *
-     * @return {Void}
-     */
-    addClass: function() {
-      e.Html.root.classList.add(n.settings.classes.direction[this.value]);
-    },
-    /**
-     * Removes direction class from the root HTML element.
-     *
-     * @return {Void}
-     */
-    removeClass: function() {
-      e.Html.root.classList.remove(n.settings.classes.direction[this.value]);
-    }
-  };
-  return define(r, "value", {
-    /**
-     * Gets value of the direction.
-     *
-     * @returns {Number}
-     */
-    get: function() {
-      return r._v;
-    },
-    /**
-     * Sets value of the direction.
-     *
-     * @param {String} value
-     * @return {Void}
-     */
-    set: function(o) {
-      VALID_DIRECTIONS.indexOf(o) > -1 ? r._v = o : warn("Direction value must be `ltr` or `rtl`");
-    }
-  }), t.on(["destroy", "update"], function() {
-    r.removeClass();
-  }), t.on("update", function() {
-    r.mount();
-  }), t.on(["build.before", "update"], function() {
-    r.addClass();
-  }), r;
-}
-function Rtl(n, e) {
-  return {
-    /**
-     * Negates the passed translate if glide is in RTL option.
-     *
-     * @param  {Number} translate
-     * @return {Number}
-     */
-    modify: function(r) {
-      return e.Direction.is("rtl") ? -r : r;
-    }
-  };
-}
-function Gap(n, e) {
-  return {
-    /**
-     * Modifies passed translate value with number in the `gap` settings.
-     *
-     * @param  {Number} translate
-     * @return {Number}
-     */
-    modify: function(r) {
-      var s = Math.floor(r / e.Sizes.slideWidth);
-      return r + e.Gaps.value * s;
-    }
-  };
-}
-function Grow(n, e) {
-  return {
-    /**
-     * Adds to the passed translate width of the half of clones.
-     *
-     * @param  {Number} translate
-     * @return {Number}
-     */
-    modify: function(r) {
-      return r + e.Clones.grow / 2;
-    }
-  };
-}
-function Peeking(n, e) {
-  return {
-    /**
-     * Modifies passed translate value with a `peek` setting.
-     *
-     * @param  {Number} translate
-     * @return {Number}
-     */
-    modify: function(r) {
-      if (n.settings.focusAt >= 0) {
-        var s = e.Peek.value;
-        return isObject(s) ? r - s.before : r - s;
-      }
-      return r;
-    }
-  };
-}
-function Focusing(n, e) {
-  return {
-    /**
-     * Modifies passed translate value with index in the `focusAt` setting.
-     *
-     * @param  {Number} translate
-     * @return {Number}
-     */
-    modify: function(r) {
-      var s = e.Gaps.value, o = e.Sizes.width, a = n.settings.focusAt, c = e.Sizes.slideWidth;
-      return a === "center" ? r - (o / 2 - c / 2) : r - c * a - s * a;
-    }
-  };
-}
-function mutator(n, e, t) {
-  var r = [Gap, Grow, Peeking, Focusing].concat(n._t, [Rtl]);
-  return {
-    /**
-     * Piplines translate value with registered transformers.
-     *
-     * @param  {Number} translate
-     * @return {Number}
-     */
-    mutate: function(o) {
-      for (var a = 0; a < r.length; a++) {
-        var c = r[a];
-        isFunction(c) && isFunction(c().modify) ? o = c(n, e, t).modify(o) : warn("Transformer should be a function that returns an object with `modify()` method");
-      }
-      return o;
-    }
-  };
-}
-function Translate(n, e, t) {
-  var r = {
-    /**
-     * Sets value of translate on HTML element.
-     *
-     * @param {Number} value
-     * @return {Void}
-     */
-    set: function(o) {
-      var a = mutator(n, e).mutate(o), c = "translate3d(".concat(-1 * a, "px, 0px, 0px)");
-      e.Html.wrapper.style.mozTransform = c, e.Html.wrapper.style.webkitTransform = c, e.Html.wrapper.style.transform = c;
-    },
-    /**
-     * Removes value of translate from HTML element.
-     *
-     * @return {Void}
-     */
-    remove: function() {
-      e.Html.wrapper.style.transform = "";
-    },
-    /**
-     * @return {number}
-     */
-    getStartIndex: function() {
-      var o = e.Sizes.length, a = n.index, c = n.settings.perView;
-      return e.Run.isOffset(">") || e.Run.isOffset("|>") ? o + (a - c) : (a + c) % o;
-    },
-    /**
-     * @return {number}
-     */
-    getTravelDistance: function() {
-      var o = e.Sizes.slideWidth * n.settings.perView;
-      return e.Run.isOffset(">") || e.Run.isOffset("|>") ? o * -1 : o;
-    }
-  };
-  return t.on("move", function(s) {
-    if (!n.isType("carousel") || !e.Run.isOffset())
-      return r.set(s.movement);
-    e.Transition.after(function() {
-      t.emit("translate.jump"), r.set(e.Sizes.slideWidth * n.index);
-    });
-    var o = e.Sizes.slideWidth * e.Translate.getStartIndex();
-    return r.set(o - e.Translate.getTravelDistance());
-  }), t.on("destroy", function() {
-    r.remove();
-  }), r;
-}
-function Transition(n, e, t) {
-  var r = !1, s = {
-    /**
-     * Composes string of the CSS transition.
-     *
-     * @param {String} property
-     * @return {String}
-     */
-    compose: function(a) {
-      var c = n.settings;
-      return r ? "".concat(a, " 0ms ").concat(c.animationTimingFunc) : "".concat(a, " ").concat(this.duration, "ms ").concat(c.animationTimingFunc);
-    },
-    /**
-     * Sets value of transition on HTML element.
-     *
-     * @param {String=} property
-     * @return {Void}
-     */
-    set: function() {
-      var a = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : "transform";
-      e.Html.wrapper.style.transition = this.compose(a);
-    },
-    /**
-     * Removes value of transition from HTML element.
-     *
-     * @return {Void}
-     */
-    remove: function() {
-      e.Html.wrapper.style.transition = "";
-    },
-    /**
-     * Runs callback after animation.
-     *
-     * @param  {Function} callback
-     * @return {Void}
-     */
-    after: function(a) {
-      setTimeout(function() {
-        a();
-      }, this.duration);
-    },
-    /**
-     * Enable transition.
-     *
-     * @return {Void}
-     */
-    enable: function() {
-      r = !1, this.set();
-    },
-    /**
-     * Disable transition.
-     *
-     * @return {Void}
-     */
-    disable: function() {
-      r = !0, this.set();
-    }
-  };
-  return define(s, "duration", {
-    /**
-     * Gets duration of the transition based
-     * on currently running animation type.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      var a = n.settings;
-      return n.isType("slider") && e.Run.offset ? a.rewindDuration : a.animationDuration;
-    }
-  }), t.on("move", function() {
-    s.set();
-  }), t.on(["build.before", "resize", "translate.jump"], function() {
-    s.disable();
-  }), t.on("run", function() {
-    s.enable();
-  }), t.on("destroy", function() {
-    s.remove();
-  }), s;
-}
-var supportsPassive = !1;
-try {
-  var opts = Object.defineProperty({}, "passive", {
-    get: function() {
-      supportsPassive = !0;
-    }
-  });
-  window.addEventListener("testPassive", null, opts), window.removeEventListener("testPassive", null, opts);
-} catch (n) {
-}
-var supportsPassive$1 = supportsPassive, START_EVENTS = ["touchstart", "mousedown"], MOVE_EVENTS = ["touchmove", "mousemove"], END_EVENTS = ["touchend", "touchcancel", "mouseup", "mouseleave"], MOUSE_EVENTS = ["mousedown", "mousemove", "mouseup", "mouseleave"];
-function Swipe(n, e, t) {
-  var r = new EventsBinder(), s = 0, o = 0, a = 0, c = !1, l = supportsPassive$1 ? {
-    passive: !0
-  } : !1, u = {
-    /**
-     * Initializes swipe bindings.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      this.bindSwipeStart();
-    },
-    /**
-     * Handler for `swipestart` event. Calculates entry points of the user's tap.
-     *
-     * @param {Object} event
-     * @return {Void}
-     */
-    start: function(f) {
-      if (!c && !n.disabled) {
-        this.disable();
-        var p = this.touches(f);
-        s = null, o = toInt(p.pageX), a = toInt(p.pageY), this.bindSwipeMove(), this.bindSwipeEnd(), t.emit("swipe.start");
-      }
-    },
-    /**
-     * Handler for `swipemove` event. Calculates user's tap angle and distance.
-     *
-     * @param {Object} event
-     */
-    move: function(f) {
-      if (!n.disabled) {
-        var p = n.settings, m = p.touchAngle, E = p.touchRatio, g = p.classes, b = this.touches(f), w = toInt(b.pageX) - o, $ = toInt(b.pageY) - a, B = Math.abs(w << 2), P = Math.abs($ << 2), U = Math.sqrt(B + P), R = Math.sqrt(P);
-        if (s = Math.asin(R / U), s * 180 / Math.PI < m)
-          f.stopPropagation(), e.Move.make(w * toFloat(E)), e.Html.root.classList.add(g.dragging), t.emit("swipe.move");
-        else
-          return !1;
-      }
-    },
-    /**
-     * Handler for `swipeend` event. Finitializes user's tap and decides about glide move.
-     *
-     * @param {Object} event
-     * @return {Void}
-     */
-    end: function(f) {
-      if (!n.disabled) {
-        var p = n.settings, m = p.perSwipe, E = p.touchAngle, g = p.classes, b = this.touches(f), w = this.threshold(f), $ = b.pageX - o, B = s * 180 / Math.PI;
-        this.enable(), $ > w && B < E ? e.Run.make(e.Direction.resolve("".concat(m, "<"))) : $ < -w && B < E ? e.Run.make(e.Direction.resolve("".concat(m, ">"))) : e.Move.make(), e.Html.root.classList.remove(g.dragging), this.unbindSwipeMove(), this.unbindSwipeEnd(), t.emit("swipe.end");
-      }
-    },
-    /**
-     * Binds swipe's starting event.
-     *
-     * @return {Void}
-     */
-    bindSwipeStart: function() {
-      var f = this, p = n.settings, m = p.swipeThreshold, E = p.dragThreshold;
-      m && r.on(START_EVENTS[0], e.Html.wrapper, function(g) {
-        f.start(g);
-      }, l), E && r.on(START_EVENTS[1], e.Html.wrapper, function(g) {
-        f.start(g);
-      }, l);
-    },
-    /**
-     * Unbinds swipe's starting event.
-     *
-     * @return {Void}
-     */
-    unbindSwipeStart: function() {
-      r.off(START_EVENTS[0], e.Html.wrapper, l), r.off(START_EVENTS[1], e.Html.wrapper, l);
-    },
-    /**
-     * Binds swipe's moving event.
-     *
-     * @return {Void}
-     */
-    bindSwipeMove: function() {
-      var f = this;
-      r.on(MOVE_EVENTS, e.Html.wrapper, throttle(function(p) {
-        f.move(p);
-      }, n.settings.throttle), l);
-    },
-    /**
-     * Unbinds swipe's moving event.
-     *
-     * @return {Void}
-     */
-    unbindSwipeMove: function() {
-      r.off(MOVE_EVENTS, e.Html.wrapper, l);
-    },
-    /**
-     * Binds swipe's ending event.
-     *
-     * @return {Void}
-     */
-    bindSwipeEnd: function() {
-      var f = this;
-      r.on(END_EVENTS, e.Html.wrapper, function(p) {
-        f.end(p);
-      });
-    },
-    /**
-     * Unbinds swipe's ending event.
-     *
-     * @return {Void}
-     */
-    unbindSwipeEnd: function() {
-      r.off(END_EVENTS, e.Html.wrapper);
-    },
-    /**
-     * Normalizes event touches points accorting to different types.
-     *
-     * @param {Object} event
-     */
-    touches: function(f) {
-      return MOUSE_EVENTS.indexOf(f.type) > -1 ? f : f.touches[0] || f.changedTouches[0];
-    },
-    /**
-     * Gets value of minimum swipe distance settings based on event type.
-     *
-     * @return {Number}
-     */
-    threshold: function(f) {
-      var p = n.settings;
-      return MOUSE_EVENTS.indexOf(f.type) > -1 ? p.dragThreshold : p.swipeThreshold;
-    },
-    /**
-     * Enables swipe event.
-     *
-     * @return {self}
-     */
-    enable: function() {
-      return c = !1, e.Transition.enable(), this;
-    },
-    /**
-     * Disables swipe event.
-     *
-     * @return {self}
-     */
-    disable: function() {
-      return c = !0, e.Transition.disable(), this;
-    }
-  };
-  return t.on("build.after", function() {
-    e.Html.root.classList.add(n.settings.classes.swipeable);
-  }), t.on("destroy", function() {
-    u.unbindSwipeStart(), u.unbindSwipeMove(), u.unbindSwipeEnd(), r.destroy();
-  }), u;
-}
-function Images(n, e, t) {
-  var r = new EventsBinder(), s = {
-    /**
-     * Binds listener to glide wrapper.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      this.bind();
-    },
-    /**
-     * Binds `dragstart` event on wrapper to prevent dragging images.
-     *
-     * @return {Void}
-     */
-    bind: function() {
-      r.on("dragstart", e.Html.wrapper, this.dragstart);
-    },
-    /**
-     * Unbinds `dragstart` event on wrapper.
-     *
-     * @return {Void}
-     */
-    unbind: function() {
-      r.off("dragstart", e.Html.wrapper);
-    },
-    /**
-     * Event handler. Prevents dragging.
-     *
-     * @return {Void}
-     */
-    dragstart: function(a) {
-      a.preventDefault();
-    }
-  };
-  return t.on("destroy", function() {
-    s.unbind(), r.destroy();
-  }), s;
-}
-function Anchors(n, e, t) {
-  var r = new EventsBinder(), s = !1, o = !1, a = {
-    /**
-     * Setups a initial state of anchors component.
-     *
-     * @returns {Void}
-     */
-    mount: function() {
-      this._a = e.Html.wrapper.querySelectorAll("a"), this.bind();
-    },
-    /**
-     * Binds events to anchors inside a track.
-     *
-     * @return {Void}
-     */
-    bind: function() {
-      r.on("click", e.Html.wrapper, this.click);
-    },
-    /**
-     * Unbinds events attached to anchors inside a track.
-     *
-     * @return {Void}
-     */
-    unbind: function() {
-      r.off("click", e.Html.wrapper);
-    },
-    /**
-     * Handler for click event. Prevents clicks when glide is in `prevent` status.
-     *
-     * @param  {Object} event
-     * @return {Void}
-     */
-    click: function(l) {
-      o && (l.stopPropagation(), l.preventDefault());
-    },
-    /**
-     * Detaches anchors click event inside glide.
-     *
-     * @return {self}
-     */
-    detach: function() {
-      if (o = !0, !s) {
-        for (var l = 0; l < this.items.length; l++)
-          this.items[l].draggable = !1;
-        s = !0;
-      }
-      return this;
-    },
-    /**
-     * Attaches anchors click events inside glide.
-     *
-     * @return {self}
-     */
-    attach: function() {
-      if (o = !1, s) {
-        for (var l = 0; l < this.items.length; l++)
-          this.items[l].draggable = !0;
-        s = !1;
-      }
-      return this;
-    }
-  };
-  return define(a, "items", {
-    /**
-     * Gets collection of the arrows HTML elements.
-     *
-     * @return {HTMLElement[]}
-     */
-    get: function() {
-      return a._a;
-    }
-  }), t.on("swipe.move", function() {
-    a.detach();
-  }), t.on("swipe.end", function() {
-    e.Transition.after(function() {
-      a.attach();
-    });
-  }), t.on("destroy", function() {
-    a.attach(), a.unbind(), r.destroy();
-  }), a;
-}
-var NAV_SELECTOR = '[data-glide-el="controls[nav]"]', CONTROLS_SELECTOR = '[data-glide-el^="controls"]', PREVIOUS_CONTROLS_SELECTOR = "".concat(CONTROLS_SELECTOR, ' [data-glide-dir*="<"]'), NEXT_CONTROLS_SELECTOR = "".concat(CONTROLS_SELECTOR, ' [data-glide-dir*=">"]');
-function Controls(n, e, t) {
-  var r = new EventsBinder(), s = supportsPassive$1 ? {
-    passive: !0
-  } : !1, o = {
-    /**
-     * Inits arrows. Binds events listeners
-     * to the arrows HTML elements.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      this._n = e.Html.root.querySelectorAll(NAV_SELECTOR), this._c = e.Html.root.querySelectorAll(CONTROLS_SELECTOR), this._arrowControls = {
-        previous: e.Html.root.querySelectorAll(PREVIOUS_CONTROLS_SELECTOR),
-        next: e.Html.root.querySelectorAll(NEXT_CONTROLS_SELECTOR)
-      }, this.addBindings();
-    },
-    /**
-     * Sets active class to current slide.
-     *
-     * @return {Void}
-     */
-    setActive: function() {
-      for (var c = 0; c < this._n.length; c++)
-        this.addClass(this._n[c].children);
-    },
-    /**
-     * Removes active class to current slide.
-     *
-     * @return {Void}
-     */
-    removeActive: function() {
-      for (var c = 0; c < this._n.length; c++)
-        this.removeClass(this._n[c].children);
-    },
-    /**
-     * Toggles active class on items inside navigation.
-     *
-     * @param  {HTMLElement} controls
-     * @return {Void}
-     */
-    addClass: function(c) {
-      var l = n.settings, u = c[n.index];
-      u && (u.classList.add(l.classes.nav.active), siblings(u).forEach(function(h) {
-        h.classList.remove(l.classes.nav.active);
-      }));
-    },
-    /**
-     * Removes active class from active control.
-     *
-     * @param  {HTMLElement} controls
-     * @return {Void}
-     */
-    removeClass: function(c) {
-      var l = c[n.index];
-      l == null || l.classList.remove(n.settings.classes.nav.active);
-    },
-    /**
-     * Calculates, removes or adds `Glide.settings.classes.disabledArrow` class on the control arrows
-     */
-    setArrowState: function() {
-      if (!n.settings.rewind) {
-        var c = o._arrowControls.next, l = o._arrowControls.previous;
-        this.resetArrowState(c, l), n.index === 0 && this.disableArrow(l), n.index === e.Run.length && this.disableArrow(c);
-      }
-    },
-    /**
-     * Removes `Glide.settings.classes.disabledArrow` from given NodeList elements
-     *
-     * @param {NodeList[]} lists
-     */
-    resetArrowState: function() {
-      for (var c = n.settings, l = arguments.length, u = new Array(l), h = 0; h < l; h++)
-        u[h] = arguments[h];
-      u.forEach(function(f) {
-        toArray(f).forEach(function(p) {
-          p.classList.remove(c.classes.arrow.disabled);
-        });
-      });
-    },
-    /**
-     * Adds `Glide.settings.classes.disabledArrow` to given NodeList elements
-     *
-     * @param {NodeList[]} lists
-     */
-    disableArrow: function() {
-      for (var c = n.settings, l = arguments.length, u = new Array(l), h = 0; h < l; h++)
-        u[h] = arguments[h];
-      u.forEach(function(f) {
-        toArray(f).forEach(function(p) {
-          p.classList.add(c.classes.arrow.disabled);
-        });
-      });
-    },
-    /**
-     * Adds handles to the each group of controls.
-     *
-     * @return {Void}
-     */
-    addBindings: function() {
-      for (var c = 0; c < this._c.length; c++)
-        this.bind(this._c[c].children);
-    },
-    /**
-     * Removes handles from the each group of controls.
-     *
-     * @return {Void}
-     */
-    removeBindings: function() {
-      for (var c = 0; c < this._c.length; c++)
-        this.unbind(this._c[c].children);
-    },
-    /**
-     * Binds events to arrows HTML elements.
-     *
-     * @param {HTMLCollection} elements
-     * @return {Void}
-     */
-    bind: function(c) {
-      for (var l = 0; l < c.length; l++)
-        r.on("click", c[l], this.click), r.on("touchstart", c[l], this.click, s);
-    },
-    /**
-     * Unbinds events binded to the arrows HTML elements.
-     *
-     * @param {HTMLCollection} elements
-     * @return {Void}
-     */
-    unbind: function(c) {
-      for (var l = 0; l < c.length; l++)
-        r.off(["click", "touchstart"], c[l]);
-    },
-    /**
-     * Handles `click` event on the arrows HTML elements.
-     * Moves slider in direction given via the
-     * `data-glide-dir` attribute.
-     *
-     * @param {Object} event
-     * @return {void}
-     */
-    click: function(c) {
-      !supportsPassive$1 && c.type === "touchstart" && c.preventDefault();
-      var l = c.currentTarget.getAttribute("data-glide-dir");
-      e.Run.make(e.Direction.resolve(l));
-    }
-  };
-  return define(o, "items", {
-    /**
-     * Gets collection of the controls HTML elements.
-     *
-     * @return {HTMLElement[]}
-     */
-    get: function() {
-      return o._c;
-    }
-  }), t.on(["mount.after", "move.after"], function() {
-    o.setActive();
-  }), t.on(["mount.after", "run"], function() {
-    o.setArrowState();
-  }), t.on("destroy", function() {
-    o.removeBindings(), o.removeActive(), r.destroy();
-  }), o;
-}
-function Keyboard(n, e, t) {
-  var r = new EventsBinder(), s = {
-    /**
-     * Binds keyboard events on component mount.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      n.settings.keyboard && this.bind();
-    },
-    /**
-     * Adds keyboard press events.
-     *
-     * @return {Void}
-     */
-    bind: function() {
-      r.on("keyup", document, this.press);
-    },
-    /**
-     * Removes keyboard press events.
-     *
-     * @return {Void}
-     */
-    unbind: function() {
-      r.off("keyup", document);
-    },
-    /**
-     * Handles keyboard's arrows press and moving glide foward and backward.
-     *
-     * @param  {Object} event
-     * @return {Void}
-     */
-    press: function(a) {
-      var c = n.settings.perSwipe, l = {
-        ArrowRight: ">",
-        ArrowLeft: "<"
-      };
-      ["ArrowRight", "ArrowLeft"].includes(a.code) && e.Run.make(e.Direction.resolve("".concat(c).concat(l[a.code])));
-    }
-  };
-  return t.on(["destroy", "update"], function() {
-    s.unbind();
-  }), t.on("update", function() {
-    s.mount();
-  }), t.on("destroy", function() {
-    r.destroy();
-  }), s;
-}
-function Autoplay(n, e, t) {
-  var r = new EventsBinder(), s = {
-    /**
-     * Initializes autoplaying and events.
-     *
-     * @return {Void}
-     */
-    mount: function() {
-      this.enable(), this.start(), n.settings.hoverpause && this.bind();
-    },
-    /**
-     * Enables autoplaying
-     *
-     * @returns {Void}
-     */
-    enable: function() {
-      this._e = !0;
-    },
-    /**
-     * Disables autoplaying.
-     *
-     * @returns {Void}
-     */
-    disable: function() {
-      this._e = !1;
-    },
-    /**
-     * Starts autoplaying in configured interval.
-     *
-     * @param {Boolean|Number} force Run autoplaying with passed interval regardless of `autoplay` settings
-     * @return {Void}
-     */
-    start: function() {
-      var a = this;
-      this._e && (this.enable(), n.settings.autoplay && isUndefined(this._i) && (this._i = setInterval(function() {
-        a.stop(), e.Run.make(">"), a.start(), t.emit("autoplay");
-      }, this.time)));
-    },
-    /**
-     * Stops autorunning of the glide.
-     *
-     * @return {Void}
-     */
-    stop: function() {
-      this._i = clearInterval(this._i);
-    },
-    /**
-     * Stops autoplaying while mouse is over glide's area.
-     *
-     * @return {Void}
-     */
-    bind: function() {
-      var a = this;
-      r.on("mouseover", e.Html.root, function() {
-        a._e && a.stop();
-      }), r.on("mouseout", e.Html.root, function() {
-        a._e && a.start();
-      });
-    },
-    /**
-     * Unbind mouseover events.
-     *
-     * @returns {Void}
-     */
-    unbind: function() {
-      r.off(["mouseover", "mouseout"], e.Html.root);
-    }
-  };
-  return define(s, "time", {
-    /**
-     * Gets time period value for the autoplay interval. Prioritizes
-     * times in `data-glide-autoplay` attrubutes over options.
-     *
-     * @return {Number}
-     */
-    get: function() {
-      var a = e.Html.slides[n.index].getAttribute("data-glide-autoplay");
-      return toInt(a || n.settings.autoplay);
-    }
-  }), t.on(["destroy", "update"], function() {
-    s.unbind();
-  }), t.on(["run.before", "swipe.start", "update"], function() {
-    s.stop();
-  }), t.on(["pause", "destroy"], function() {
-    s.disable(), s.stop();
-  }), t.on(["run.after", "swipe.end"], function() {
-    s.start();
-  }), t.on(["play"], function() {
-    s.enable(), s.start();
-  }), t.on("update", function() {
-    s.mount();
-  }), t.on("destroy", function() {
-    r.destroy();
-  }), s;
-}
-function sortBreakpoints(n) {
-  return isObject(n) ? sortKeys(n) : (warn("Breakpoints option must be an object"), {});
-}
-function Breakpoints(n, e, t) {
-  var r = new EventsBinder(), s = n.settings, o = sortBreakpoints(s.breakpoints), a = Object.assign({}, s), c = {
-    /**
-     * Matches settings for currectly matching media breakpoint.
-     *
-     * @param {Object} points
-     * @returns {Object}
-     */
-    match: function(u) {
-      if (typeof window.matchMedia < "u") {
-        for (var h in u)
-          if (u.hasOwnProperty(h) && window.matchMedia("(max-width: ".concat(h, "px)")).matches)
-            return u[h];
-      }
-      return a;
-    }
-  };
-  return Object.assign(s, c.match(o)), r.on("resize", window, throttle(function() {
-    n.settings = mergeOptions(s, c.match(o));
-  }, n.settings.throttle)), t.on("update", function() {
-    o = sortBreakpoints(o), a = Object.assign({}, s);
-  }), t.on("destroy", function() {
-    r.off("resize", window);
-  }), c;
-}
-var COMPONENTS = {
-  // Required
-  Html,
-  Translate,
-  Transition,
-  Direction,
-  Peek,
-  Sizes,
-  Gaps,
-  Move,
-  Clones,
-  Resize,
-  Build,
-  Run,
-  // Optional
-  Swipe,
-  Images,
-  Anchors,
-  Controls,
-  Keyboard,
-  Autoplay,
-  Breakpoints
-}, Glide = /* @__PURE__ */ function(n) {
-  _inherits(t, n);
-  var e = _createSuper(t);
-  function t() {
-    return _classCallCheck(this, t), e.apply(this, arguments);
-  }
-  return _createClass(t, [{
-    key: "mount",
-    value: function() {
-      var s = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-      return _get(_getPrototypeOf(t.prototype), "mount", this).call(this, Object.assign({}, COMPONENTS, s));
-    }
-  }]), t;
-}(Glide$1), we, Be, Le;
+var ye, Ue, _e, Le;
 class NostrPost extends HTMLElement {
   constructor() {
     super(...arguments);
-    Te(this, we);
-    this.rendered = !1, this.ndk = new NDK(), this.isLoading = !0, this.isError = !1, this.theme = "light", this.post = null, this.stats = null, this.receivedData = !1, this.author = {
+    Te(this, ye);
+    this.rendered = !1, this.ndk = new NDK(), this.isLoading = !0, this.isError = !1, this.theme = "light", this.post = null, this.stats = null, this.embeddedPosts = /* @__PURE__ */ new Map(), this.receivedData = !1, this.author = {
       name: "",
       image: "",
       nip05: ""
-    }, this.onClick = null, this.onAuthorClick = null, this.connectToNostr = async () => {
+    }, this.onClick = null, this.onAuthorClick = null, this.onMentionClick = null, this.connectToNostr = async () => {
       await this.ndk.connect();
     }, this.getRelays = () => {
       const t = this.getAttribute("relays");
@@ -16324,88 +14084,47 @@ class NostrPost extends HTMLElement {
           throw new Error(`Invalid theme '${t}'. Accepted values are 'light', 'dark'`);
         this.theme = t;
       }
-    }, this.parseText = async (t) => {
-      let r = t;
-      const s = r.matchAll(new RegExp(nip21_exports.NOSTR_URI_REGEX, "g"));
-      for (let l of s) {
-        const u = nip21_exports.parse(l[0]), h = u.decoded.data;
-        let f = "";
-        typeof h == "string" ? f = h : f = h.pubkey;
-        const p = await this.ndk.getUser({ pubkey: f }).fetchProfile(), m = (p == null ? void 0 : p.displayName) || "";
-        r = r.replace(l[0], `<a href="https://njump.me/${u.value}" target="_blank">@${m}</a>`);
-      }
-      const o = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g, a = r.match(o), c = [];
-      if (a) {
-        let l = 0;
-        for (const u of a) {
-          const h = r.indexOf(u, l), f = h + u.length;
-          h > l && c.push({ type: "text", value: r.substring(l, h) });
-          const p = new URL(u);
-          let m;
-          p.pathname.endsWith(".jpg") || p.pathname.endsWith(".jpeg") || p.pathname.endsWith(".png") ? m = "image" : p.pathname.endsWith(".gif") ? m = "gif" : p.pathname.endsWith(".mp4") || p.pathname.endsWith(".webm") ? m = "video" : m = "link", c.push({ type: m, value: u }), l = f;
-        }
-        l < r.length && c.push({ type: "text", value: r.substring(l) });
-      } else
-        c.push({ type: "text", value: r });
-      return c;
     }, this.renderContent = (t) => {
       const r = [];
-      let s = 0, o = "";
-      for (const a of t)
-        if (a.type === "text")
-          o += a.value;
+      let s = "";
+      for (const o of t)
+        if (o.type === "text")
+          s += o.value;
+        else if (o.type === "embedded-note")
+          s && (r.push(`<span class="text-content">${s.replace(/\n/g, "<br />")}</span>`), s = ""), r.push(`<div class="embedded-post-placeholder" data-note-id="${o.noteId}"></div>`);
         else
-          switch (o && (r.push(`<span class="text-content">${o.replace(/\n/g, "<br />")}</span>`), o = ""), a.type) {
+          switch (s && (r.push(`<span class="text-content">${s.replace(/\n/g, "<br />")}</span>`), s = ""), o.type) {
             case "image":
-              r.push(`<img width="100%" src="${a.value}" alt="Image">`), s++;
+              r.push(`<img width="100%" src="${o.value}" alt="Image">`);
               break;
             case "gif":
-              r.push(`<img width="100%" src="${a.value}" alt="GIF">`), s++;
+              r.push(`<img width="100%" src="${o.value}" alt="GIF">`);
               break;
             case "video":
-              r.push(`<video width="100%" src="${a.value}" controls></video>`), s++;
+              r.push(`<video width="100%" src="${o.value}" controls></video>`);
               break;
             case "link":
-              r.push(`<a href="${a.value}">${a.value}</a>`);
+              r.push(`<a href="${o.value}">${o.value}</a>`);
               break;
           }
-      if (o && r.push(`<span class="text-content">${o.replace(/\n/g, "<br />")}</span>`), s > 1) {
-        const a = [];
-        let c = "";
-        for (let l = 0; l < r.length; l++) {
-          const u = r[l];
-          (u.startsWith("<img") || u.startsWith("<video")) && (a.push(`<li class="glide__slide">${u}</li>`), c += `<button class="glide__bullet" data-glide-dir="=${l}"></button>`, r.splice(l, 1), l--);
-        }
-        r.push(`
-            <div class="glide" style="margin-top: 20px">
-                <div class="glide__track" data-glide-el="track">
-                    <ul class="glide__slides">
-                        ${a.join("")}
-                    </ul>
-                </div>
-
-                  <div class="glide__bullets" data-glide-el="controls[nav]">
-                    ${c}
-                </div>
-            </div>
-          `);
-      }
-      return r.join("");
+      return s && r.push(`<span class="text-content">${s.replace(/\n/g, "<br />")}</span>`), r.join("");
     };
   }
   async connectedCallback() {
     const t = this.getAttribute("onClick");
     t !== null && (this.onClick = window[t]);
     const r = this.getAttribute("onAuthorClick");
-    r !== null && (this.onAuthorClick = window[r]), this.render(), this.rendered || (this.ndk = new NDK({
+    r !== null && (this.onAuthorClick = window[r]);
+    const s = this.getAttribute("onMentionClick");
+    s !== null && (this.onMentionClick = window[s]), this.render(), this.rendered || (this.ndk = new NDK({
       explicitRelayUrls: this.getRelays()
     }), await this.connectToNostr(), this.getPost(), this.rendered = !0);
   }
   static get observedAttributes() {
-    return ["relays", "id", "theme", "show-stats", "onClick", "onAuthorClick"];
+    return ["relays", "id", "theme", "show-stats", "onClick", "onAuthorClick", "onMentionClick"];
   }
   attributeChangedCallback(t, r, s) {
-    t === "relays" && (this.ndk.explicitRelayUrls = this.getRelays(), this.connectToNostr()), ["relays", "id"].includes(t) && this.getPost(), t === "onClick" && (this.onClick = window[s]), t === "onAuthorClick" && (this.onAuthorClick = window[s]), t === "theme" && (this.getTheme(), this.render()), t === "show-stats" && this.render();
+    t === "relays" && (this.ndk.explicitRelayUrls = this.getRelays(), this.connectToNostr()), ["relays", "id"].includes(t) && this.getPost(), t === "onClick" && (this.onClick = window[s]), t === "onAuthorClick" && (this.onAuthorClick = window[s]), t === "onMentionClick" && (this.onMentionClick = window[s]), t === "theme" && (this.getTheme(), this.render()), t === "show-stats" && this.render();
   }
   async getPost() {
     var t;
@@ -16432,19 +14151,153 @@ class NostrPost extends HTMLElement {
       this.isLoading = !1, this.render();
     }
   }
-  attachEventListeners() {
-    var t;
-    (t = this.querySelector(".post-container")) == null || t.addEventListener("click", (r) => {
-      const s = r.target;
-      s.closest(".post-header-left") || s.closest(".post-header-middle") ? Ee(this, we, Le).call(this) : Ee(this, we, Be).call(this);
+  async parseText(t) {
+    let r = t, s = [];
+    const o = /(nostr:)?(note[a-zA-Z0-9]{59,60})/g, a = [...r.matchAll(o)];
+    for (const m of a) {
+      const E = m[0], g = m[2], b = m.index || 0;
+      s.push({
+        id: g,
+        position: b
+      });
+      try {
+        if (!this.embeddedPosts.has(g)) {
+          const w = await this.ndk.fetchEvent(g);
+          w && this.embeddedPosts.set(g, w);
+        }
+      } catch (w) {
+        console.error(`Failed to fetch embedded post ${g}:`, w);
+      }
+      r = r.replace(E, "");
+    }
+    const c = r.matchAll(new RegExp(nip21_exports.NOSTR_URI_REGEX, "g"));
+    for (let m of c) {
+      const E = nip21_exports.parse(m[0]), g = E.decoded.data;
+      let b = "";
+      typeof g == "string" ? b = g : b = g.pubkey;
+      const w = await this.ndk.getUser({ pubkey: b }).fetchProfile(), $ = (w == null ? void 0 : w.displayName) || "";
+      r = r.replace(m[0], `<a href="https://njump.me/${E.value}" target="_blank">@${$}</a>`);
+    }
+    const l = /(\s|^)@(\w+)/g, u = [...r.matchAll(l)];
+    for (const m of u) {
+      const E = m[0], g = m[2];
+      r = r.replace(
+        E,
+        `${m[1]}<span class="nostr-mention" data-username="${g}">@${g}</span>`
+      );
+    }
+    const f = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g, h = r.match(f), p = [];
+    if (h) {
+      let m = 0;
+      for (const E of h) {
+        const g = r.indexOf(E, m), b = g + E.length;
+        g > m && p.push({ type: "text", value: r.substring(m, g) });
+        const w = new URL(E);
+        let $;
+        w.pathname.endsWith(".jpg") || w.pathname.endsWith(".jpeg") || w.pathname.endsWith(".png") ? $ = "image" : w.pathname.endsWith(".gif") ? $ = "gif" : w.pathname.endsWith(".mp4") || w.pathname.endsWith(".webm") ? $ = "video" : $ = "link", p.push({ type: $, value: E }), m = b;
+      }
+      m < r.length && p.push({ type: "text", value: r.substring(m) });
+    } else
+      p.push({ type: "text", value: r });
+    if (s.length > 0) {
+      s.sort((m, E) => E.position - m.position);
+      for (const m of s)
+        p.push({
+          type: "embedded-note",
+          noteId: m.id
+        });
+    }
+    return p;
+  }
+  async replaceEmbeddedPostPlaceholders() {
+    var r;
+    const t = this.querySelectorAll(".embedded-post-placeholder");
+    for (const s of t) {
+      const o = s.getAttribute("data-note-id");
+      if (o) {
+        const a = await this.renderEmbeddedPost(o), c = document.createElement("div");
+        c.innerHTML = a, (r = s.parentNode) == null || r.replaceChild(c.firstElementChild, s);
+        const l = c.firstElementChild, u = l == null ? void 0 : l.querySelector(".embedded-author-avatar"), f = l == null ? void 0 : l.querySelector(".embedded-author-info");
+        if (l && u && f) {
+          const h = l.getAttribute("data-note-id");
+          if (h && this.embeddedPosts.has(h)) {
+            const m = this.embeddedPosts.get(h).author.npub, E = (g) => {
+              g.preventDefault(), g.stopPropagation(), window.open(`https://njump.me/${m}`, "_blank");
+            };
+            u.addEventListener("click", E), f.addEventListener("click", E);
+          }
+        }
+      }
+    }
+  }
+  async renderEmbeddedPost(t) {
+    if (!this.embeddedPosts.has(t))
+      return '<div class="embedded-post-error">Unable to load embedded post</div>';
+    const r = this.embeddedPosts.get(t);
+    let s = null;
+    try {
+      s = await r.author.fetchProfile();
+    } catch (m) {
+      console.error("Failed to fetch author profile for embedded post:", m);
+    }
+    const o = new Date(r.created_at * 1e3).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+    let a = "", c = "", l = [];
+    const u = /(https:\/\/[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g, f = r.content.match(u);
+    let h = r.content;
+    if (f)
+      for (const m of f)
+        try {
+          m.match(/\.(jpeg|jpg|gif|png)$/i) ? (l.push({ type: "image", url: m }), h = h.replace(m, " ")) : m.match(/\.(mp4|webm)$/i) && (l.push({ type: "video", url: m }), h = h.replace(m, " "));
+        } catch (E) {
+          console.error("Error processing URL in embedded post:", E);
+        }
+    let p = h.trim();
+    if (p.length > 280 && (p = p.substring(0, 277) + "..."), a = p.replace(/\n/g, "<br>"), l.length > 0) {
+      c = '<div class="embedded-media-list">';
+      for (const m of l)
+        m.type === "image" ? c += `<div class="embedded-media-item"><img src="${m.url}" alt="Embedded image" loading="lazy" /></div>` : m.type === "video" && (c += `<div class="embedded-media-item"><video src="${m.url}" controls preload="none"></video></div>`);
+      c += "</div>";
+    }
+    return `
+      <div class="embedded-post" data-note-id="${t}">
+        <div class="embedded-post-header">
+          <div class="embedded-author-avatar" style="cursor: pointer;">
+            ${s != null && s.image ? `<img src="${s.image}" alt="Profile">` : ""}
+          </div>
+          <div class="embedded-author-info" style="cursor: pointer;">
+            <span class="embedded-author-name">${(s == null ? void 0 : s.displayName) || "Unknown"}</span>
+            ${s != null && s.nip05 ? `<span class="embedded-author-username">${s.nip05}</span>` : ""}
+          </div>
+          <div class="embedded-post-date">${o}</div>
+        </div>
+        <div class="embedded-post-content">
+          ${a}
+          ${c ? `<div class="embedded-post-media">${c}</div>` : ""}
+        </div>
+      </div>
+    `;
+  }
+  setupMentionClickHandlers() {
+    this.querySelectorAll(".nostr-mention").forEach((o) => {
+      o.addEventListener("click", (a) => {
+        var l;
+        const c = o.getAttribute("data-username") || ((l = o.textContent) == null ? void 0 : l.slice(1));
+        c && ve(this, ye, Le).call(this, c, a);
+      });
+    });
+    const r = this.querySelector(".post-header-left"), s = this.querySelector(".post-header-middle");
+    r && r.addEventListener("click", (o) => {
+      o.preventDefault(), o.stopPropagation(), ve(this, ye, _e).call(this);
+    }), s && s.addEventListener("click", (o) => {
+      o.preventDefault(), o.stopPropagation(), ve(this, ye, _e).call(this);
     });
   }
-  initGlide() {
-    const t = this.querySelector(".glide");
-    t && new Glide(t).mount();
-  }
   async render() {
-    var c, l, u, h, f, p;
+    var c, l, u, f, h, p;
     const t = ((c = this.post) == null ? void 0 : c.content) || "", r = await this.parseText(t), s = this.renderContent(r);
     let o = "";
     this.post && this.post.created_at && (o = new Date(this.post.created_at * 1e3).toLocaleDateString("en-US", {
@@ -16455,6 +14308,104 @@ class NostrPost extends HTMLElement {
     const a = this.getAttribute("show-stats") === "true";
     this.innerHTML = `
     ${getPostStylesLegacy(this.theme)}
+    <style>
+      .nostr-mention {
+        color: #1DA1F2;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      
+      /* Embedded post styles */
+      .embedded-post {
+        margin: 10px 0;
+        padding: 12px;
+        border: 1px solid ${this.theme === "light" ? "#e1e8ed" : "#38444d"};
+        border-radius: 12px;
+        background: ${this.theme === "light" ? "#f8f9fa" : "#192734"};
+      }
+      
+      .embedded-post-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      
+      .embedded-author-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        overflow: hidden;
+        margin-right: 8px;
+      }
+      
+      .embedded-author-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      
+      .embedded-author-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      
+      .embedded-author-name {
+        font-weight: bold;
+        font-size: 14px;
+        color: ${this.theme === "light" ? "#14171a" : "#ffffff"};
+      }
+      
+      .embedded-author-username {
+        font-size: 12px;
+        color: ${this.theme === "light" ? "#657786" : "#8899a6"};
+      }
+      
+      .embedded-post-date {
+        font-size: 12px;
+        color: ${this.theme === "light" ? "#657786" : "#8899a6"};
+      }
+      
+      .embedded-post-content {
+        font-size: 14px;
+        color: ${this.theme === "light" ? "#14171a" : "#ffffff"};
+        line-height: 1.4;
+        white-space: pre-line;
+      }
+      
+      .embedded-post-media {
+        margin-top: 10px;
+      }
+      
+      .embedded-media-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .embedded-media-item {
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      
+      .embedded-media-item img,
+      .embedded-media-item video {
+        width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        display: block;
+      }
+      
+      .embedded-post-error {
+        padding: 10px;
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+    </style>
     <div class="post-container">
         <div class="post-header">
           <div class="post-header-left">
@@ -16467,8 +14418,8 @@ class NostrPost extends HTMLElement {
                 <div style="width: 70%; height: 10px; border-radius: 10px;" class="skeleton"></div>
                 <div style="width: 80%; height: 8px; border-radius: 10px; margin-top: 5px;" class="skeleton"></div>
               ` : this.isError ? "" : `
-                  ${(u = this.author) != null && u.displayName ? `<span class="author-name">${(h = this.author) == null ? void 0 : h.displayName}</span>` : ""}
-                  ${(f = this.author) != null && f.nip05 ? `<span class="author-username">${(p = this.author) == null ? void 0 : p.nip05}</span>` : ""}
+                  ${(u = this.author) != null && u.displayName ? `<span class="author-name">${(f = this.author) == null ? void 0 : f.displayName}</span>` : ""}
+                  ${(h = this.author) != null && h.nip05 ? `<span class="author-username">${(p = this.author) == null ? void 0 : p.nip05}</span>` : ""}
                   
                 `}
           </div>
@@ -16502,12 +14453,6 @@ class NostrPost extends HTMLElement {
                       <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
                     </div>
 
-                    <!-- TODO: Add zaps after resolving the doubts
-                    <div class="stat">
-                      <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
-                    </div>
-                    -->
-
                     <div class="stat">
                       <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
                     </div>
@@ -16525,22 +14470,10 @@ class NostrPost extends HTMLElement {
                       <span>${this.stats.replies}</span>
                     </div>
 
-                    <!-- TODO: Add zaps after resolving the doubts
                     <div class="stat">
                       <svg width="18" height="18">
                         <g xmlns="http://www.w3.org/2000/svg">
-                          <path fill="#ffaf00" fill-rule="evenodd" clip-rule="evenodd" d="M9.49466 2.78774C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
-                        </g>
-                      </svg>
-                      <span>${this.stats.zaps}</span>
-                    </div>
-                    -->
-
-                    <div class="stat">
-                      <svg width="18" height="18">
-                        <g xmlns="http://www.w3.org/2000/svg">
-                          <path fill="#ff006d" d="M12.2197 1.65717C12.5126 1.36428 12.9874 1.36428 13.2803 1.65717L16.2803 4.65717C16.5732 4.95006 16.5732 5.42494 16.2803 5.71783L13.2803 8.71783C12.9874 9.01072 12.5126 9.01072 12.2197 8.71783C11.9268 8.42494 11.9268 7.95006 12.2197 7.65717L13.9393 5.9375H5.85C5.20757 5.9375 4.77085 5.93808 4.43328 5.96566C4.10447 5.99253 3.93632 6.04122 3.81902 6.10099C3.53677 6.2448 3.3073 6.47427 3.16349 6.75652C3.10372 6.87381 3.05503 7.04197 3.02816 7.37078C3.00058 7.70835 3 8.14507 3 8.7875V8.9375C3 9.35171 2.66421 9.6875 2.25 9.6875C1.83579 9.6875 1.5 9.35171 1.5 8.9375V8.75653C1.49999 8.15281 1.49998 7.65452 1.53315 7.24863C1.56759 6.82706 1.64151 6.43953 1.82698 6.07553C2.1146 5.51104 2.57354 5.0521 3.13803 4.76448C3.50203 4.57901 3.88956 4.50509 4.31113 4.47065C4.71703 4.43748 5.2153 4.43749 5.81903 4.4375L13.9393 4.4375L12.2197 2.71783C11.9268 2.42494 11.9268 1.95006 12.2197 1.65717Z"/>
-                          <path fill="#1ded00" d="M15.75 9.6875C15.3358 9.6875 15 10.0233 15 10.4375V10.5875C15 11.2299 14.9994 11.6667 14.9718 12.0042C14.945 12.333 14.8963 12.5012 14.8365 12.6185C14.6927 12.9007 14.4632 13.1302 14.181 13.274C14.0637 13.3338 13.8955 13.3825 13.5667 13.4093C13.2292 13.4369 12.7924 13.4375 12.15 13.4375H4.06066L5.78033 11.7178C6.07322 11.4249 6.07322 10.9501 5.78033 10.6572C5.48744 10.3643 5.01256 10.3643 4.71967 10.6572L1.71967 13.6572C1.42678 13.9501 1.42678 14.4249 1.71967 14.7178L4.71967 17.7178C5.01256 18.0107 5.48744 18.0107 5.78033 17.7178C6.07322 17.4249 6.07322 16.9501 5.78033 16.6572L4.06066 14.9375H12.181C12.7847 14.9375 13.283 14.9375 13.6889 14.9044C14.1104 14.8699 14.498 14.796 14.862 14.6105C15.4265 14.3229 15.8854 13.864 16.173 13.2995C16.3585 12.9355 16.4324 12.5479 16.4669 12.1264C16.5 11.7205 16.5 11.2222 16.5 10.6185V10.4375C16.5 10.0233 16.1642 9.6875 15.75 9.6875Z"/>
+                          <path fill="#ff006d" d="M12.2197 1.65717C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
                         </g>
                       </svg>
                       <span>${this.stats.likes}</span>
@@ -16550,10 +14483,12 @@ class NostrPost extends HTMLElement {
             </div>
           ` : ""}
     </div>
-    `, s.includes('class="glide"') && setTimeout(() => this.initGlide(), 0), this.attachEventListeners();
+    `, setTimeout(async () => {
+      await this.replaceEmbeddedPostPlaceholders(), this.setupMentionClickHandlers();
+    }, 0);
   }
 }
-we = new WeakSet(), Be = function() {
+ye = new WeakSet(), Ue = function() {
   if (this.isError)
     return;
   if (this.onClick !== null && typeof this.onClick == "function") {
@@ -16562,7 +14497,7 @@ we = new WeakSet(), Be = function() {
   }
   let t = this.getAttribute("id");
   window.open(`https://njump.me/${t}`, "_blank");
-}, Le = function() {
+}, _e = function() {
   var t, r;
   if (!this.isError) {
     if (this.onAuthorClick !== null && typeof this.onAuthorClick == "function") {
@@ -16571,6 +14506,14 @@ we = new WeakSet(), Be = function() {
     }
     window.open(`https://njump.me/${(r = this.post) == null ? void 0 : r.author.npub}`, "_blank");
   }
+}, Le = function(t, r) {
+  r.preventDefault(), r.stopPropagation();
+  const s = this.getAttribute("onMentionClick");
+  if (s !== null && window[s] && typeof window[s] == "function") {
+    window[s](t);
+    return;
+  }
+  window.open(`https://njump.me/search?q=${encodeURIComponent("@" + t)}`, "_blank");
 };
 customElements.define("nostr-post", NostrPost);
 class NostrProfile extends HTMLElement {
@@ -16710,7 +14653,7 @@ class NostrProfile extends HTMLElement {
   attachEventListeners() {
     var e, t, r;
     (e = this.shadowRoot.querySelector(".nostr-profile")) == null || e.addEventListener("click", (s) => {
-      s.target.closest(".nostr-follow-button-container") || this.onProfileClick();
+      !s.target.closest(".nostr-follow-button-container") && !s.target.closest(".website a") && this.onProfileClick();
     }), (t = this.shadowRoot.querySelector("#npub-copy")) == null || t.addEventListener("click", (s) => {
       s.stopPropagation(), this.copy(this.getAttribute("npub") || this.ndkUser.npub || "");
     }), (r = this.shadowRoot.querySelector("#nip05-copy")) == null || r.addEventListener("click", (s) => {

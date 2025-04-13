@@ -360,7 +360,9 @@ export default class NostrProfile extends HTMLElement {
 
   attachEventListeners() {
     this.shadowRoot!.querySelector('.nostr-profile')?.addEventListener('click', (e) => {
-      if(!(e.target as HTMLElement).closest('.nostr-follow-button-container')) {
+      // Don't trigger profile click if user clicks on website links or follow button
+      if(!(e.target as HTMLElement).closest('.nostr-follow-button-container') && 
+         !(e.target as HTMLElement).closest('.website a')) {
         this.onProfileClick()
       }
     });
