@@ -83,6 +83,30 @@ export default class NostrFollowButton extends HTMLElement {
   attachEventListeners() {
     this.querySelector('.nostr-follow-button')?.addEventListener('click', async () => {
       this.isError = false;
+      
+      if(typeof window=== 'undefined'  ||!(window as any).nostr) {
+        this.isLoading=false;
+        this.isError = true;
+        this.errorMessage = `
+        Are you new to nostr?
+        <ul>
+        <li>Signup with nostr at <a href="https://nstart.me/" target="_blank">https://nstart.me/</a></li>
+          <li>Install nip-07 extension at [Chrome, Firefox]</li>
+          </ul>
+          `;
+          this.render();
+          return;
+      }
+      if((window as any).nostr=== null){
+        this.isLoading=false;
+        this.isError = true;
+        this.errorMessage = `
+        It seems like you don't have the nip-07 extension installed.
+        Please follow the instructions above to get started.
+        `;
+        this.render();
+        return;
+      }
 
       const nip07signer = new NDKNip07Signer();
 
@@ -139,6 +163,11 @@ export default class NostrFollowButton extends HTMLElement {
         } else {
           this.errorMessage = 'Please authorize, click the button to try again!';
         }
+
+        if( typeof(window as any).nostr === 'undefined') {
+          alert("Are you new to nostr?\n1.signup with nostr at https://nstart.me/\n2. Install nip-07 extension at [Chrome, Firefox]"); 
+          return;
+}
 
       } finally {
         this.isLoading = false;
