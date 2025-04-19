@@ -31,6 +31,7 @@
     "@glidejs/glide": "^3.7.1",
     "@nostr-dev-kit/ndk": "^2.10.0",
     "light-bolt11-decoder": "^3.2.0",
-    "nostr-tools": "^2.7.2"
+    "nostr-tools": "^2.7.2",
+    "npm": "^11.3.0"
   }
 }

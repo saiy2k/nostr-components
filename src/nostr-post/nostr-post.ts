@@ -559,6 +559,27 @@ export default class NostrPost extends HTMLElement {
         this.#_onAuthorClick();
       });
     }
+
+    // Add click handler for the entire post
+    const postContainer = this.querySelector('.post-container');
+    if (postContainer) {
+      postContainer.addEventListener('click', (event) => {
+        // Only trigger post click if the click wasn't on a child with its own handler
+        if (event.target === postContainer || 
+            (event.target as HTMLElement).closest('.post-body') && 
+            !(event.target as HTMLElement).closest('a, .nostr-mention, video, img')) {
+          this.#_onPostClick();
+        }
+      });
+    }
+
+    // Ensure links, videos, and images don't trigger the post click
+    const clickableElements = this.querySelectorAll('a, video, img');
+    clickableElements.forEach(element => {
+      element.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+    });
   }
 
   async render() {
@@ -776,7 +797,7 @@ export default class NostrPost extends HTMLElement {
                   <div class='stats-container'>
                     <div class="stat">
                       <svg width="18" height="18" fill="#00b3ff">
-                        <path xmlns="http://www.w3.org/2000/svg" d="M1.5 5.5C1.5 4.09987 1.5 3.3998 1.77248 2.86502C2.01217 2.39462 2.39462 2.01217 2.86502 1.77248C3.3998 1.5 4.09987 1.5 5.5 1.5H12.5C13.9001 1.5 14.6002 1.5 15.135 1.77248C15.6054 2.01217 15.9878 2.39462 16.2275 2.86502C16.5 3.3998 16.5 4.09987 16.5 5.5V10C16.5 11.4001 16.5 12.1002 16.2275 12.635C15.9878 13.1054 15.6054 13.4878 15.135 13.7275C14.6002 14 13.9001 14 12.5 14H10.4031C9.88308 14 9.62306 14 9.37435 14.051C9.15369 14.0963 8.94017 14.1712 8.73957 14.2737C8.51347 14.3892 8.31043 14.5517 7.90434 14.8765L5.91646 16.4668C5.56973 16.7442 5.39636 16.8829 5.25045 16.8831C5.12356 16.8832 5.00352 16.8255 4.92436 16.7263C4.83333 16.6123 4.83333 16.3903 4.83333 15.9463V14C4.05836 14 3.67087 14 3.35295 13.9148C2.49022 13.6836 1.81635 13.0098 1.58519 12.147C1.5 11.8291 1.5 11.4416 1.5 10.6667V5.5Z" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path xmlns="http://www.w3.org/2000/svg" d="M12.2197 1.65717C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
                       </svg>
                       <span>${this.stats!.replies}</span>
                     </div>
@@ -799,10 +820,16 @@ export default class NostrPost extends HTMLElement {
     `;
 
     // Process embedded posts after rendering the main content
-    setTimeout(async () => {
-      await this.replaceEmbeddedPostPlaceholders();
-      this.setupMentionClickHandlers();
-    }, 0);
+    await this.replaceEmbeddedPostPlaceholders();
+    
+    // Add click handlers for mentions and author after rendering everything
+    this.setupMentionClickHandlers();
+
+    // Add cursor pointer to post body to indicate it's clickable
+    const postBody = this.querySelector('.post-body');
+    if (postBody) {
+      postBody.setAttribute('style', 'cursor: pointer;');
+    }
   }
 }
 
