@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "buildes": "node build.js",
+    "build:esm": "vite build --config vite.config.esm.ts",
+    "build:umd": "vite build --config vite.config.umd.ts",
+    "build": "npm run build:esm && npm run build:umd",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
