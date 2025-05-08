@@ -60,8 +60,10 @@ A small badge displaying a Nostr profile with a username and avatar.
 
 **Usage:**
 ```html
+<head>
+  <script type="module" src="./dist/components/nostr-profile-badge.es.js"></script>
+</head>
 <body>
-  <!-- Make sure you included the script in <head> as shown above -->
   <nostr-profile-badge pubkey="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"></nostr-profile-badge>
 </body>
 ```
@@ -79,8 +81,10 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 **Usage:**
 
 ```html
+<head>
+  <script type="module" src="./dist/components/nostr-profile.es.js"></script>
+</head>
 <body>
-  <!-- Make sure you included the script in <head> as shown above -->
   <nostr-profile pubkey="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"></nostr-profile>
 </body>
 ```
@@ -98,8 +102,10 @@ Embed any Nostr post by providing the event ID.
 **Usage:**
 
 ```html
+<head>
+  <script type="module" src="./dist/components/nostr-post.es.js"></script>
+</head>
 <body>
-  <!-- Make sure you included the script in <head> as shown above -->
   <nostr-post eventId="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"></nostr-post>
   <!-- Note: The previous example incorrectly used a pubkey, use eventId for posts -->
 </body>
@@ -118,8 +124,10 @@ A simple button that allows users to follow a Nostr profile.
 **Usage:**
 
 ```html
+<head>
+  <script type="module" src="./dist/components/nostr-follow-button.es.js"></script>
+</head>
 <body>
-  <!-- Make sure you included the script in <head> as shown above -->
   <nostr-follow-button pubkey="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"></nostr-follow-button>
 </body>
 ```
