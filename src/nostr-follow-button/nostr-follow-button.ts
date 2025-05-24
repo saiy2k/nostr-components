@@ -1,7 +1,7 @@
 import NDK, { NDKNip07Signer, NDKUser, NDKUserProfile } from "@nostr-dev-kit/ndk";
 import { DEFAULT_RELAYS } from "../common/constants";
-import { getLoadingNostrich, getNostrLogo, getSuccessAnimation, getFollowButtonStyles } from "../common/theme";
 import { Theme } from "../common/types";
+import { renderFollowButton, RenderFollowButtonOptions } from "./render";
 
 export default class NostrFollowButton extends HTMLElement {
   private rendered: boolean = false;
@@ -157,35 +157,20 @@ export default class NostrFollowButton extends HTMLElement {
     const iconWidthAttribute = this.getAttribute('icon-width');
     const iconHeightAttribute = this.getAttribute('icon-height');
 
-    const iconWidth = iconWidthAttribute !== null ? Number(iconWidthAttribute): 25;
-    const iconHeight = iconHeightAttribute !== null ? Number(iconHeightAttribute): 25;
+    const iconWidth = iconWidthAttribute !== null ? Number(iconWidthAttribute) : 25;
+    const iconHeight = iconHeightAttribute !== null ? Number(iconHeightAttribute) : 25;
 
-    const buttonText = this.isFollowed ? 'Followed' : 'Follow';
+    const renderOptions: RenderFollowButtonOptions = {
+      theme: this.theme,
+      isLoading: this.isLoading,
+      isError: this.isError,
+      isFollowed: this.isFollowed,
+      errorMessage: this.errorMessage,
+      iconWidth,
+      iconHeight
+    };
 
-    this.shadowRoot!.innerHTML = getFollowButtonStyles(this.theme, this.isLoading);
- 
-    this.shadowRoot!.innerHTML += `
-      <div class="nostr-follow-button-container ${this.isError ? 'nostr-follow-button-error': ''}">
-        <div class="nostr-follow-button-wrapper">
-          <button class="nostr-follow-button">
-            ${
-              this.isLoading
-              ? `${getLoadingNostrich(this.theme, iconWidth, iconHeight)} <span>Following...</span>`
-              : this.isFollowed
-                ? `${getSuccessAnimation(this.theme, iconWidth, iconHeight)} ${buttonText}`
-                : `${getNostrLogo(this.theme, iconWidth, iconHeight)} <span>Follow me on Nostr</span>`
-            }
-          </button>
-        </div>
-
-        ${
-          this.isError
-          ? `<small>${this.errorMessage}</small>`
-          : ''
-        }
-      </div>
-    `;
-
+    this.shadowRoot!.innerHTML = renderFollowButton(renderOptions);
     this.attachEventListeners();
   }
 }

@@ -367,6 +367,41 @@ export function getPostStylesLegacy(theme: Theme): string {
             gap: 5px;
             color: var(--nstrc-post-stats-color);
           }
+
+          /* Media styling */
+          nostr-post .post-media-item {
+            width: 100%;
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+          }
+
+          nostr-post .post-media-item img,
+          nostr-post .post-media-item video {
+            max-width: 100%;
+            max-height: 500px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 10px;
+            display: block;
+          }
+
+          /* Embedded media styling */
+          nostr-post .embedded-media-item {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 5px 0;
+          }
+
+          nostr-post .embedded-media-item img,
+          nostr-post .embedded-media-item video {
+            width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            display: block;
+          }
         </style>
       `;
 }

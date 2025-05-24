@@ -1,8 +1,7 @@
 import NDK, { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
-import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
-import { getProfileBadgeStylesLegacy } from '../common/theme';
+import { renderProfileBadge, getProfileBadgeStylesLegacy } from './render';
 
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;
@@ -180,31 +179,7 @@ export default class NostrProfileBadge extends HTMLElement {
     // TODO: Check for cleanup method
   }
 
-  renderNpub() {
-    const npub = this.ndkUser?.npub;
-    const npubAttribute = this.getAttribute('npub');
-    const showNpub = this.getAttribute('show-npub');
 
-    if(showNpub === 'false') {
-      return '';
-    }
-
-    if(showNpub === null && this.userProfile.nip05) {
-      return '';
-    }
-
-    if(!npubAttribute && !this.ndkUser.npub) {
-      console.warn('Cannot use showNpub without providing a nPub');
-      return '';
-    }
-
-    return `
-      <div class="npub-container">
-        <span class="npub">${maskNPub(npubAttribute || this.ndkUser.npub)}</span>
-        <span id="npub-copy" class="copy-button">&#x2398;</span>
-      </div>
-    `;
-  }
 
   copy(string: string) {
     navigator.clipboard.writeText(string);
@@ -256,71 +231,32 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   render() {
-    // Check for potentially undefined userProfile before accessing properties
+    // Ensure default image if needed
     if (this.isLoading === false && this.userProfile && this.userProfile.image === undefined) {
-      this.userProfile.image = './assets/default_dp.png'; // Ensure default image if needed post-load
+      this.userProfile.image = './assets/default_dp.png';
     }
 
-    const showNpub = this.getAttribute('show-npub') === 'true';
-    const showFollow = this.getAttribute('show-follow') === 'true'; // Corrected attribute check
-    let contentHTML = '';
+    // Update theme class
+    this.classList.toggle('dark', this.theme === 'dark');
+    this.classList.toggle('loading', this.isLoading);
+    this.classList.toggle('error-container', this.isError);
 
-    if (this.isLoading) {
-      contentHTML = `
-        <div class='nostr-profile-badge-container'>
-          <div class='nostr-profile-badge-left-container'>
-            <div class="skeleton img-skeleton"></div>
-          </div>
-          <div class='nostr-profile-badge-right-container'>
-            <div class="skeleton text-skeleton-name"></div>
-            <div class="skeleton text-skeleton-nip05"></div>
-          </div>
-        </div>
-      `;
-      // Apply loading class to host element
-      this.classList.add('loading');
-      this.classList.remove('error-container'); // Ensure error state is cleared
-    } else if (this.isError) {
-      contentHTML = `
-        <div class='nostr-profile-badge-container'>
-          <div class='nostr-profile-badge-left-container'>
-            <div class="error">&#9888;</div>
-          </div>
-          <div class='nostr-profile-badge-right-container'>
-            <span class="error-text">Unable to load</span>
-          </div>
-        </div>
-      `;
-      // Apply error class to host element
-      this.classList.add('error-container');
-      this.classList.remove('loading'); // Ensure loading state is cleared
-    } else if (this.userProfile) {
-      // Apply theme class to host element
-      this.classList.toggle('dark', this.theme === 'dark');
-      this.classList.remove('loading', 'error-container'); // Clear loading/error states
+    // Get attribute values
+    const showNpub = this.getAttribute('show-npub');
+    const showFollow = this.getAttribute('show-follow');
+    const npubAttribute = this.getAttribute('npub');
 
-      const profileName = this.userProfile.displayName || this.userProfile.name || maskNPub(this.ndkUser?.npub || '');
-      const profileImage = this.userProfile.image || './assets/default_dp.png';
-
-      contentHTML = `
-        <div class='nostr-profile-badge-container'>
-          <div class='nostr-profile-badge-left-container'>
-            <img src='${profileImage}' alt='Nostr profile image of ${profileName}'/>
-          </div>
-          <div class='nostr-profile-badge-right-container'>
-            <div class='nostr-profile-badge-name' title="${profileName}">${profileName}</div>
-            ${this.userProfile.nip05 ? `<div class='nostr-profile-badge-nip05' title="${this.userProfile.nip05}">${this.userProfile.nip05}</div>` : ''}
-            ${showNpub ? this.renderNpub() : ''}
-            ${showFollow && this.ndkUser ? `<nostr-follow-button pubkey="${this.ndkUser.pubkey}"></nostr-follow-button>` : ''}
-          </div>
-        </div>
-      `;
-    } else {
-        // Handle case where userProfile is unexpectedly null/undefined after loading without error
-        contentHTML = `<div>Error: Profile data unavailable.</div>`;
-        this.classList.add('error-container');
-        this.classList.remove('loading');
-    }
+    // Generate the HTML content
+    const contentHTML = renderProfileBadge(
+      this.theme,
+      this.isLoading,
+      this.isError,
+      this.userProfile,
+      this.ndkUser,
+      npubAttribute,
+      showNpub,
+      showFollow
+    );
 
     // Combine styles and content, assign ONCE to innerHTML
     this.innerHTML = getProfileBadgeStylesLegacy(this.theme) + contentHTML;

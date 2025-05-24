@@ -2,7 +2,7 @@ import NDK, { NDKKind, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
-import { getProfileStyles } from '../common/theme';
+import { renderProfile, renderLoadingState, renderErrorState } from './render';
 
 export default class NostrProfile extends HTMLElement {
   private rendered: boolean = false;
@@ -381,375 +381,43 @@ export default class NostrProfile extends HTMLElement {
   render() {
     const showNpub = this.getAttribute('show-npub') === 'true';
     const showFollow = this.getAttribute('show-follow') !== 'false';
+    const npub = this.getAttribute('npub') || this.ndkUser?.npub || '';
 
-    if(this.isLoading) {
-      this.shadowRoot!.innerHTML = `
-        ${getProfileStyles(this.theme)}
-        <div class="nostr-profile">
-          <div id="profile">
-            <div id="profile_banner">
-              <div style="width: 100%; height: 100%;" class="skeleton"></div>
-            </div>
-            <div class="dp_container">
-              <div class="avatar_container">
-                <div class="avatar_wrapper">
-                  <div class="xxl_avatar">
-                    <div class="backfill">
-                      <div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="profile_actions">
-              ${
-                this.ndkUser && this.ndkUser.npub && showFollow
-                ? `
-                  <nostr-follow-button
-                    npub="${this.ndkUser.npub}"
-                    theme="${this.theme}"
-                  ></nostr-follow-button>
-                `: ''
-              }
-            </div>
-            <div class="profile_data">
-              <div class="basic_info">
-                <div class="name">
-                  <div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>
-                </div>
-              </div>
-              <div class="nip05-wrapper">
-                <div class="nip05-container">
-                  <div style="width: 75px; height: 8px; border-radius: 20px" class="skeleton"></div>
-                  ${this.renderNpub()}
-                </div>
-              </div>
-            </div>
-            <div class="about">
-              <div style="width: 100%; height: 12px; border-radius: 20px; margin-bottom: 12px" class="skeleton"></div>
-              <div style="width: 40%; height: 12px; border-radius: 20px" class="skeleton"></div>
-            </div>
-            <div class="links">
-              <div style="width: 150px; height: 12px; border-radius: 20px" class="skeleton"></div>
-            </div>
-          </div>
-          <div class="stats" data-orientation="horizontal">
-            ${
-              this.isStatsError
-              ? `<p class="error-text">Error loading stats</p>`
-              : `
-                <button class="stat" data-orientation="horizontal">
-                  <div class="stat-inner">
-                    <div class="stat-value">
-                      ${
-                        this.isStatsNotesLoading
-                        ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                        : this.stats.notes
-                      }
-                    </div>
-                    <div class="stat-name">Notes</div>
-                  </div>
-                </button>
-                
-                <button class="stat" data-orientation="horizontal">
-                  <div class="stat-inner">
-                    <div class="stat-value">
-                      ${
-                        this.isStatsNotesLoading
-                        ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                        : this.stats.replies
-                      }
-                    </div>
-                    <div class="stat-name">Replies</div>
-                  </div></button>
-                
-                <!-- TODO: Add zaps after resolving the doubts
-                <button class="stat" data-orientation="horizontal">
-                  <div class="stat-inner">
-                    <div class="stat-value">
-                      ${
-                        this.isStatsLoading
-                        ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                        : this.stats.zaps
-                      }
-                    </div>
-                    <div class="stat-name">Zaps</div>
-                  </div>
-                </button>
-                -->
-                
-                <button class="stat" data-orientation="horizontal">
-                  <div class="stat-inner">
-                    <div class="stat-value">
-                      ${
-                        this.isStatsFollowsLoading
-                        ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                        : this.stats.follows
-                      }
-                    </div>
-                    <div class="stat-name">Following</div>
-                  </div>
-                </button>
-
-                <button class="stat" data-orientation="horizontal">
-                  <div class="stat-inner">
-                    <div class="stat-value">
-                      ${
-                        this.isStatsFollowersLoading
-                        ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                        : this.stats.followers
-                      }
-                    </div>
-                    <div class="stat-name">Followers</div>
-                  </div>
-                </button>
-                
-                <!--
-                <button class="stat" data-orientation="horizontal">
-                  <div class="stat-inner">
-                    <div class="stat-value">
-                      ${
-                        this.isStatsRelaysLoading
-                        ? '<div style="width: 20px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                        : this.stats.relays
-                      }
-                    </div>
-                    <div class="stat-name">Relays</div>
-                  </div>
-                </button>
-                -->
-              `
-            }
-          </div>
-        </div>
-      `;
+    if (this.isLoading) {
+      this.shadowRoot!.innerHTML = renderLoadingState(this.theme);
       return;
     }
 
-    if(this.isError) {
-      this.shadowRoot!.innerHTML = `
-        ${getProfileStyles(this.theme)}
-        <div class="nostr-profile error-container">
-          <div class="error">!</div>
-          <span class="error-text">Error fetching profile. Is the npub/nip05 correct?</span>
-        </div>
-      `;
+    if (this.isError) {
+      this.shadowRoot!.innerHTML = renderErrorState('Error fetching profile. Is the npub/nip05 correct?', this.theme);
       return;
     }
 
-    this.shadowRoot!.innerHTML = `
-      ${getProfileStyles(this.theme)}
-      <div class="nostr-profile">
-        <div id="profile">
-          <div id="profile_banner">
-            ${
-              this.isLoading
-              ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
-              : this.userProfile.banner
-              ? `
-                  <a
-                    target="_blank"
-                    data-cropped="true"
-                    class="profile_image"
-                    href="#"
-                    data-pswp-width="991"
-                    data-pswp-height="330.3333333333333"
-                    >
-                      <img
-                      id="4075d846142df0a70fde5fd340e774697c4a7b4f2fce3635b02e061afcd16139"
-                      src="${this.userProfile.banner}"
-                      width="524px"/>
-                    </a>
-                `
-              : '<div class="banner-placeholder"></div>'
-            }
-          </div>
-          <div class="dp_container">
-            <div class="avatar_container">
-              <div class="avatar_wrapper">
-                <div class="xxl_avatar">
-                  <div class="backfill">
-                    ${
-                      this.isLoading
-                      ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
-                      : `
-                          <a
-                            target="_blank"
-                            data-cropped="true"
-                            class="profile_image roundedImage"
-                            href="#"
-                            data-pswp-width="991"
-                            data-pswp-height="989.6777851901267"
-                            ><img
-                            id="70f547f7e6e31ae6952f41d75d50a4ac13b9290d5d8e9e9eb89801501de242fd"
-                            src="${this.userProfile.image}"
-                            width="524px"
-                          /></a>
-                      `
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="profile_actions">
-            ${
-              this.ndkUser && this.ndkUser.npub && showFollow
-              ? `
-                <nostr-follow-button
-                  npub="${this.ndkUser.npub}"
-                  theme="${this.theme}"
-                ></nostr-follow-button>
-              `: ''
-            }
-          </div>
-          <div class="profile_data">
-            <div class="basic_info">
-              <div class="name">
-                ${
-                  this.isLoading
-                  ? '<div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>'
-                  : `
-                      <div class="name-text">${this.userProfile.displayName || this.userProfile.name}</div>
-                  `
-                }
-              </div>
-            </div>
-            <div class="nip05-wrapper">
-              <div class="nip05-container">
-                ${
-                  this.isLoading
-                  ? '<div style="width: 75px; height: 8px; border-radius: 20px" class="skeleton"></div>'
-                  :
-                    this.userProfile.nip05
-                    ? `<div class="nip05">
-                        <span>${this.userProfile.nip05}</span>
-                        <span id="nip05-copy" class="copy-button">&#x2398;</span>
-                      </div>`
-                    : ''
-                }
-                ${this.renderNpub()}
-              </div>
-            </div>
-          </div>
-          
-          <div class="about">
-            ${
-              this.isLoading
-              ? `
-                  <div style="width: 100%; height: 12px; border-radius: 20px; margin-bottom: 12px" class="skeleton"></div>
-                  <div style="width: 40%; height: 12px; border-radius: 20px" class="skeleton"></div>
-              `
-              : this.userProfile.about || ''
-            }
-          </div>
-          <div class="links">
-            ${
-              this.isLoading
-              ? '<div style="width: 150px; height: 12px; border-radius: 20px" class="skeleton"></div>'
-              : this.userProfile.website
-                ? `
-                    <div class="website">
-                      <a target="_blank" href="${this.userProfile.website}"
-                      >${this.userProfile.website}</a
-                      >
-                    </div>
-                `
-                : ''
-            }
-          </div>
-        </div>
-        <div class="stats" data-orientation="horizontal">
-          ${
-            this.isStatsError
-            ? `<p class="error-text">Error loading stats</p>`
-            : `
-              <button class="stat" data-orientation="horizontal">
-                <div class="stat-inner">
-                  <div class="stat-value">
-                    ${
-                      this.isStatsNotesLoading
-                      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                      : this.stats.notes
-                    }
-                  </div>
-                  <div class="stat-name">Notes</div>
-                </div>
-              </button>
-              
-              <button class="stat" data-orientation="horizontal">
-                <div class="stat-inner">
-                  <div class="stat-value">
-                    ${
-                      this.isStatsNotesLoading
-                      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                      : this.stats.replies
-                    }
-                  </div>
-                  <div class="stat-name">Replies</div>
-                </div></button>
-              
-              <!-- TODO: Add zaps after resolving the doubts
-              <button class="stat" data-orientation="horizontal">
-                <div class="stat-inner">
-                  <div class="stat-value">
-                    ${
-                      this.isStatsLoading
-                      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                      : this.stats.zaps
-                    }
-                  </div>
-                  <div class="stat-name">Zaps</div>
-                </div>
-              </button>
-              -->
-              
-              <button class="stat" data-orientation="horizontal">
-                <div class="stat-inner">
-                  <div class="stat-value">
-                    ${
-                      this.isStatsFollowsLoading
-                      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                      : this.stats.follows
-                    }
-                  </div>
-                  <div class="stat-name">Following</div>
-                </div>
-              </button>
+    const renderOptions = {
+      npub,
+      userProfile: this.userProfile,
+      theme: this.theme,
+      isLoading: this.isLoading,
+      isStatsLoading: this.isStatsLoading,
+      isStatsNotesLoading: this.isStatsNotesLoading,
+      isStatsFollowersLoading: this.isStatsFollowersLoading,
+      isStatsFollowsLoading: this.isStatsFollowsLoading,
+      stats: {
+        notes: this.stats.notes,
+        replies: this.stats.replies,
+        follows: this.stats.follows,
+        followers: this.stats.followers,
+        zaps: this.stats.zaps,
+        relays: this.stats.relays
+      },
+      error: this.isError ? 'Error loading profile' : null,
+      onNpubClick: this.onProfileClick.bind(this),
+      onProfileClick: this.onProfileClick.bind(this),
+      showFollow: showFollow && this.ndkUser?.npub ? this.ndkUser.npub : '',
+      showNpub: showNpub
+    };
 
-              <button class="stat" data-orientation="horizontal">
-                <div class="stat-inner">
-                  <div class="stat-value">
-                    ${
-                      this.isStatsFollowersLoading
-                      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                      : this.stats.followers
-                    }
-                  </div>
-                  <div class="stat-name">Followers</div>
-                </div>
-              </button>
-              
-              <!--
-              <button class="stat" data-orientation="horizontal">
-                <div class="stat-inner">
-                  <div class="stat-value">
-                    ${
-                      this.isStatsRelaysLoading
-                      ? '<div style="width: 20px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                      : this.stats.relays
-                    }
-                  </div>
-                  <div class="stat-name">Relays</div>
-                </div>
-              </button>
-              -->
-            `
-          }
-        </div>
-      </div>
-    `;
-
+    this.shadowRoot!.innerHTML = renderProfile(renderOptions);
     this.attachEventListeners();
   }
 }
