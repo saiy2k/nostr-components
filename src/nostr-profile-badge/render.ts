@@ -1,7 +1,11 @@
 import { Theme } from '../common/types';
 import { maskNPub } from '../common/utils';
 
-export function renderNpub(ndkUser: any, npubAttribute: string | null, showNpub: string | null) {
+export function renderNpub(
+  ndkUser: any,
+  npubAttribute: string | null,
+  showNpub: string | null
+) {
   if (showNpub === 'false') {
     return '';
   }
@@ -59,13 +63,16 @@ export function renderProfileBadge(
       </div>
     `;
   } else if (userProfile) {
-    const profileName = userProfile.displayName || userProfile.name || maskNPub(ndkUser?.npub || '');
+    const profileName =
+      userProfile.displayName ||
+      userProfile.name ||
+      maskNPub(ndkUser?.npub || '');
     const profileImage = userProfile.image || './assets/default_dp.png';
 
     contentHTML = `
       <div class='nostr-profile-badge-container'>
         <div class='nostr-profile-badge-left-container'>
-          <img src='${profileImage}' alt='Nostr profile image of ${profileName.replace(/'/g, '\'')}'/>
+          <img src='${profileImage}' alt='Nostr profile image of ${profileName.replace(/'/g, "'")}'/>
         </div>
         <div class='nostr-profile-badge-right-container'>
           <div class='nostr-profile-badge-name' title="${profileName.replace(/"/g, '&quot;')}">${profileName}</div>

@@ -22,7 +22,8 @@ const PARAMETERS = [
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
+    defaultValue:
+      'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
     control: 'text',
   },
   {
@@ -73,13 +74,15 @@ const CSS_VARIABLES = [
   },
   {
     variable: '--nstrc-follow-btn-hover-background-dark',
-    description: 'Background color of the button while hovering in the dark mode',
+    description:
+      'Background color of the button while hovering in the dark mode',
     defaultValue: '#222222',
     control: 'color',
   },
   {
     variable: '--nstrc-follow-btn-hover-background-light',
-    description: 'Background color of the button while hovering in the light mode',
+    description:
+      'Background color of the button while hovering in the light mode',
     defaultValue: '#F9F9F9',
     control: 'color',
   },
@@ -133,7 +136,8 @@ const CSS_VARIABLES = [
   },
   {
     variable: '--nstrc-follow-btn-horizontal-alignment',
-    description: 'Horizontal alignment of the button when the error message is displayed. Accepts the values of justify-content CSS flex property',
+    description:
+      'Horizontal alignment of the button when the error message is displayed. Accepts the values of justify-content CSS flex property',
     defaultValue: 'start',
     control: 'text',
   },
@@ -145,7 +149,7 @@ const CSS_VARIABLES = [
   },
 ];
 
-const generateCode = (args) => {
+const generateCode = args => {
   const attributes = [
     args.npub ? `npub="${args.npub}"` : '',
     args.nip05 ? `nip05="${args.nip05}"` : '',
@@ -155,73 +159,75 @@ const generateCode = (args) => {
     args['icon-width'] ? `icon-width="${args['icon-width']}"` : '',
     args['icon-height'] ? `icon-height="${args['icon-height']}"` : '',
   ]
-  .filter(Boolean) // Remove empty strings
-  .join('\n  ');
+    .filter(Boolean) // Remove empty strings
+    .join('\n  ');
 
   const bundleScript = `<script type="module" src="/nostr-components.es.js"></script>`;
 
   const cssVariables = CSS_VARIABLES.map(cssVariable => {
-    console.log(args[cssVariable.variable])
-    return args[cssVariable.variable] ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`: ''
+    console.log(args[cssVariable.variable]);
+    return args[cssVariable.variable]
+      ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`
+      : '';
   })
-  .filter(Boolean)
-  .join('\n    ');
+    .filter(Boolean)
+    .join('\n    ');
 
   let styles = '';
 
-  if(cssVariables.length > 0) {
+  if (cssVariables.length > 0) {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
   let component = '';
   component += `To follow saiy2k: <br/><nostr-follow-button\n  ${attributes}\n></nostr-follow-button>`;
 
-  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
-}
+  return `${bundleScript}${styles ? `\n\n${styles}` : ''}\n\n${component}`.trim();
+};
 
-const argTypes: Partial<ArgTypes> = {}
+const argTypes: Partial<ArgTypes> = {};
 
-PARAMETERS.forEach((parameter) => {
+PARAMETERS.forEach(parameter => {
   argTypes[parameter.variable] = {
     description: parameter.description,
     type: parameter.control as any,
     table: {
       defaultValue: {
-        summary: parameter.defaultValue
-      }
+        summary: parameter.defaultValue,
+      },
     },
 
     control: parameter.control as any,
     options: parameter.options || [],
-  }
-})
+  };
+});
 
-CSS_VARIABLES.forEach((cssVariable) => {
+CSS_VARIABLES.forEach(cssVariable => {
   argTypes[cssVariable.variable] = {
     description: cssVariable.description,
     type: 'string',
     table: {
       category: 'CSS Variables',
       defaultValue: {
-        summary: cssVariable.defaultValue
-      }
+        summary: cssVariable.defaultValue,
+      },
     },
     control: {
       type: cssVariable.control as any,
-    }
-  }
-})
+    },
+  };
+});
 
 const meta: Meta = {
   title: 'NostrFollowButton',
   tags: ['autodocs'],
-  render: (args) => generateCode(args),
+  render: args => generateCode(args),
   argTypes: argTypes,
   args: { onClick: fn() },
   parameters: {
     docs: {
       source: {
-        transform: (code, storyContext) => generateCode(storyContext.args)
+        transform: (code, storyContext) => generateCode(storyContext.args),
       },
     },
   },
@@ -238,5 +244,5 @@ export const Default: Story = {
   args: {
     nip05: 'saiy2k@iris.to',
     theme: 'light',
-  }
+  },
 };

@@ -12,4 +12,3 @@ addons.setConfig({
     brandUrl: 'https://nostr-components.web.app/',
   },
 });
-

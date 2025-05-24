@@ -1,5 +1,9 @@
-import { Theme } from "../common/types";
-import { getLoadingNostrich, getNostrLogo, getSuccessAnimation } from "../common/theme";
+import { Theme } from '../common/types';
+import {
+  getLoadingNostrich,
+  getNostrLogo,
+  getSuccessAnimation,
+} from '../common/theme';
 
 export interface RenderFollowButtonOptions {
   theme: Theme;
@@ -18,10 +22,10 @@ export function renderFollowButton({
   isFollowed,
   errorMessage,
   iconWidth,
-  iconHeight
+  iconHeight,
 }: RenderFollowButtonOptions): string {
   const buttonText = isFollowed ? 'Followed' : 'Follow';
-  
+
   return `
     ${getFollowButtonStyles(theme, isLoading)}
     <div class="nostr-follow-button-container ${isError ? 'nostr-follow-button-error' : ''}">
@@ -29,23 +33,22 @@ export function renderFollowButton({
         <button class="nostr-follow-button">
           ${
             isLoading
-            ? `${getLoadingNostrich(theme, iconWidth, iconHeight)} <span>Following...</span>`
-            : isFollowed
-              ? `${getSuccessAnimation(theme, iconWidth, iconHeight)} ${buttonText}`
-              : `${getNostrLogo(theme, iconWidth, iconHeight)} <span>Follow me on Nostr</span>`
+              ? `${getLoadingNostrich(theme, iconWidth, iconHeight)} <span>Following...</span>`
+              : isFollowed
+                ? `${getSuccessAnimation(theme, iconWidth, iconHeight)} ${buttonText}`
+                : `${getNostrLogo(theme, iconWidth, iconHeight)} <span>Follow me on Nostr</span>`
           }
         </button>
       </div>
-      ${
-        isError
-        ? `<small>${errorMessage}</small>`
-        : ''
-      }
+      ${isError ? `<small>${errorMessage}</small>` : ''}
     </div>
   `;
 }
 
-export function getFollowButtonStyles(theme: Theme, isLoading: boolean): string {
+export function getFollowButtonStyles(
+  theme: Theme,
+  isLoading: boolean
+): string {
   return `
     <style>
       :host {

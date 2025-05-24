@@ -1,13 +1,17 @@
-import NDK, { NDKNip07Signer, NDKUser, NDKUserProfile } from "@nostr-dev-kit/ndk";
-import { DEFAULT_RELAYS } from "../common/constants";
-import { Theme } from "../common/types";
-import { renderFollowButton, RenderFollowButtonOptions } from "./render";
+import NDK, {
+  NDKNip07Signer,
+  NDKUser,
+  NDKUserProfile,
+} from '@nostr-dev-kit/ndk';
+import { DEFAULT_RELAYS } from '../common/constants';
+import { Theme } from '../common/types';
+import { renderFollowButton, RenderFollowButtonOptions } from './render';
 
 export default class NostrFollowButton extends HTMLElement {
   private rendered: boolean = false;
   private ndk: NDK = new NDK();
 
-  private theme: Theme = "light";
+  private theme: Theme = 'light';
 
   private isLoading: boolean = false;
   private isError: boolean = false;
@@ -25,22 +29,22 @@ export default class NostrFollowButton extends HTMLElement {
   };
 
   getRelays = () => {
-    const userRelays = this.getAttribute("relays");
+    const userRelays = this.getAttribute('relays');
 
     if (userRelays) {
-      return userRelays.split(",");
+      return userRelays.split(',');
     }
 
     return DEFAULT_RELAYS;
   };
 
   getTheme = async () => {
-    this.theme = "light";
+    this.theme = 'light';
 
-    const userTheme = this.getAttribute("theme");
+    const userTheme = this.getAttribute('theme');
 
     if (userTheme) {
-      const isValidTheme = ["light", "dark"].includes(userTheme);
+      const isValidTheme = ['light', 'dark'].includes(userTheme);
 
       if (!isValidTheme) {
         throw new Error(
@@ -69,96 +73,100 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ["relays", "npub", "theme"];
+    return ['relays', 'npub', 'theme'];
   }
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-    if (name === "relays") {
+    if (name === 'relays') {
       this.ndk.explicitRelayUrls = this.getRelays();
       this.connectToNostr();
     }
 
-    if (name === "theme") {
+    if (name === 'theme') {
       this.getTheme();
     }
-  
+
     this.render();
   }
 
   attachEventListeners() {
-    this.shadowRoot!.querySelector('.nostr-follow-button')?.addEventListener('click', async () => {
-      this.isError = false;
+    this.shadowRoot!.querySelector('.nostr-follow-button')?.addEventListener(
+      'click',
+      async () => {
+        this.isError = false;
 
-      const nip07signer = new NDKNip07Signer();
+        const nip07signer = new NDKNip07Signer();
 
-      this.isLoading = true;
-      this.render();
-      
-      try {
-        this.ndk.signer = nip07signer;
-        await this.connectToNostr();
+        this.isLoading = true;
+        this.render();
 
-        const userToFollowNpub = this.getAttribute('npub');
-        const userToFollowNip05 = this.getAttribute('nip05');
-        const userToFollowPubkey = this.getAttribute('pubkey');
+        try {
+          this.ndk.signer = nip07signer;
+          await this.connectToNostr();
 
-        if(!userToFollowNpub && !userToFollowNip05 && !userToFollowPubkey) {
-          this.errorMessage = 'Provide npub, nip05 or pubkey';
-          this.isError = true;
-        } else {
-          let userToFollow: NDKUser | null = null;
-  
-          if(userToFollowPubkey) {
-            userToFollow = this.ndk.getUser({
-              pubkey: userToFollowPubkey,
-            });
-          } else if(userToFollowNpub) {
-            userToFollow = this.ndk.getUser({
-              npub: userToFollowNpub,
-            });
-          } else if(userToFollowNip05) {
-            const userFromNip05 = await this.ndk.getUserFromNip05(userToFollowNip05)
-  
-            if(userFromNip05) {
+          const userToFollowNpub = this.getAttribute('npub');
+          const userToFollowNip05 = this.getAttribute('nip05');
+          const userToFollowPubkey = this.getAttribute('pubkey');
+
+          if (!userToFollowNpub && !userToFollowNip05 && !userToFollowPubkey) {
+            this.errorMessage = 'Provide npub, nip05 or pubkey';
+            this.isError = true;
+          } else {
+            let userToFollow: NDKUser | null = null;
+
+            if (userToFollowPubkey) {
               userToFollow = this.ndk.getUser({
-                npub: userFromNip05.npub,
+                pubkey: userToFollowPubkey,
               });
+            } else if (userToFollowNpub) {
+              userToFollow = this.ndk.getUser({
+                npub: userToFollowNpub,
+              });
+            } else if (userToFollowNip05) {
+              const userFromNip05 =
+                await this.ndk.getUserFromNip05(userToFollowNip05);
+
+              if (userFromNip05) {
+                userToFollow = this.ndk.getUser({
+                  npub: userFromNip05.npub,
+                });
+              }
+            }
+
+            if (userToFollow != null) {
+              const signedUser = await this.ndk.signer.user();
+              await signedUser.follow(userToFollow);
+
+              this.isFollowed = true;
             }
           }
-  
-          if(userToFollow != null) {
-            const signedUser = await this.ndk.signer.user();
-            await signedUser.follow(userToFollow)
-  
-            this.isFollowed = true;
-          }
-        }
+        } catch (err) {
+          this.isError = true;
 
-
-      } catch(err) {
-        this.isError = true;
-
-        if(err.message && err.message.includes('NIP-07')) {
-          this.errorMessage = `Looks like you don't have any nostr signing browser extension.
+          if (err.message && err.message.includes('NIP-07')) {
+            this.errorMessage = `Looks like you don't have any nostr signing browser extension.
                                 Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
-        } else {
-          this.errorMessage = 'Please authorize, click the button to try again!';
+          } else {
+            this.errorMessage =
+              'Please authorize, click the button to try again!';
+          }
+        } finally {
+          this.isLoading = false;
         }
 
-      } finally {
-        this.isLoading = false;
+        this.render();
       }
-
-      this.render();
-    });
+    );
   }
 
   render() {
     const iconWidthAttribute = this.getAttribute('icon-width');
     const iconHeightAttribute = this.getAttribute('icon-height');
 
-    const iconWidth = iconWidthAttribute !== null ? Number(iconWidthAttribute) : 25;
-    const iconHeight = iconHeightAttribute !== null ? Number(iconHeightAttribute) : 25;
+    const iconWidth =
+      iconWidthAttribute !== null ? Number(iconWidthAttribute) : 25;
+    const iconHeight =
+      iconHeightAttribute !== null ? Number(iconHeightAttribute) : 25;
 
     const renderOptions: RenderFollowButtonOptions = {
       theme: this.theme,
@@ -167,7 +175,7 @@ export default class NostrFollowButton extends HTMLElement {
       isFollowed: this.isFollowed,
       errorMessage: this.errorMessage,
       iconWidth,
-      iconHeight
+      iconHeight,
     };
 
     this.shadowRoot!.innerHTML = renderFollowButton(renderOptions);
@@ -175,4 +183,4 @@ export default class NostrFollowButton extends HTMLElement {
   }
 }
 
-customElements.define("nostr-follow-button", NostrFollowButton);
+customElements.define('nostr-follow-button', NostrFollowButton);

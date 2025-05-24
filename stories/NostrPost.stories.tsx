@@ -20,7 +20,8 @@ const PARAMETERS = [
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
+    defaultValue:
+      'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
     control: 'text',
   },
   {
@@ -137,26 +138,28 @@ const CSS_VARIABLES = [
   },
 ];
 
-const generateCode = (args, forCodeGen=false) => {
+const generateCode = (args, forCodeGen = false) => {
   const attributes = [
     args.id ? `id="${args.id}"` : '',
     args.relays ? `relays="${args.relays}"` : '',
     args.theme ? `theme="${args.theme}"` : '',
     args['show-stats'] ? `show-stats="${args['show-stats']}"` : '',
   ]
-  .filter(Boolean)
-  .join('\n  ');
+    .filter(Boolean)
+    .join('\n  ');
 
   const cssVariables = CSS_VARIABLES.map(cssVariable => {
-    console.log(args[cssVariable.variable])
-    return args[cssVariable.variable] ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`: ''
+    console.log(args[cssVariable.variable]);
+    return args[cssVariable.variable]
+      ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`
+      : '';
   })
-  .filter(Boolean)
-  .join('\n    ');
+    .filter(Boolean)
+    .join('\n    ');
 
   let styles = '';
 
-  if(cssVariables.length > 0) {
+  if (cssVariables.length > 0) {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
@@ -167,7 +170,7 @@ const generateCode = (args, forCodeGen=false) => {
   //   component += '<div style="width: 350px">\n  ';
   // }
 
-  component += `<div style="width: ${args.width ? `${args.width}px`: "600px"}">\n`;
+  component += `<div style="width: ${args.width ? `${args.width}px` : '600px'}">\n`;
 
   component += `<nostr-post\n  ${attributes}\n></nostr-post>`;
 
@@ -177,53 +180,53 @@ const generateCode = (args, forCodeGen=false) => {
   //   component += '\n</div>';
   // }
 
-  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
-}
+  return `${bundleScript}${styles ? `\n\n${styles}` : ''}\n\n${component}`.trim();
+};
 
+const argTypes: Partial<ArgTypes> = {};
 
-const argTypes: Partial<ArgTypes> = {}
-
-PARAMETERS.forEach((parameter) => {
+PARAMETERS.forEach(parameter => {
   argTypes[parameter.variable] = {
     description: parameter.description,
     type: parameter.control as any,
     table: {
       defaultValue: {
-        summary: parameter.defaultValue
-      }
+        summary: parameter.defaultValue,
+      },
     },
 
     control: parameter.control as any,
     options: parameter.options || [],
-  }
-})
+  };
+});
 
-CSS_VARIABLES.forEach((cssVariable) => {
+CSS_VARIABLES.forEach(cssVariable => {
   argTypes[cssVariable.variable] = {
     description: cssVariable.description,
     type: 'string',
     table: {
       category: 'CSS Variables',
       defaultValue: {
-        summary: cssVariable.defaultValue
-      }
+        summary: cssVariable.defaultValue,
+      },
     },
     control: {
       type: cssVariable.control as any,
-    }
-  }
-})
+    },
+  };
+});
 
 const meta: Meta = {
   title: 'NostrPost',
   tags: ['autodocs'],
-  render: (args) => generateCode(args),
+  render: args => generateCode(args),
   argTypes: argTypes,
   args: { onClick: fn(), onAuthorClick: fn() },
   parameters: {
     docs: {
       source: {
-        transform: (code, storyContext) => generateCode(storyContext.args, true)
+        transform: (code, storyContext) =>
+          generateCode(storyContext.args, true),
       },
     },
   },
@@ -241,8 +244,8 @@ export const Default: Story = {
   args: {
     width: 600,
     id: 'note1kmf8n3c8fxfm3q26ys6vgrg306w05yrddt3txd4jtln47tunhscqp09muz',
-    'show-stats': true
-  }
+    'show-stats': true,
+  },
 };
 
 export const UTXO: Story = {
@@ -255,11 +258,11 @@ export const UTXO: Story = {
     width: 600,
     id: 'note13qzmyaseurn0n7tlfvax62ymdssac55ls99qu6053l0e2mtsy9nqp8c4nc',
     theme: 'dark',
-    'show-stats': true
-  }
+    'show-stats': true,
+  },
 };
 
-export const Nvk : Story = {
+export const Nvk: Story = {
   name: 'Nvk - No Stats',
   argTypes: {
     width: { contro: 'number' },
@@ -268,5 +271,5 @@ export const Nvk : Story = {
   args: {
     width: 600,
     id: 'note1u6pg7p09y7w9x3n9yqeutzx9pqfc80w3dst3h6x3m2550s4w4j9sgn5wga',
-  }
+  },
 };

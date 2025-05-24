@@ -7,15 +7,24 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'src/index.ts'),
-        'nostr-follow-button': resolve(__dirname, 'src/nostr-follow-button/nostr-follow-button.ts'),
+        'nostr-follow-button': resolve(
+          __dirname,
+          'src/nostr-follow-button/nostr-follow-button.ts'
+        ),
         'nostr-post': resolve(__dirname, 'src/nostr-post/nostr-post.ts'),
-        'nostr-profile': resolve(__dirname, 'src/nostr-profile/nostr-profile.ts'),
-        'nostr-profile-badge': resolve(__dirname, 'src/nostr-profile-badge/nostr-profile-badge.ts'),
+        'nostr-profile': resolve(
+          __dirname,
+          'src/nostr-profile/nostr-profile.ts'
+        ),
+        'nostr-profile-badge': resolve(
+          __dirname,
+          'src/nostr-profile-badge/nostr-profile-badge.ts'
+        ),
       },
       external: ['lit', 'dayjs'],
       output: [
         {
-          entryFileNames: (chunkInfo) => {
+          entryFileNames: chunkInfo => {
             if (chunkInfo.name === 'index') return 'nostr-components.es.js';
             return `components/[name].es.js`;
           },

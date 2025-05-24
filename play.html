@@ -1,18 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
 
     <!-- Include all per-component ESM bundles for demo -->
-    <script type="module" src="./dist/components/nostr-profile-badge.es.js"></script>
+    <script
+      type="module"
+      src="./dist/components/nostr-profile-badge.es.js"
+    ></script>
     <script type="module" src="./dist/components/nostr-profile.es.js"></script>
     <script type="module" src="./dist/components/nostr-post.es.js"></script>
-    <script type="module" src="./dist/components/nostr-follow-button.es.js"></script>
+    <script
+      type="module"
+      src="./dist/components/nostr-follow-button.es.js"
+    ></script>
 
     <style>
-        /**
+      /**
         :root {
             --nstrc-profile-badge-background-light: #aaaaff !important;
             --nstrc-profile-badge-name-color-light: blue !important;
@@ -25,40 +31,34 @@
         }
         */
 
-        body {
-            margin: 10 !important;
-        }
-
+      body {
+        margin: 10 !important;
+      }
     </style>
 
     <script>
-        function onProfileClick(profile) {
-            console.log("onProfileClick");
-            console.log(profile)
-        }
+      function onProfileClick(profile) {
+        console.log('onProfileClick');
+        console.log(profile);
+      }
 
-        function onPostClick(event) {
-            console.log("onPostClick", event);
-        }
+      function onPostClick(event) {
+        console.log('onPostClick', event);
+      }
 
-        function onAuthorClick(authorNpub, author) {
-            console.log("onAuthorClick", authorNpub, author);
-        }
+      function onAuthorClick(authorNpub, author) {
+        console.log('onAuthorClick', authorNpub, author);
+      }
 
-        const npub = [
-          "npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs",
-          "npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a",
-          "npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2",
-          "npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2",
-        ];
-        const relays = [
-          "",
-          "",
-          "",
-          "ws://nas.yunierrodriguez.com:4848",
-        ];
-        var badgeIndex = 0;
-        /*
+      const npub = [
+        'npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs',
+        'npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a',
+        'npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2',
+        'npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2',
+      ];
+      const relays = ['', '', '', 'ws://nas.yunierrodriguez.com:4848'];
+      var badgeIndex = 0;
+      /*
         var timerId = setInterval(() => {
             document.getElementById("nbadge").setAttribute("npub", npub[badgeIndex]);
             document.getElementById("nbadge").setAttribute("relays", relays[badgeIndex]);
@@ -69,22 +69,21 @@
         }, 8000);
         */
     </script>
-</head>
-<body>
-    <div style="width: 500px;">
+  </head>
+  <body>
+    <div style="width: 500px">
+      <!-- nip05="lyn@primal.net" -->
+      <!-- npub="npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2" -->
+      <nostr-profile-badge
+        id="nbadge"
+        npub="npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs"
+        pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8"
+        nip05="lyn@primal.net"
+        onClick="onProfileClick"
+      ></nostr-profile-badge>
+      Booo
 
-        <!-- nip05="lyn@primal.net" -->
-        <!-- npub="npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2" -->
-        <nostr-profile-badge
-          id="nbadge"
-          npub="npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs"
-          pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8"
-          nip05="lyn@primal.net"
-          onClick="onProfileClick"
-        ></nostr-profile-badge>
-        Booo
-
-        <!--
+      <!--
         <nostr-profile-badge
             npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
             theme="light"
@@ -94,94 +93,86 @@
         ></nostr-profile-badge>
         -->
 
-        <!-- <nostr-profile-badge
+      <!-- <nostr-profile-badge
             nip05="richnost@nostrplebs.com"
             theme="light"
             onClick="onProfileClick"
             showNpub="true"
         ></nostr-profile-badge> -->
 
-        <!--
+      <!--
         <nostr-profile-badge
             npub="npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2"
             relays="wss://relay.nostrasia.net"
         ></nostr-profile-badge>
         -->
 
-        <br/>
+      <br />
 
-        <!--
+      <!--
         <nostr-follow-button
           npub="npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs"
           relays="wss://relay.nostrasia.net"
         ></nostr-follow-button>
         -->
 
-        <br/>
-        <br/>
-        <br/>
+      <br />
+      <br />
+      <br />
 
-        <!-- npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a" -->
-        <!-- nip05="lyn@primal.net" -->
-        <nostr-profile nip05="lyn@primal.net" 
-          show-follow="false"
-        ></nostr-profile>
+      <!-- npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a" -->
+      <!-- nip05="lyn@primal.net" -->
+      <nostr-profile nip05="lyn@primal.net" show-follow="false"></nostr-profile>
 
-        <nostr-profile pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8" 
-          show-follow="false"
-          relays="wss://relay.nostrasia.net"
-        ></nostr-profile>
+      <nostr-profile
+        pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8"
+        show-follow="false"
+        relays="wss://relay.nostrasia.net"
+      ></nostr-profile>
 
-        <br/>
-        <br/>
-        <br/>
+      <br />
+      <br />
+      <br />
 
-        <nostr-post 
-          id="nevent1qvzqqqqqqypzpmnw5yatnljuff5w47d35d87q99xddqpzlzsac4xzn6vm22ekmn5qqs94fx96xq7gphpnty7rnr3lqd2ppxdc4rwwpaz0wa63f6l2pn7vfqflmlyh"
-        ></nostr-post>
+      <nostr-post
+        id="nevent1qvzqqqqqqypzpmnw5yatnljuff5w47d35d87q99xddqpzlzsac4xzn6vm22ekmn5qqs94fx96xq7gphpnty7rnr3lqd2ppxdc4rwwpaz0wa63f6l2pn7vfqflmlyh"
+      ></nostr-post>
 
-        <br/>
-        <br/>
-        <br/>
+      <br />
+      <br />
+      <br />
 
-      
       <nostr-profile
         npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
         theme="light"
         onClick="onProfileClick"
       ></nostr-profile>
-     
 
       <!-- Short form content -->
-      
+
       <nostr-post
         id="note1xkynsfajq4ek787ygfhszuthemagtvft429hwru5ux8vwq0mj2vqps3vwp"
         theme="dark"
       ></nostr-post>
-     
 
       <!-- Mid form content (Not working) -->
-      
+
       <nostr-post
         id="note1c42y3yf322dy82u0nl9yjkrm573dn6tj8v8lkkw5qxkrppsn7m8q9kdnkr"
       ></nostr-post>
-     
 
       <!-- Mid form content -->
-      
+
       <nostr-post
         id="note1ptpydsx7d2d00d5s55nw7mjt7wznmvlqhznwa8apz35ayuu3ck7qq87t4l"
       ></nostr-post>
-     
- 
+
       <!-- GIFs -->
-      
+
       <nostr-post
         id="note1q95df66as8758tvgscyhz5ag4ftpdegkjqttamp46etxa0zp90sq2k0j8m"
       ></nostr-post>
-     
 
-      
       // 2 images
       <nostr-post
         id="note17cgnk678resewwewnk8jhy7n6e7a5tk30asekq64fzr9z9xerp8q5u5gjw"
@@ -211,7 +202,6 @@
       <nostr-post
         id="note1qp6fq9pl384mc5fn8fsk82kwedq5pkvxp633xyrzpwx9lk9ljjqsz4c4we"
       ></nostr-post>
-      
 
       // People tag and video
       <nostr-post
@@ -222,10 +212,6 @@
       <nostr-post
         id="note1qz9c05y23dux2f3d6ngm702mmmgytqwwwuyt9nvk7x5q4lqxzk5splg423"
       ></nostr-post>
-      
-
-
     </div>
-
-</body>
+  </body>
 </html>

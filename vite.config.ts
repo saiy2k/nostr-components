@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-// import dts from 'vite-plugin-dts'; 
+// import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 
 export default defineConfig({
@@ -16,16 +16,25 @@ export default defineConfig({
       // Multiple entry points: main bundle and per-component bundles
       input: {
         index: resolve(__dirname, 'src/index.ts'),
-        'nostr-follow-button': resolve(__dirname, 'src/nostr-follow-button/nostr-follow-button.ts'),
+        'nostr-follow-button': resolve(
+          __dirname,
+          'src/nostr-follow-button/nostr-follow-button.ts'
+        ),
         'nostr-post': resolve(__dirname, 'src/nostr-post/nostr-post.ts'),
-        'nostr-profile': resolve(__dirname, 'src/nostr-profile/nostr-profile.ts'),
-        'nostr-profile-badge': resolve(__dirname, 'src/nostr-profile-badge/nostr-profile-badge.ts'),
+        'nostr-profile': resolve(
+          __dirname,
+          'src/nostr-profile/nostr-profile.ts'
+        ),
+        'nostr-profile-badge': resolve(
+          __dirname,
+          'src/nostr-profile-badge/nostr-profile-badge.ts'
+        ),
       },
       external: ['lit', 'dayjs'],
       output: [
         {
           // ESM output for all entries
-          entryFileNames: (chunkInfo) => {
+          entryFileNames: chunkInfo => {
             if (chunkInfo.name === 'index') return 'nostr-components.es.js';
             return `components/[name].es.js`;
           },
@@ -53,5 +62,4 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-
 });

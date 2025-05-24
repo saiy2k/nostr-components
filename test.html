@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
 
     <script src="/dist/nostr-profile-badge.js"></script>
@@ -12,50 +12,50 @@
     <!-- <script type="module" src="./dist/nostr-check.js"></script> -->
 
     <style>
-        body {
-            margin: 0 !important;
-        }
+      body {
+        margin: 0 !important;
+      }
     </style>
 
     <script>
-        function onProfileClick(profile) {
-            console.log("onProfileClick");
-            console.log(profile)
-        }
+      function onProfileClick(profile) {
+        console.log('onProfileClick');
+        console.log(profile);
+      }
 
-        function onPostClick(event) {
-            console.log("onPostClick", event);
-        }
+      function onPostClick(event) {
+        console.log('onPostClick', event);
+      }
 
-        function onAuthorClick(authorNpub, author) {
-            console.log("onAuthorClick", authorNpub, author);
-        }
+      function onAuthorClick(authorNpub, author) {
+        console.log('onAuthorClick', authorNpub, author);
+      }
     </script>
-</head>
-<body>
-    <div style="width: 300px;">
-        <nostr-profile-badge
-            npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
-            theme="light"
-            onClick="onProfileClick"
-            relays="wss://strfry.iris.to,wss://relay.nostr.band"
-            show-npub="true"
-        ></nostr-profile-badge>
+  </head>
+  <body>
+    <div style="width: 300px">
+      <nostr-profile-badge
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        theme="light"
+        onClick="onProfileClick"
+        relays="wss://strfry.iris.to,wss://relay.nostr.band"
+        show-npub="true"
+      ></nostr-profile-badge>
 
-        <!-- <nostr-profile-badge
+      <!-- <nostr-profile-badge
             nip05="richnost@nostrplebs.com"
             theme="light"
             onClick="onProfileClick"
             showNpub="true"
         ></nostr-profile-badge> -->
 
-        <!-- <nostr-profile-badge
+      <!-- <nostr-profile-badge
             npub="npub1nraaalnsaxgfm5u7m2z3hqfjnygguql6na6az9j6cnlphtsp9zws4540xf"
             theme="dark"
             onClick="onProfileClick"
         ></nostr-profile-badge> -->
     </div>
-    
+
     <!-- npub="npub1ltt9gry09lf2z6396rvzmk2a8wkh3yx5xhgkjzzg5znh62yr53rs0hk97y" -->
     <!-- nip05="parman@nostrich.cc" -->
     <!-- npub="npub1nraaalnsaxgfm5u7m2z3hqfjnygguql6na6az9j6cnlphtsp9zws4540xf" -->
@@ -66,35 +66,35 @@
             show-npub="false"
       ></nostr-profile> -->
 
-      <!-- ? TEST NOS 1 -->
-      <!-- <nostr-profile
+    <!-- ? TEST NOS 1 -->
+    <!-- <nostr-profile
             npub="npub1khn4j66vp89peqlsuurklczxqpwe493re38jakx7dw6dr9hpuqyqlvq8ga"
             theme="dark"
             relays="wss://relay.camelus.app,wss://de.purplerelay.com,wss://wot.sebastix.social,wss://nostr.lopp.social"
       ></nostr-profile> -->
 
-      <!-- ? TEST NOS 2 -->
-      <!-- <nostr-profile
+    <!-- ? TEST NOS 2 -->
+    <!-- <nostr-profile
             npub="npub1hxr2mtgzx2hejm9n3qjtehssyhhdhcltdtky6v2glr9lzzmtqywstv6sck"
             theme="dark"
             relays="wss://strfry.iris.to,wss://relay.nostr.band"
       ></nostr-profile> -->
 
-      <!-- ? Fiatjaf -->
-      <!-- relays="wss://140.f7z.io,wss://nostr.mom,wss://pyramid.fiatjaf.com,wss://relay.westernbtc.com,wss://wot.utxo.one" -->
-      <!-- <nostr-profile
+    <!-- ? Fiatjaf -->
+    <!-- relays="wss://140.f7z.io,wss://nostr.mom,wss://pyramid.fiatjaf.com,wss://relay.westernbtc.com,wss://wot.utxo.one" -->
+    <!-- <nostr-profile
             npub="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
             theme="dark"
             relays="wss://relay.camelus.app,wss://nostr.lopp.social,wss://de.purplerelay.com,wss://relay.damus.io,wss://wot.sebastix.social,wss://strfry.iris.to,wss://relay.snort.social,wss://relay.nostr.band"
         ></nostr-profile> -->
 
-      <!-- <nostr-profile
+    <!-- <nostr-profile
             npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
             theme="dark"
             relays="wss://eden.nostr.land,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://nostr.bitcoiner.social,wss://nostr.mom,wss://nostr.oxtr.dev,wss://nostr.wine,wss://puravida.nostr.land,wss://relay.damus.io,wss://relay.nostr.bg,wss://relay.snort.social"
       ></nostr-profile> -->
 
-      <!--
+    <!--
       <nostr-profile
             npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
             show-npub="true"
@@ -107,11 +107,10 @@
       ></nostr-post>
       -->
 
-      <!-- <nostr-follow-button
+    <!-- <nostr-follow-button
         npub="npub1hxr2mtgzx2hejm9n3qjtehssyhhdhcltdtky6v2glr9lzzmtqywstv6sck"
       ></nostr-follow-button> -->
 
-      <!-- <nostr-check></nostr-check> -->
-
-</body>
+    <!-- <nostr-check></nostr-check> -->
+  </body>
 </html>

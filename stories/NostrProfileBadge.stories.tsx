@@ -14,7 +14,8 @@ import { DEFAULT_RELAYS } from '../src/common/constants.ts';
 const PARAMETERS = [
   {
     variable: 'npub',
-    description: 'Nostr public key but in bech32 format.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    description:
+      'Nostr public key but in bech32 format.<br/><b>Precedence:</b> npub, nip05, pubkey',
     defaultValue: 'null',
     control: 'text',
   },
@@ -26,7 +27,8 @@ const PARAMETERS = [
   },
   {
     variable: 'pubkey',
-    description: 'Raw pubkey provided by Nostr.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    description:
+      'Raw pubkey provided by Nostr.<br/><b>Precedence:</b> npub, nip05, pubkey',
     defaultValue: 'null',
     control: 'text',
   },
@@ -34,7 +36,7 @@ const PARAMETERS = [
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
     // defaultValue: 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
-    defaultValue: DEFAULT_RELAYS.join(",\n"),
+    defaultValue: DEFAULT_RELAYS.join(',\n'),
     control: 'text',
   },
   {
@@ -52,7 +54,8 @@ const PARAMETERS = [
   },
   {
     variable: 'show-follow',
-    description: 'Whether need to show the follow button in the profile badge or not\n\n<b style="background-color: orange; color: white; padding: 0 4px; border-radius: 4px">NOTE:</b> To show the follow button, you need to include the &lt;nostr-follow-button&gt; component from the CDN.\n\nInclude like this,\n&lt;script type="module" src="./dist/nostr-follow-button.js"&gt;&lt;/script&gt;',
+    description:
+      'Whether need to show the follow button in the profile badge or not\n\n<b style="background-color: orange; color: white; padding: 0 4px; border-radius: 4px">NOTE:</b> To show the follow button, you need to include the &lt;nostr-follow-button&gt; component from the CDN.\n\nInclude like this,\n&lt;script type="module" src="./dist/nostr-follow-button.js"&gt;&lt;/script&gt;',
     defaultValue: 'false',
     control: 'boolean',
   },
@@ -145,7 +148,7 @@ const CSS_VARIABLES = [
   },
 ];
 
-const generateCode = (args, forCodeGen=false) => {
+const generateCode = (args, forCodeGen = false) => {
   const attributes = [
     args.npub ? `npub="${args.npub}"` : '',
     args.nip05 ? `nip05="${args.nip05}"` : '',
@@ -155,21 +158,23 @@ const generateCode = (args, forCodeGen=false) => {
     args['show-npub'] ? `show-npub="${args['show-npub']}"` : '',
     args['show-follow'] ? `show-follow="${args['show-follow']}"` : '',
   ]
-  .filter(Boolean)
-  .join('\n  ');
+    .filter(Boolean)
+    .join('\n  ');
 
   const cssVariables = CSS_VARIABLES.map(cssVariable => {
-    console.log(args[cssVariable.variable])
-    return args[cssVariable.variable] ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`: ''
+    console.log(args[cssVariable.variable]);
+    return args[cssVariable.variable]
+      ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`
+      : '';
   })
-  .filter(Boolean)
-  .join('\n    ');
+    .filter(Boolean)
+    .join('\n    ');
 
   const showFollow = args['show-follow'];
 
   let styles = '';
 
-  if(cssVariables.length > 0) {
+  if (cssVariables.length > 0) {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
@@ -180,7 +185,7 @@ const generateCode = (args, forCodeGen=false) => {
   //   component += '<div style="width: 350px">\n  ';
   // }
 
-  component += `<div style="width: ${args.width ? `${args.width}px`: "300px"}">\n`;
+  component += `<div style="width: ${args.width ? `${args.width}px` : '300px'}">\n`;
 
   component += `<nostr-profile-badge\n  ${attributes}\n></nostr-profile-badge>`;
 
@@ -190,53 +195,53 @@ const generateCode = (args, forCodeGen=false) => {
   //   component += '\n</div>';
   // }
 
-  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
-}
+  return `${bundleScript}${styles ? `\n\n${styles}` : ''}\n\n${component}`.trim();
+};
 
+const argTypes: Partial<ArgTypes> = {};
 
-const argTypes: Partial<ArgTypes> = {}
-
-PARAMETERS.forEach((parameter) => {
+PARAMETERS.forEach(parameter => {
   argTypes[parameter.variable] = {
     description: parameter.description,
     type: parameter.control as any,
     table: {
       defaultValue: {
-        summary: parameter.defaultValue
-      }
+        summary: parameter.defaultValue,
+      },
     },
 
     control: parameter.control as any,
     options: parameter.options || [],
-  }
-})
+  };
+});
 
-CSS_VARIABLES.forEach((cssVariable) => {
+CSS_VARIABLES.forEach(cssVariable => {
   argTypes[cssVariable.variable] = {
     description: cssVariable.description,
     type: 'string',
     table: {
       category: 'CSS Variables',
       defaultValue: {
-        summary: cssVariable.defaultValue
-      }
+        summary: cssVariable.defaultValue,
+      },
     },
     control: {
       type: cssVariable.control as any,
-    }
-  }
-})
+    },
+  };
+});
 
 const meta: Meta = {
   title: 'NostrProfileBadge',
   tags: ['autodocs'],
-  render: (args) => generateCode(args),
+  render: args => generateCode(args),
   argTypes: argTypes,
   args: { onClick: fn() },
   parameters: {
     docs: {
       source: {
-        transform: (code, storyContext) => generateCode(storyContext.args, true)
+        transform: (code, storyContext) =>
+          generateCode(storyContext.args, true),
       },
       page: () => {
         return (
@@ -248,7 +253,7 @@ const meta: Meta = {
             <Controls />
           </>
         );
-      }
+      },
     },
   },
 } satisfies Meta;
@@ -265,7 +270,7 @@ export const Default: Story = {
   args: {
     width: 300,
     npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
-  }
+  },
 };
 
 export const Odell: Story = {
@@ -278,7 +283,7 @@ export const Odell: Story = {
     width: 300,
     npub: 'npub1qny3tkh0acurzla8x3zy4nhrjz5zd8l9sy9jys09umwng00manysew95gx',
     theme: 'dark',
-  }
+  },
 };
 
 export const Lyn: Story = {
@@ -291,5 +296,5 @@ export const Lyn: Story = {
     width: 300,
     nip05: 'lyn@primal.net',
     theme: 'light',
-  }
+  },
 };

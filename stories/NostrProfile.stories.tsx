@@ -33,7 +33,7 @@ const PARAMETERS = [
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: DEFAULT_RELAYS.join(",\n"),
+    defaultValue: DEFAULT_RELAYS.join(',\n'),
     control: 'text',
   },
   {
@@ -51,7 +51,8 @@ const PARAMETERS = [
   },
   {
     variable: 'show-follow',
-    description: 'Whether need to show the follow button in the profile badge or not\n\n<b style="background-color: orange; color: white; padding: 0 4px; border-radius: 4px">NOTE:</b> To show the follow button, you need to include the &lt;nostr-follow-button&gt; component from the CDN.\n\nInclude like this,\n&lt;script type="module" src="/nostr-follow-button.js"&gt;&lt;/script&gt;',
+    description:
+      'Whether need to show the follow button in the profile badge or not\n\n<b style="background-color: orange; color: white; padding: 0 4px; border-radius: 4px">NOTE:</b> To show the follow button, you need to include the &lt;nostr-follow-button&gt; component from the CDN.\n\nInclude like this,\n&lt;script type="module" src="/nostr-follow-button.js"&gt;&lt;/script&gt;',
     defaultValue: 'null',
     control: 'boolean',
   },
@@ -120,13 +121,15 @@ const CSS_VARIABLES = [
   },
   {
     variable: '--nstrc-profile-banner-placeholder-color-light',
-    description: 'Color of the banner if there is no banner image specified in light mode',
+    description:
+      'Color of the banner if there is no banner image specified in light mode',
     defaultValue: '#E5E5E5',
     control: 'color',
   },
   {
     variable: '--nstrc-profile-banner-placeholder-color-dark',
-    description: 'Color of the banner if there is no banner image specified in dark mode',
+    description:
+      'Color of the banner if there is no banner image specified in dark mode',
     defaultValue: '#222222',
     control: 'color',
   },
@@ -150,7 +153,7 @@ const CSS_VARIABLES = [
   },
 ];
 
-const generateCode = (args, forCodeGen=false) => {
+const generateCode = (args, forCodeGen = false) => {
   const attributes = [
     args.npub ? `npub="${args.npub}"` : '',
     args.nip05 ? `nip05="${args.nip05}"` : '',
@@ -158,81 +161,85 @@ const generateCode = (args, forCodeGen=false) => {
     args.relays ? `relays="${args.relays}"` : '',
     args.theme ? `theme="${args.theme}"` : '',
     args['show-npub'] ? `show-npub="${args['show-npub']}"` : '',
-    args['show-follow'] !== undefined ? `show-follow="${args['show-follow']}"` : '',
+    args['show-follow'] !== undefined
+      ? `show-follow="${args['show-follow']}"`
+      : '',
   ]
-  .filter(Boolean)
-  .join('\n  ');
+    .filter(Boolean)
+    .join('\n  ');
 
   const cssVariables = CSS_VARIABLES.map(cssVariable => {
-    console.log(args[cssVariable.variable])
-    return args[cssVariable.variable] ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`: ''
+    console.log(args[cssVariable.variable]);
+    return args[cssVariable.variable]
+      ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`
+      : '';
   })
-  .filter(Boolean)
-  .join('\n    ');
+    .filter(Boolean)
+    .join('\n    ');
 
   const showFollow = args['show-follow'];
   const bundleScript = `<script type="module" src="/nostr-components.es.js"></script>`;
   let styles = '';
 
-  if(cssVariables.length > 0) {
+  if (cssVariables.length > 0) {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
   let component = '';
 
-  component += `<div style="width: ${args.width ? `${args.width}px`: "600px"}">\n`;
+  component += `<div style="width: ${args.width ? `${args.width}px` : '600px'}">\n`;
 
   component += `<nostr-profile\n  ${attributes}\n></nostr-profile>`;
 
   component += '\n</div>';
 
-  return `${bundleScript}${styles ? `\n\n${styles}`: ''}\n\n${component}`.trim();
-}
+  return `${bundleScript}${styles ? `\n\n${styles}` : ''}\n\n${component}`.trim();
+};
 
+const argTypes: Partial<ArgTypes> = {};
 
-const argTypes: Partial<ArgTypes> = {}
-
-PARAMETERS.forEach((parameter) => {
+PARAMETERS.forEach(parameter => {
   argTypes[parameter.variable] = {
     description: parameter.description,
     type: parameter.control as any,
     table: {
       defaultValue: {
-        summary: parameter.defaultValue
-      }
+        summary: parameter.defaultValue,
+      },
     },
 
     control: parameter.control as any,
     options: parameter.options || [],
-  }
-})
+  };
+});
 
-CSS_VARIABLES.forEach((cssVariable) => {
+CSS_VARIABLES.forEach(cssVariable => {
   argTypes[cssVariable.variable] = {
     description: cssVariable.description,
     type: 'string',
     table: {
       category: 'CSS Variables',
       defaultValue: {
-        summary: cssVariable.defaultValue
-      }
+        summary: cssVariable.defaultValue,
+      },
     },
     control: {
       type: cssVariable.control as any,
-    }
-  }
-})
+    },
+  };
+});
 
 const meta: Meta = {
   title: 'NostrProfile',
   tags: ['autodocs'],
-  render: (args) => generateCode(args),
+  render: args => generateCode(args),
   argTypes: argTypes,
   args: { onClick: fn() },
   parameters: {
     docs: {
       source: {
-        transform: (code, storyContext) => generateCode(storyContext.args, true)
+        transform: (code, storyContext) =>
+          generateCode(storyContext.args, true),
       },
     },
   },
@@ -250,7 +257,7 @@ export const Default: Story = {
   args: {
     width: 600,
     npub: 'npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s',
-  }
+  },
 };
 
 export const Jack: Story = {
@@ -262,8 +269,8 @@ export const Jack: Story = {
   args: {
     width: 600,
     npub: 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m',
-    theme: 'dark'
-  }
+    theme: 'dark',
+  },
 };
 
 export const Gigi: Story = {
@@ -275,6 +282,6 @@ export const Gigi: Story = {
   args: {
     width: 600,
     nip05: 'dergigi@npub.cash',
-    'show-follow': true
-  }
+    'show-follow': true,
+  },
 };

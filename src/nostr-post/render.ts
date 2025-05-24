@@ -1,15 +1,18 @@
-import { Theme } from "../common/types";
-import { getPostStylesLegacy } from "../common/theme";
+import { Theme } from '../common/types';
+import { getPostStylesLegacy } from '../common/theme';
 
 export interface RenderPostOptions {
   theme: Theme;
   isLoading: boolean;
   isError: boolean;
-  author: {
-    image?: string;
-    displayName?: string;
-    nip05?: string;
-  } | null | undefined;
+  author:
+    | {
+        image?: string;
+        displayName?: string;
+        nip05?: string;
+      }
+    | null
+    | undefined;
   date: string;
   shouldShowStats: boolean;
   stats: {
@@ -28,7 +31,7 @@ export function renderPost(options: RenderPostOptions): string {
     date,
     shouldShowStats,
     stats,
-    htmlToRender
+    htmlToRender,
   } = options;
 
   return `
@@ -46,11 +49,14 @@ function renderPostHeader(
   theme: Theme,
   isLoading: boolean,
   isError: boolean,
-  author: {
-    image?: string;
-    displayName?: string;
-    nip05?: string;
-  } | null | undefined,
+  author:
+    | {
+        image?: string;
+        displayName?: string;
+        nip05?: string;
+      }
+    | null
+    | undefined,
   date: string
 ): string {
   if (isLoading) {
@@ -287,11 +293,13 @@ function getPostStyles(theme: Theme): string {
 export function renderEmbeddedPost(
   noteId: string,
   theme: Theme,
-  authorProfile: {
-    displayName?: string;
-    image?: string;
-    nip05?: string;
-  } | undefined,
+  authorProfile:
+    | {
+        displayName?: string;
+        image?: string;
+        nip05?: string;
+      }
+    | undefined,
   date: string,
   content: string
 ): string {
@@ -299,12 +307,12 @@ export function renderEmbeddedPost(
   const mediaItems: { type: 'image' | 'video'; url: string }[] = [];
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = content;
-  
+
   // Extract images and videos
   tempDiv.querySelectorAll('img').forEach(img => {
     mediaItems.push({ type: 'image', url: img.src });
   });
-  
+
   tempDiv.querySelectorAll('video').forEach(video => {
     const src = video.getAttribute('src');
     if (src) {

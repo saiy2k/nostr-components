@@ -29,37 +29,37 @@ export default class NostrProfileBadge extends HTMLElement {
 
   connectToNostr = async () => {
     await this.ndk.connect();
-  }
+  };
 
   getRelays = () => {
     const userRelays = this.getAttribute('relays');
 
-    if(userRelays) {
+    if (userRelays) {
       return userRelays.split(',');
     }
 
     return DEFAULT_RELAYS;
-  }
+  };
 
   getNDKUser = async () => {
     const npub = this.getAttribute('npub');
     const nip05 = this.getAttribute('nip05');
     const pubkey = this.getAttribute('pubkey');
 
-    if(npub) {
+    if (npub) {
       return this.ndk.getUser({
         npub: npub as string,
       });
-    } else if(nip05) {
+    } else if (nip05) {
       return this.ndk.getUserFromNip05(nip05 as string);
-    } else if(pubkey) {
+    } else if (pubkey) {
       return this.ndk.getUser({
         pubkey: pubkey,
       });
     }
 
     return null;
-  }
+  };
 
   getUserProfile = async () => {
     try {
@@ -68,64 +68,66 @@ export default class NostrProfileBadge extends HTMLElement {
 
       const user = await this.getNDKUser();
 
-      if(user?.npub) {
+      if (user?.npub) {
         this.ndkUser = user;
 
         await user.fetchProfile();
 
         // Check if profile was fetched successfully
         if (user.profile) {
-            this.userProfile = user.profile as NDKUserProfile;
-            // Set default image only if profile exists but image is missing
-            if(!this.userProfile.image) {
-                this.userProfile.image = './assets/default_dp.png'
-            }
-            this.isError = false;
+          this.userProfile = user.profile as NDKUserProfile;
+          // Set default image only if profile exists but image is missing
+          if (!this.userProfile.image) {
+            this.userProfile.image = './assets/default_dp.png';
+          }
+          this.isError = false;
         } else {
-            // Profile not found initially, just log and ensure default image if needed.
-            // DO NOT reset name/nip05 here, as NDK might provide them later.
-            console.warn(`Could not fetch profile initially for user ${user.npub}`);
-            if (!this.userProfile.image) { // Only set default if absolutely no image is set yet
-                 this.userProfile.image = './assets/default_dp.png';
-            }
-            // Consider setting this.isError = true if profile is truly expected but not found?
-            // For now, let's keep it false.
-            this.isError = false; // Keep consistent with previous logic for now
+          // Profile not found initially, just log and ensure default image if needed.
+          // DO NOT reset name/nip05 here, as NDK might provide them later.
+          console.warn(
+            `Could not fetch profile initially for user ${user.npub}`
+          );
+          if (!this.userProfile.image) {
+            // Only set default if absolutely no image is set yet
+            this.userProfile.image = './assets/default_dp.png';
+          }
+          // Consider setting this.isError = true if profile is truly expected but not found?
+          // For now, let's keep it false.
+          this.isError = false; // Keep consistent with previous logic for now
         }
-
       } else {
         throw new Error('Either npub or nip05 should be provided');
       }
-
-    } catch(err) {
+    } catch (err) {
       this.isError = true;
       throw err;
     } finally {
       this.isLoading = false;
       this.render();
     }
-  }
+  };
 
   getTheme = async () => {
     this.theme = 'light';
 
     const userTheme = this.getAttribute('theme');
 
-    if(userTheme) {
+    if (userTheme) {
       const isValidTheme = ['light', 'dark'].includes(userTheme);
 
-      if(!isValidTheme) {
-        throw new Error(`Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`);
+      if (!isValidTheme) {
+        throw new Error(
+          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
+        );
       }
 
       this.theme = userTheme as Theme;
     }
-  }
+  };
 
   async connectedCallback() {
-
-    const onClick = this.getAttribute("onClick");
-    if(onClick !== null) {
+    const onClick = this.getAttribute('onClick');
+    if (onClick !== null) {
       this.onClick = window[onClick];
     }
 
@@ -145,32 +147,41 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['relays', 'npub', 'pubkey', 'nip05', 'theme', 'show-npub', 'show-follow', 'onClick'];
+    return [
+      'relays',
+      'npub',
+      'pubkey',
+      'nip05',
+      'theme',
+      'show-npub',
+      'show-follow',
+      'onClick',
+    ];
   }
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-    if(name === 'relays') {
+    if (name === 'relays') {
       this.ndk.explicitRelayUrls = this.getRelays();
       this.connectToNostr();
     }
 
-    if(['relays', 'npub', 'nip05'].includes(name)) {
+    if (['relays', 'npub', 'nip05'].includes(name)) {
       // Possible property changes - relays, npub, nip05
       // For all these changes, we have to fetch profile anyways
       // TODO: Validate npub
       this.getUserProfile();
     }
 
-    if(name === "onClick") {
+    if (name === 'onClick') {
       this.onClick = window[newValue];
     }
 
-    if(name === 'theme') {
+    if (name === 'theme') {
       this.getTheme();
       this.render();
     }
 
-    if(['show-npub', 'show-follow'].includes(name)) {
+    if (['show-npub', 'show-follow'].includes(name)) {
       this.render();
     }
   }
@@ -179,19 +190,16 @@ export default class NostrProfileBadge extends HTMLElement {
     // TODO: Check for cleanup method
   }
 
-
-
   copy(string: string) {
     navigator.clipboard.writeText(string);
   }
 
   onProfileClick() {
-
-    if(this.isError) {
+    if (this.isError) {
       return;
     }
 
-    if(this.onClick !== null && typeof this.onClick === 'function')  {
+    if (this.onClick !== null && typeof this.onClick === 'function') {
       this.onClick(this.userProfile);
       return;
     }
@@ -201,9 +209,9 @@ export default class NostrProfileBadge extends HTMLElement {
     const nip05 = this.getAttribute('nip05');
     const npub = this.getAttribute('npub');
 
-    if(nip05) {
-      key = nip05
-    } else if(npub) {
+    if (nip05) {
+      key = nip05;
+    } else if (npub) {
       key = npub;
     } else {
       return;
@@ -213,26 +221,32 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   attachEventListeners() {
-    this.querySelector('.nostr-profile-badge')?.addEventListener('click', (e) => {
-      if(!(e.target as HTMLElement).closest('.nostr-follow-button-container')) {
+    this.querySelector('.nostr-profile-badge')?.addEventListener('click', e => {
+      if (
+        !(e.target as HTMLElement).closest('.nostr-follow-button-container')
+      ) {
         this.onProfileClick();
       }
     });
 
-    this.querySelector('#npub-copy')?.addEventListener('click', (e) => {
+    this.querySelector('#npub-copy')?.addEventListener('click', e => {
       e.stopPropagation();
-      this.copy(this.getAttribute('npub') || this.ndkUser.npub || '')
+      this.copy(this.getAttribute('npub') || this.ndkUser.npub || '');
     });
 
-    this.querySelector('#nip05-copy')?.addEventListener('click', (e) => {
+    this.querySelector('#nip05-copy')?.addEventListener('click', e => {
       e.stopPropagation();
-      this.copy(this.getAttribute('nip05') || this.userProfile.nip05 || '')
+      this.copy(this.getAttribute('nip05') || this.userProfile.nip05 || '');
     });
   }
 
   render() {
     // Ensure default image if needed
-    if (this.isLoading === false && this.userProfile && this.userProfile.image === undefined) {
+    if (
+      this.isLoading === false &&
+      this.userProfile &&
+      this.userProfile.image === undefined
+    ) {
       this.userProfile.image = './assets/default_dp.png';
     }
 
@@ -263,7 +277,6 @@ export default class NostrProfileBadge extends HTMLElement {
 
     this.attachEventListeners();
   }
-
 }
 
-customElements.define("nostr-profile-badge", NostrProfileBadge);
+customElements.define('nostr-profile-badge', NostrProfileBadge);
