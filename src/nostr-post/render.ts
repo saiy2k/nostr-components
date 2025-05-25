@@ -1,5 +1,8 @@
 import { Theme } from '../common/types';
 import { getPostStylesLegacy } from '../common/theme';
+import { Parser } from 'htmlparser2';
+import { DomHandler } from 'domhandler';
+import * as DomUtils from 'domutils';
 
 export interface RenderPostOptions {
   theme: Theme;
@@ -305,24 +308,58 @@ export function renderEmbeddedPost(
 ): string {
   // Process media items from content
   const mediaItems: { type: 'image' | 'video'; url: string }[] = [];
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = content;
-
-  // Extract images and videos
-  tempDiv.querySelectorAll('img').forEach(img => {
-    mediaItems.push({ type: 'image', url: img.src });
-  });
-
-  tempDiv.querySelectorAll('video').forEach(video => {
-    const src = video.getAttribute('src');
-    if (src) {
-      mediaItems.push({ type: 'video', url: src });
-    }
-  });
-
-  // Remove media from content to prevent duplication
-  tempDiv.querySelectorAll('img, video').forEach(el => el.remove());
-  const processedContent = tempDiv.innerHTML;
+  let processedContent = content;
+  
+  try {
+    // Create a handler to collect DOM elements
+    const dom: any[] = [];
+    const handler = new DomHandler((error, parsedDom) => {
+      if (error) {
+        throw error;
+      }
+      dom.push(...parsedDom);
+    }, { normalizeWhitespace: false, withEndIndices: false, withStartIndices: false });
+    
+    const parser = new Parser(handler);
+    
+    // Parse the HTML content
+    parser.write(content);
+    parser.end();
+    
+    // Find all image and video elements
+    const mediaElements = DomUtils.findAll(
+      (elem: any) => {
+        return elem.type === 'tag' && 
+               (elem.name === 'img' || elem.name === 'video') && 
+               elem.attribs?.src;
+      },
+      dom
+    ) as any[];
+    
+    // Extract media items and remove them from the DOM
+    mediaElements.forEach(elem => {
+      if (elem.attribs?.src) {
+        const type = elem.name === 'img' ? 'image' : 'video';
+        mediaItems.push({ type, url: elem.attribs.src });
+        
+        // Remove the element from its parent
+        const parent = elem.parent;
+        if (parent?.children) {
+          parent.children = parent.children.filter((child: any) => child !== elem);
+        }
+      }
+    });
+    
+    // Reconstruct the HTML without media elements
+    processedContent = dom
+      .map((node: any) => DomUtils.getOuterHTML(node))
+      .join('');
+      
+  } catch (error) {
+    console.error('Error processing HTML content:', error);
+    // Fall back to original content if parsing fails
+    processedContent = content;
+  }
 
   // Generate media HTML if there are media items
   let mediaHtml = '';
