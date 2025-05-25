@@ -226,13 +226,17 @@ export default class NostrProfileBadge extends HTMLElement {
 
   attachEventListeners() {
     // Find elements within the shadow DOM
-    const profileBadge = this.shadow.querySelector('.nostr-profile-badge-container');
+    const profileBadge = this.shadow.querySelector(
+      '.nostr-profile-badge-container'
+    );
     const npubCopy = this.shadow.querySelector('#npub-copy');
     const nip05Copy = this.shadow.querySelector('#nip05-copy');
 
     // Add click handler for the profile badge
     profileBadge?.addEventListener('click', (e: Event) => {
-      if (!(e.target as HTMLElement).closest('.nostr-follow-button-container')) {
+      if (
+        !(e.target as HTMLElement).closest('.nostr-follow-button-container')
+      ) {
         this.onProfileClick();
       }
     });

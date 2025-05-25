@@ -277,7 +277,7 @@ export default class NostrProfile extends HTMLElement {
 
     if (name === 'onClick' && newValue) {
       const potentialHandler = window[newValue as keyof Window];
-      
+
       if (typeof potentialHandler === 'function') {
         this.onClick = potentialHandler as Function;
       } else if (newValue.trim() !== '') {
@@ -386,12 +386,12 @@ export default class NostrProfile extends HTMLElement {
   private handleClick = (e: Event) => {
     const target = e.target as HTMLElement;
     const actionElement = target.closest('[data-nostr-action]');
-    
+
     if (!actionElement) return;
-    
+
     e.stopPropagation();
     const action = actionElement.getAttribute('data-nostr-action');
-    
+
     switch (action) {
       case 'npub-click':
       case 'profile-click':
@@ -415,10 +415,10 @@ export default class NostrProfile extends HTMLElement {
 
   private render() {
     if (!this.shadowRoot) return;
-    
+
     const showNpub = this.getAttribute('show-npub') !== 'false';
     const showFollow = this.getAttribute('show-follow') !== 'false';
-    
+
     if (this.isLoading) {
       this.shadowRoot.innerHTML = renderLoadingState(this.theme);
       return;

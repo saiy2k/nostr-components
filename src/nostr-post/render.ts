@@ -309,52 +309,59 @@ export function renderEmbeddedPost(
   // Process media items from content
   const mediaItems: { type: 'image' | 'video'; url: string }[] = [];
   let processedContent = content;
-  
+
   try {
     // Create a handler to collect DOM elements
     const dom: any[] = [];
-    const handler = new DomHandler((error, parsedDom) => {
-      if (error) {
-        throw error;
+    const handler = new DomHandler(
+      (error, parsedDom) => {
+        if (error) {
+          throw error;
+        }
+        dom.push(...parsedDom);
+      },
+      {
+        normalizeWhitespace: false,
+        withEndIndices: false,
+        withStartIndices: false,
       }
-      dom.push(...parsedDom);
-    }, { normalizeWhitespace: false, withEndIndices: false, withStartIndices: false });
-    
+    );
+
     const parser = new Parser(handler);
-    
+
     // Parse the HTML content
     parser.write(content);
     parser.end();
-    
+
     // Find all image and video elements
-    const mediaElements = DomUtils.findAll(
-      (elem: any) => {
-        return elem.type === 'tag' && 
-               (elem.name === 'img' || elem.name === 'video') && 
-               elem.attribs?.src;
-      },
-      dom
-    ) as any[];
-    
+    const mediaElements = DomUtils.findAll((elem: any) => {
+      return (
+        elem.type === 'tag' &&
+        (elem.name === 'img' || elem.name === 'video') &&
+        elem.attribs?.src
+      );
+    }, dom) as any[];
+
     // Extract media items and remove them from the DOM
     mediaElements.forEach(elem => {
       if (elem.attribs?.src) {
         const type = elem.name === 'img' ? 'image' : 'video';
         mediaItems.push({ type, url: elem.attribs.src });
-        
+
         // Remove the element from its parent
         const parent = elem.parent;
         if (parent?.children) {
-          parent.children = parent.children.filter((child: any) => child !== elem);
+          parent.children = parent.children.filter(
+            (child: any) => child !== elem
+          );
         }
       }
     });
-    
+
     // Reconstruct the HTML without media elements
     processedContent = dom
       .map((node: any) => DomUtils.getOuterHTML(node))
       .join('');
-      
   } catch (error) {
     console.error('Error processing HTML content:', error);
     // Fall back to original content if parsing fails

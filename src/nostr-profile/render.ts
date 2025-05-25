@@ -66,7 +66,9 @@ export function renderProfile(options: RenderOptions): string {
 
   // Data attributes for event delegation
   const npubDataAttr = onNpubClick ? 'data-nostr-action="npub-click"' : '';
-  const profileDataAttr = onProfileClick ? 'data-nostr-action="profile-click"' : '';
+  const profileDataAttr = onProfileClick
+    ? 'data-nostr-action="profile-click"'
+    : '';
 
   const renderNpub = () => {
     if (!showNpub) return '';
