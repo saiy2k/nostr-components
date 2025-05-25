@@ -64,17 +64,14 @@ export function renderProfile(options: RenderOptions): string {
   const about = userProfile?.about || '';
   const website = userProfile?.website || '';
 
-  const npubClickHandler = onNpubClick
-    ? `onclick="${onNpubClick.toString()}"`
-    : '';
-  const profileClickHandler = onProfileClick
-    ? `onclick="${onProfileClick.toString()}"`
-    : '';
+  // Data attributes for event delegation
+  const npubDataAttr = onNpubClick ? 'data-nostr-action="npub-click"' : '';
+  const profileDataAttr = onProfileClick ? 'data-nostr-action="profile-click"' : '';
 
   const renderNpub = () => {
     if (!showNpub) return '';
     return `
-      <div class="npub" ${npubClickHandler}>
+      <div class="npub" ${npubDataAttr}>
         <span class="npub-text">${maskedNpub}</span>
         <span class="copy-button" data-npub="${npub}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

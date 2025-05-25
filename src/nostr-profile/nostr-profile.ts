@@ -374,51 +374,49 @@ export default class NostrProfile extends HTMLElement {
     window.open(`https://njump.me/${key}`, '_blank');
   }
 
-  attachEventListeners() {
-    this.shadowRoot!.querySelector('.nostr-profile')?.addEventListener(
-      'click',
-      e => {
-        // Don't trigger profile click if user clicks on website links or follow button
-        if (
-          !(e.target as HTMLElement).closest(
-            '.nostr-follow-button-container'
-          ) &&
-          !(e.target as HTMLElement).closest('.website a')
-        ) {
-          this.onProfileClick();
-        }
-      }
-    );
+  private handleClick = (e: Event) => {
+    const target = e.target as HTMLElement;
+    const actionElement = target.closest('[data-nostr-action]');
+    
+    if (!actionElement) return;
+    
+    e.stopPropagation();
+    const action = actionElement.getAttribute('data-nostr-action');
+    
+    switch (action) {
+      case 'npub-click':
+      case 'profile-click':
+        this.onProfileClick();
+        break;
+      case 'copy-npub':
+        this.copy(this.getAttribute('npub') || this.ndkUser?.npub || '');
+        break;
+      case 'copy-nip05':
+        this.copy(this.userProfile.nip05 || '');
+        break;
+    }
+  };
 
-    this.shadowRoot!.querySelector('#npub-copy')?.addEventListener(
-      'click',
-      e => {
-        e.stopPropagation();
-        this.copy(this.getAttribute('npub') || this.ndkUser.npub || '');
-      }
-    );
-
-    this.shadowRoot!.querySelector('#nip05-copy')?.addEventListener(
-      'click',
-      e => {
-        e.stopPropagation();
-        this.copy(this.getAttribute('nip05') || this.userProfile.nip05 || '');
-      }
-    );
+  private attachEventListeners() {
+    // Remove any existing event listeners to prevent duplicates
+    this.shadowRoot?.removeEventListener('click', this.handleClick);
+    // Add event delegation for all clicks
+    this.shadowRoot?.addEventListener('click', this.handleClick);
   }
 
-  render() {
-    const showNpub = this.getAttribute('show-npub') === 'true';
+  private render() {
+    if (!this.shadowRoot) return;
+    
+    const showNpub = this.getAttribute('show-npub') !== 'false';
     const showFollow = this.getAttribute('show-follow') !== 'false';
-    const npub = this.getAttribute('npub') || this.ndkUser?.npub || '';
-
+    
     if (this.isLoading) {
-      this.shadowRoot!.innerHTML = renderLoadingState(this.theme);
+      this.shadowRoot.innerHTML = renderLoadingState(this.theme);
       return;
     }
 
     if (this.isError) {
-      this.shadowRoot!.innerHTML = renderErrorState(
+      this.shadowRoot.innerHTML = renderErrorState(
         'Error fetching profile. Is the npub/nip05 correct?',
         this.theme
       );
@@ -426,7 +424,7 @@ export default class NostrProfile extends HTMLElement {
     }
 
     const renderOptions = {
-      npub,
+      npub: this.ndkUser?.npub || '',
       userProfile: this.userProfile,
       theme: this.theme,
       isLoading: this.isLoading,
