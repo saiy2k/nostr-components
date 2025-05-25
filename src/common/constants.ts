@@ -8,6 +8,9 @@ export const DEFAULT_RELAYS = [
   'wss://njump.me',
   'wss://relay.getalby.com',
   'wss://relay.primal.net',
+  'wss://nostr.malin.onl',
+  'wss://nostrsatva.net',
+  'wss://purplepag.es',
 ];
 
 export const MILLISATS_PER_SAT = 1000;
