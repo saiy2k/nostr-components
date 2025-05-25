@@ -275,8 +275,17 @@ export default class NostrProfile extends HTMLElement {
       this.getUserProfile();
     }
 
-    if (name === 'onClick') {
-      this.onClick = window[newValue];
+    if (name === 'onClick' && newValue) {
+      const potentialHandler = window[newValue as keyof Window];
+      
+      if (typeof potentialHandler === 'function') {
+        this.onClick = potentialHandler as Function;
+      } else if (newValue.trim() !== '') {
+        console.warn(`Handler '${newValue}' is not a valid function`);
+        this.onClick = null;
+      } else {
+        this.onClick = null;
+      }
     }
 
     if (name === 'theme') {
