@@ -108,7 +108,7 @@ export function renderProfileBadge(
       </div>
     `;
   } else {
-    contentHTML = `<div>Error: Profile data unavailable.</div>`;
+    contentHTML = `<div class="error-text">Error: Profile data unavailable.</div>`;
   }
 
   return contentHTML;
@@ -118,6 +118,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
   return `
     <style>
       :host {
+        /* Define CSS variables on the host element */
         --nstrc-profile-badge-background: var(--nstrc-profile-badge-background-${theme});
         --nstrc-profile-badge-name-color: var(--nstrc-profile-badge-name-color-${theme});
         --nstrc-profile-badge-nip05-color: var(--nstrc-profile-badge-nip05-color-${theme});
@@ -126,6 +127,8 @@ export function getProfileBadgeStyles(theme: Theme): string {
         --nstrc-profile-badge-skeleton-max-hsl: var(--nstrc-profile-badge-skeleton-max-hsl-${theme});
         --nstrc-profile-badge-border: var(--nstrc-profile-badge-border-${theme});
         --nstrc-profile-badge-hover-background: var(--nstrc-profile-badge-hover-background-${theme});
+        display: block;
+        contain: content;
       }
 
       :host(.dark) {
@@ -139,6 +142,13 @@ export function getProfileBadgeStyles(theme: Theme): string {
         --nstrc-profile-badge-hover-background: var(--nstrc-profile-badge-hover-background-dark);
       }
 
+      .nostr-profile-badge-wrapper {
+        /* Wrapper to contain all the component's content */
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
       .nostr-profile-badge-container {
         display: flex;
         gap: 12px;
@@ -148,6 +158,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
         border: var(--nstrc-profile-badge-border, none);
         cursor: pointer;
         transition: background-color 0.2s ease;
+        box-sizing: border-box;
       }
 
       .nostr-profile-badge-container:hover {

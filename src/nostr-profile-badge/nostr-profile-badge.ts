@@ -1,7 +1,7 @@
 import NDK, { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
-import { renderProfileBadge, getProfileBadgeStylesLegacy } from './render';
+import { renderProfileBadge, getProfileBadgeStyles } from './render';
 
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;
@@ -23,8 +23,12 @@ export default class NostrProfileBadge extends HTMLElement {
 
   private ndkUser: NDKUser;
 
+  private shadow: ShadowRoot;
+
   constructor() {
     super();
+    // Attach a shadow root to the element
+    this.shadow = this.attachShadow({ mode: 'open' });
   }
 
   connectToNostr = async () => {
@@ -221,20 +225,26 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   attachEventListeners() {
-    this.querySelector('.nostr-profile-badge')?.addEventListener('click', e => {
-      if (
-        !(e.target as HTMLElement).closest('.nostr-follow-button-container')
-      ) {
+    // Find elements within the shadow DOM
+    const profileBadge = this.shadow.querySelector('.nostr-profile-badge-container');
+    const npubCopy = this.shadow.querySelector('#npub-copy');
+    const nip05Copy = this.shadow.querySelector('#nip05-copy');
+
+    // Add click handler for the profile badge
+    profileBadge?.addEventListener('click', (e: Event) => {
+      if (!(e.target as HTMLElement).closest('.nostr-follow-button-container')) {
         this.onProfileClick();
       }
     });
 
-    this.querySelector('#npub-copy')?.addEventListener('click', e => {
+    // Add click handler for NPUB copy button
+    npubCopy?.addEventListener('click', (e: Event) => {
       e.stopPropagation();
-      this.copy(this.getAttribute('npub') || this.ndkUser.npub || '');
+      this.copy(this.getAttribute('npub') || this.ndkUser?.npub || '');
     });
 
-    this.querySelector('#nip05-copy')?.addEventListener('click', e => {
+    // Add click handler for NIP-05 copy button
+    nip05Copy?.addEventListener('click', (e: Event) => {
       e.stopPropagation();
       this.copy(this.getAttribute('nip05') || this.userProfile.nip05 || '');
     });
@@ -250,7 +260,7 @@ export default class NostrProfileBadge extends HTMLElement {
       this.userProfile.image = './assets/default_dp.png';
     }
 
-    // Update theme class
+    // Update theme class on host element
     this.classList.toggle('dark', this.theme === 'dark');
     this.classList.toggle('loading', this.isLoading);
     this.classList.toggle('error-container', this.isError);
@@ -272,8 +282,13 @@ export default class NostrProfileBadge extends HTMLElement {
       showFollow
     );
 
-    // Combine styles and content, assign ONCE to innerHTML
-    this.innerHTML = getProfileBadgeStylesLegacy(this.theme) + contentHTML;
+    // Combine styles and content for shadow DOM
+    this.shadow.innerHTML = `
+      ${getProfileBadgeStyles(this.theme)}
+      <div class="nostr-profile-badge-wrapper">
+        ${contentHTML}
+      </div>
+    `;
 
     this.attachEventListeners();
   }
