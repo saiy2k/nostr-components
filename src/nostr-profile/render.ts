@@ -19,7 +19,6 @@ export interface RenderOptions {
   theme: Theme;
   isLoading: boolean;
   isStatsLoading: boolean;
-  isStatsNotesLoading: boolean;
   isStatsFollowersLoading: boolean;
   isStatsFollowsLoading: boolean;
   stats: Stats;
@@ -37,7 +36,6 @@ export function renderProfile(options: RenderOptions): string {
     theme,
     isLoading,
     isStatsLoading,
-    isStatsNotesLoading,
     isStatsFollowersLoading,
     isStatsFollowsLoading,
     stats,
@@ -47,6 +45,19 @@ export function renderProfile(options: RenderOptions): string {
     onNpubClick,
     onProfileClick,
   } = options;
+
+  // Extract profile data with null checks and default values
+  const displayName = userProfile?.displayName || userProfile?.name || '';
+  const nip05 = userProfile?.nip05 || '';
+  const image = userProfile?.image || '';
+  const about = userProfile?.about || '';
+  const website = userProfile?.website || '';
+
+  // Data attributes for event delegation
+  const npubDataAttr = onNpubClick ? 'data-nostr-action="npub-click"' : '';
+  const profileDataAttr = onProfileClick
+    ? `data-nostr-action="profile-click" data-npub="${npub}"`
+    : '';
 
   if (error) {
     return `
@@ -59,17 +70,6 @@ export function renderProfile(options: RenderOptions): string {
 
   const styles = getProfileStyles(theme);
   const maskedNpub = maskNPub(npub);
-  const displayName = userProfile?.name || maskedNpub;
-  const nip05 = userProfile?.nip05 || '';
-  const image = userProfile?.image || '';
-  const about = userProfile?.about || '';
-  const website = userProfile?.website || '';
-
-  // Data attributes for event delegation
-  const npubDataAttr = onNpubClick ? 'data-nostr-action="npub-click"' : '';
-  const profileDataAttr = onProfileClick
-    ? 'data-nostr-action="profile-click"'
-    : '';
 
   const renderNpub = () => {
     if (!showNpub) return '';
@@ -114,7 +114,7 @@ export function renderProfile(options: RenderOptions): string {
                 <div class="backfill">
                   ${isLoading
       ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
-      : `<a target="_blank" data-cropped="true" class="profile_image roundedImage" href="#">
+      : `<a target="_blank" data-cropped="true" class="profile_image roundedImage" href="#" ${profileDataAttr}>
                         <img src="${image}" width="524px" alt="${displayName}" />
                       </a>`
     }
@@ -178,31 +178,7 @@ export function renderProfile(options: RenderOptions): string {
         <button class="stat" data-orientation="horizontal">
           <div class="stat-inner">
             <div class="stat-value">
-              ${isStatsNotesLoading
-      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-      : stats.notes.toLocaleString()
-    }
-            </div>
-            <div class="stat-name">Notes</div>
-          </div>
-        </button>
-        
-        <button class="stat" data-orientation="horizontal">
-          <div class="stat-inner">
-            <div class="stat-value">
-              ${isStatsNotesLoading
-      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-      : stats.replies.toLocaleString()
-    }
-            </div>
-            <div class="stat-name">Replies</div>
-          </div>
-        </button>
-        
-        <button class="stat" data-orientation="horizontal">
-          <div class="stat-inner">
-            <div class="stat-value">
-              ${isStatsFollowsLoading
+              ${isStatsLoading || isStatsFollowsLoading
       ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
       : stats.follows.toLocaleString()
     }
@@ -214,12 +190,48 @@ export function renderProfile(options: RenderOptions): string {
         <button class="stat" data-orientation="horizontal">
           <div class="stat-inner">
             <div class="stat-value">
-              ${isStatsFollowersLoading
+              ${isStatsLoading || isStatsFollowersLoading
       ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
       : stats.followers.toLocaleString()
     }
             </div>
             <div class="stat-name">Followers</div>
+          </div>
+        </button>
+        
+        <button class="stat" data-orientation="horizontal">
+          <div class="stat-inner">
+            <div class="stat-value">
+              ${isStatsLoading
+      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
+      : stats.notes.toLocaleString()
+    }
+            </div>
+            <div class="stat-name">Notes</div>
+          </div>
+        </button>
+        
+        <button class="stat" data-orientation="horizontal">
+          <div class="stat-inner">
+            <div class="stat-value">
+              ${isStatsLoading
+      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
+      : stats.replies.toLocaleString()
+    }
+            </div>
+            <div class="stat-name">Replies</div>
+          </div>
+        </button>
+        
+        <button class="stat" data-orientation="horizontal">
+          <div class="stat-inner">
+            <div class="stat-value">
+              ${isStatsLoading
+      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
+      : stats.zaps.toLocaleString()
+    }
+            </div>
+            <div class="stat-name">Zaps</div>
           </div>
         </button>
       </div>
@@ -297,8 +309,8 @@ export function renderLoadingState(theme: Theme): string {
 export function renderErrorState(error: string, theme: Theme): string {
   const styles = getProfileStyles(theme);
   return `
-    ${styles}
-    <div class="nostr-profile error-container">
+    <style>${styles}</style>
+    <div class="error-container">
       <div class="error">!</div>
       <span class="error-text">${error}</span>
     </div>

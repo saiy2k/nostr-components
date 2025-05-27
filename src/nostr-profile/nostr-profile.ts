@@ -17,17 +17,13 @@ export default class NostrProfile extends HTMLElement {
   private theme: Theme = 'light';
 
   private isLoading: boolean = true;
-  private isStatsLoading: boolean = true;
 
+  // Stats loading states
+  private isStatsLoading: boolean = true;
   private isStatsFollowsLoading: boolean = true;
   private isStatsFollowersLoading: boolean = true;
-  private isStatsNotesLoading: boolean = true;
-  private isStatsRepliesLoading: boolean = true;
-  private isStatsZapsLoading: boolean = true;
-  private isStatsRelaysLoading: boolean = true;
 
   private isError: boolean = false;
-  private isStatsError: boolean = false;
 
   private stats = {
     follows: 0,
@@ -40,7 +36,7 @@ export default class NostrProfile extends HTMLElement {
 
   private onClick: Function | null = null;
 
-  private ndkUser: NDKUser;
+  private ndkUser: NDKUser | null = null;
 
   constructor() {
     super();
@@ -95,17 +91,53 @@ export default class NostrProfile extends HTMLElement {
           this.userProfile = profile;
 
           // Fetch stats only if profile exists
-          this.nostrService
-            .getProfileStats(user)
-            .then(stats => {
-              this.isStatsError = false;
-              this.stats = stats;
+          this.isStatsLoading = true;
+          this.isStatsFollowsLoading = true;
+          this.isStatsFollowersLoading = true;
+          
+          // Create a local copy of the current stats
+          const currentStats = { ...this.stats };
+          
+          // Fetch follows
+          this.nostrService.getProfileStats(user, ['follows'])
+            .then(({ follows }) => {
+              currentStats.follows = follows;
+              this.stats = { ...this.stats, follows };
+              this.isStatsFollowsLoading = false;
+              this.render();
             })
             .catch(err => {
-              console.log(err);
-              this.isStatsError = true;
+              console.error('Error loading follows:', err);
+              this.isStatsFollowsLoading = false;
+              this.render();
+            });
+            
+          // Fetch followers
+          this.nostrService.getProfileStats(user, ['followers'])
+            .then(({ followers }) => {
+              currentStats.followers = followers;
+              this.stats = { ...this.stats, followers };
+              this.isStatsFollowersLoading = false;
+              this.render();
             })
-            .finally(() => {
+            .catch(err => {
+              console.error('Error loading followers:', err);
+              this.isStatsFollowersLoading = false;
+              this.render();
+            });
+            
+          // Fetch other stats
+          this.nostrService.getProfileStats(user, ['notes', 'replies', 'zaps'])
+            .then(({ notes, replies, zaps }) => {
+              currentStats.notes = notes;
+              currentStats.replies = replies;
+              currentStats.zaps = zaps;
+              this.stats = { ...this.stats, notes, replies, zaps };
+              this.isStatsLoading = false;
+              this.render();
+            })
+            .catch(err => {
+              console.error('Error loading other stats:', err);
               this.isStatsLoading = false;
               this.render();
             });
@@ -130,8 +162,7 @@ export default class NostrProfile extends HTMLElement {
             relays: 0,
           };
           this.isStatsLoading = false;
-          this.isError = false;
-          this.isStatsError = true;
+          this.isError = true;
         }
       } else {
         throw new Error('Either npub or nip05 should be provided');
@@ -359,7 +390,6 @@ export default class NostrProfile extends HTMLElement {
       theme: this.theme,
       isLoading: this.isLoading,
       isStatsLoading: this.isStatsLoading,
-      isStatsNotesLoading: this.isStatsNotesLoading,
       isStatsFollowersLoading: this.isStatsFollowersLoading,
       isStatsFollowsLoading: this.isStatsFollowsLoading,
       stats: {

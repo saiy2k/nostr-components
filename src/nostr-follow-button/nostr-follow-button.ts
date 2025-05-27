@@ -1,8 +1,4 @@
-import {
-  NDKNip07Signer,
-  NDKUser,
-  NDKUserProfile,
-} from '@nostr-dev-kit/ndk';
+import { NDKUser, NDKNip07Signer } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
@@ -64,7 +60,7 @@ export default class NostrFollowButton extends HTMLElement {
     return ['relays', 'npub', 'theme'];
   }
 
-  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
+  attributeChangedCallback(name: string, _oldValue: string | null, _newValue: string | null) {
     if (name === 'relays') {
       this.nostrService.connectToNostr(this.getRelays());
     }
@@ -121,8 +117,14 @@ export default class NostrFollowButton extends HTMLElement {
             }
 
             if (userToFollow != null) {
-              const signedUser = await ndk.signer.user();
-              await signedUser.follow(userToFollow);
+              const signer = ndk.signer;
+              if (!signer) {
+                throw new Error('No signer available');
+              }
+              const signedUser = await signer.user();
+              if (signedUser) {
+                await signedUser.follow(userToFollow);
+              }
 
               this.isFollowed = true;
             }
@@ -130,7 +132,8 @@ export default class NostrFollowButton extends HTMLElement {
         } catch (err) {
           this.isError = true;
 
-          if (err.message && err.message.includes('NIP-07')) {
+          const error = err as Error;
+          if (error.message && error.message.includes('NIP-07')) {
             this.errorMessage = `Looks like you don't have any nostr signing browser extension.
                                 Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
           } else {

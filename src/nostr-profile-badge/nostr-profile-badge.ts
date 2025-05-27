@@ -21,7 +21,7 @@ export default class NostrProfileBadge extends HTMLElement {
 
   private onClick: Function | null = null;
 
-  private ndkUser: NDKUser;
+  private ndkUser: NDKUser | null = null;
 
   private shadow: ShadowRoot;
 
@@ -129,7 +129,7 @@ export default class NostrProfileBadge extends HTMLElement {
   async connectedCallback() {
     const onClick = this.getAttribute('onClick');
     if (onClick !== null) {
-      this.onClick = window[onClick];
+      this.onClick = (window as any)[onClick];
     }
 
     if (!this.rendered) {
@@ -166,7 +166,7 @@ export default class NostrProfileBadge extends HTMLElement {
     }
 
     if (name === 'onClick') {
-      this.onClick = window[newValue];
+      this.onClick = (window as any)[newValue];
     }
 
     if (name === 'theme') {

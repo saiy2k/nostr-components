@@ -1,11 +1,9 @@
 import {
   NDKEvent,
-  NDKKind,
   NDKUserProfile,
   ProfilePointer,
 } from '@nostr-dev-kit/ndk';
 import { nip21 } from 'nostr-tools';
-import Glide from '@glidejs/glide';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { getPostStats, Stats } from '../common/utils';
 import { Theme } from '../common/types';
@@ -33,9 +31,8 @@ export default class NostrPost extends HTMLElement {
     nip05: '',
   };
 
-  private onClick: Function | null = null;
-  private onAuthorClick: Function | null = null;
-  private onMentionClick: Function | null = null;
+  private onClick: ((post: NDKEvent | null) => void) | null = null;
+  private onAuthorClick: ((npub: string, author: NDKUserProfile | null | undefined) => void) | null = null;
 
   getRelays = () => {
     const userRelays = this.getAttribute('relays');
@@ -65,19 +62,16 @@ export default class NostrPost extends HTMLElement {
 
   async connectedCallback() {
     const onClick = this.getAttribute('onClick');
-    if (onClick !== null) {
-      this.onClick = window[onClick];
+    if (onClick !== null && (window as any)[onClick]) {
+      this.onClick = (window as any)[onClick] as (post: NDKEvent | null) => void;
     }
 
     const onAuthorClick = this.getAttribute('onAuthorClick');
-    if (onAuthorClick !== null) {
-      this.onAuthorClick = window[onAuthorClick];
+    if (onAuthorClick !== null && (window as any)[onAuthorClick]) {
+      this.onAuthorClick = (window as any)[onAuthorClick] as (npub: string, author: NDKUserProfile | null | undefined) => void;
     }
 
-    const onMentionClick = this.getAttribute('onMentionClick');
-    if (onMentionClick !== null) {
-      this.onMentionClick = window[onMentionClick];
-    }
+
 
     this.render();
 
@@ -101,7 +95,7 @@ export default class NostrPost extends HTMLElement {
     ];
   }
 
-  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
+  attributeChangedCallback(name: string, _oldValue: string | null, newValue: string | null) {
     if (name === 'relays') {
       this.nostrService.connectToNostr(this.getRelays());
     }
@@ -110,17 +104,21 @@ export default class NostrPost extends HTMLElement {
       this.getPost();
     }
 
-    if (name === 'onClick') {
-      this.onClick = window[newValue];
+    if (name === 'onClick' && newValue) {
+      const handler = (window as any)[newValue];
+      if (typeof handler === 'function') {
+        this.onClick = handler as (post: NDKEvent | null) => void;
+      }
     }
 
-    if (name === 'onAuthorClick') {
-      this.onAuthorClick = window[newValue];
+    if (name === 'onAuthorClick' && newValue) {
+      const handler = (window as any)[newValue];
+      if (typeof handler === 'function') {
+        this.onAuthorClick = handler as (npub: string, author: NDKUserProfile | null | undefined) => void;
+      }
     }
 
-    if (name === 'onMentionClick') {
-      this.onMentionClick = window[newValue];
-    }
+
 
     if (name === 'theme') {
       this.getTheme();
@@ -175,11 +173,11 @@ export default class NostrPost extends HTMLElement {
   }
 
   #_onPostClick() {
-    if (this.isError) {
+    if (this.isError || !this.post) {
       return;
     }
 
-    if (this.onClick !== null && typeof this.onClick === 'function') {
+    if (this.onClick) {
       this.onClick(this.post);
       return;
     }
@@ -190,15 +188,12 @@ export default class NostrPost extends HTMLElement {
   }
 
   #_onAuthorClick() {
-    if (this.isError) {
+    if (this.isError || !this.post?.author.npub) {
       return;
     }
 
-    if (
-      this.onAuthorClick !== null &&
-      typeof this.onAuthorClick === 'function'
-    ) {
-      this.onAuthorClick(this.post?.author.npub, this.author);
+    if (this.onAuthorClick) {
+      this.onAuthorClick(this.post.author.npub, this.author);
       return;
     }
 
@@ -209,22 +204,7 @@ export default class NostrPost extends HTMLElement {
     event.preventDefault();
     event.stopPropagation();
 
-    // Custom mention handler if provided
-    const onMentionClick = this.getAttribute('onMentionClick');
-    if (
-      onMentionClick !== null &&
-      window[onMentionClick] &&
-      typeof window[onMentionClick] === 'function'
-    ) {
-      window[onMentionClick](username);
-      return;
-    }
-
-    // Default behavior: try to find user with this username
-    window.open(
-      `https://njump.me/search?q=${encodeURIComponent('@' + username)}`,
-      '_blank'
-    );
+    window.open(`https://njump.me/p/${username}`, '_blank');
   }
 
   async parseText(text: string) {

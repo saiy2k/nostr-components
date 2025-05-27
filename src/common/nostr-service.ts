@@ -78,7 +78,10 @@ export class NostrService {
         return event;
     }
 
-    public async getProfileStats(user: NDKUser): Promise<{
+    public async getProfileStats(
+        user: NDKUser,
+        statsToFetch?: Array<'follows' | 'followers' | 'notes' | 'replies' | 'zaps' | 'relays'>
+    ): Promise<{
         follows: number;
         followers: number;
         notes: number;
@@ -86,6 +89,7 @@ export class NostrService {
         zaps: number;
         relays: number;
     }> {
+        // Initialize stats object with all values set to 0
         const stats = {
             follows: 0,
             followers: 0,
@@ -95,41 +99,139 @@ export class NostrService {
             relays: 0,
         };
 
+        // If no specific stats are requested, fetch all
+        const fetchAll = !statsToFetch || statsToFetch.length === 0;
+        const shouldFetch = (stat: string) => fetchAll || (statsToFetch?.includes(stat as any));
+        
+
         try {
-            // Get follows
-            const follows = await user.follows();
-            stats.follows = follows.size;
+            // Ensure we're connected to relays
+            if (!this.isConnected) {
+                await this.connectToNostr();
+            }
 
-            // Get followers
-            const followers = await this.ndk.fetchEvents({
-                kinds: [NDKKind.Contacts],
-                '#p': [user.pubkey],
-            });
-            stats.followers = followers.size;
-
-            // Get notes and replies
-            const notes = await this.ndk.fetchEvents({
-                kinds: [NDKKind.Text],
-                authors: [user.pubkey],
-            });
-
-            let replies = 0;
-            notes.forEach(note => {
-                if (note.hasTag('e')) {
-                    replies += 1;
+            // 1. Get follows count
+            if (shouldFetch('follows')) {
+                try {
+                    console.log('Fetching follows for user:', user.npub);
+                    const follows = await user.follows();
+                    // Force a fetch of all follows to ensure we have the latest count
+                    const followsArray = Array.from(follows.values());
+                    stats.follows = followsArray.length;
+                    console.log('Follows count:', stats.follows);
+                } catch (error) {
+                    console.warn('Error fetching follows:', error);
                 }
-            });
-            stats.replies = replies;
-            stats.notes = notes.size - replies;
+            }
 
-            // TODO: Implement zaps and relays counting
-            stats.zaps = 0;
+            // 2. Get followers (people following the user)
+            if (shouldFetch('followers')) {
+                try {
+                    console.log('Fetching followers for user:', user.npub);
+                    const events = await this.ndk.fetchEvents({
+                        kinds: [NDKKind.Contacts],
+                        '#p': [user.pubkey],
+                    });
+                    
+                    // Convert Set to array and filter out any undefined values
+                    const eventsArray = Array.from(events).filter(Boolean);
+                    stats.followers = eventsArray.length;
+                    console.log('Followers count:', stats.followers);
+                } catch (error) {
+                    console.warn('Error fetching followers:', error);
+                }
+            }
+
+            // 3. Get notes and replies
+            if (shouldFetch('notes') || shouldFetch('replies')) {
+                try {
+                    console.log('Fetching notes and replies for user:', user.npub);
+                    const events = await this.ndk.fetchEvents({
+                        kinds: [NDKKind.Text],
+                        authors: [user.pubkey],
+                        limit: 1000,
+                    });
+
+                    let replies = 0;
+                    let notesCount = 0;
+
+                    events.forEach(event => {
+                        if (event) {
+                            // Check if this is a reply (has 'e' tag that's not a mention)
+                            const isReply = event.tags.some(
+                                (tag: string[]) => tag[0] === 'e' && tag[3] !== 'mention'
+                            );
+                            if (isReply) {
+                                replies++;
+                            }
+                            notesCount++;
+                        }
+                    });
+                    
+                    stats.replies = replies;
+                    stats.notes = Math.max(0, notesCount - replies);
+                    console.log('Notes:', stats.notes, 'Replies:', stats.replies);
+                } catch (error) {
+                    console.warn('Error fetching notes and replies:', error);
+                }
+            }
+
+            // 4. Get zaps count (NIP-57)
+            if (shouldFetch('zaps')) {
+                try {
+                    console.log('Fetching zaps for user:', user.npub);
+                    const events = await this.ndk.fetchEvents({
+                        kinds: [9735], // Zap receipt
+                        '#p': [user.pubkey],
+                        limit: 1000,
+                    });
+                    stats.zaps = Array.from(events).filter(Boolean).length;
+                    console.log('Zaps count:', stats.zaps);
+                } catch (error) {
+                    console.warn('Error fetching zaps:', error);
+                }
+            }
+
+            // 5. Skip relays count for now as it's not critical
             stats.relays = 0;
 
-            return stats;
+            // Log final stats
+            console.log('Final stats:', stats);
+            
+            // Return only the requested stats
+            if (fetchAll) {
+                return stats;
+            }
+            
+            // Filter and return only the requested stats
+            const result: any = {};
+            if (statsToFetch?.includes('follows')) result.follows = stats.follows;
+            if (statsToFetch?.includes('followers')) result.followers = stats.followers;
+            if (statsToFetch?.includes('notes')) result.notes = stats.notes;
+            if (statsToFetch?.includes('replies')) result.replies = stats.replies;
+            if (statsToFetch?.includes('zaps')) result.zaps = stats.zaps;
+            if (statsToFetch?.includes('relays')) result.relays = stats.relays;
+            
+            // Ensure all requested stats are in the result, even if they're 0
+            return {
+                follows: result.follows ?? 0,
+                followers: result.followers ?? 0,
+                notes: result.notes ?? 0,
+                replies: result.replies ?? 0,
+                zaps: result.zaps ?? 0,
+                relays: result.relays ?? 0
+            };
         } catch (error) {
-            console.error('Error fetching profile stats:', error);
-            throw error;
+            console.error('Error in getProfileStats:', error);
+            // Return a properly structured stats object with zeros for all fields
+            return {
+                follows: 0,
+                followers: 0,
+                notes: 0,
+                replies: 0,
+                zaps: 0,
+                relays: 0
+            };
         }
     }
 
