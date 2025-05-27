@@ -398,7 +398,6 @@ export default class NostrPost extends HTMLElement {
     // Use the renderEmbeddedPost function from the render module
     return renderEmbeddedPost(
       noteId,
-      this.theme,
       authorProfile
         ? {
           displayName: authorProfile.displayName || '',

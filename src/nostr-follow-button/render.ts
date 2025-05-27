@@ -36,7 +36,7 @@ export function renderFollowButton({
               ? `${getLoadingNostrich(theme, iconWidth, iconHeight)} <span>Following...</span>`
               : isFollowed
                 ? `${getSuccessAnimation(theme, iconWidth, iconHeight)} ${buttonText}`
-                : `${getNostrLogo(theme, iconWidth, iconHeight)} <span>Follow me on Nostr</span>`
+                : `${getNostrLogo(iconWidth, iconHeight)} <span>Follow me on Nostr</span>`
           }
         </button>
       </div>

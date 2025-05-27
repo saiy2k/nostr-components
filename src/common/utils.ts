@@ -1,7 +1,5 @@
 import NDK, { NDKKind, NDKTag } from '@nostr-dev-kit/ndk';
-import { decode } from 'light-bolt11-decoder';
 
-import { Theme } from './types';
 import { MILLISATS_PER_SAT } from './constants';
 
 export function maskNPub(npubString: string = '', length = 3) {

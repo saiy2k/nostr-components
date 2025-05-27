@@ -42,15 +42,14 @@ export function renderPost(options: RenderPostOptions): string {
     ${getPostStylesLegacy(theme)}
     ${getPostStyles(theme)}
     <div class="post-container">
-      ${renderPostHeader(theme, isLoading, isError, author, date)}
-      ${renderPostBody(theme, isLoading, isError, htmlToRender)}
-      ${shouldShowStats ? renderPostFooter(theme, isLoading, isError, stats) : ''}
+      ${renderPostHeader(isLoading, isError, author, date)}
+      ${renderPostBody(isLoading, isError, htmlToRender)}
+      ${shouldShowStats ? renderPostFooter(isLoading, isError, stats) : ''}
     </div>
   `;
 }
 
 function renderPostHeader(
-  theme: Theme,
   isLoading: boolean,
   isError: boolean,
   author:
@@ -105,7 +104,6 @@ function renderPostHeader(
 }
 
 function renderPostBody(
-  theme: Theme,
   isLoading: boolean,
   isError: boolean,
   htmlToRender: string
@@ -142,7 +140,6 @@ function renderPostBody(
 }
 
 function renderPostFooter(
-  theme: Theme,
   isLoading: boolean,
   isError: boolean,
   stats: { replies: number; likes: number } | null
@@ -290,7 +287,6 @@ function getPostStyles(theme: Theme): string {
 
 export function renderEmbeddedPost(
   noteId: string,
-  theme: Theme,
   authorProfile:
     | {
       displayName?: string;
@@ -301,6 +297,8 @@ export function renderEmbeddedPost(
   date: string,
   content: string
 ): string {
+  const authorDisplayName = authorProfile?.displayName || '';
+
   // Process media items from content
   const mediaItems: { type: 'image' | 'video'; url: string }[] = [];
   let processedContent = content;
@@ -384,7 +382,7 @@ export function renderEmbeddedPost(
           ${authorProfile?.image ? `<img src="${authorProfile.image}" alt="Profile">` : ''}
         </div>
         <div class="embedded-author-info" style="cursor: pointer;">
-          <span class="embedded-author-name">${authorProfile?.displayName || 'Unknown'}</span>
+          <span class="embedded-author-name">${authorDisplayName}</span>
           ${authorProfile?.nip05 ? `<span class="embedded-author-username">${authorProfile.nip05}</span>` : ''}
         </div>
         <div class="embedded-post-date">${date}</div>

@@ -265,7 +265,6 @@ export default class NostrProfileBadge extends HTMLElement {
 
     // Generate the HTML content
     const contentHTML = renderProfileBadge(
-      this.theme,
       this.isLoading,
       this.isError,
       this.userProfile,

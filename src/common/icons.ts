@@ -82,8 +82,7 @@ export const checkmarkIcon = (
 
 export const nostrLogo = (
   width: number = 21,
-  height: number = 24,
-  theme: 'light' | 'dark' = 'dark'
+  height: number = 24
 ) => `
   <svg 
     width="${width}" 

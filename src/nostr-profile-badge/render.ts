@@ -53,7 +53,6 @@ export function renderNpub(
 }
 
 export function renderProfileBadge(
-  theme: Theme,
   isLoading: boolean,
   isError: boolean,
   userProfile: UserProfile | null,
