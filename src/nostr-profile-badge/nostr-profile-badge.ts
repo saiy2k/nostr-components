@@ -1,12 +1,12 @@
-import NDK, { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
 import { renderProfileBadge, getProfileBadgeStyles } from './render';
+import { NostrService } from '../common/nostr-service';
 
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;
-
-  private ndk: NDK = new NDK();
+  private nostrService: NostrService = NostrService.getInstance();
 
   private userProfile: NDKUserProfile = {
     name: '',
@@ -31,17 +31,11 @@ export default class NostrProfileBadge extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' });
   }
 
-  connectToNostr = async () => {
-    await this.ndk.connect();
-  };
-
   getRelays = () => {
     const userRelays = this.getAttribute('relays');
-
     if (userRelays) {
       return userRelays.split(',');
     }
-
     return DEFAULT_RELAYS;
   };
 
@@ -51,13 +45,13 @@ export default class NostrProfileBadge extends HTMLElement {
     const pubkey = this.getAttribute('pubkey');
 
     if (npub) {
-      return this.ndk.getUser({
+      return this.nostrService.getNDK().getUser({
         npub: npub as string,
       });
     } else if (nip05) {
-      return this.ndk.getUserFromNip05(nip05 as string);
+      return this.nostrService.getNDK().getUserFromNip05(nip05 as string);
     } else if (pubkey) {
-      return this.ndk.getUser({
+      return this.nostrService.getNDK().getUser({
         pubkey: pubkey,
       });
     }
@@ -75,11 +69,14 @@ export default class NostrProfileBadge extends HTMLElement {
       if (user?.npub) {
         this.ndkUser = user;
 
-        await user.fetchProfile();
+        const profile = await this.nostrService.getProfile({
+          npub: user.npub,
+          nip05: this.getAttribute('nip05') || undefined,
+          pubkey: this.getAttribute('pubkey') || undefined,
+        });
 
-        // Check if profile was fetched successfully
-        if (user.profile) {
-          this.userProfile = user.profile as NDKUserProfile;
+        if (profile) {
+          this.userProfile = profile;
           // Set default image only if profile exists but image is missing
           if (!this.userProfile.image) {
             this.userProfile.image = './assets/default_dp.png';
@@ -136,16 +133,9 @@ export default class NostrProfileBadge extends HTMLElement {
     }
 
     if (!this.rendered) {
-      this.ndk = new NDK({
-        explicitRelayUrls: this.getRelays(),
-      });
-
       this.getTheme();
-
-      await this.connectToNostr(); // Wait for connection
-
-      this.getUserProfile(); // Then fetch profile
-
+      await this.nostrService.connectToNostr(this.getRelays());
+      this.getUserProfile();
       this.rendered = true;
     }
   }
@@ -165,8 +155,7 @@ export default class NostrProfileBadge extends HTMLElement {
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     if (name === 'relays') {
-      this.ndk.explicitRelayUrls = this.getRelays();
-      this.connectToNostr();
+      this.nostrService.connectToNostr(this.getRelays());
     }
 
     if (['relays', 'npub', 'nip05'].includes(name)) {

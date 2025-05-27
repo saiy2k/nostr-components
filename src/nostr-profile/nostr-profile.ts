@@ -1,14 +1,13 @@
-import NDK, { NDKKind, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
 import { renderProfile, renderLoadingState, renderErrorState } from './render';
+import { NostrService } from '../common/nostr-service';
 
 export default class NostrProfile extends HTMLElement {
   private rendered: boolean = false;
-
-  private ndk: NDK = new NDK();
-
+  private nostrService: NostrService = NostrService.getInstance();
   private userProfile: NDKUserProfile = {
     name: '',
     image: '',
@@ -48,17 +47,11 @@ export default class NostrProfile extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
-  connectToNostr = async () => {
-    await this.ndk.connect();
-  };
-
   getRelays = () => {
     const userRelays = this.getAttribute('relays');
-
     if (userRelays) {
       return userRelays.split(',');
     }
-
     return DEFAULT_RELAYS;
   };
 
@@ -68,13 +61,13 @@ export default class NostrProfile extends HTMLElement {
     const pubkey = this.getAttribute('pubkey');
 
     if (npub) {
-      return this.ndk.getUser({
+      return this.nostrService.getNDK().getUser({
         npub: npub as string,
       });
     } else if (nip05) {
-      return this.ndk.getUserFromNip05(nip05 as string);
+      return this.nostrService.getNDK().getUserFromNip05(nip05 as string);
     } else if (pubkey) {
-      return this.ndk.getUser({
+      return this.nostrService.getNDK().getUser({
         pubkey: pubkey,
       });
     }
@@ -85,7 +78,6 @@ export default class NostrProfile extends HTMLElement {
   getUserProfile = async () => {
     try {
       this.isLoading = true;
-
       this.render();
 
       const user = await this.getNDKUser();
@@ -93,14 +85,18 @@ export default class NostrProfile extends HTMLElement {
       if (user?.npub) {
         this.ndkUser = user;
 
-        await user.fetchProfile();
+        const profile = await this.nostrService.getProfile({
+          npub: user.npub,
+          nip05: this.getAttribute('nip05') || undefined,
+          pubkey: this.getAttribute('pubkey') || undefined,
+        });
 
-        // Check if profile was fetched successfully
-        if (user.profile) {
-          this.userProfile = user.profile as NDKUserProfile;
+        if (profile) {
+          this.userProfile = profile;
 
           // Fetch stats only if profile exists
-          this.getProfileStats()
+          this.nostrService
+            .getProfileStats(user)
             .then(stats => {
               this.isStatsError = false;
               this.stats = stats;
@@ -125,7 +121,6 @@ export default class NostrProfile extends HTMLElement {
           this.userProfile.image = './assets/default_dp.png';
           this.userProfile.name = '';
           this.userProfile.nip05 = '';
-          // Reset stats or show error state for stats?
           this.stats = {
             follows: 0,
             followers: 0,
@@ -134,9 +129,9 @@ export default class NostrProfile extends HTMLElement {
             zaps: 0,
             relays: 0,
           };
-          this.isStatsLoading = false; // No longer loading stats
-          this.isError = false; // Or true? Let's keep false, but log warning
-          this.isStatsError = true; // Indicate stats couldn't be loaded
+          this.isStatsLoading = false;
+          this.isError = false;
+          this.isStatsError = true;
         }
       } else {
         throw new Error('Either npub or nip05 should be provided');
@@ -147,77 +142,6 @@ export default class NostrProfile extends HTMLElement {
     } finally {
       this.isLoading = false;
       this.render();
-    }
-  };
-
-  getProfileStats = async (): Promise<any> => {
-    try {
-      this.isStatsFollowsLoading = true;
-      this.isStatsFollowersLoading = true;
-      this.isStatsNotesLoading = true;
-      const userHex = this.ndkUser.pubkey as string;
-
-      // Get follows
-      this.ndkUser
-        .follows()
-        .then(follows => {
-          this.stats.follows = follows.size;
-          this.isStatsFollowsLoading = false;
-          this.render();
-        })
-        .catch(err => {
-          console.log('Error fetching follows:', err);
-        });
-
-      // Get followers
-      this.ndk
-        .fetchEvents({
-          kinds: [NDKKind.Contacts],
-          '#p': [userHex || ''],
-        })
-        .then(followers => {
-          this.stats.followers = followers.size;
-          this.isStatsFollowersLoading = false;
-          this.render();
-        })
-        .catch(err => {
-          console.log('Error fetching followers:', err);
-        });
-
-      // Get notes and replies
-      this.ndk
-        .fetchEvents({
-          kinds: [NDKKind.Text],
-          authors: [userHex],
-        })
-        .then(notes => {
-          let replies = 0;
-          notes.forEach(note => {
-            if (note.hasTag('e')) {
-              replies += 1;
-            }
-          });
-          this.stats.replies = replies;
-          this.stats.notes = notes.size - replies;
-          this.isStatsNotesLoading = false;
-          this.render();
-        })
-        .catch(err => {
-          console.log('Error fetching notes:', err);
-        });
-
-      // Zaps (placeholder for now)
-      this.stats.zaps = 0;
-      this.render();
-
-      // Relays (placeholder for now)
-      this.stats.relays = 0;
-      this.render();
-
-      return this.stats;
-    } catch (err) {
-      console.log('getProfileStats', err);
-      throw new Error('Error fetching stats');
     }
   };
 
@@ -242,9 +166,8 @@ export default class NostrProfile extends HTMLElement {
   async connectedCallback() {
     if (!this.rendered) {
       this.getTheme();
-      this.ndk.explicitRelayUrls = this.getRelays();
-      await this.connectToNostr(); // Wait for connection attempt
-      this.getUserProfile(); // Now fetch profile
+      await this.nostrService.connectToNostr(this.getRelays());
+      this.getUserProfile();
 
       this.rendered = true;
     }
@@ -264,8 +187,7 @@ export default class NostrProfile extends HTMLElement {
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     if (name === 'relays') {
-      this.ndk.explicitRelayUrls = this.getRelays();
-      this.connectToNostr();
+      this.nostrService.connectToNostr(this.getRelays());
     }
 
     if (['relays', 'npub', 'nip05'].includes(name)) {
@@ -340,15 +262,14 @@ export default class NostrProfile extends HTMLElement {
 
     return `
       <div class="npub-container">
-        ${
-          this.isLoading
-            ? '<div style="width: 100px; height: 8px; border-radius: 5px" class="skeleton"></div>'
-            : `
+        ${this.isLoading
+        ? '<div style="width: 100px; height: 8px; border-radius: 5px" class="skeleton"></div>'
+        : `
                 <span class="npub full">${npub}</span>
                 <span class="npub masked">${maskNPub(npub)}</span>
                 <span id="npub-copy" class="copy-button">&#x2398;</span>
             `
-        }
+      }
       </div>
     `;
   }

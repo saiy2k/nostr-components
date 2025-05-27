@@ -1,4 +1,4 @@
-import NDK, {
+import {
   NDKEvent,
   NDKKind,
   NDKUserProfile,
@@ -10,10 +10,11 @@ import { DEFAULT_RELAYS } from '../common/constants';
 import { getPostStats, Stats } from '../common/utils';
 import { Theme } from '../common/types';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
+import { NostrService } from '../common/nostr-service';
 
 export default class NostrPost extends HTMLElement {
   private rendered: boolean = false;
-  private ndk: NDK = new NDK();
+  private nostrService: NostrService = NostrService.getInstance();
 
   private isLoading: boolean = true;
   private isError: boolean = false;
@@ -36,17 +37,11 @@ export default class NostrPost extends HTMLElement {
   private onAuthorClick: Function | null = null;
   private onMentionClick: Function | null = null;
 
-  connectToNostr = async () => {
-    await this.ndk.connect();
-  };
-
   getRelays = () => {
     const userRelays = this.getAttribute('relays');
-
     if (userRelays) {
       return userRelays.split(',');
     }
-
     return DEFAULT_RELAYS;
   };
 
@@ -87,11 +82,7 @@ export default class NostrPost extends HTMLElement {
     this.render();
 
     if (!this.rendered) {
-      this.ndk = new NDK({
-        explicitRelayUrls: this.getRelays(),
-      });
-
-      await this.connectToNostr();
+      await this.nostrService.connectToNostr(this.getRelays());
       this.getPost();
 
       this.rendered = true;
@@ -112,8 +103,7 @@ export default class NostrPost extends HTMLElement {
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     if (name === 'relays') {
-      this.ndk.explicitRelayUrls = this.getRelays();
-      this.connectToNostr();
+      this.nostrService.connectToNostr(this.getRelays());
     }
 
     if (['relays', 'id'].includes(name)) {
@@ -148,7 +138,7 @@ export default class NostrPost extends HTMLElement {
       this.render();
 
       const noteId = this.getAttribute('id') || '';
-      const post = await this.ndk.fetchEvent(noteId);
+      const post = await this.nostrService.getPost(noteId);
 
       if (!this.receivedData) {
         if (!post) {
@@ -165,7 +155,7 @@ export default class NostrPost extends HTMLElement {
           const shouldShowStats = this.getAttribute('show-stats');
 
           if (this.post && shouldShowStats) {
-            const stats = await getPostStats(this.ndk, this.post.id);
+            const stats = await getPostStats(this.nostrService.getNDK(), this.post.id);
             if (stats) {
               this.stats = stats;
             }
@@ -260,7 +250,7 @@ export default class NostrPost extends HTMLElement {
       // Fetch the embedded post
       try {
         if (!this.embeddedPosts.has(noteId)) {
-          const embeddedPost = await this.ndk.fetchEvent(noteId);
+          const embeddedPost = await this.nostrService.getPost(noteId);
           if (embeddedPost) {
             this.embeddedPosts.set(noteId, embeddedPost);
           }
@@ -288,7 +278,7 @@ export default class NostrPost extends HTMLElement {
         pubkey = (decordedData as ProfilePointer).pubkey;
       }
 
-      const user = await this.ndk.getUser({ pubkey: pubkey }).fetchProfile();
+      const user = await this.nostrService.getUser({ pubkey: pubkey }).fetchProfile();
       const name = user?.displayName || '';
 
       textContent = textContent.replace(
@@ -395,10 +385,10 @@ export default class NostrPost extends HTMLElement {
 
     const date = post.created_at
       ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
       : '';
 
     // Process the post content
@@ -411,10 +401,10 @@ export default class NostrPost extends HTMLElement {
       this.theme,
       authorProfile
         ? {
-            displayName: authorProfile.displayName || '',
-            image: authorProfile.image || '',
-            nip05: authorProfile.nip05 || '',
-          }
+          displayName: authorProfile.displayName || '',
+          image: authorProfile.image || '',
+          nip05: authorProfile.nip05 || '',
+        }
         : undefined,
       date,
       renderedContent

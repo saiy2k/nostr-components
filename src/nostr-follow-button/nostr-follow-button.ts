@@ -1,4 +1,4 @@
-import NDK, {
+import {
   NDKNip07Signer,
   NDKUser,
   NDKUserProfile,
@@ -6,10 +6,11 @@ import NDK, {
 import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
+import { NostrService } from '../common/nostr-service';
 
 export default class NostrFollowButton extends HTMLElement {
   private rendered: boolean = false;
-  private ndk: NDK = new NDK();
+  private nostrService: NostrService = NostrService.getInstance();
 
   private theme: Theme = 'light';
 
@@ -24,17 +25,11 @@ export default class NostrFollowButton extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
-  connectToNostr = async () => {
-    await this.ndk.connect();
-  };
-
   getRelays = () => {
     const userRelays = this.getAttribute('relays');
-
     if (userRelays) {
       return userRelays.split(',');
     }
-
     return DEFAULT_RELAYS;
   };
 
@@ -58,16 +53,9 @@ export default class NostrFollowButton extends HTMLElement {
 
   connectedCallback() {
     if (!this.rendered) {
-      this.ndk = new NDK({
-        explicitRelayUrls: this.getRelays(),
-      });
-
       this.getTheme();
-
-      this.connectToNostr();
-
+      this.nostrService.connectToNostr(this.getRelays());
       this.render();
-
       this.rendered = true;
     }
   }
@@ -78,8 +66,7 @@ export default class NostrFollowButton extends HTMLElement {
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     if (name === 'relays') {
-      this.ndk.explicitRelayUrls = this.getRelays();
-      this.connectToNostr();
+      this.nostrService.connectToNostr(this.getRelays());
     }
 
     if (name === 'theme') {
@@ -101,8 +88,9 @@ export default class NostrFollowButton extends HTMLElement {
         this.render();
 
         try {
-          this.ndk.signer = nip07signer;
-          await this.connectToNostr();
+          const ndk = this.nostrService.getNDK();
+          ndk.signer = nip07signer;
+          await this.nostrService.connectToNostr(this.getRelays());
 
           const userToFollowNpub = this.getAttribute('npub');
           const userToFollowNip05 = this.getAttribute('nip05');
@@ -115,26 +103,25 @@ export default class NostrFollowButton extends HTMLElement {
             let userToFollow: NDKUser | null = null;
 
             if (userToFollowPubkey) {
-              userToFollow = this.ndk.getUser({
+              userToFollow = ndk.getUser({
                 pubkey: userToFollowPubkey,
               });
             } else if (userToFollowNpub) {
-              userToFollow = this.ndk.getUser({
+              userToFollow = ndk.getUser({
                 npub: userToFollowNpub,
               });
             } else if (userToFollowNip05) {
-              const userFromNip05 =
-                await this.ndk.getUserFromNip05(userToFollowNip05);
+              const userFromNip05 = await ndk.getUserFromNip05(userToFollowNip05);
 
               if (userFromNip05) {
-                userToFollow = this.ndk.getUser({
+                userToFollow = ndk.getUser({
                   npub: userFromNip05.npub,
                 });
               }
             }
 
             if (userToFollow != null) {
-              const signedUser = await this.ndk.signer.user();
+              const signedUser = await ndk.signer.user();
               await signedUser.follow(userToFollow);
 
               this.isFollowed = true;
