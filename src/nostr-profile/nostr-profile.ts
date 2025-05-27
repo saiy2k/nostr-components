@@ -34,7 +34,7 @@ export default class NostrProfile extends HTMLElement {
     relays: 0,
   };
 
-  private onClick: Function | null = null;
+  private onClick: ((profile: NDKUserProfile) => void) | null = null;
 
   private ndkUser: NDKUser | null = null;
 
@@ -232,7 +232,7 @@ export default class NostrProfile extends HTMLElement {
       const potentialHandler = window[newValue as keyof Window];
 
       if (typeof potentialHandler === 'function') {
-        this.onClick = potentialHandler as Function;
+        this.onClick = potentialHandler as (profile: NDKUserProfile) => void;
       } else if (newValue.trim() !== '') {
         console.warn(`Handler '${newValue}' is not a valid function`);
         this.onClick = null;

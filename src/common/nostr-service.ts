@@ -18,11 +18,25 @@ export class NostrService {
     }
 
     public async connectToNostr(relays: string[] = DEFAULT_RELAYS): Promise<void> {
-        if (!this.isConnected) {
-            this.ndk.explicitRelayUrls = relays;
-            await this.ndk.connect();
-            this.isConnected = true;
+        // Identify new relays that were not part of the original set
+        const newRelays = relays.filter(r => !this.getRelays().includes(r));
+
+        // If already connected, add only the delta – keep signer & subscriptions intact
+        if (this.isConnected && newRelays.length) {
+            // Prefer the public helper if available in the installed ndk version
+            if (typeof (this.ndk as any).addExplicitRelay === 'function') {
+                newRelays.forEach(url => (this.ndk as any).addExplicitRelay(url));
+            } else {
+                // Fallback: update pool directly
+                newRelays.forEach(url => (this.ndk.pool as any)?.addRelay?.(url));
+            }
+            return;
         }
+
+        // First-time connection or reconnect after explicit close
+        this.ndk.explicitRelayUrls = relays;
+        await this.ndk.connect();
+        this.isConnected = true;
     }
 
     public getRelays(): string[] {
