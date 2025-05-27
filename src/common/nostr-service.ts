@@ -35,7 +35,10 @@ export class NostrService {
         if (identifier.npub) {
             user = this.ndk.getUser({ npub: identifier.npub });
         } else if (identifier.nip05) {
-            user = await this.ndk.getUserFromNip05(identifier.nip05);
+            const nip05User = await this.ndk.getUserFromNip05(identifier.nip05);
+            if (nip05User) {
+                user = nip05User;
+            }
         } else if (identifier.pubkey) {
             user = this.ndk.getUser({ pubkey: identifier.pubkey });
         }
@@ -49,7 +52,30 @@ export class NostrService {
     }
 
     public async getPost(eventId: string): Promise<NDKEvent | null> {
-        return this.ndk.fetchEvent(eventId);
+        const event = await this.ndk.fetchEvent(eventId);
+        if (!event) return null;
+
+        // Fetch referenced events (like videos)
+        const referencedEvents = event.getMatchingTags('e');
+        if (referencedEvents.length > 0) {
+            const referencedEventIds = referencedEvents.map(tag => tag[1]);
+            await this.ndk.fetchEvents({
+                ids: referencedEventIds
+            });
+        }
+
+        // Fetch video attachments
+        const videoTags = event.getMatchingTags('a');
+        for (const tag of videoTags) {
+            const mimeType = tag[1] as string;
+            const url = tag[2] as string;
+            if (mimeType?.startsWith('video/') && url) {
+                // Add the video URL to the event's content
+                event.content = event.content + `\n${url}`;
+            }
+        }
+
+        return event;
     }
 
     public async getProfileStats(user: NDKUser): Promise<{

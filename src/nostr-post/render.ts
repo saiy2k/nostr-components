@@ -10,13 +10,13 @@ export interface RenderPostOptions {
   isLoading: boolean;
   isError: boolean;
   author:
-    | {
-        image?: string;
-        displayName?: string;
-        nip05?: string;
-      }
-    | null
-    | undefined;
+  | {
+    image?: string;
+    displayName?: string;
+    nip05?: string;
+  }
+  | null
+  | undefined;
   date: string;
   shouldShowStats: boolean;
   stats: {
@@ -55,10 +55,10 @@ function renderPostHeader(
   isError: boolean,
   author:
     | {
-        image?: string;
-        displayName?: string;
-        nip05?: string;
-      }
+      image?: string;
+      displayName?: string;
+      nip05?: string;
+    }
     | null
     | undefined,
   date: string
@@ -293,10 +293,10 @@ export function renderEmbeddedPost(
   theme: Theme,
   authorProfile:
     | {
-        displayName?: string;
-        image?: string;
-        nip05?: string;
-      }
+      displayName?: string;
+      image?: string;
+      nip05?: string;
+    }
     | undefined,
   date: string,
   content: string

@@ -98,28 +98,26 @@ export function renderProfile(options: RenderOptions): string {
     <div class="nostr-profile">
       <div id="profile">
         <div id="profile_banner">
-          ${
-            isLoading
-              ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
-              : userProfile.banner
-                ? `<a target="_blank" data-cropped="true" class="profile_image" href="#">
+          ${isLoading
+      ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
+      : userProfile.banner
+        ? `<a target="_blank" data-cropped="true" class="profile_image" href="#">
                   <img src="${userProfile.banner}" width="524px"/>
                 </a>`
-                : '<div class="banner-placeholder"></div>'
-          }
+        : '<div class="banner-placeholder"></div>'
+    }
         </div>
         <div class="dp_container">
           <div class="avatar_container">
             <div class="avatar_wrapper">
               <div class="xxl_avatar">
                 <div class="backfill">
-                  ${
-                    isLoading
-                      ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
-                      : `<a target="_blank" data-cropped="true" class="profile_image roundedImage" href="#">
+                  ${isLoading
+      ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
+      : `<a target="_blank" data-cropped="true" class="profile_image roundedImage" href="#">
                         <img src="${image}" width="524px" alt="${displayName}" />
                       </a>`
-                  }
+    }
                 </div>
               </div>
             </div>
@@ -133,50 +131,46 @@ export function renderProfile(options: RenderOptions): string {
         <div class="profile_data">
           <div class="basic_info">
             <div class="name">
-              ${
-                isLoading
-                  ? '<div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>'
-                  : `<div class="name-text">${displayName}</div>`
-              }
+              ${isLoading
+      ? '<div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>'
+      : `<div class="name-text">${displayName}</div>`
+    }
             </div>
           </div>
           
           <div class="nip05-wrapper">
             <div class="nip05-container">
-              ${
-                isLoading
-                  ? '<div style="width: 75px; height: 8px; border-radius: 20px" class="skeleton"></div>'
-                  : nip05
-                    ? `<div class="nip05">
+              ${isLoading
+      ? '<div style="width: 75px; height: 8px; border-radius: 20px" class="skeleton"></div>'
+      : nip05
+        ? `<div class="nip05">
                       <span>${nip05}</span>
                       <span id="nip05-copy" class="copy-button">&#x2398;</span>
                     </div>`
-                    : ''
-              }
+        : ''
+    }
               ${renderNpub()}
             </div>
           </div>
         </div>
         
         <div class="about">
-          ${
-            isLoading
-              ? `<div style="width: 100%; height: 12px; border-radius: 20px; margin-bottom: 12px" class="skeleton"></div>
+          ${isLoading
+      ? `<div style="width: 100%; height: 12px; border-radius: 20px; margin-bottom: 12px" class="skeleton"></div>
                <div style="width: 40%; height: 12px; border-radius: 20px" class="skeleton"></div>`
-              : about || ''
-          }
+      : about || ''
+    }
         </div>
         
         <div class="links">
-          ${
-            isLoading
-              ? '<div style="width: 150px; height: 12px; border-radius: 20px" class="skeleton"></div>'
-              : website
-                ? `<div class="website">
+          ${isLoading
+      ? '<div style="width: 150px; height: 12px; border-radius: 20px" class="skeleton"></div>'
+      : website
+        ? `<div class="website">
                   <a target="_blank" href="${website}">${website}</a>
                 </div>`
-                : ''
-          }
+        : ''
+    }
         </div>
       </div>
       
@@ -184,11 +178,10 @@ export function renderProfile(options: RenderOptions): string {
         <button class="stat" data-orientation="horizontal">
           <div class="stat-inner">
             <div class="stat-value">
-              ${
-                isStatsNotesLoading
-                  ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                  : stats.notes.toLocaleString()
-              }
+              ${isStatsNotesLoading
+      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
+      : stats.notes.toLocaleString()
+    }
             </div>
             <div class="stat-name">Notes</div>
           </div>
@@ -197,11 +190,10 @@ export function renderProfile(options: RenderOptions): string {
         <button class="stat" data-orientation="horizontal">
           <div class="stat-inner">
             <div class="stat-value">
-              ${
-                isStatsNotesLoading
-                  ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                  : stats.replies.toLocaleString()
-              }
+              ${isStatsNotesLoading
+      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
+      : stats.replies.toLocaleString()
+    }
             </div>
             <div class="stat-name">Replies</div>
           </div>
@@ -210,11 +202,10 @@ export function renderProfile(options: RenderOptions): string {
         <button class="stat" data-orientation="horizontal">
           <div class="stat-inner">
             <div class="stat-value">
-              ${
-                isStatsFollowsLoading
-                  ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                  : stats.follows.toLocaleString()
-              }
+              ${isStatsFollowsLoading
+      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
+      : stats.follows.toLocaleString()
+    }
             </div>
             <div class="stat-name">Following</div>
           </div>
@@ -223,11 +214,10 @@ export function renderProfile(options: RenderOptions): string {
         <button class="stat" data-orientation="horizontal">
           <div class="stat-inner">
             <div class="stat-value">
-              ${
-                isStatsFollowersLoading
-                  ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
-                  : stats.followers.toLocaleString()
-              }
+              ${isStatsFollowersLoading
+      ? '<div style="width: 50px; height: 28px; border-radius: 5px" class="skeleton"></div>'
+      : stats.followers.toLocaleString()
+    }
             </div>
             <div class="stat-name">Followers</div>
           </div>
@@ -283,9 +273,9 @@ export function renderLoadingState(theme: Theme): string {
       </div>
       <div class="stats" data-orientation="horizontal">
         ${Array(4)
-          .fill(0)
-          .map(
-            () => `
+      .fill(0)
+      .map(
+        () => `
           <button class="stat" data-orientation="horizontal">
             <div class="stat-inner">
               <div class="stat-value">
@@ -297,8 +287,8 @@ export function renderLoadingState(theme: Theme): string {
             </div>
           </button>
         `
-          )
-          .join('')}
+      )
+      .join('')}
       </div>
     </div>
   `;

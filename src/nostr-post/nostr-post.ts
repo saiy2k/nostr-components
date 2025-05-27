@@ -278,8 +278,9 @@ export default class NostrPost extends HTMLElement {
         pubkey = (decordedData as ProfilePointer).pubkey;
       }
 
-      const user = await this.nostrService.getUser({ pubkey: pubkey }).fetchProfile();
-      const name = user?.displayName || '';
+      const user = this.nostrService.getNDK().getUser({ pubkey });
+      const profile = await user.fetchProfile();
+      const name = profile?.displayName || '';
 
       textContent = textContent.replace(
         match[0],
@@ -302,11 +303,29 @@ export default class NostrPost extends HTMLElement {
       );
     }
 
-    // Handle URLs
-    const regex =
-      /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
+    // Handle URLs and Nostr attachments
+    type ContentItem = {
+      type: 'text' | 'image' | 'gif' | 'video' | 'link' | 'embedded-note';
+      value?: string;
+      noteId?: string;
+    };
+    const result: ContentItem[] = [];
+
+    // First, check for Nostr attachments in the post
+    if (this.post) {
+      const videoTags = this.post.getMatchingTags('a');
+      for (const tag of videoTags) {
+        const mimeType = tag[1] as string;
+        const url = tag[2] as string;
+        if (mimeType?.startsWith('video/') && url) {
+          result.push({ type: 'video', value: url });
+        }
+      }
+    }
+
+    // Then handle URLs in the text
+    const regex = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
     const matches = textContent.match(regex);
-    const result: any[] = [];
 
     if (matches) {
       let lastIndex = 0;
@@ -322,7 +341,7 @@ export default class NostrPost extends HTMLElement {
         }
 
         const url = new URL(match);
-        let type;
+        let type: 'image' | 'gif' | 'video' | 'link';
 
         if (
           url.pathname.endsWith('.jpg') ||
@@ -334,7 +353,8 @@ export default class NostrPost extends HTMLElement {
           type = 'gif';
         } else if (
           url.pathname.endsWith('.mp4') ||
-          url.pathname.endsWith('.webm')
+          url.pathname.endsWith('.webm') ||
+          url.pathname.endsWith('.mov')
         ) {
           type = 'video';
         } else {
