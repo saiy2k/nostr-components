@@ -94,12 +94,13 @@ export default class NostrProfile extends HTMLElement {
           this.isStatsLoading = true;
           this.isStatsFollowsLoading = true;
           this.isStatsFollowersLoading = true;
-          
+
           // Create a local copy of the current stats
           const currentStats = { ...this.stats };
-          
+
           // Fetch follows
-          this.nostrService.getProfileStats(user, ['follows'])
+          this.nostrService
+            .getProfileStats(user, ['follows'])
             .then(({ follows }) => {
               currentStats.follows = follows;
               this.stats = { ...this.stats, follows };
@@ -111,9 +112,10 @@ export default class NostrProfile extends HTMLElement {
               this.isStatsFollowsLoading = false;
               this.render();
             });
-            
+
           // Fetch followers
-          this.nostrService.getProfileStats(user, ['followers'])
+          this.nostrService
+            .getProfileStats(user, ['followers'])
             .then(({ followers }) => {
               currentStats.followers = followers;
               this.stats = { ...this.stats, followers };
@@ -125,9 +127,10 @@ export default class NostrProfile extends HTMLElement {
               this.isStatsFollowersLoading = false;
               this.render();
             });
-            
+
           // Fetch other stats
-          this.nostrService.getProfileStats(user, ['notes', 'replies', 'zaps'])
+          this.nostrService
+            .getProfileStats(user, ['notes', 'replies', 'zaps'])
             .then(({ notes, replies, zaps }) => {
               currentStats.notes = notes;
               currentStats.replies = replies;
@@ -293,14 +296,15 @@ export default class NostrProfile extends HTMLElement {
 
     return `
       <div class="npub-container">
-        ${this.isLoading
-        ? '<div style="width: 100px; height: 8px; border-radius: 5px" class="skeleton"></div>'
-        : `
+        ${
+          this.isLoading
+            ? '<div style="width: 100px; height: 8px; border-radius: 5px" class="skeleton"></div>'
+            : `
                 <span class="npub full">${npub}</span>
                 <span class="npub masked">${maskNPub(npub)}</span>
                 <span id="npub-copy" class="copy-button">&#x2398;</span>
             `
-      }
+        }
       </div>
     `;
   }

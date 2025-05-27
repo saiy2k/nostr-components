@@ -80,10 +80,7 @@ export const checkmarkIcon = (
   </svg>
 `;
 
-export const nostrLogo = (
-  width: number = 21,
-  height: number = 24
-) => `
+export const nostrLogo = (width: number = 21, height: number = 24) => `
   <svg 
     width="${width}" 
     height="${height}" 

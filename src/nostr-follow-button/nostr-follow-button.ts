@@ -61,7 +61,11 @@ export default class NostrFollowButton extends HTMLElement {
     return ['relays', 'npub', 'theme'];
   }
 
-  attributeChangedCallback(name: string, _oldValue: string | null, _newValue: string | null) {
+  attributeChangedCallback(
+    name: string,
+    _oldValue: string | null,
+    _newValue: string | null
+  ) {
     if (name === 'relays') {
       this.nostrService.connectToNostr(this.getRelays());
     }
@@ -112,7 +116,6 @@ export default class NostrFollowButton extends HTMLElement {
             });
           }
         }
-
 
         if (userToFollow != null) {
           const signer = ndk.signer;

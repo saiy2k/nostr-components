@@ -1,10 +1,7 @@
 import { Theme } from './types';
 import { checkmarkIcon, nostrLogo } from './icons';
 
-export function getNostrLogo(
-  width: number = 21,
-  height: number = 24
-) {
+export function getNostrLogo(width: number = 21, height: number = 24) {
   return nostrLogo(width, height);
 }
 

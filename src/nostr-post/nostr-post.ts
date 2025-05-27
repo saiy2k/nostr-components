@@ -1,8 +1,4 @@
-import {
-  NDKEvent,
-  NDKUserProfile,
-  ProfilePointer,
-} from '@nostr-dev-kit/ndk';
+import { NDKEvent, NDKUserProfile, ProfilePointer } from '@nostr-dev-kit/ndk';
 import { nip21 } from 'nostr-tools';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { getPostStats, Stats } from '../common/utils';
@@ -32,7 +28,9 @@ export default class NostrPost extends HTMLElement {
   };
 
   private onClick: ((post: NDKEvent | null) => void) | null = null;
-  private onAuthorClick: ((npub: string, author: NDKUserProfile | null | undefined) => void) | null = null;
+  private onAuthorClick:
+    | ((npub: string, author: NDKUserProfile | null | undefined) => void)
+    | null = null;
 
   getRelays = () => {
     const userRelays = this.getAttribute('relays');
@@ -63,15 +61,18 @@ export default class NostrPost extends HTMLElement {
   async connectedCallback() {
     const onClick = this.getAttribute('onClick');
     if (onClick !== null && (window as any)[onClick]) {
-      this.onClick = (window as any)[onClick] as (post: NDKEvent | null) => void;
+      this.onClick = (window as any)[onClick] as (
+        post: NDKEvent | null
+      ) => void;
     }
 
     const onAuthorClick = this.getAttribute('onAuthorClick');
     if (onAuthorClick !== null && (window as any)[onAuthorClick]) {
-      this.onAuthorClick = (window as any)[onAuthorClick] as (npub: string, author: NDKUserProfile | null | undefined) => void;
+      this.onAuthorClick = (window as any)[onAuthorClick] as (
+        npub: string,
+        author: NDKUserProfile | null | undefined
+      ) => void;
     }
-
-
 
     this.render();
 
@@ -95,7 +96,11 @@ export default class NostrPost extends HTMLElement {
     ];
   }
 
-  attributeChangedCallback(name: string, _oldValue: string | null, newValue: string | null) {
+  attributeChangedCallback(
+    name: string,
+    _oldValue: string | null,
+    newValue: string | null
+  ) {
     if (name === 'relays') {
       this.nostrService.connectToNostr(this.getRelays());
     }
@@ -114,11 +119,12 @@ export default class NostrPost extends HTMLElement {
     if (name === 'onAuthorClick' && newValue) {
       const handler = (window as any)[newValue];
       if (typeof handler === 'function') {
-        this.onAuthorClick = handler as (npub: string, author: NDKUserProfile | null | undefined) => void;
+        this.onAuthorClick = handler as (
+          npub: string,
+          author: NDKUserProfile | null | undefined
+        ) => void;
       }
     }
-
-
 
     if (name === 'theme') {
       this.getTheme();
@@ -153,7 +159,10 @@ export default class NostrPost extends HTMLElement {
           const shouldShowStats = this.getAttribute('show-stats');
 
           if (this.post && shouldShowStats) {
-            const stats = await getPostStats(this.nostrService.getNDK(), this.post.id);
+            const stats = await getPostStats(
+              this.nostrService.getNDK(),
+              this.post.id
+            );
             if (stats) {
               this.stats = stats;
             }
@@ -304,7 +313,8 @@ export default class NostrPost extends HTMLElement {
     }
 
     // Then handle URLs in the text
-    const regex = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
+    const regex =
+      /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
     const matches = textContent.match(regex);
 
     if (matches) {
@@ -385,10 +395,10 @@ export default class NostrPost extends HTMLElement {
 
     const date = post.created_at
       ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
       : '';
 
     // Process the post content
@@ -400,10 +410,10 @@ export default class NostrPost extends HTMLElement {
       noteId,
       authorProfile
         ? {
-          displayName: authorProfile.displayName || '',
-          image: authorProfile.image || '',
-          nip05: authorProfile.nip05 || '',
-        }
+            displayName: authorProfile.displayName || '',
+            image: authorProfile.image || '',
+            nip05: authorProfile.nip05 || '',
+          }
         : undefined,
       date,
       renderedContent
