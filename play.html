@@ -142,9 +142,21 @@
       <br />
       <br />
 
+      <!-- Example 1: Profile with show-npub="true" (NPub will be visible) -->
+      <h3>Profile with show-npub="true"</h3>
       <nostr-profile
         npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
         theme="light"
+        show-npub="true"
+        onClick="onProfileClick"
+      ></nostr-profile>
+
+      <!-- Example 2: Profile with show-npub="false" (NPub will be hidden) -->
+      <h3 style="margin-top: 2em;">Profile with show-npub="false" (or omitted)</h3>
+      <nostr-profile
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        theme="light"
+        show-npub="false"
         onClick="onProfileClick"
       ></nostr-profile>
 

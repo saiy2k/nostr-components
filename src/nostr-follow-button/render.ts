@@ -28,6 +28,15 @@ export function renderFollowButton({
 
   return `
     ${getFollowButtonStyles(theme, isLoading)}
+    <style>
+      .nostr-follow-button svg {
+        fill: currentColor;
+        width: ${iconWidth}px;
+        height: ${iconHeight}px;
+        display: inline-block;
+        vertical-align: middle;
+      }
+    </style>
     <div class="nostr-follow-button-container ${isError ? 'nostr-follow-button-error' : ''}">
       <div class="nostr-follow-button-wrapper">
         <button class="nostr-follow-button">

@@ -753,6 +753,16 @@ export function getProfileStyles(theme: Theme) {
       color: var(--nstrc-profile-text-grey);
     }
 
+    .profile-ids {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+      color: var(--nstrc-profile-text-grey);
+      font-size: 14px;
+      width: 100%;
+    }
+
     .nip05-wrapper {
       display: flex;
       flex-direction: column;
@@ -898,11 +908,40 @@ export function getProfileStyles(theme: Theme) {
       display: flex;
       align-items: center;
       gap: 4px;
-      margin-top: 6px;
+      margin-top: 2px;
+      width: 100%;
     }
 
-    .npub-container .npub {
+    .npub {
       color: #a2a2a2;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      word-break: break-all;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    
+    .profile-ids {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+      color: var(--nstrc-profile-text-grey);
+      font-size: 14px;
+      width: 100%;
+    }
+    
+    .nip05-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .nip05 {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .npub.full {

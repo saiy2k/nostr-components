@@ -72,13 +72,18 @@ export function renderProfile(options: RenderOptions): string {
   const maskedNpub = maskNPub(npub);
 
   const renderNpub = () => {
-    if (!showNpub) return '';
+    // Convert showNpub to boolean if it's a string
+    const shouldShowNpub = showNpub === true || String(showNpub).toLowerCase() === 'true';
+    if (!shouldShowNpub) return '';
+    
     return `
-      <div class="npub" ${npubDataAttr}>
-        <span class="npub-text">${maskedNpub}</span>
-        <span class="copy-button" data-npub="${npub}">
-          ${copyIcon}
-        </span>
+      <div class="npub-container">
+        <div class="npub" ${npubDataAttr}>
+          <span class="npub-text">${maskedNpub}</span>
+          <span class="copy-button" data-npub="${npub}">
+            ${copyIcon}
+          </span>
+        </div>
       </div>
     `;
   };
@@ -141,20 +146,20 @@ export function renderProfile(options: RenderOptions): string {
             </div>
           </div>
           
-          <div class="nip05-wrapper">
+          <div class="profile-ids">
             <div class="nip05-container">
               ${
                 isLoading
                   ? '<div style="width: 75px; height: 8px; border-radius: 20px" class="skeleton"></div>'
                   : nip05
                     ? `<div class="nip05">
-                      <span>${nip05}</span>
-                      <span id="nip05-copy" class="copy-button">&#x2398;</span>
-                    </div>`
+                        <span>${nip05}</span>
+                        <span id="nip05-copy" class="copy-button">&#x2398;</span>
+                      </div>`
                     : ''
               }
-              ${renderNpub()}
             </div>
+            ${renderNpub()}
           </div>
         </div>
         
@@ -279,10 +284,14 @@ export function renderLoadingState(theme: Theme): string {
               <div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>
             </div>
           </div>
-          <div class="nip05-wrapper">
+          <div class="nip05-wrapper" style="display: flex; align-items: flex-start; margin-top: 4px; color: var(--nstr-text-secondary); font-size: 14px; flex-direction: column;">
             <div class="nip05-container">
               <div style="width: 75px; height: 8px; border-radius: 20px" class="skeleton"></div>
-              <div style="width: 120px; height: 12px; border-radius: 20px; margin-top: 4px;" class="skeleton"></div>
+              <div class="npub-container" style="width: 100%; margin-top: 8px;">
+                <div class="npub" style="display: flex; align-items: center; gap: 6px; color: var(--nstr-text-secondary); font-family: monospace; font-size: 13px; word-break: break-all;">
+                  <div style="width: 120px; height: 12px; border-radius: 20px; margin-top: 4px;" class="skeleton"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
