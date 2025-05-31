@@ -20,6 +20,10 @@ export default defineConfig({
           __dirname,
           'src/nostr-follow-button/nostr-follow-button.ts'
         ),
+        'nostr-zap-button': resolve(
+          __dirname,
+          'src/nostr-follow-button/nostr-zap.ts'
+        ),
         'nostr-post': resolve(__dirname, 'src/nostr-post/nostr-post.ts'),
         'nostr-profile': resolve(
           __dirname,
