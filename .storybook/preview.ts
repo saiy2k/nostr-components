@@ -1,4 +1,4 @@
-import type { Preview } from "@storybook/web-components";
+import type { Preview } from '@storybook/web-components';
 
 const preview: Preview = {
   parameters: {
@@ -8,10 +8,10 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
-   options: {
-    brandTitle: 'Nostr Components',
-    brandUrl: 'https://nostr-components.web.app/',
-  },
+    options: {
+      brandTitle: 'Nostr Components',
+      brandUrl: 'https://nostr-components.web.app/',
+    },
   },
 };
 
