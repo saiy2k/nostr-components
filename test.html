@@ -8,7 +8,7 @@
     <script src="/dist/nostr-profile-badge.js"></script>
     <script type="module" src="/dist/nostr-profile.js"></script>
     <script type="module" src="/dist/nostr-post.js"></script>
-    <!-- <script type="module" src="./dist/nostr-follow-button.js"></script> -->
+    <script type="module" src="/dist/components/nostr-zap.es.js"></script>
     <!-- <script type="module" src="./dist/nostr-check.js"></script> -->
 
     <style>
@@ -54,6 +54,54 @@
             theme="dark"
             onClick="onProfileClick"
         ></nostr-profile-badge> -->
+    </div>
+
+    <div style="margin-top:32px">
+      <!-- 1. Basic usage (default amount field in modal) -->
+      <h3>Basic zap</h3>
+      <nostr-zap
+        npub="npub18az980ulkj4t2jed64t5upe2x9m39junc2j54kwvgamrf8uxw3hsnq6w60"
+        theme="light"
+        relays="wss://relay.nostr.band,wss://strfry.iris.to"
+      ></nostr-zap>
+
+      <!-- 2. Custom button text & colour -->
+      <h3 style="margin-top:24px">Custom label &amp; colour</h3>
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        button-text="Tip 1k⚡"
+        button-color="#facc15"
+        theme="light"
+      ></nostr-zap>
+
+      <!-- 3. Dark-theme button (automatically switches CSS vars) -->
+      <h3 style="margin-top:24px">Dark theme</h3>
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        theme="dark"
+      ></nostr-zap>
+
+      <!-- 4. Fixed amount (no chooser needed) -->
+      <h3 style="margin-top:24px">Preset amount attribute (500 sats)</h3>
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        amount="500"
+        button-text="Zap 500"
+      ></nostr-zap>
+
+      <!-- 5. Using raw pubkey attribute instead of npub -->
+      <h3 style="margin-top:24px">Using hex pubkey attribute</h3>
+      <nostr-zap
+        pubkey="6e06e84ad4c45ea1ecd573349d66bfe9a50e4e756d34b93cf9f5a353a7e9e0e2"
+        button-text="Zap pubkey"
+      ></nostr-zap>
+
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        theme="light"
+        relays="wss://relay.nostr.band,wss://strfry.iris.to"
+        button-text="Zap!"
+      ></nostr-zap>
     </div>
 
     <!-- npub="npub1ltt9gry09lf2z6396rvzmk2a8wkh3yx5xhgkjzzg5znh62yr53rs0hk97y" -->
