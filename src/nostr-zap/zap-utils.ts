@@ -60,8 +60,8 @@ export const getZapEndpoint = async (profileMetadata: any) => {
 const signEvent = async (zapEvent: any, anon?: boolean) => {
   if (isNip07ExtAvailable() && !anon) {
     try {
-      // @ts-ignore – NIP-07 browser extensions inject `window.nostr`
-      return await window.nostr.signEvent(zapEvent);
+            const ext = (window as any).nostr as { signEvent: (e: any) => Promise<any> } | undefined;
+      if (ext?.signEvent) return await ext.signEvent(zapEvent);
     } catch {
       /* fall-through -> anonymous */
     }
@@ -92,7 +92,7 @@ const makeZapEvent = async ({
         : undefined,
     amount,
     relays,
-    comment,
+    comment: comment || '',
   });
 
   if (nip19Target && nip19Target.startsWith('naddr')) {
@@ -130,7 +130,7 @@ export const fetchInvoice = async ({
     nip19Target,
     amount,
     relays: normalizedRelays,
-    comment,
+    comment: comment ?? '',
     anon,
   });
 
@@ -158,7 +158,17 @@ const generateRandomPrivKey = (): Uint8Array => {
   return bytes;
 };
 
-export const isNip07ExtAvailable = () => typeof window !== 'undefined' && (window as any).nostr;
+export const isNip07ExtAvailable = (): boolean => typeof window !== 'undefined' && !!(window as any).nostr;
+
+// Augment missing types for SimplePool.sub so we can safely cast above
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+declare module 'nostr-tools' {
+  interface SimplePool {
+    sub(relays: string[], filters: Array<Record<string, unknown>>): {
+      on(type: string, cb: (event: any) => void): void;
+    };
+  }
+}
 
 export const listenForZapReceipt = ({
   relays,
@@ -174,15 +184,14 @@ export const listenForZapReceipt = ({
   const since = Math.round(Date.now() / 1000);
 
   const intervalId = setInterval(() => {
-    // @ts-ignore - type definitions outdated in nostr-tools
-    const sub = (pool as any).sub(normalizedRelays, [
+        const sub = (pool as any).sub(normalizedRelays, [
       {
         kinds: [9735],
         since,
       },
     ]);
-    sub.on('event', event => {
-      if (event.tags.find(t => t[0] === 'bolt11' && t[1] === invoice)) {
+    sub.on('event', (event: any) => {
+      if (event.tags.find((t: any) => t[0] === 'bolt11' && t[1] === invoice)) {
         onSuccess();
         cleanup();
       }
