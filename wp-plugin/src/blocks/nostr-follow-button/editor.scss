@@ -1,0 +1,20 @@
+/*
+* Style Works for Editor Only
+*/
+
+.wp-block-naviddev-gutenberg-blocks-bootstrap {
+	border: 1px dotted rgb(1, 1, 1);
+}
+
+/* Editor preview styling */
+.nostr-profile-container {
+  min-height: 100px;
+  border: 1px dashed #ccc;
+  padding: 15px;
+}
+
+.nostr-profile-container p {
+  color: #999;
+  font-style: italic;
+  margin: 0;
+}

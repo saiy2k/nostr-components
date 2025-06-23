@@ -1,0 +1,23 @@
+{
+	"apiVersion": 2,
+	"name": "nostr-components/nostr-badge",
+	"version": "0.1.0",
+	"title": "Nostr Badge",
+	"category": "Nostr Components",
+	"icon": "smiley",
+	"description": "Integrate Nostr Badge into your WordPress site.",
+	"supports": {
+		"html": false,
+		"anchor": true
+	},
+	"attributes": {
+		"npub": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"textdomain": "nostr-components",
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css"
+}

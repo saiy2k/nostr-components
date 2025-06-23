@@ -1,0 +1,47 @@
+{
+	"name": "gutenberg-blocks",
+	"version": "0.1.0",
+	"description": "Embed Nostr profiles, posts, and follow buttons in any website using Gutenberg blocks",
+	"author": "Akap Azmon",
+	"license": "GPL-2.0-or-later",
+	"main": "build/blocks/index.js",
+	"repository": {
+		"type": "git",
+		"url": ""	
+	},
+	"keywords": [
+		"wordpress",
+		"gutenberg",
+		"blocks",
+		"gutenberg blocks development",
+		"wordpress gutenberg blocks development",
+		"wordpress gutenberg blocks",
+		"wordpress gutenberg blocks development boilerplate"
+	],
+	"prettier": "@wordpress/prettier-config",
+	"stylelint": {
+		"extends": "@wordpress/stylelint-config/scss"
+	},
+	"scripts": {
+		"build": "wp-scripts build",
+		"format": "wp-scripts format",
+		"lint:css": "wp-scripts lint-style",
+		"lint:js": "wp-scripts lint-js",
+		"packages-update": "wp-scripts packages-update",
+		"plugin-zip": "wp-scripts plugin-zip",
+		"start": "wp-scripts start"
+		
+	},
+	"devDependencies": {
+		"@wordpress/eslint-plugin": "^14.0.0",
+		"@wordpress/prettier-config": "^2.10.0",
+		"@wordpress/scripts": "^30.17.0",
+		"@wordpress/stylelint-config": "^21.10.0",
+		"eslint-config-prettier": "^8.6.0"
+	},
+	"dependencies": {
+		"@wordpress/block-editor": "^11.4.0",
+		"@wordpress/components": "^23.4.0",
+		"@wordpress/i18n": "^4.27.0"
+	}
+}
