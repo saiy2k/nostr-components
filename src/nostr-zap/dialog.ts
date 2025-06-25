@@ -17,10 +17,13 @@ import {
 
 export interface OpenZapModalParams {
   npub: string;
-  relays: string; // comma-separated list coming from component
+  relays: string;
   cachedAmountDialog?: HTMLDialogElement | null;
   buttonColor?: string;
-  initialAmount?: number;
+  theme?: 'light' | 'dark';
+  fixedAmount?: number; // if supplied, hide amount UI
+  defaultAmount?: number; // preselect but allow change
+  initialAmount?: number; // legacy support
   anon?: boolean;
 }
 
@@ -35,6 +38,14 @@ export const injectCSS = (() => {
     style.textContent = `
       .nostr-zap-dialog{width:424px;max-width:90vw;border:none;border-radius:10px;padding:24px 32px;background:#fff;color:#000;position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;text-align:center}
       .nostr-zap-dialog[open]{display:block}
+      /* Dark mode overrides */
+      .nostr-zap-dialog.dark{background:#141414;color:#fff}
+      .nostr-zap-dialog.dark .amount-buttons button{background:#262626;border:1px solid #3a3a3a;color:#fff}
+      .nostr-zap-dialog.dark .amount-buttons button.active{background:#7f00ff;color:#fff}
+      .nostr-zap-dialog.dark .close-btn{background:#262626;color:#fff}
+      .nostr-zap-dialog.dark .cta-btn{background:#7f00ff;color:#fff}
+      .nostr-zap-dialog.dark .copy-btn{color:#7f00ff}
+    
       .nostr-zap-dialog h2{font-size:1.25rem;font-weight:700;margin:4px 0}
       .nostr-zap-dialog p{margin:4px 0;word-break:break-word}
       .nostr-zap-dialog .amount-buttons{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 8px}
@@ -65,7 +76,7 @@ function ensureShadow() {
  * can cache it between clicks.
  */
 export async function init(params: OpenZapModalParams): Promise<HTMLDialogElement> {
-  const { npub, relays, cachedAmountDialog, buttonColor, initialAmount } = params;
+  const { npub, relays, cachedAmountDialog, buttonColor, fixedAmount, defaultAmount, initialAmount } = params;
   if (cachedAmountDialog) {
     cachedAmountDialog.showModal();
     return cachedAmountDialog;
@@ -73,7 +84,16 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
 
   // Minimal amount presets – feel free to tweak / add more later.
   const presets = [21, 100, 1000];
-  let selectedAmount = typeof initialAmount === 'number' && initialAmount > 0 ? initialAmount : presets[0];
+  let selectedAmount: number;
+  if (typeof fixedAmount === 'number' && fixedAmount > 0) {
+    selectedAmount = fixedAmount;
+  } else if (typeof defaultAmount === 'number' && defaultAmount > 0) {
+    selectedAmount = defaultAmount;
+  } else if (typeof initialAmount === 'number' && initialAmount > 0) {
+    selectedAmount = initialAmount;
+  } else {
+    selectedAmount = presets[0];
+  }
   let customComment = '';
   let currentInvoice = '';
   let cleanupReceipt: (() => void) | null = null;
@@ -131,23 +151,25 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   const shadow = ensureShadow();
 
   const dialog = document.createElement('dialog');
-  dialog.className = 'nostr-zap-dialog';
+  dialog.className = 'nostr-zap-dialog' + (params.theme === 'dark' ? ' dark' : '');
 
   const amountButtonsHtml = presets
     .map(a => `<button type="button" data-val="${a}">${a} ⚡</button>`) // show sat symbol
     .join('');
 
+  const hideAmountUI = typeof fixedAmount === 'number' && fixedAmount > 0;
+
   dialog.innerHTML = `
       <button class="close-btn">✕</button>
       <h2>Send a Zap</h2>
-      <div class="amount-buttons">${amountButtonsHtml}</div>
-      <div style="margin-top:8px">
+      ${hideAmountUI ? '' : `<div class="amount-buttons">${amountButtonsHtml}</div>`}
+      ${hideAmountUI ? '' : `<div style="margin-top:8px">
         <input type="number" min="1" placeholder="Custom sats" class="custom-amount" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
-      </div>
-      <div style="margin-top:8px">
+      </div>`}
+      ${hideAmountUI ? '' : `<div style="margin-top:8px">
         <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
-      </div>
-      <img class="qr" width="240" height="240" alt="QR" />
+      </div>`}
+      <img class="qr" width="240" height="240" alt="QR" style="cursor:pointer" />
       <br />
       <button type="button" class="copy-btn">Copy invoice</button>
       <button type="button" class="cta-btn" disabled>Open in wallet</button>
@@ -157,8 +179,9 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   shadow.appendChild(dialog);
 
   // Event wiring
-  const amountContainer = dialog.querySelector('.amount-buttons') as HTMLElement;
-  amountContainer.addEventListener('click', async e => {
+  const amountContainer = dialog.querySelector('.amount-buttons') as HTMLElement | null;
+  if (amountContainer)
+    amountContainer.addEventListener('click', async e => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'BUTTON') {
       const val = Number(target.dataset['val']);
@@ -173,24 +196,26 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   });
 
   // custom amount change
-  (dialog.querySelector('.custom-amount') as HTMLInputElement).addEventListener('input', async e => {
+  const customAmountInput = dialog.querySelector('.custom-amount') as HTMLInputElement | null;
+  if (customAmountInput) customAmountInput.addEventListener('input', async e => {
     const val = Number((e.target as HTMLInputElement).value);
     if (val > 0) {
       selectedAmount = val;
-      setActiveAmountButtons(amountContainer, -1); // clear presets highlight
+      if (amountContainer) setActiveAmountButtons(amountContainer, -1); // clear presets highlight
       const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
       payBtn.disabled = true;
       await refreshUI(dialog);
     }
   });
 
-  (dialog.querySelector('.comment-input') as HTMLInputElement).addEventListener('input', e => {
+  const commentInput = dialog.querySelector('.comment-input') as HTMLInputElement | null;
+  if (commentInput) commentInput.addEventListener('input', e => {
     customComment = (e.target as HTMLInputElement).value.slice(0, 200);
   });
 
   (dialog.querySelector('.close-btn') as HTMLButtonElement).onclick = () => dialog.close();
 
-  (dialog.querySelector('.copy-btn') as HTMLButtonElement).onclick = async () => {
+  const copyInvoice = async () => {
     if (!currentInvoice) return;
     await navigator.clipboard.writeText(currentInvoice);
     (dialog.querySelector('.copy-btn') as HTMLButtonElement).textContent = 'Copied!';
@@ -198,6 +223,8 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       (dialog.querySelector('.copy-btn') as HTMLButtonElement).textContent = 'Copy invoice';
     }, 1500);
   };
+  (dialog.querySelector('.copy-btn') as HTMLButtonElement).onclick = copyInvoice;
+  (dialog.querySelector('img.qr') as HTMLImageElement).onclick = copyInvoice;
 
   (dialog.querySelector('.cta-btn') as HTMLButtonElement).onclick = async () => {
     if (!currentInvoice) return;
@@ -222,7 +249,10 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     dialog.classList.add('success');
     const overlay = dialog.querySelector('.success-overlay') as HTMLElement;
     overlay.style.opacity = '1';
-    setTimeout(() => dialog.close(), 1800);
+    // hide other controls for clarity
+    const controls = dialog.querySelectorAll('.amount-buttons, .custom-amount, .comment-input, .cta-btn, .copy-btn');
+    controls.forEach(el => ((el as HTMLElement).style.display = 'none'));
+    setTimeout(() => dialog.close(), 2000);
   }
 
   // Zap receipt listener
@@ -242,11 +272,12 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
 
   // Load first invoice & show
   await refreshUI(dialog);
-  if (presets.includes(selectedAmount)) {
+  if (amountContainer && presets.includes(selectedAmount)) {
     setActiveAmountButtons(amountContainer, selectedAmount);
-  } else {
-    (dialog.querySelector('.custom-amount') as HTMLInputElement).value = String(selectedAmount);
-    setActiveAmountButtons(amountContainer, -1);
+  } else if (!hideAmountUI) {
+    const input = dialog.querySelector('.custom-amount') as HTMLInputElement | null;
+    if (input) input.value = String(selectedAmount);
+    if (amountContainer) setActiveAmountButtons(amountContainer, -1);
   }
   dialog.showModal();
 

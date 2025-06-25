@@ -3,6 +3,7 @@ import { Theme } from '../common/types';
 import { injectCSS, init as openZapModal } from './dialog';
 import { renderZapButton, RenderZapButtonOptions } from './render';
 import { nip19 } from 'nostr-tools';
+import { resolveNip05 } from './zap-utils';
 
 /**
  * <nostr-zap>
@@ -64,7 +65,7 @@ export default class NostrZap extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['relays', 'npub', 'pubkey', 'theme', 'button-text', 'button-color', 'amount'];
+    return ['relays', 'npub', 'pubkey', 'nip05', 'theme', 'button-text', 'button-color', 'amount', 'default-amount'];
   }
 
   attributeChangedCallback(name: string, _oldVal: string | null, _newVal: string | null) {
@@ -83,33 +84,54 @@ export default class NostrZap extends HTMLElement {
   }
 
   private async handleZapClick() {
+    // show loader and disable the button immediately
+    this.isLoading = true;
+    this.render();
+
     const relays = this.getRelays().join(',');
     let npub = this.getAttribute('npub');
-    const pubkey = this.getAttribute('pubkey');
-    if (!npub && pubkey) npub = nip19.npubEncode(pubkey);
-    if (!npub) {
-      this.isError = true;
-      this.errorMessage = 'Provide npub or pubkey attribute';
-      this.render();
-      return;
-    }
+    const pubkeyAttr = this.getAttribute('pubkey');
+    const nip05Attr = this.getAttribute('nip05');
+
     try {
+      if (!npub) {
+        if (pubkeyAttr) {
+          npub = nip19.npubEncode(pubkeyAttr);
+        } else if (nip05Attr) {
+          const resolvedPubkey = await resolveNip05(nip05Attr);
+          npub = nip19.npubEncode(resolvedPubkey);
+        }
+      }
+
+      if (!npub) throw new Error('Provide npub, nip05 or pubkey attribute');
+
       this.cachedAmountDialog = await openZapModal({
         npub,
         relays,
-        cachedAmountDialog: this.cachedAmountDialog,
         buttonColor: this.getAttribute('button-color') || undefined,
-        anon: false,
-        initialAmount: (() => {
+        cachedAmountDialog: this.cachedAmountDialog,
+        theme: this.theme,
+        fixedAmount: (() => {
           const amtAttr = this.getAttribute('amount');
           if (!amtAttr) return undefined;
           const num = Number(amtAttr);
           return isNaN(num) || num <= 0 ? undefined : num;
         })(),
+        defaultAmount: (() => {
+          const defAttr = this.getAttribute('default-amount');
+          if (!defAttr) return undefined;
+          const num = Number(defAttr);
+          return isNaN(num) || num <= 0 ? undefined : num;
+        })(),
+        anon: false,
       });
+      this.isError = false;
+      this.errorMessage = '';
     } catch (e: any) {
       this.isError = true;
       this.errorMessage = e?.message || 'Unable to zap';
+    } finally {
+      this.isLoading = false;
       this.render();
     }
   }
@@ -136,7 +158,7 @@ export default class NostrZap extends HTMLElement {
       isError: this.isError,
       isSuccess: this.isSuccess,
       errorMessage: this.errorMessage,
-      buttonText: buttonTextAttr || '⚡️',
+      buttonText: buttonTextAttr || 'Zap',
       buttonColor: buttonColorAttr,
       iconWidth: iconWidthAttr ? Number(iconWidthAttr) : 25,
       iconHeight: iconHeightAttr ? Number(iconHeightAttr) : 25,

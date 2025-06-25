@@ -58,7 +58,8 @@ export function renderZapButton({
 }
 
 function getLightningIcon(w: number, h: number): string {
-  return `<svg width="${w}" height="${h}" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L3 14h7v8l10-12h-7z"/></svg>`;
+  // Yellow lightning regardless of text color
+  return `<svg width="${w}" height="${h}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>`;
 }
 
 export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {

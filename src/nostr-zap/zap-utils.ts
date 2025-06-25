@@ -160,6 +160,21 @@ const generateRandomPrivKey = (): Uint8Array => {
 
 export const isNip07ExtAvailable = (): boolean => typeof window !== 'undefined' && !!(window as any).nostr;
 
+// ---------------------------------------------------------------------------
+// nip05 resolution helper – very lightweight fetch to /.well-known/nostr.json
+// ---------------------------------------------------------------------------
+export async function resolveNip05(nip05: string): Promise<string> {
+  const [name, domain] = nip05.split('@');
+  if (!domain) throw new Error('Invalid nip05');
+  const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`;
+  const res = await fetch(url, { headers: { accept: 'application/json' } });
+  if (!res.ok) throw new Error('Unable to resolve nip05');
+  const json = await res.json();
+  const pubkey = json.names?.[name];
+  if (!pubkey) throw new Error('nip05 not found');
+  return pubkey as string;
+}
+
 // Augment missing types for SimplePool.sub so we can safely cast above
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
 declare module 'nostr-tools' {
