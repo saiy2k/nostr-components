@@ -57,6 +57,12 @@ export const injectCSS = (() => {
       .nostr-zap-dialog .copy-btn{margin-top:12px;cursor:pointer;font-size:14px;background:none;border:none;color:#7f00ff}
       .nostr-zap-dialog .success-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;justify-content:center;align-items:center;color:#fff;font-size:24px;border-radius:10px;opacity:0;transition:opacity .3s ease;pointer-events:none}
       .nostr-zap-dialog.success .success-overlay{opacity:1;pointer-events:auto}
+      /* loading overlay */
+      .nostr-zap-dialog .loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.7);display:flex;justify-content:center;align-items:center;border-radius:10px;opacity:0;transition:opacity .2s ease;pointer-events:none}
+      .nostr-zap-dialog.dark .loading-overlay{background:rgba(0,0,0,.7)}
+      .nostr-zap-dialog.loading .loading-overlay{opacity:1;pointer-events:auto}
+      @keyframes nstrc-spin{to{transform:rotate(360deg)}}
+      .nostr-zap-dialog .loading-overlay .loader{width:40px;height:40px;border:4px solid #ccc;border-top-color:#7f00ff;border-radius:50%;animation:nstrc-spin 1s linear infinite}
     `;
     ensureShadow().appendChild(style);
   };
@@ -135,12 +141,17 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   }
 
   async function refreshUI(dialog: HTMLDialogElement) {
-    await loadInvoice(selectedAmount, customComment);
-    const qrImg = dialog.querySelector('img.qr') as HTMLImageElement;
-    qrImg.src = qrImgSrc(currentInvoice);
+    dialog.classList.add('loading');
+    try {
+      await loadInvoice(selectedAmount, customComment);
+      const qrImg = dialog.querySelector('img.qr') as HTMLImageElement;
+      qrImg.src = qrImgSrc(currentInvoice);
 
-    const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
-    payBtn.disabled = false;
+      const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
+      payBtn.disabled = false;
+    } finally {
+      dialog.classList.remove('loading');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -173,6 +184,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       <br />
       <button type="button" class="copy-btn">Copy invoice</button>
       <button type="button" class="cta-btn" disabled>Open in wallet</button>
+      <div class="loading-overlay"><div class="loader"></div></div>
       <div class="success-overlay">⚡ Thank you!</div>
   `;
 
