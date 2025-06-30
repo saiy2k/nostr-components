@@ -266,4 +266,10 @@ export class NostrService {
   public getNDK(): NDK {
     return this.ndk;
   }
+
+  /** Check if window.nostr (NIP-07) or stored nsec is available */
+  public hasSigner(): boolean {
+    if ((window as any).nostr) return true;
+    return !!localStorage.getItem('nostr_nsec');
+  }
 }

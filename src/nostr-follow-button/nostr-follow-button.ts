@@ -79,14 +79,45 @@ export default class NostrFollowButton extends HTMLElement {
 
   private async handleFollowClick() {
     this.isError = false;
-    const nip07signer = new NDKNip07Signer();
+    // Onboarding check
+    if (!this.nostrService.hasSigner()) {
+      if (!customElements.get('nostr-onboarding-modal')) {
+        await import('../onboarding/onboarding-modal.ts');
+      }
+      const modal = document.createElement('nostr-onboarding-modal');
+      document.body.appendChild(modal);
+      (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+      return;
+    }
+
+    let signer;
+    if ((window as any).nostr) {
+      signer = new NDKNip07Signer();
+    } else {
+      const stored = localStorage.getItem('nostr_nsec');
+      if (stored) {
+        const { NDKPrivateKeySigner } = await import('@nostr-dev-kit/ndk');
+        signer = new NDKPrivateKeySigner(stored);
+      }
+    }
+
+    if (!signer) {
+      // open onboarding again
+      if (!customElements.get('nostr-onboarding-modal')) {
+        await import('../onboarding/onboarding-modal.ts');
+      }
+      const modal = document.createElement('nostr-onboarding-modal');
+      document.body.appendChild(modal);
+      (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+      return;
+    }
 
     this.isLoading = true;
     this.render();
 
     try {
       const ndk = this.nostrService.getNDK();
-      ndk.signer = nip07signer;
+      ndk.signer = signer;
       await this.nostrService.connectToNostr(this.getRelays());
 
       const userToFollowNpub = this.getAttribute('npub');
@@ -135,10 +166,26 @@ export default class NostrFollowButton extends HTMLElement {
 
       const error = err as Error;
       if (error.message && error.message.includes('NIP-07')) {
-        this.errorMessage = `Looks like you don't have any nostr signing browser extension.
-                          Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
+        // Fallback to onboarding flow if signer truly absent
+        if (!this.nostrService.hasSigner()) {
+          if (!customElements.get('nostr-onboarding-modal')) {
+            await import('../onboarding/onboarding-modal.ts');
+          }
+          const modal = document.createElement('nostr-onboarding-modal');
+          document.body.appendChild(modal);
+          (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+          return;
+        }
+        this.errorMessage = 'Signer not available. Install/enable a Nostr signer and try again.';
       } else {
-        this.errorMessage = 'Please authorize, click the button to try again!';
+        // Generic error – often user denied signature. Re-open onboarding so they can retry / switch signer
+        if (!customElements.get('nostr-onboarding-modal')) {
+          await import('../onboarding/onboarding-modal.ts');
+        }
+        const modal = document.createElement('nostr-onboarding-modal');
+        document.body.appendChild(modal);
+        (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+        return;
       }
     } finally {
       this.isLoading = false;

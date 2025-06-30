@@ -84,6 +84,17 @@ export default class NostrZap extends HTMLElement {
   }
 
   private async handleZapClick() {
+    // Onboarding check
+    if (!(window as any).nostr && !localStorage.getItem('nostr_nsec')) {
+      if (!customElements.get('nostr-onboarding-modal')) {
+        await import('../onboarding/onboarding-modal.ts');
+      }
+      const modal = document.createElement('nostr-onboarding-modal');
+      document.body.appendChild(modal);
+      (modal as any).setPendingAction('zap', () => this.handleZapClick());
+      return;
+    }
+
     // show loader and disable the button immediately
     this.isLoading = true;
     this.render();
