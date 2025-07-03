@@ -1,47 +1,33 @@
 {
-	"name": "gutenberg-blocks",
+	"name": "nostr-components",
 	"version": "0.1.0",
-	"description": "Embed Nostr profiles, posts, and follow buttons in any website using Gutenberg blocks",
-	"author": "Akap Azmon",
-	"license": "GPL-2.0-or-later",
-	"main": "build/blocks/index.js",
-	"repository": {
-		"type": "git",
-		"url": ""	
+	"description": "Embed Nostr components like profiles, posts, follow buttons, and badges using WordPress blocks or shortcodes.",
+	"author": {
+		"name": "Nostr Components",
+		"url": "https://nostr-components.web.app"
 	},
-	"keywords": [
-		"wordpress",
-		"gutenberg",
-		"blocks",
-		"gutenberg blocks development",
-		"wordpress gutenberg blocks development",
-		"wordpress gutenberg blocks",
-		"wordpress gutenberg blocks development boilerplate"
+	"contributors": [
+		{
+			"name": "Akap Azmon",
+			"url": "https://github.com/akapazmon"
+		}
 	],
-	"prettier": "@wordpress/prettier-config",
-	"stylelint": {
-		"extends": "@wordpress/stylelint-config/scss"
-	},
+	"license": "GPL-2.0-or-later",
+	"main": "build/index.js",
 	"scripts": {
-		"build": "wp-scripts build",
+		"build": "wp-scripts build --blocks-manifest",
 		"format": "wp-scripts format",
 		"lint:css": "wp-scripts lint-style",
 		"lint:js": "wp-scripts lint-js",
 		"packages-update": "wp-scripts packages-update",
 		"plugin-zip": "wp-scripts plugin-zip",
-		"start": "wp-scripts start"
-		
+		"start": "wp-scripts start --blocks-manifest"
 	},
 	"devDependencies": {
-		"@wordpress/eslint-plugin": "^14.0.0",
-		"@wordpress/prettier-config": "^2.10.0",
-		"@wordpress/scripts": "^30.17.0",
-		"@wordpress/stylelint-config": "^21.10.0",
-		"eslint-config-prettier": "^8.6.0"
+		"@svgr/webpack": "^8.1.0",
+		"@wordpress/scripts": "^30.19.0"
 	},
 	"dependencies": {
-		"@wordpress/block-editor": "^11.4.0",
-		"@wordpress/components": "^23.4.0",
-		"@wordpress/i18n": "^4.27.0"
+		"nostr-tools": "^2.15.0"
 	}
 }

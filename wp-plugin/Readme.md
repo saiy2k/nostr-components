@@ -1,1 +1,0 @@
-# NavidDev Gutenberg Blocks Boilerplate
