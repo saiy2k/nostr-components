@@ -20,6 +20,12 @@
  * @see https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata/#view-script
  */
  
-/* eslint-disable no-console */
-console.log("Hello World! (from create-block-nostr-post block)");
-/* eslint-enable no-console */
+let _nostrPostScriptLoaded = false;
+
+if (!_nostrPostScriptLoaded) {
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = 'https://nostr-components.web.app/dist/nostr-post.js';
+  document.head.appendChild(script);
+  _nostrPostScriptLoaded = true;
+}

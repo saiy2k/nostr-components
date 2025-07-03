@@ -20,6 +20,13 @@
  * @see https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata/#view-script
  */
  
-/* eslint-disable no-console */
-console.log("Hello World! (from create-block-nostr-follow-button block)");
-/* eslint-enable no-console */
+let _nostrScriptLoaded = false;
+
+if (!_nostrScriptLoaded) {
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = 'https://nostr-components.web.app/dist/nostr-follow-button.js';
+  document.head.appendChild(script);
+  _nostrScriptLoaded = true;
+}
+

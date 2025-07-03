@@ -11,7 +11,8 @@
 		
 		"id": {
 			"type": "string",
-			"default": ""
+			"default": "",
+			"pattern": "^[a-f0-9]{64}$"
 		}
 	},
 	"supports": {

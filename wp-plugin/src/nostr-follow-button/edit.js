@@ -10,7 +10,14 @@ export default function Edit({ attributes, setAttributes }) {
   if (!npub) return;
 
   const iframe = document.querySelector('iframe[name="editor-canvas"]');
-  if (!iframe || !iframe.contentDocument) return;
+  if (!iframe) {
+    console.warn('Editor iframe not found');
+    return;
+  }
+  if (!iframe.contentDocument) {
+    console.warn('Unable to access iframe content');
+    return;
+  }
 
   const iframeDoc = iframe.contentDocument;
   const scriptId = 'nostr-follow-button-script';
@@ -45,7 +52,7 @@ export default function Edit({ attributes, setAttributes }) {
       </InspectorControls>
 
       <div
-       className="nostr-profile-container" style={{ color: 'red' }}
+       className="nostr-follow-button-container" style={{ color: 'red' }}
       >
         {npub ? (
           <nostr-follow-button pubkey={npub}></nostr-follow-button>

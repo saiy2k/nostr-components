@@ -2,14 +2,9 @@ import { useBlockProps } from '@wordpress/block-editor';
 
 export default function save( { attributes } ) {
 	const npub = attributes.npub;
-	return (
-		<div {...useBlockProps.save()}>
-      <script 
-        type="module" 
-        src="https://nostr-components.web.app/dist/nostr-profile-badge.js" 
-        data-pubkey={npub}
-      ></script>
-      <nostr-profile-badge pubkey={npub}></nostr-profile-badge>
-    </div>
-	);
+	// Validate npub format (should start with 'npub1' and be 63 characters long)
+	if (!npub || !npub.startsWith('npub1') || npub.length !== 63) {
+		return <div {...useBlockProps.save()}>Invalid public key format</div>;
+	}
+	return <nostr-profile-badge pubkey={attributes.npub}></nostr-profile-badge>;
 }

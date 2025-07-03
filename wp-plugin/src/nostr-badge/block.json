@@ -14,7 +14,8 @@
 	"attributes": {
 		"npub": {
 			"type": "string",
-			"default": ""
+			"default": "",
+			"pattern": "^[a-f0-9]{64}$"
 		}
 	},
 	"textdomain": "nostr-badge",
@@ -23,3 +24,4 @@
 	"style": "file:./style-index.css",
 	"viewScript": "file:./view.js"
 }
+

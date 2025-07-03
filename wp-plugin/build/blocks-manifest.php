@@ -17,7 +17,8 @@ return array(
 		'attributes' => array(
 			'npub' => array(
 				'type' => 'string',
-				'default' => ''
+				'default' => '',
+				'pattern' => '^[a-f0-9]{64}$'
 			)
 		),
 		'textdomain' => 'nostr-badge',
@@ -69,7 +70,8 @@ return array(
 		'attributes' => array(
 			'id' => array(
 				'type' => 'string',
-				'default' => ''
+				'default' => '',
+				'pattern' => '^[a-f0-9]{64}$'
 			)
 		),
 		'supports' => array(

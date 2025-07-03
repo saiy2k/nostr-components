@@ -122,7 +122,7 @@ class Nostr_Components_Embed {
             <p><strong>Blocks:</strong></p>
             <ul>
                 <li><code>Nostr Profile</code></li>
-                <li><code>Nost Badge</code></li>
+                <li><code>Nostr Badge</code></li>
                 <li><code>Nostr Follow Button</code></li>
                 <li><code>Nostr Post</code></li>
             </ul>

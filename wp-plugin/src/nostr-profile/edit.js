@@ -13,7 +13,7 @@ export default function Edit({ attributes, setAttributes }) {
   if (!iframe || !iframe.contentDocument) return;
 
   const iframeDoc = iframe.contentDocument;
-  const scriptId = 'nostr-follow-button-script';
+  const scriptId = 'nostr-profile-script';
 
   if (!iframeDoc.getElementById(scriptId)) {
 	const script = iframeDoc.createElement('script');

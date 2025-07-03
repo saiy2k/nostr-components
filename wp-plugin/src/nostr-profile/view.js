@@ -20,6 +20,13 @@
  * @see https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata/#view-script
  */
  
-/* eslint-disable no-console */
-console.log("Hello World! (from create-block-nostr-profile block)");
-/* eslint-enable no-console */
+let _scriptLoaded = false;
+
+if (!_scriptLoaded) {
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = 'https://nostr-components.web.app/dist/nostr-profile.js';
+  document.head.appendChild(script);
+  _scriptLoaded = true;
+}
+
