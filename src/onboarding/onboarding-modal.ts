@@ -84,10 +84,14 @@ export default class NostrOnboardingModal extends HTMLElement {
     this.render();
   }
 
-  private close() {
+  /**
+   * Close the modal.
+   * @param retry Whether the pending action should be retried automatically after closing. Defaults to true.
+   */
+  private close(retry: boolean = true) {
     this.remove();
-    // when closed, attempt the retry again (user might have installed ext)
-    if (this.retryCallback) {
+    // when closed programmatically (e.g., after a successful sign-in), retry the pending action.
+    if (retry && this.retryCallback) {
       setTimeout(() => this.retryCallback?.(), 300);
     }
   }
@@ -108,7 +112,8 @@ export default class NostrOnboardingModal extends HTMLElement {
     const overlay = document.createElement('div');
     overlay.className = 'overlay';
     overlay.addEventListener('click', e => {
-      if (e.target === overlay) this.close();
+      // If user clicks outside the modal (on the overlay), close without retrying.
+      if (e.target === overlay) this.close(false);
     });
 
     const modal = document.createElement('div');
@@ -117,7 +122,8 @@ export default class NostrOnboardingModal extends HTMLElement {
     const closeBtn = document.createElement('span');
     closeBtn.textContent = '×';
     closeBtn.className = 'close';
-    closeBtn.addEventListener('click', () => this.close());
+    // Close button – dismiss without retrying the pending action
+    closeBtn.addEventListener('click', () => this.close(false));
     modal.appendChild(closeBtn);
 
     switch (this.screen) {
