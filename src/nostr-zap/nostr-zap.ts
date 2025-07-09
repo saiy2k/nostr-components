@@ -105,6 +105,7 @@ export default class NostrZap extends HTMLElement {
 
       if (!npub) throw new Error('Provide npub, nip05 or pubkey attribute');
 
+      
       this.cachedAmountDialog = await openZapModal({
         npub,
         relays,

@@ -60,7 +60,7 @@ export const getZapEndpoint = async (profileMetadata: any) => {
 const signEvent = async (zapEvent: any, anon?: boolean) => {
   if (isNip07ExtAvailable() && !anon) {
     try {
-            const ext = (window as any).nostr as { signEvent: (e: any) => Promise<any> } | undefined;
+      const ext = (window as any).nostr as { signEvent: (e: any) => Promise<any> } | undefined;
       if (ext?.signEvent) return await ext.signEvent(zapEvent);
     } catch {
       /* fall-through -> anonymous */
@@ -134,6 +134,7 @@ export const fetchInvoice = async ({
     anon,
   });
 
+
   let url = `${zapEndpoint}?amount=${amount}&nostr=${encodeURIComponent(
     JSON.stringify(zapEvent)
   )}`;
@@ -187,35 +188,37 @@ declare module 'nostr-tools' {
 
 export const listenForZapReceipt = ({
   relays,
+  receiversPubKey,
   invoice,
   onSuccess,
 }: {
   relays: string[];
+  receiversPubKey: string,
   invoice: string;
   onSuccess: () => void;
 }) => {
   const pool = new SimplePool();
   const normalizedRelays = Array.from(new Set([...relays, 'wss://relay.nostr.band']));
-  const since = Math.round(Date.now() / 1000);
+  const since = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000); // current time - 24 hours
 
-  const intervalId = setInterval(() => {
-        const sub = (pool as any).sub(normalizedRelays, [
-      {
-        kinds: [9735],
-        since,
-      },
-    ]);
-    sub.on('event', (event: any) => {
-      if (event.tags.find((t: any) => t[0] === 'bolt11' && t[1] === invoice)) {
-        onSuccess();
-        cleanup();
+  const sub = pool.subscribe(normalizedRelays, 
+    {
+      kinds: [9735],
+      "#p": [receiversPubKey],
+      since,
+    },
+    {
+      onevent(event: any) {
+        if (event.tags.find((t: any) => t[0] === 'bolt11' && t[1] === invoice)) {
+          onSuccess();
+          cleanup();
+        }
       }
-    });
-  }, 5000);
+    }
+  );
 
   const cleanup = () => {
     pool.close(normalizedRelays);
-    clearInterval(intervalId);
   };
 
   return cleanup;

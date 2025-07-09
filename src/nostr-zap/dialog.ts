@@ -83,6 +83,7 @@ function ensureShadow() {
  */
 export async function init(params: OpenZapModalParams): Promise<HTMLDialogElement> {
   const { npub, relays, cachedAmountDialog, buttonColor, fixedAmount, defaultAmount, initialAmount } = params;
+  const npubHex = decodeNpub(npub);
   if (cachedAmountDialog) {
     cachedAmountDialog.showModal();
     return cachedAmountDialog;
@@ -122,6 +123,10 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       anon: false,
     });
     currentInvoice = invoice;
+
+    // Zap receipt listener
+    const relaysArr = relays.split(',');
+    cleanupReceipt = listenForZapReceipt({ relays: relaysArr, receiversPubKey: npubHex, invoice: invoice, onSuccess: markSuccess });
   }
 
   function qrImgSrc(invoice: string) {
@@ -266,10 +271,6 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     controls.forEach(el => ((el as HTMLElement).style.display = 'none'));
     setTimeout(() => dialog.close(), 2000);
   }
-
-  // Zap receipt listener
-  const relaysArr = relays.split(',');
-  cleanupReceipt = listenForZapReceipt({ relays: relaysArr, invoice: currentInvoice, onSuccess: markSuccess });
 
   dialog.addEventListener('close', () => {
     if (cleanupReceipt) cleanupReceipt();
