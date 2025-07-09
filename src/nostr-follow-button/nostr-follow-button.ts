@@ -77,16 +77,20 @@ export default class NostrFollowButton extends HTMLElement {
     this.render();
   }
 
+  private async showOnboardingModal() {
+    if (!customElements.get('nostr-onboarding-modal')) {
+      await import('../onboarding/onboarding-modal.ts');
+    }
+    const modal = document.createElement('nostr-onboarding-modal');
+    document.body.appendChild(modal);
+    (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+  }
+
   private async handleFollowClick() {
     this.isError = false;
     // Onboarding check
     if (!this.nostrService.hasSigner()) {
-      if (!customElements.get('nostr-onboarding-modal')) {
-        await import('../onboarding/onboarding-modal.ts');
-      }
-      const modal = document.createElement('nostr-onboarding-modal');
-      document.body.appendChild(modal);
-      (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+      await this.showOnboardingModal();
       return;
     }
 
@@ -103,12 +107,7 @@ export default class NostrFollowButton extends HTMLElement {
 
     if (!signer) {
       // open onboarding again
-      if (!customElements.get('nostr-onboarding-modal')) {
-        await import('../onboarding/onboarding-modal.ts');
-      }
-      const modal = document.createElement('nostr-onboarding-modal');
-      document.body.appendChild(modal);
-      (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+      await this.showOnboardingModal();
       return;
     }
 
@@ -168,23 +167,13 @@ export default class NostrFollowButton extends HTMLElement {
       if (error.message && error.message.includes('NIP-07')) {
         // Fallback to onboarding flow if signer truly absent
         if (!this.nostrService.hasSigner()) {
-          if (!customElements.get('nostr-onboarding-modal')) {
-            await import('../onboarding/onboarding-modal.ts');
-          }
-          const modal = document.createElement('nostr-onboarding-modal');
-          document.body.appendChild(modal);
-          (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+          await this.showOnboardingModal();
           return;
         }
         this.errorMessage = 'Signer not available. Install/enable a Nostr signer and try again.';
       } else {
         // Generic error – often user denied signature. Re-open onboarding so they can retry / switch signer
-        if (!customElements.get('nostr-onboarding-modal')) {
-          await import('../onboarding/onboarding-modal.ts');
-        }
-        const modal = document.createElement('nostr-onboarding-modal');
-        document.body.appendChild(modal);
-        (modal as any).setPendingAction('follow', () => this.handleFollowClick());
+        await this.showOnboardingModal();
         return;
       }
     } finally {
