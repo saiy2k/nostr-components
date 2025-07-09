@@ -4,4 +4,4 @@ import NostrProfile from './nostr-profile/nostr-profile.ts';
 import NostrFollowButton from './nostr-follow-button/nostr-follow-button.ts';
 import './onboarding/onboarding-modal.ts';
 
-export { NostrProfileBadge, NostrPost, NostrProfile, NostrFollowButton, NostrZap };
+export { NostrProfileBadge, NostrPost, NostrProfile, NostrFollowButton };
