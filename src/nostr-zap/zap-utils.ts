@@ -92,10 +92,22 @@ export const getZapEndpoint = async (profileMetadata: any) => {
   return endpoint;
 };
 
+interface NostrExtension {
+  signEvent(event: any): Promise<{
+    id: string;
+    sig: string;
+    kind: number;
+    tags: string[][];
+    pubkey: string;
+    content: string;
+    created_at: number;
+  }>;
+}
+
 const signEvent = async (zapEvent: any, anon?: boolean) => {
   if (isNip07ExtAvailable() && !anon) {
     try {
-      const ext = (window as any).nostr as { signEvent: (e: any) => Promise<any> } | undefined;
+      const ext = (window as { nostr?: NostrExtension }).nostr;
       if (ext?.signEvent) return await ext.signEvent(zapEvent);
     } catch {
       /* fall-through -> anonymous */
