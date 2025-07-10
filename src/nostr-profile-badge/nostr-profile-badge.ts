@@ -1,13 +1,12 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
-import { renderProfileBadge } from './render';
-import { getProfileBadgeStyles } from './style';
 import { NostrService } from '../common/nostr-service';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
+import { parseRelays, parseTheme } from '../common/utils';
+import { renderProfileBadge } from './render';
+import { getProfileBadgeStyles } from './style';
 
 export default class NostrProfileBadge extends HTMLElement {
-  private rendered: boolean = false;
   private nostrService: NostrService = NostrService.getInstance();
 
   private userProfile: NDKUserProfile = {
@@ -15,13 +14,10 @@ export default class NostrProfileBadge extends HTMLElement {
     image: '',
     nip05: '',
   };
-
   private theme: Theme = 'light';
-
   private isLoading: boolean = true;
   private isError: boolean = false;
-
-  private onClick: Function | null = null;
+  private rendered: boolean = false;
 
   private ndkUser: NDKUser | null = null;
 
@@ -33,49 +29,31 @@ export default class NostrProfileBadge extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' });
   }
 
-  getRelays = () => {
-    const userRelays = this.getAttribute('relays');
-    if (userRelays) {
-      return userRelays.split(',');
-    }
-    return DEFAULT_RELAYS;
-  };
+  private getRelays() {
+    return parseRelays(this.getAttribute('relays'));
+  }
 
-  getNDKUser = async () => {
-    const npub = this.getAttribute('npub');
-    const nip05 = this.getAttribute('nip05');
-    const pubkey = this.getAttribute('pubkey');
+  private getTheme() {
+    this.theme = parseTheme(this.getAttribute('theme'));
+  }
 
-    if (npub) {
-      return this.nostrService.getNDK().getUser({
-        npub: npub as string,
-      });
-    } else if (nip05) {
-      return this.nostrService.getNDK().getUserFromNip05(nip05 as string);
-    } else if (pubkey) {
-      return this.nostrService.getNDK().getUser({
-        pubkey: pubkey,
-      });
-    }
 
-    return null;
-  };
 
-  getUserProfile = async () => {
+  getUserProfileAndRender = async () => {
     try {
       this.isLoading = true;
       this.render();
 
-      const user = await this.getNDKUser();
+      const user = await this.nostrService.resolveNDKUser({
+        npub: this.getAttribute('npub'),
+        nip05: this.getAttribute('nip05'),
+        pubkey: this.getAttribute('pubkey'),
+      });
 
       if (user?.npub) {
         this.ndkUser = user;
 
-        const profile = await this.nostrService.getProfile({
-          npub: user.npub,
-          nip05: this.getAttribute('nip05') || undefined,
-          pubkey: this.getAttribute('pubkey') || undefined,
-        });
+        const profile = await this.nostrService.getProfile(user);
 
         if (profile) {
           this.userProfile = profile;
@@ -99,45 +77,23 @@ export default class NostrProfileBadge extends HTMLElement {
           this.isError = false; // Keep consistent with previous logic for now
         }
       } else {
-        throw new Error('Either npub or nip05 should be provided');
+        throw new Error('Npub, pubkey or nip05 should be provided and valid');
       }
     } catch (err) {
+      console.error("Error while rendering nostr-profile-badge", err);
       this.isError = true;
-      throw err;
     } finally {
       this.isLoading = false;
       this.render();
     }
   };
 
-  getTheme = async () => {
-    this.theme = 'light';
-
-    const userTheme = this.getAttribute('theme');
-
-    if (userTheme) {
-      const isValidTheme = ['light', 'dark'].includes(userTheme);
-
-      if (!isValidTheme) {
-        throw new Error(
-          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
-        );
-      }
-
-      this.theme = userTheme as Theme;
-    }
-  };
 
   async connectedCallback() {
-    const onClick = this.getAttribute('onClick');
-    if (onClick !== null) {
-      this.onClick = (window as any)[onClick];
-    }
-
     if (!this.rendered) {
       this.getTheme();
       await this.nostrService.connectToNostr(this.getRelays());
-      this.getUserProfile();
+      this.getUserProfileAndRender();
       this.rendered = true;
     }
   }
@@ -151,7 +107,6 @@ export default class NostrProfileBadge extends HTMLElement {
       'theme',
       'show-npub',
       'show-follow',
-      'onClick',
     ];
   }
 
@@ -164,11 +119,7 @@ export default class NostrProfileBadge extends HTMLElement {
       // Possible property changes - relays, npub, nip05
       // For all these changes, we have to fetch profile anyways
       // TODO: Validate npub
-      this.getUserProfile();
-    }
-
-    if (name === 'onClick') {
-      this.onClick = (window as any)[newValue];
+      this.getUserProfileAndRender();
     }
 
     if (name === 'theme') {
@@ -190,29 +141,25 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   onProfileClick() {
-    if (this.isError) {
-      return;
+    if (this.isError) return;
+
+    const event = new CustomEvent('profileClick', {
+      detail: this.userProfile,
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+
+    const notPrevented = this.dispatchEvent(event);
+
+    if (notPrevented) {
+      // Default behavior: open profile in new tab
+      let key = this.userProfile?.nip05 || this.getAttribute('nip05') ||
+                this.ndkUser?.npub || this.getAttribute('npub');
+      if (key) {
+        window.open(`https://njump.me/${key}`, '_blank');
+      }
     }
-
-    if (this.onClick !== null && typeof this.onClick === 'function') {
-      this.onClick(this.userProfile);
-      return;
-    }
-
-    let key = '';
-
-    const nip05 = this.getAttribute('nip05');
-    const npub = this.getAttribute('npub');
-
-    if (nip05) {
-      key = nip05;
-    } else if (npub) {
-      key = npub;
-    } else {
-      return;
-    }
-
-    window.open(`https://njump.me/${key}`, '_blank');
   }
 
   attachEventListeners() {

@@ -72,30 +72,28 @@ export class NostrService {
     return this.ndk.explicitRelayUrls || DEFAULT_RELAYS;
   }
 
-  public async getProfile(identifier: {
-    npub?: string;
-    nip05?: string;
-    pubkey?: string;
-  }): Promise<NDKUserProfile | null> {
-    let user: NDKUser | null = null;
-
+  public async resolveNDKUser(identifier: {
+    npub?: string | null;
+    nip05?: string | null;
+    pubkey?: string | null;
+  }): Promise<NDKUser | null> {
     if (identifier.npub) {
-      user = this.ndk.getUser({ npub: identifier.npub });
+      return this.ndk.getUser({ npub: identifier.npub });
     } else if (identifier.nip05) {
-      const nip05User = await this.ndk.getUserFromNip05(identifier.nip05);
-      if (nip05User) {
-        user = nip05User;
-      }
+      const user = await this.ndk.getUserFromNip05(identifier.nip05);
+      return user ?? null;
     } else if (identifier.pubkey) {
-      user = this.ndk.getUser({ pubkey: identifier.pubkey });
+      return this.ndk.getUser({ pubkey: identifier.pubkey });
     }
-
-    if (user) {
-      await user.fetchProfile();
-      return user.profile as NDKUserProfile;
-    }
-
+  
     return null;
+  }
+
+  public async getProfile(user: NDKUser | null): Promise<NDKUserProfile | null> {
+    if (!user) return null;
+  
+    await user.fetchProfile();
+    return user.profile as NDKUserProfile;
   }
 
   public async getPost(eventId: string): Promise<NDKEvent | null> {

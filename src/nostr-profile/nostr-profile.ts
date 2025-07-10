@@ -82,11 +82,7 @@ export default class NostrProfile extends HTMLElement {
       if (user?.npub) {
         this.ndkUser = user;
 
-        const profile = await this.nostrService.getProfile({
-          npub: user.npub,
-          nip05: this.getAttribute('nip05') || undefined,
-          pubkey: this.getAttribute('pubkey') || undefined,
-        });
+        const profile = await this.nostrService.getProfile(user);
 
         if (profile) {
           this.userProfile = profile;

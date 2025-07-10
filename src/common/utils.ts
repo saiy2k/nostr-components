@@ -1,6 +1,7 @@
-import NDK, { NDKKind, NDKTag, NDKEvent } from '@nostr-dev-kit/ndk';
+import NDK, { NDKKind, NDKEvent } from '@nostr-dev-kit/ndk';
 
-import { MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';
+import { Theme } from './types';
+import { DEFAULT_RELAYS, MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';
 
 export function maskNPub(npubString: string = '', length = 3) {
   const npubLength = npubString.length;
@@ -110,4 +111,24 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
     zaps: zapAmount / MILLISATS_PER_SAT,
     replies: replyCount,
   };
+}
+
+export function parseRelays(relaysAttr: string | null): string[] {
+  if (relaysAttr) {
+    return relaysAttr.split(',').map(r => r.trim());
+  }
+  return [...DEFAULT_RELAYS];
+}
+
+export function parseTheme(themeAttr: string | null): Theme {
+
+  const theme = themeAttr?.trim().toLowerCase();
+
+  if (!theme || theme === 'light' || theme === 'dark') {
+    return theme as Theme || 'light';
+  }
+
+  throw new Error(
+    `Invalid theme '${theme}'. Accepted values are 'light', 'dark'`
+  );
 }
