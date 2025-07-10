@@ -11,6 +11,8 @@ export const DEFAULT_RELAYS = [
   'wss://nostr.malin.onl',
   'wss://nostrsatva.net',
   'wss://purplepag.es',
-];
+] as const;
 
 export const MILLISATS_PER_SAT = 1000;
+
+export const NPUB_LENGTH = 63;

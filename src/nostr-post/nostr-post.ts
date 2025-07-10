@@ -172,7 +172,7 @@ export default class NostrPost extends HTMLElement {
         }
       }
     } catch (err) {
-      console.log(err);
+      console.error('Failed to fetch post:', err);
       this.isError = true;
       throw err;
     } finally {

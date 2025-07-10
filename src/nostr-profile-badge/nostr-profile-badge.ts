@@ -4,6 +4,8 @@ import { Theme } from '../common/types';
 import { renderProfileBadge, getProfileBadgeStyles } from './render';
 import { NostrService } from '../common/nostr-service';
 
+const DEFAULT_PROFILE_IMAGE = './assets/default_dp.png';
+
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;
   private nostrService: NostrService = NostrService.getInstance();
@@ -79,7 +81,7 @@ export default class NostrProfileBadge extends HTMLElement {
           this.userProfile = profile;
           // Set default image only if profile exists but image is missing
           if (!this.userProfile.image) {
-            this.userProfile.image = './assets/default_dp.png';
+            this.userProfile.image = DEFAULT_PROFILE_IMAGE;
           }
           this.isError = false;
         } else {
@@ -90,7 +92,7 @@ export default class NostrProfileBadge extends HTMLElement {
           );
           if (!this.userProfile.image) {
             // Only set default if absolutely no image is set yet
-            this.userProfile.image = './assets/default_dp.png';
+            this.userProfile.image = DEFAULT_PROFILE_IMAGE;
           }
           // Consider setting this.isError = true if profile is truly expected but not found?
           // For now, let's keep it false.
@@ -250,7 +252,7 @@ export default class NostrProfileBadge extends HTMLElement {
       this.userProfile &&
       this.userProfile.image === undefined
     ) {
-      this.userProfile.image = './assets/default_dp.png';
+      this.userProfile.image = DEFAULT_PROFILE_IMAGE;
     }
 
     // Update theme class on host element

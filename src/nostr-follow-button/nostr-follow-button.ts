@@ -134,7 +134,7 @@ export default class NostrFollowButton extends HTMLElement {
       this.isError = true;
 
       const error = err as Error;
-      if (error.message && error.message.includes('NIP-07')) {
+      if (error.message?.includes('NIP-07')) {
         this.errorMessage = `Looks like you don't have any nostr signing browser extension.
                           Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
       } else {

@@ -10,15 +10,6 @@ export default defineConfig({
       formats: ['umd'],
       fileName: () => 'nostr-components.umd.js',
     },
-    rollupOptions: {
-      external: ['lit', 'dayjs'],
-      output: {
-        globals: {
-          lit: 'Lit',
-          dayjs: 'dayjs',
-        },
-      },
-    },
     outDir: 'dist',
     emptyOutDir: false,
   },

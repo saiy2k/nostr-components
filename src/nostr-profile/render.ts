@@ -329,7 +329,7 @@ export function renderLoadingState(theme: Theme): string {
 export function renderErrorState(error: string, theme: Theme): string {
   const styles = getProfileStyles(theme);
   return `
-    <style>${styles}</style>
+    ${styles}
     <div class="error-container">
       <div class="error">!</div>
       <span class="error-text">${error}</span>

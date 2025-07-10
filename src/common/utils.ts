@@ -1,12 +1,12 @@
-import NDK, { NDKKind, NDKTag } from '@nostr-dev-kit/ndk';
+import NDK, { NDKKind, NDKTag, NDKEvent } from '@nostr-dev-kit/ndk';
 
-import { MILLISATS_PER_SAT } from './constants';
+import { MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';
 
 export function maskNPub(npubString: string = '', length = 3) {
   const npubLength = npubString.length;
 
-  if (npubLength !== 63) {
-    return 'Invalid nPub';
+  if (npubLength !== NPUB_LENGTH) {
+    return `Invalid nPub: expected ${NPUB_LENGTH} characters, got ${npubLength}`;
   }
 
   let result = 'npub1';
@@ -40,14 +40,18 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
     '#e': [postId || ''],
   });
 
-  // Only take the count of direct reposts
-  const repostsCount = Array.from(reposts).filter(repost => {
-    const pTagCounts = repost.tags.filter(
-      (tag: NDKTag) => tag[0] === 'p'
-    ).length;
-
+  const isDirectRepost = (repost: NDKEvent): boolean => {
+    const pTagCounts = repost.tags.filter(tag => tag[0] === 'p').length;
     return pTagCounts === 1;
-  }).length;
+  };
+
+  const isDirectReply = (reply: NDKEvent): boolean => {
+    const eTagsCount = reply.tags.filter(tag => tag[0] === 'e').length;
+    return eTagsCount === 1;
+  };
+
+  // Only take the count of direct reposts
+  const repostsCount = Array.from(reposts).filter(isDirectRepost).length;
 
   const likes = await ndk.fetchEvents({
     kinds: [NDKKind.Reaction],
@@ -98,13 +102,7 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
 
   // Only take the direct replies
   // https://github.com/nostr-protocol/nips/blob/master/10.md#positional-e-tags-deprecated
-  const replyCount = Array.from(replies).filter(reply => {
-    const eTagsCount = reply.tags.filter(
-      (tag: NDKTag) => tag[0] === 'e'
-    ).length;
-
-    return eTagsCount === 1;
-  }).length;
+  const replyCount = Array.from(replies).filter(isDirectReply).length;
 
   return {
     likes: likes.size,
