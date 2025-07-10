@@ -189,6 +189,7 @@ const generateRandomPrivKey = (): Uint8Array => {
     crypto.getRandomValues(bytes);
   } else {
     // Node.js fallback during build – use Math.random (not cryptographically strong but acceptable for anon zaps)
+    console.warn('crypto.getRandomValues not available, using Math.random as fallback');
     for (let i = 0; i < 32; i++) bytes[i] = Math.floor(Math.random() * 256);
   }
   return bytes;

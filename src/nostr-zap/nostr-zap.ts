@@ -83,6 +83,10 @@ export default class NostrZap extends HTMLElement {
     }
   }
 
+  private isValidHex(hex: string): boolean {
+    return /^[0-9a-fA-F]+$/.test(hex) && (hex.length === 64 || hex.length === 66);
+  }
+
   private async handleZapClick() {
     // show loader and disable the button immediately
     this.isLoading = true;
@@ -96,6 +100,12 @@ export default class NostrZap extends HTMLElement {
     try {
       if (!npub) {
         if (pubkeyAttr) {
+          if (!this.isValidHex(pubkeyAttr)) {
+            this.isError = true;
+            this.errorMessage = 'Invalid pubkey format. Must be a 64-character hex string.';
+            this.render();
+            return;
+          }
           npub = nip19.npubEncode(pubkeyAttr);
         } else if (nip05Attr) {
           const resolvedPubkey = await resolveNip05(nip05Attr);
