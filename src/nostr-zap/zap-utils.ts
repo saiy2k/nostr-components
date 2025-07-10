@@ -303,12 +303,24 @@ export async function resolveNip05(nip05: string): Promise<string> {
   }
 }
 
-// Augment missing types for SimplePool.sub so we can safely cast above
+// Import necessary types from nostr-tools
+import type { Filter, Event } from 'nostr-tools';
+
+// Augment the SimplePool type to include our usage
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
 declare module 'nostr-tools' {
   interface SimplePool {
-    sub(relays: string[], filters: Array<Record<string, unknown>>): {
-      on(type: string, cb: (event: any) => void): void;
+    subscribe(
+      relays: string[],
+      filter: Filter,
+      params: {
+        onevent: (event: Event) => void;
+        onclose?: () => void;
+        id?: string;
+        maxWait?: number;
+      }
+    ): {
+      close: () => void;
     };
   }
 }
@@ -328,15 +340,17 @@ export const listenForZapReceipt = ({
   const normalizedRelays = Array.from(new Set([...relays, 'wss://relay.nostr.band']));
   const since = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000); // current time - 24 hours
 
-  const sub = pool.subscribe(normalizedRelays, 
+  const sub = pool.subscribe(
+    normalizedRelays,
     {
       kinds: [9735],
-      "#p": [receiversPubKey],
+      '#p': [receiversPubKey],
       since,
     },
     {
-      onevent(event: any) {
-        if (event.tags.find((t: any) => t[0] === 'bolt11' && t[1] === invoice)) {
+      onevent(event: Event) {
+        const tags = event.tags as [string, string][];
+        if (tags.some(t => t[0] === 'bolt11' && t[1] === invoice)) {
           onSuccess();
           cleanup();
         }
