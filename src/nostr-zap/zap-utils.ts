@@ -11,11 +11,46 @@ import {
  * everything from a single module without polluting the rest of the codebase.
  */
 
+/**
+ * Safely decodes an npub string into its hex representation
+ * @param npub - The npub string to decode (format: npub1...)
+ * @returns The hex-encoded public key, or empty string if decoding fails
+ */
 export const decodeNpub = (npub: string): string => {
-  return (nip19.decode(npub).data as string) || '';
+  if (typeof npub !== 'string' || !npub.startsWith('npub1')) {
+    return '';
+  }
+
+  try {
+    const decoded = nip19.decode(npub);
+    if (decoded && typeof decoded.data === 'string') {
+      return decoded.data;
+    }
+  } catch (error) {
+    console.error('Failed to decode npub:', error);
+  }
+  
+  return '';
 };
 
-const decodeNip19Entity = (entity: string): any => nip19.decode(entity).data;
+/**
+ * Safely decodes a NIP-19 entity (like npub, nsec, etc.)
+ * @param entity - The NIP-19 encoded string
+ * @returns The decoded data or null if decoding fails
+ */
+const decodeNip19Entity = (entity: string): any => {
+  if (typeof entity !== 'string' || !/^[a-z0-9]+1[ac-hj-np-z02-9]+/.test(entity)) {
+    return null;
+  }
+
+  try {
+    const decoded = nip19.decode(entity);
+    return decoded?.data ?? null;
+  } catch (error) {
+    console.error('Failed to decode NIP-19 entity:', error);
+    return null;
+  }
+};
 
 // Basic in-memory cache – sufficient for component lifetime.
 const profileCache: Record<string, any> = {};
@@ -87,7 +122,7 @@ const makeZapEvent = async ({
   const event = nip57.makeZapRequest({
     profile,
     event:
-      nip19Target && nip19Target.startsWith('note')
+      nip19Target?.startsWith('note')
         ? decodeNip19Entity(nip19Target)
         : undefined,
     amount,
@@ -164,16 +199,95 @@ export const isNip07ExtAvailable = (): boolean => typeof window !== 'undefined' 
 // ---------------------------------------------------------------------------
 // nip05 resolution helper – very lightweight fetch to /.well-known/nostr.json
 // ---------------------------------------------------------------------------
+
+// List of allowed TLDs for NIP-05 identifiers
+const ALLOWED_TLDS = [
+  'com', 'org', 'net', 'io', 'co', 'dev', 'me', 'xyz', 'app', 'page', 'site',
+  'blog', 'info', 'biz', 'online', 'app', 'world', 'lol', 'sh', 'wtf', 'ninja'
+];
+
+// Maximum time to wait for NIP-05 resolution (in milliseconds)
+const NIP05_RESOLVE_TIMEOUT = 10000; // 10 seconds
+
+// Validate domain to prevent SSRF and other attacks
+function isValidDomain(domain: string): boolean {
+  if (!domain || domain.length > 255) return false;
+  
+  // Check if domain contains only allowed characters
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/.test(domain)) {
+    return false;
+  }
+
+  // Check TLD against whitelist
+  const tld = domain.split('.').pop()?.toLowerCase();
+  if (!tld || !ALLOWED_TLDS.includes(tld)) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function resolveNip05(nip05: string): Promise<string> {
+  // Basic input validation
+  if (!nip05 || typeof nip05 !== 'string') {
+    throw new Error('Invalid NIP-05 identifier');
+  }
+
   const [name, domain] = nip05.split('@');
-  if (!domain) throw new Error('Invalid nip05');
-  const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`;
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
-  if (!res.ok) throw new Error('Unable to resolve nip05');
-  const json = await res.json();
-  const pubkey = json.names?.[name];
-  if (!pubkey) throw new Error('nip05 not found');
-  return pubkey as string;
+  
+  // Validate name and domain
+  if (!name || !domain || !/^[a-zA-Z0-9_.+-]+$/.test(name)) {
+    throw new Error('Invalid NIP-05 format');
+  }
+
+  // Validate domain to prevent SSRF
+  if (!isValidDomain(domain)) {
+    throw new Error('Invalid domain in NIP-05 identifier');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), NIP05_RESOLVE_TIMEOUT);
+
+  try {
+    const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`;
+    const res = await fetch(url, { 
+      headers: { 
+        'accept': 'application/json',
+        'user-agent': 'NostrZap/1.0',
+      },
+      signal: controller.signal,
+      // Prevent sending cookies or credentials
+      credentials: 'omit',
+      // Prevent following redirects to avoid SSRF
+      redirect: 'error'
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`Failed to resolve NIP-05: ${res.status} ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    const pubkey = json.names?.[name];
+    
+    if (!pubkey || typeof pubkey !== 'string' || !/^[0-9a-fA-F]{64}$/.test(pubkey)) {
+      throw new Error('Invalid or missing pubkey in NIP-05 response');
+    }
+
+    return pubkey;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('NIP-05 resolution timed out');
+      }
+      throw new Error(`NIP-05 resolution failed: ${error.message}`);
+    }
+    
+    throw new Error('Unknown error during NIP-05 resolution');
+  }
 }
 
 // Augment missing types for SimplePool.sub so we can safely cast above

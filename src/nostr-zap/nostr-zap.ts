@@ -78,8 +78,8 @@ export default class NostrZap extends HTMLElement {
     if (btn && this.boundHandleClick) {
       btn.removeEventListener('click', this.boundHandleClick);
     }
-    if (this.cachedAmountDialog && (this.cachedAmountDialog as any).close) {
-      (this.cachedAmountDialog as any).close();
+    if (this.cachedAmountDialog && typeof this.cachedAmountDialog.close === 'function') {
+      this.cachedAmountDialog.close();
     }
   }
 
@@ -138,7 +138,8 @@ export default class NostrZap extends HTMLElement {
   }
 
   private attachEventListeners() {
-    const btn = this.shadowRoot!.querySelector('.nostr-zap-button');
+    if (!this.shadowRoot) return;
+    const btn = this.shadowRoot.querySelector('.nostr-zap-button');
     if (!btn) return;
     if (this.boundHandleClick) {
       btn.removeEventListener('click', this.boundHandleClick);
@@ -165,8 +166,10 @@ export default class NostrZap extends HTMLElement {
       iconHeight: iconHeightAttr ? Number(iconHeightAttr) : 25,
     };
 
-    this.shadowRoot!.innerHTML = renderZapButton(options);
-    this.attachEventListeners();
+    if (this.shadowRoot) {
+      this.shadowRoot.innerHTML = renderZapButton(options);
+      this.attachEventListeners();
+    }
   }
 }
 

@@ -7,13 +7,25 @@
  * size reasonable for the component bundle.
  */
 
-import {
+import { 
   decodeNpub,
-  getProfileMetadata,
-  getZapEndpoint,
-  fetchInvoice,
-  listenForZapReceipt,
+  fetchInvoice, 
+  getProfileMetadata, 
+  getZapEndpoint, 
+  listenForZapReceipt 
 } from './zap-utils';
+import * as QRCode from 'qrcode';
+
+interface WebLN {
+  enable: () => Promise<void>;
+  sendPayment: (invoice: string) => Promise<{ preimage: string }>;
+}
+
+declare global {
+  interface Window {
+    webln?: WebLN;
+  }
+}
 
 export interface OpenZapModalParams {
   npub: string;
@@ -105,7 +117,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   let currentInvoice = '';
   let cleanupReceipt: (() => void) | null = null;
 
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
 
@@ -120,7 +132,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       authorId,
       nip19Target: undefined,
       normalizedRelays: relays.split(','),
-      anon: false,
+      anon: params.anon ?? false,
     });
     currentInvoice = invoice;
 
@@ -129,10 +141,27 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     cleanupReceipt = listenForZapReceipt({ relays: relaysArr, receiversPubKey: npubHex, invoice: invoice, onSuccess: markSuccess });
   }
 
-  function qrImgSrc(invoice: string) {
-    const encoded = encodeURIComponent(invoice);
-    // free qrserver – sufficient for demo / testing
-    return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encoded}`;
+  async function qrImgSrc(invoice: string): Promise<string> {
+    try {
+      // Generate QR code as a data URL (base64 encoded image)
+      return await QRCode.toDataURL(invoice, {
+        width: 240,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      // Fallback to text representation if QR generation fails
+      return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 100 100">
+        <rect width="100%" height="100%" fill="white"/>
+        <text x="50%" y="50%" font-family="monospace" font-size="10" text-anchor="middle" dominant-baseline="middle" fill="black">
+          Invoice: ${invoice.substring(0, 10)}...
+        </text>
+      </svg>`;
+    }
   }
 
   function setActiveAmountButtons(container: HTMLElement, amt: number) {
@@ -150,7 +179,9 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     try {
       await loadInvoice(selectedAmount, customComment);
       const qrImg = dialog.querySelector('img.qr') as HTMLImageElement;
-      qrImg.src = qrImgSrc(currentInvoice);
+      qrImgSrc(currentInvoice).then(src => {
+        qrImg.src = src;
+      });
 
       const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
       payBtn.disabled = false;
@@ -246,12 +277,9 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   (dialog.querySelector('.cta-btn') as HTMLButtonElement).onclick = async () => {
     if (!currentInvoice) return;
     // try WebLN first
-    // @ts-ignore
     if (window.webln) {
       try {
-        // @ts-ignore
         await window.webln.enable();
-        // @ts-ignore
         await window.webln.sendPayment(currentInvoice);
         markSuccess();
         return;
@@ -308,9 +336,9 @@ function getContrastingTextColor(hex: string): string {
       .map(ch => ch + ch)
       .join('');
   }
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
   return brightness > 125 ? '#000' : '#fff';
 }
