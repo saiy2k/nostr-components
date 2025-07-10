@@ -226,7 +226,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
 
   shadow.appendChild(dialog);
 
-  // Event wiring
+  // Event wiring - moved listener setup to after initial invoice load
   const amountContainer = dialog.querySelector('.amount-buttons') as HTMLElement | null;
   if (amountContainer)
     amountContainer.addEventListener('click', async e => {
@@ -313,6 +313,18 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
 
   // Load first invoice & show
   await refreshUI(dialog);
+  
+  // Now that we have an invoice, set up the receipt listener
+  if (currentInvoice) {
+    const relaysArr = relays.split(',');
+    cleanupReceipt = listenForZapReceipt({
+      relays: relaysArr,
+      receiversPubKey: npubHex,
+      invoice: currentInvoice,
+      onSuccess: markSuccess
+    });
+  }
+  
   if (amountContainer && presets.includes(selectedAmount)) {
     setActiveAmountButtons(amountContainer, selectedAmount);
   } else if (!hideAmountUI) {
