@@ -130,9 +130,9 @@ const makeZapEvent = async ({
     comment: comment || '',
   });
 
-  if (nip19Target && nip19Target.startsWith('naddr')) {
+  if (nip19Target?.startsWith('naddr')) {
     const naddrData: any = decodeNip19Entity(nip19Target);
-    const relayTag = naddrData.relays?.join(',') ?? '';
+    const relayTag = naddrData?.relays?.join(',') ?? '';
     event.tags.push(['a', `${naddrData.kind}:${naddrData.pubkey}:${naddrData.identifier}`, relayTag]);
   }
 
