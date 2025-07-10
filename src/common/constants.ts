@@ -8,7 +8,7 @@ export const DEFAULT_RELAYS = [
   'wss://njump.me',
   'wss://relay.getalby.com',
   'wss://relay.primal.net',
-  'wss://nostr.malin.onl',
+  // 'wss://nostr.malin.onl',
   'wss://nostrsatva.net',
   'wss://purplepag.es',
 ] as const;
@@ -16,3 +16,5 @@ export const DEFAULT_RELAYS = [
 export const MILLISATS_PER_SAT = 1000;
 
 export const NPUB_LENGTH = 63;
+
+export const DEFAULT_PROFILE_IMAGE = './assets/default_dp.png';

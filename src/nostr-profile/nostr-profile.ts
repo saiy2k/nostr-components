@@ -4,6 +4,7 @@ import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
 import { renderProfile, renderLoadingState, renderErrorState } from './render';
 import { NostrService } from '../common/nostr-service';
+import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 
 export default class NostrProfile extends HTMLElement {
   private rendered: boolean = false;
@@ -147,13 +148,13 @@ export default class NostrProfile extends HTMLElement {
 
           // Set default image only if profile exists but image is missing
           if (!this.userProfile.image) {
-            this.userProfile.image = './assets/default_dp.png';
+            this.userProfile.image = DEFAULT_PROFILE_IMAGE;
           }
           this.isError = false;
         } else {
           // Profile not found or fetch failed, use default image and clear stats
           console.warn(`Could not fetch profile for user ${user.npub}`);
-          this.userProfile.image = './assets/default_dp.png';
+          this.userProfile.image = DEFAULT_PROFILE_IMAGE;
           this.userProfile.name = '';
           this.userProfile.nip05 = '';
           this.stats = {
@@ -210,6 +211,7 @@ export default class NostrProfile extends HTMLElement {
   static get observedAttributes() {
     return [
       'relays',
+      'npub',
       'pubkey',
       'nip05',
       'theme',
@@ -224,7 +226,7 @@ export default class NostrProfile extends HTMLElement {
       this.nostrService.connectToNostr(this.getRelays());
     }
 
-    if (['relays', 'npub', 'nip05'].includes(name)) {
+    if (['relays', 'npub', 'pubkey', 'nip05'].includes(name)) {
       // Possible property changes - relays, npub, nip05
       // For all these changes, we have to fetch profile anyways
       // TODO: Validate npub

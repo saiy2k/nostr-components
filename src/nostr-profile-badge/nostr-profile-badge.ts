@@ -1,10 +1,10 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
-import { renderProfileBadge, getProfileBadgeStyles } from './render';
+import { renderProfileBadge } from './render';
+import { getProfileBadgeStyles } from './style';
 import { NostrService } from '../common/nostr-service';
-
-const DEFAULT_PROFILE_IMAGE = './assets/default_dp.png';
+import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;

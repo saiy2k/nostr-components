@@ -5,6 +5,8 @@ import { getPostStats, Stats } from '../common/utils';
 import { Theme } from '../common/types';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
 import { NostrService } from '../common/nostr-service';
+import { parseText } from './parse-text';
+import { renderContent } from './render-content';
 
 export default class NostrPost extends HTMLElement {
   private rendered: boolean = false;
@@ -37,7 +39,7 @@ export default class NostrPost extends HTMLElement {
     if (userRelays) {
       return userRelays.split(',');
     }
-    return DEFAULT_RELAYS;
+    return [...DEFAULT_RELAYS];
   };
 
   getTheme = async () => {
@@ -173,6 +175,7 @@ export default class NostrPost extends HTMLElement {
       }
     } catch (err) {
       console.error('Failed to fetch post:', err);
+      console.log(err);
       this.isError = true;
       throw err;
     } finally {
@@ -216,169 +219,6 @@ export default class NostrPost extends HTMLElement {
     window.open(`https://njump.me/p/${username}`, '_blank');
   }
 
-  async parseText(text: string) {
-    let textContent = text;
-    let embeddedNotes: { id: string; position: number }[] = [];
-
-    // First capture embedded note references before other processing
-    // Example note1abcdef... or nostr:note1abcdef...
-    const noteRegex = /(nostr:)?(note[a-zA-Z0-9]{59,60})/g;
-    const noteMatches = [...textContent.matchAll(noteRegex)];
-
-    for (const match of noteMatches) {
-      const fullMatch = match[0];
-      const noteId = match[2];
-      const position = match.index || 0;
-
-      // Store the note ID and its position for later processing
-      embeddedNotes.push({
-        id: noteId,
-        position: position,
-      });
-
-      // Fetch the embedded post
-      try {
-        if (!this.embeddedPosts.has(noteId)) {
-          const embeddedPost = await this.nostrService.getPost(noteId);
-          if (embeddedPost) {
-            this.embeddedPosts.set(noteId, embeddedPost);
-          }
-        }
-      } catch (error) {
-        console.error(`Failed to fetch embedded post ${noteId}:`, error);
-      }
-
-      // Remove the note reference from the text to prevent @ symbols being added
-      textContent = textContent.replace(fullMatch, '');
-    }
-
-    // Handle Nostr URI schema for mentions
-    const nostrURISchemaMatches = textContent.matchAll(
-      new RegExp(nip21.NOSTR_URI_REGEX, 'g')
-    );
-    for (let match of nostrURISchemaMatches) {
-      const parsedNostrURI = nip21.parse(match[0]);
-      const decordedData = parsedNostrURI.decoded.data;
-
-      let pubkey = '';
-      if (typeof decordedData === 'string') {
-        pubkey = decordedData;
-      } else {
-        pubkey = (decordedData as ProfilePointer).pubkey;
-      }
-
-      const user = this.nostrService.getNDK().getUser({ pubkey });
-      const profile = await user.fetchProfile();
-      const name = profile?.displayName || '';
-
-      textContent = textContent.replace(
-        match[0],
-        `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
-      );
-    }
-
-    // Handle Twitter-like mentions (@username)
-    const mentionRegex = /(\s|^)@(\w+)/g;
-    const mentionMatches = [...textContent.matchAll(mentionRegex)];
-
-    for (const match of mentionMatches) {
-      const fullMatch = match[0];
-      const username = match[2];
-
-      // Replace with styled mention
-      textContent = textContent.replace(
-        fullMatch,
-        `${match[1]}<span class="nostr-mention" data-username="${username}">@${username}</span>`
-      );
-    }
-
-    // Handle URLs and Nostr attachments
-    type ContentItem = {
-      type: 'text' | 'image' | 'gif' | 'video' | 'link' | 'embedded-note';
-      value?: string;
-      noteId?: string;
-    };
-    const result: ContentItem[] = [];
-
-    // First, check for Nostr attachments in the post
-    if (this.post) {
-      const videoTags = this.post.getMatchingTags('a');
-      for (const tag of videoTags) {
-        const mimeType = tag[1] as string;
-        const url = tag[2] as string;
-        if (mimeType?.startsWith('video/') && url) {
-          result.push({ type: 'video', value: url });
-        }
-      }
-    }
-
-    // Then handle URLs in the text
-    const regex =
-      /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
-    const matches = textContent.match(regex);
-
-    if (matches) {
-      let lastIndex = 0;
-      for (const match of matches) {
-        const startIndex = textContent.indexOf(match, lastIndex);
-        const endIndex = startIndex + match.length;
-
-        if (startIndex > lastIndex) {
-          result.push({
-            type: 'text',
-            value: textContent.substring(lastIndex, startIndex),
-          });
-        }
-
-        const url = new URL(match);
-        let type: 'image' | 'gif' | 'video' | 'link';
-
-        if (
-          url.pathname.endsWith('.jpg') ||
-          url.pathname.endsWith('.jpeg') ||
-          url.pathname.endsWith('.png')
-        ) {
-          type = 'image';
-        } else if (url.pathname.endsWith('.gif')) {
-          type = 'gif';
-        } else if (
-          url.pathname.endsWith('.mp4') ||
-          url.pathname.endsWith('.webm') ||
-          url.pathname.endsWith('.mov')
-        ) {
-          type = 'video';
-        } else {
-          type = 'link';
-        }
-
-        result.push({ type, value: match });
-
-        lastIndex = endIndex;
-      }
-
-      if (lastIndex < textContent.length) {
-        result.push({ type: 'text', value: textContent.substring(lastIndex) });
-      }
-    } else {
-      result.push({ type: 'text', value: textContent });
-    }
-
-    // Add embedded notes to the result
-    if (embeddedNotes.length > 0) {
-      // Sort by position in descending order to avoid affecting earlier positions
-      embeddedNotes.sort((a, b) => b.position - a.position);
-
-      for (const note of embeddedNotes) {
-        result.push({
-          type: 'embedded-note',
-          noteId: note.id,
-        });
-      }
-    }
-
-    return result;
-  }
-
   async renderEmbeddedPost(noteId: string): Promise<string> {
     const post = this.embeddedPosts.get(noteId);
     if (!post) return '<div class="embedded-post-error">Post not found</div>';
@@ -402,8 +242,8 @@ export default class NostrPost extends HTMLElement {
       : '';
 
     // Process the post content
-    const content = await this.parseText(post.content);
-    const renderedContent = this.renderContent(content);
+    const content = await parseText(post.content, this.post, this.embeddedPosts, this.nostrService);
+    const renderedContent = await renderContent(content);
 
     // Use the renderEmbeddedPost function from the render module
     return renderEmbeddedPost(
@@ -467,70 +307,6 @@ export default class NostrPost extends HTMLElement {
     }
   }
 
-  // TODO: Fix types
-  renderContent = (content: any[]) => {
-    const html: string[] = [];
-    let mediaCount = 0;
-    let textBuffer = '';
-
-    for (const item of content) {
-      if (item.type === 'text') {
-        textBuffer += item.value;
-      } else if (item.type === 'embedded-note') {
-        // Handle embedded note placeholder
-        if (textBuffer) {
-          html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
-          );
-          textBuffer = '';
-        }
-
-        html.push(
-          `<div class="embedded-post-placeholder" data-note-id="${item.noteId}"></div>`
-        );
-      } else {
-        if (textBuffer) {
-          html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
-          );
-          textBuffer = '';
-        }
-
-        switch (item.type) {
-          case 'image':
-            html.push(
-              `<div class="post-media-item"><img src="${item.value}" alt="Image"></div>`
-            );
-            mediaCount++;
-            break;
-          case 'gif':
-            html.push(
-              `<div class="post-media-item"><img src="${item.value}" alt="GIF"></div>`
-            );
-            mediaCount++;
-            break;
-          case 'video':
-            html.push(
-              `<div class="post-media-item"><video src="${item.value}" controls></video></div>`
-            );
-            mediaCount++;
-            break;
-          case 'link':
-            html.push(`<a href="${item.value}">${item.value}</a>`);
-            break;
-        }
-      }
-    }
-
-    if (textBuffer) {
-      html.push(
-        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
-      );
-    }
-
-    return html.join('');
-  };
-
   setupMentionClickHandlers() {
     // Add direct click handlers to each mention element
     const mentions = this.querySelectorAll('.nostr-mention');
@@ -593,8 +369,8 @@ export default class NostrPost extends HTMLElement {
 
   async render() {
     const content = this.post?.content || '';
-    const parsedContent = await this.parseText(content);
-    const htmlToRender = this.renderContent(parsedContent);
+    const parsedContent = await parseText(content, this.post, this.embeddedPosts, this.nostrService);
+    const htmlToRender = await renderContent(parsedContent);
 
     let date = '';
     if (this.post?.created_at) {
