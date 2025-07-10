@@ -132,3 +132,10 @@ export function parseTheme(themeAttr: string | null): Theme {
     `Invalid theme '${theme}'. Accepted values are 'light', 'dark'`
   );
 }
+
+export function parseBooleanAttribute(attr: string | null): boolean {
+  // Handles: "true", "", null, "false"
+  if (attr === null) return false;
+  if (attr === '' || attr.toLowerCase() === 'true') return true;
+  return false;
+}

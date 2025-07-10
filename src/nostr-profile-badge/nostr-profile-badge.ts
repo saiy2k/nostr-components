@@ -2,16 +2,19 @@ import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { Theme } from '../common/types';
 import { NostrService } from '../common/nostr-service';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
-import { parseRelays, parseTheme } from '../common/utils';
+import { parseRelays, parseTheme, parseBooleanAttribute } from '../common/utils';
 import { renderProfileBadge } from './render';
 import { getProfileBadgeStyles } from './style';
 
+/**
+ * TODO: Improve Follow button placement
+ */
 export default class NostrProfileBadge extends HTMLElement {
   private nostrService: NostrService = NostrService.getInstance();
 
   private userProfile: NDKUserProfile = {
     name: '',
-    image: '',
+    picture: '',
     nip05: '',
   };
   private theme: Theme = 'light';
@@ -37,8 +40,6 @@ export default class NostrProfileBadge extends HTMLElement {
     this.theme = parseTheme(this.getAttribute('theme'));
   }
 
-
-
   getUserProfileAndRender = async () => {
     try {
       this.isLoading = true;
@@ -58,23 +59,12 @@ export default class NostrProfileBadge extends HTMLElement {
         if (profile) {
           this.userProfile = profile;
           // Set default image only if profile exists but image is missing
-          if (!this.userProfile.image) {
-            this.userProfile.image = DEFAULT_PROFILE_IMAGE;
+          if (!this.userProfile.picture) {
+            this.userProfile.picture = DEFAULT_PROFILE_IMAGE;
           }
           this.isError = false;
         } else {
-          // Profile not found initially, just log and ensure default image if needed.
-          // DO NOT reset name/nip05 here, as NDK might provide them later.
-          console.warn(
-            `Could not fetch profile initially for user ${user.npub}`
-          );
-          if (!this.userProfile.image) {
-            // Only set default if absolutely no image is set yet
-            this.userProfile.image = DEFAULT_PROFILE_IMAGE;
-          }
-          // Consider setting this.isError = true if profile is truly expected but not found?
-          // For now, let's keep it false.
-          this.isError = false; // Keep consistent with previous logic for now
+          throw new Error(`Could not fetch profile initially for user ${user.npub}`);
         }
       } else {
         throw new Error('Npub, pubkey or nip05 should be provided and valid');
@@ -115,10 +105,8 @@ export default class NostrProfileBadge extends HTMLElement {
       this.nostrService.connectToNostr(this.getRelays());
     }
 
-    if (['relays', 'npub', 'nip05'].includes(name)) {
-      // Possible property changes - relays, npub, nip05
-      // For all these changes, we have to fetch profile anyways
-      // TODO: Validate npub
+    if (['relays', 'pubkey', 'npub', 'nip05'].includes(name)) {
+      // TODO: Validate npub, pubkey
       this.getUserProfileAndRender();
     }
 
@@ -197,9 +185,9 @@ export default class NostrProfileBadge extends HTMLElement {
     if (
       this.isLoading === false &&
       this.userProfile &&
-      this.userProfile.image === undefined
+      this.userProfile.picture === undefined
     ) {
-      this.userProfile.image = DEFAULT_PROFILE_IMAGE;
+      this.userProfile.picture = DEFAULT_PROFILE_IMAGE;
     }
 
     // Update theme class on host element
@@ -208,8 +196,8 @@ export default class NostrProfileBadge extends HTMLElement {
     this.classList.toggle('error-container', this.isError);
 
     // Get attribute values
-    const showNpub = this.getAttribute('show-npub');
-    const showFollow = this.getAttribute('show-follow');
+    const showFollow = parseBooleanAttribute(this.getAttribute('show-follow'));
+    const showNpub = parseBooleanAttribute(this.getAttribute('show-npub'));
     const npubAttribute = this.getAttribute('npub');
 
     // Generate the HTML content

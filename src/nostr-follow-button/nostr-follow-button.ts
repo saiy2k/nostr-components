@@ -4,6 +4,10 @@ import { Theme } from '../common/types';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NostrService } from '../common/nostr-service';
 
+/**
+ * TODO:
+ *  * To have a text attribute. Default value being "Follow me on Nostr"
+ */
 export default class NostrFollowButton extends HTMLElement {
   private rendered: boolean = false;
   private nostrService: NostrService = NostrService.getInstance();

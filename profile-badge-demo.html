@@ -8,6 +8,7 @@
 
   <!-- Include all per-component ESM bundles for demo -->
   <script type="module" src="./dist/components/nostr-profile-badge.es.js"></script>
+  <script type="module" src="./dist/components/nostr-follow-button.es.js"></script>
 
   <style>
     body {
@@ -37,7 +38,7 @@
       });
       const lynProfile = document.getElementById('lynProfile');
       lynProfile.addEventListener('profileClick', (e) => {
-        e.preventDefault();
+        // e.preventDefault();
         console.log('CustomEvent profileClick (lynProfile):', e.detail);
       });
       const TestNos2 = document.getElementById('TestNos2');

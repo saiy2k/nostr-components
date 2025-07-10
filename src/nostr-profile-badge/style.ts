@@ -1,12 +1,23 @@
+/**
+ * Nostr Profile Badge CSS Variables:
+ *
+ * --nstrc-profile-badge-background-[light|dark]: Background color
+ * --nstrc-profile-badge-name-color-[light|dark]: Name text color
+ * --nstrc-profile-badge-nip05-color-[light|dark]: NIP-05 text color
+ * --nstrc-profile-badge-text-color-[light|dark]: General text color
+ * --nstrc-profile-badge-skeleton-min-hsl-[light|dark]: Skeleton loader min color
+ * --nstrc-profile-badge-skeleton-max-hsl-[light|dark]: Skeleton loader max color
+ * --nstrc-profile-badge-border-[light|dark]: Border style
+ * --nstrc-profile-badge-hover-background-[light|dark]: Hover background color
+ *
+ * You can override these variables in your global CSS or on the host element.
+ */
 import { Theme } from "../common/types";
 
 export function getProfileBadgeStyles(theme: Theme): string {
-    console.log(`getProfileBadgeStyes :: themes :: ${theme}`);
   return `
     <style>
-
       :host {
-
         /* Light theme (default) */
         --nstrc-profile-badge-background-light: #fff;
         --nstrc-profile-badge-name-color-light: #444;
@@ -22,7 +33,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
         --nstrc-profile-badge-name-color-dark: #ffffff;
         --nstrc-profile-badge-nip05-color-dark: #a0a0a0;
         --nstrc-profile-badge-text-color-dark: #a0a0a0;
-        --nstrc-profile-badge-skeleton-min-hsl-dark:rgb(62, 43, 43);
+        --nstrc-profile-badge-skeleton-min-hsl-dark: rgb(62, 43, 43);
         --nstrc-profile-badge-skeleton-max-hsl-dark: #333333;
         --nstrc-profile-badge-border-dark: 1px solid #333333;
         --nstrc-profile-badge-hover-background-dark: #2a2a2a;
@@ -87,7 +98,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
       .nostr-profile-badge-name {
         font-weight: 600;
         font-size: 16px;
-        color: var(--nstrc-profile-badge-name-color, #000);
+        color: var(--nstrc-profile-badge-name-color, #444);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -95,7 +106,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
 
       .nostr-profile-badge-nip05 {
         font-size: 14px;
-        color: var(--nstrc-profile-badge-nip05-color, #666);
+        color: var(--nstrc-profile-badge-nip05-color, #808080);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -107,7 +118,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
         gap: 4px;
         font-family: monospace;
         font-size: 12px;
-        color: var(--nstrc-profile-badge-text-color, #666);
+        color: var(--nstrc-profile-badge-text-color, #666666);
       }
 
       .copy-button {
@@ -146,7 +157,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
       }
 
       .text-skeleton-nip05 {
-        width: 80px;
+        width: 160px;
         height: 14px;
       }
 
@@ -176,16 +187,6 @@ export function getProfileBadgeStyles(theme: Theme): string {
         color: #d32f2f;
         font-size: 14px;
       }
-    </style>
-  `;
-}
-
-export function getProfileBadgeStylesLegacy(theme: Theme): string {
-  return `
-    <style>
-
-      
-      ${getProfileBadgeStyles(theme)}
     </style>
   `;
 }

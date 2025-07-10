@@ -1,4 +1,4 @@
-import { Theme } from '../common/types';
+import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { maskNPub } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 
@@ -11,31 +11,11 @@ function escapeHtml(unsafe: string): string {
     .replace(/'/g, '&#039;');
 }
 
-interface UserProfile {
-  displayName?: string;
-  name?: string;
-  image?: string;
-  nip05?: string;
-}
-
-interface NDKUser {
-  npub?: string;
-  pubkey?: string;
-  profile?: {
-    nip05?: string;
-  };
-}
-
 export function renderNpub(
   ndkUser: NDKUser | null,
   npubAttribute: string | null,
-  showNpub: string | null
 ): string {
-  if (showNpub === 'false') {
-    return '';
-  }
-
-  if (showNpub === null && ndkUser?.profile?.nip05) {
+  if (ndkUser?.profile?.nip05) {
     return '';
   }
 
@@ -56,11 +36,11 @@ export function renderNpub(
 export function renderProfileBadge(
   isLoading: boolean,
   isError: boolean,
-  userProfile: UserProfile | null,
+  userProfile: NDKUserProfile | null,
   ndkUser: NDKUser | null,
   npubAttribute: string | null,
-  showNpub: string | null,
-  showFollow: string | null
+  showNpub: boolean,
+  showFollow: boolean
 ): string {
   let contentHTML = '';
 
@@ -76,23 +56,23 @@ export function renderProfileBadge(
         </div>
       </div>
     `;
-  } else if (isError) {
+  } else if (isError || userProfile == null) {
     contentHTML = `
       <div class='nostr-profile-badge-container'>
         <div class='nostr-profile-badge-left-container'>
           <div class="error">&#9888;</div>
         </div>
         <div class='nostr-profile-badge-right-container'>
-          <span class="error-text">Unable to load</span>
+          <span class="error-text">Unable to load. Check console logs</span>
         </div>
       </div>
     `;
-  } else if (userProfile) {
+  } else {
     const profileName =
       userProfile.displayName ||
       userProfile.name ||
       maskNPub(ndkUser?.npub || '');
-    const profileImage = userProfile.image || DEFAULT_PROFILE_IMAGE;
+    const profileImage = userProfile.picture || DEFAULT_PROFILE_IMAGE;
 
     contentHTML = `
       <div class='nostr-profile-badge-container'>
@@ -102,13 +82,11 @@ export function renderProfileBadge(
         <div class='nostr-profile-badge-right-container'>
           <div class='nostr-profile-badge-name' title="${escapeHtml(profileName)}">${escapeHtml(profileName)}</div>
           ${userProfile.nip05 ? `<div class='nostr-profile-badge-nip05' title="${escapeHtml(userProfile.nip05)}">${escapeHtml(userProfile.nip05)}</div>` : ''}
-          ${showNpub === 'true' ? renderNpub(ndkUser, npubAttribute ? escapeHtml(npubAttribute) : null, showNpub) : ''}
-          ${showFollow === 'true' && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${escapeHtml(ndkUser.pubkey)}"></nostr-follow-button>` : ''}
+          ${showNpub === true ? renderNpub(ndkUser, npubAttribute ? escapeHtml(npubAttribute) : null) : ''}
+          ${showFollow === true && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${escapeHtml(ndkUser.pubkey)}"></nostr-follow-button>` : ''}
         </div>
       </div>
     `;
-  } else {
-    contentHTML = `<div class="error-text">Error: Profile data unavailable.</div>`;
   }
 
   return contentHTML;
