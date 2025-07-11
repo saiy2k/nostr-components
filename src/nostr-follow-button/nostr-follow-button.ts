@@ -1,56 +1,37 @@
 import { NDKUser, NDKNip07Signer } from '@nostr-dev-kit/ndk';
-import { DEFAULT_RELAYS } from '../common/constants';
+import { parseRelays, parseTheme, parseBooleanAttribute } from '../common/utils';
 import { Theme } from '../common/types';
-import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NostrService } from '../common/nostr-service';
+import { renderFollowButton, RenderFollowButtonOptions } from './render';
 
 /**
  * TODO:
  *  * To have a text attribute. Default value being "Follow me on Nostr"
  */
 export default class NostrFollowButton extends HTMLElement {
-  private rendered: boolean = false;
   private nostrService: NostrService = NostrService.getInstance();
 
   private theme: Theme = 'light';
-
   private isLoading: boolean = false;
   private isError: boolean = false;
+  private rendered: boolean = false;
   private errorMessage: string = '';
 
   private isFollowed: boolean = false;
-  private boundHandleClick: (() => void) | null = null;
+  private boundHandleClick: (() => Promise<void>) | null = null;
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
   }
 
-  getRelays = () => {
-    const userRelays = this.getAttribute('relays');
-    if (userRelays) {
-      return userRelays.split(',');
-    }
-    return DEFAULT_RELAYS;
-  };
+  private getRelays() {
+    return parseRelays(this.getAttribute('relays'));
+  }
 
-  getTheme = async () => {
-    this.theme = 'light';
-
-    const userTheme = this.getAttribute('theme');
-
-    if (userTheme) {
-      const isValidTheme = ['light', 'dark'].includes(userTheme);
-
-      if (!isValidTheme) {
-        throw new Error(
-          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
-        );
-      }
-
-      this.theme = userTheme as Theme;
-    }
-  };
+  private getTheme() {
+    this.theme = parseTheme(this.getAttribute('theme'));
+  }
 
   connectedCallback() {
     if (!this.rendered) {
@@ -62,7 +43,7 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['relays', 'npub', 'theme'];
+    return ['relays', 'npub', 'pubkey', 'nip05', 'theme'];
   }
 
   attributeChangedCallback(
@@ -101,25 +82,11 @@ export default class NostrFollowButton extends HTMLElement {
         this.errorMessage = 'Provide npub, nip05 or pubkey';
         this.isError = true;
       } else {
-        let userToFollow: NDKUser | null = null;
-
-        if (userToFollowPubkey) {
-          userToFollow = ndk.getUser({
-            pubkey: userToFollowPubkey,
-          });
-        } else if (userToFollowNpub) {
-          userToFollow = ndk.getUser({
-            npub: userToFollowNpub,
-          });
-        } else if (userToFollowNip05) {
-          const userFromNip05 = await ndk.getUserFromNip05(userToFollowNip05);
-
-          if (userFromNip05) {
-            userToFollow = ndk.getUser({
-              npub: userFromNip05.npub,
-            });
-          }
-        }
+        const userToFollow = await this.nostrService.resolveNDKUser({
+          npub: userToFollowNpub,
+          nip05: userToFollowNip05,
+          pubkey: userToFollowPubkey,
+        });
 
         if (userToFollow != null) {
           const signer = ndk.signer;
@@ -132,6 +99,12 @@ export default class NostrFollowButton extends HTMLElement {
           }
 
           this.isFollowed = true;
+        } else {
+          this.errorMessage = 'Could not resolve user to follow.';
+          this.isError = true;
+          this.isLoading = false;
+          this.render();
+          return;
         }
       }
     } catch (err) {

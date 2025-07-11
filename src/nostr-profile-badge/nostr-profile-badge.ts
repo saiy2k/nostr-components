@@ -28,7 +28,6 @@ export default class NostrProfileBadge extends HTMLElement {
 
   constructor() {
     super();
-    // Attach a shadow root to the element
     this.shadow = this.attachShadow({ mode: 'open' });
   }
 
