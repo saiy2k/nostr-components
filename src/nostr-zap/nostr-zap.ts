@@ -109,13 +109,16 @@ export default class NostrZap extends HTMLElement {
           npub = nip19.npubEncode(pubkeyAttr);
         } else if (nip05Attr) {
           const resolvedPubkey = await resolveNip05(nip05Attr);
-          npub = nip19.npubEncode(resolvedPubkey);
+          if (resolvedPubkey) {
+            npub = nip19.npubEncode(resolvedPubkey);
+          } else {
+            throw new Error(`Failed to resolve NIP-05: ${nip05Attr}`);
+          }
         }
       }
 
       if (!npub) throw new Error('Provide npub, nip05 or pubkey attribute');
 
-      
       this.cachedAmountDialog = await openZapModal({
         npub,
         relays,

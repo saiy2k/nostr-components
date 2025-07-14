@@ -1,6 +1,7 @@
 import {
   nip19,
   nip57,
+  nip05,
   finalizeEvent,
   SimplePool,
 } from 'nostr-tools';
@@ -213,93 +214,15 @@ export const isNip07ExtAvailable = (): boolean => typeof window !== 'undefined' 
 // nip05 resolution helper – very lightweight fetch to /.well-known/nostr.json
 // ---------------------------------------------------------------------------
 
-// List of allowed TLDs for NIP-05 identifiers
-const ALLOWED_TLDS = [
-  'com', 'org', 'net', 'io', 'co', 'dev', 'me', 'xyz', 'app', 'page', 'site',
-  'blog', 'info', 'biz', 'online', 'app', 'world', 'lol', 'sh', 'wtf', 'ninja'
-];
 
-// Maximum time to wait for NIP-05 resolution (in milliseconds)
-const NIP05_RESOLVE_TIMEOUT = 10000; // 10 seconds
 
-// Validate domain to prevent SSRF and other attacks
-function isValidDomain(domain: string): boolean {
-  if (!domain || domain.length > 255) return false;
-  
-  // Check if domain contains only allowed characters
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/.test(domain)) {
-    return false;
-  }
-
-  // Check TLD against whitelist
-  const tld = domain.split('.').pop()?.toLowerCase();
-  if (!tld || !ALLOWED_TLDS.includes(tld)) {
-    return false;
-  }
-
-  return true;
-}
-
-export async function resolveNip05(nip05: string): Promise<string> {
-  // Basic input validation
-  if (!nip05 || typeof nip05 !== 'string') {
-    throw new Error('Invalid NIP-05 identifier');
-  }
-
-  const [name, domain] = nip05.split('@');
-  
-  // Validate name and domain
-  if (!name || !domain || !/^[a-zA-Z0-9_.+-]+$/.test(name)) {
-    throw new Error('Invalid NIP-05 format');
-  }
-
-  // Validate domain to prevent SSRF
-  if (!isValidDomain(domain)) {
-    throw new Error('Invalid domain in NIP-05 identifier');
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), NIP05_RESOLVE_TIMEOUT);
-
+export async function resolveNip05(nip05Identifier: string): Promise<string | null> {
   try {
-    const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`;
-    const res = await fetch(url, { 
-      headers: { 
-        'accept': 'application/json',
-        'user-agent': 'NostrZap/1.0',
-      },
-      signal: controller.signal,
-      // Prevent sending cookies or credentials
-      credentials: 'omit',
-      // Prevent following redirects to avoid SSRF
-      redirect: 'error'
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      throw new Error(`Failed to resolve NIP-05: ${res.status} ${res.statusText}`);
-    }
-
-    const json = await res.json();
-    const pubkey = json.names?.[name];
-    
-    if (!pubkey || typeof pubkey !== 'string' || !/^[0-9a-fA-F]{64}$/.test(pubkey)) {
-      throw new Error('Invalid or missing pubkey in NIP-05 response');
-    }
-
-    return pubkey;
+    const profile = await nip05.queryProfile(nip05Identifier);
+    return profile?.pubkey || null;
   } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        throw new Error('NIP-05 resolution timed out');
-      }
-      throw new Error(`NIP-05 resolution failed: ${error.message}`);
-    }
-    
-    throw new Error('Unknown error during NIP-05 resolution');
+    console.error(`Failed to resolve NIP-05 ${nip05Identifier}:`, error);
+    return null;
   }
 }
 
