@@ -67,14 +67,18 @@ export const injectCSS = (() => {
       .nostr-zap-dialog .close-btn{position:absolute;top:8px;right:8px;border:none;background:#f7fafc;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer}
       .nostr-zap-dialog img.qr{margin-top:16px;border:1px solid #e2e8f0;border-radius:8px}
       .nostr-zap-dialog .copy-btn{margin-top:12px;cursor:pointer;font-size:14px;background:none;border:none;color:#7f00ff}
-      .nostr-zap-dialog .success-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;justify-content:center;align-items:center;color:#fff;font-size:24px;border-radius:10px;opacity:0;transition:opacity .3s ease;pointer-events:none}
-      .nostr-zap-dialog.success .success-overlay{opacity:1;pointer-events:auto}
-      /* loading overlay */
+      .nostr-zap-dialog .update-zap-container{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+      .nostr-zap-dialog .update-zap-container .custom-amount{flex:1 1 auto}
+      @media(max-width:480px){.nostr-zap-dialog .update-zap-container{flex-direction:column}}
+      .nostr-zap-dialog.dark input{background:#262626;border:1px solid #3a3a3a;color:#fff}
+      .nostr-zap-dialog.dark .update-zap-btn{background:#7f00ff;color:#fff}
       .nostr-zap-dialog .loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.7);display:flex;justify-content:center;align-items:center;border-radius:10px;opacity:0;transition:opacity .2s ease;pointer-events:none}
       .nostr-zap-dialog.dark .loading-overlay{background:rgba(0,0,0,.7)}
       .nostr-zap-dialog.loading .loading-overlay{opacity:1;pointer-events:auto}
       @keyframes nstrc-spin{to{transform:rotate(360deg)}}
       .nostr-zap-dialog .loading-overlay .loader{width:40px;height:40px;border:4px solid #ccc;border-top-color:#7f00ff;border-radius:50%;animation:nstrc-spin 1s linear infinite}
+      .nostr-zap-dialog .success-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;justify-content:center;align-items:center;color:#fff;font-size:24px;border-radius:10px;opacity:0;transition:opacity .3s ease;pointer-events:none}
+      .nostr-zap-dialog.success .success-overlay{opacity:1;pointer-events:auto}
     `;
     ensureShadow().appendChild(style);
   };
@@ -210,8 +214,9 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       <button class="close-btn">✕</button>
       <h2>Send a Zap</h2>
       ${hideAmountUI ? '' : `<div class="amount-buttons">${amountButtonsHtml}</div>`}
-      ${hideAmountUI ? '' : `<div style="margin-top:8px">
+      ${hideAmountUI ? '' : `<div class="update-zap-container">
         <input type="number" min="1" placeholder="Custom sats" class="custom-amount" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
+        <button type="button" class="update-zap-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Update zap</button>
       </div>`}
       ${hideAmountUI ? '' : `<div style="margin-top:8px">
         <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
@@ -251,8 +256,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       selectedAmount = val;
       if (amountContainer) setActiveAmountButtons(amountContainer, -1); // clear presets highlight
       const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
-      payBtn.disabled = true;
-      await refreshUI(dialog);
+      payBtn.disabled = true; // will be enabled after Update Zap
     }
   });
 
@@ -273,6 +277,18 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   };
   (dialog.querySelector('.copy-btn') as HTMLButtonElement).onclick = copyInvoice;
   (dialog.querySelector('img.qr') as HTMLImageElement).onclick = copyInvoice;
+
+  // Update zap button
+  const updateZapBtn = dialog.querySelector('.update-zap-btn') as HTMLButtonElement | null;
+  if (updateZapBtn) updateZapBtn.addEventListener('click', async () => {
+    const val = Number(customAmountInput?.value);
+    if (!isNaN(val) && val > 0) {
+      selectedAmount = val;
+      updateZapBtn.disabled = true;
+      await refreshUI(dialog);
+      updateZapBtn.disabled = false;
+    }
+  });
 
   (dialog.querySelector('.cta-btn') as HTMLButtonElement).onclick = async () => {
     if (!currentInvoice) return;
