@@ -8,12 +8,15 @@ import { resolveNip05 } from './zap-utils';
 /**
  * <nostr-zap>
  * Attributes:
- *   - npub | pubkey  (required) : Nostr user to zap
+ *   - npub | pubkey | nip05   (required) : Nostr user to zap
  *   - relays          (optional) : comma-separated relay URLs
  *   - theme           (optional) : "light" | "dark" (default light)
  *   - button-text     (optional) : custom text (default "⚡️")
  *   - button-color    (optional) : background color for button
- *   - amount          (optional) : sats (default 1000)
+ *   - amount          (optional) : pre-defined zap amount in sats
+ *   - default-amount  (optional) : default zap amount in sats (default 1000)
+ *   - icon-width      (optional) : width of the zap icon (default 24)
+ *   - icon-height     (optional) : height of the zap icon (default 24)
  */
 export default class NostrZap extends HTMLElement {
   private rendered = false;
