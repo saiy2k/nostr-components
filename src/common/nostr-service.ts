@@ -266,4 +266,23 @@ export class NostrService {
   public getNDK(): NDK {
     return this.ndk;
   }
+
+  /**
+   * Check if a Nostr signer is available
+   * @returns boolean indicating if a signer is available
+   */
+  public hasSigner(): boolean {
+    // Check for NIP-07 browser extension
+    if ((window as any).nostr) {
+      return true;
+    }
+    
+    // Check for stored private key
+    if (typeof localStorage !== 'undefined' && localStorage.getItem("nostr_nsec")) {
+      return true;
+    }
+    
+    // Check if NDK already has a signer
+    return !!this.ndk.signer;
+  }
 }

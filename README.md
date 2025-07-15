@@ -12,7 +12,8 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
-🔹 **[Wordpress Integration](#5-wordpress-integration)** - Wordpress Integration
+🔹 **[Nostr DM](#5-nostr-dm-)** - Send a direct message on Nostr
+🔹 **[Wordpress Integration](#6-wordpress-integration)** - Wordpress Integration
 
 ### Future roadmap:
 
@@ -159,7 +160,31 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
-## 5. Wordpress Integration
+---
+
+## 5. Nostr DM 💬
+
+Send a direct message to a Nostr user.
+
+**Usage:**
+
+```html
+<head>
+  <script
+    type="module"
+    src="./dist/components/nostr-dm.es.js"
+  ></script>
+</head>
+<body>
+  <!-- Basic DM, user will be prompted to enter a recipient -->
+  <nostr-dm></nostr-dm>
+
+  <!-- Pre-configured recipient -->
+  <nostr-dm recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"></nostr-dm>
+</body>
+```
+
+## 6. Wordpress Integration
 
 ![Integrating with Wordpress](images/wordpress_help.png)
 

@@ -16,6 +16,7 @@
       type="module"
       src="./dist/components/nostr-follow-button.es.js"
     ></script>
+    <script type="module" src="./dist/components/nostr-dm.es.js"></script>
 
     <style>
       /**
@@ -224,6 +225,17 @@
       <nostr-post
         id="note1qz9c05y23dux2f3d6ngm702mmmgytqwwwuyt9nvk7x5q4lqxzk5splg423"
       ></nostr-post>
+    <!-- Nostr DM Examples -->
+    <h2>Nostr DM Examples</h2>
+    <h3>Basic DM (user picks recipient)</h3>
+    <nostr-dm></nostr-dm>
+
+    <h3 style="margin-top:2em;">Pre-configured recipient</h3>
+    <nostr-dm recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"></nostr-dm>
+
+    <h3 style="margin-top:2em;">Dark theme</h3>
+    <nostr-dm theme="dark"></nostr-dm>
+
     </div>
   </body>
 </html>
