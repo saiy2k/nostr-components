@@ -14,7 +14,8 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
 🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
 🔹 **[Nostr Comment](#6-nostr-comment-)** - Decentralized comment system for any website  
-🔹 **[WordPress Integration](#7-wordpress-integration)** - WordPress Integration
+🔹 **[Nostr DM](#5-nostr-dm-)** - Send a direct message on Nostr
+🔹 **[Wordpress Integration](#6-wordpress-integration)** - Wordpress Integration
 
 ### Future roadmap:
 
@@ -160,7 +161,35 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
+<<<<<<< HEAD
 ## 5. Nostr Zap ⚡
+=======
+---
+
+## 5. Nostr DM 💬
+
+Send a direct message to a Nostr user.
+
+**Usage:**
+
+```html
+<head>
+  <script
+    type="module"
+    src="./dist/components/nostr-dm.es.js"
+  ></script>
+</head>
+<body>
+  <!-- Basic DM, user will be prompted to enter a recipient -->
+  <nostr-dm></nostr-dm>
+
+  <!-- Pre-configured recipient -->
+  <nostr-dm recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"></nostr-dm>
+</body>
+```
+
+## 6. Wordpress Integration
+>>>>>>> f9ce3c3 (feat: Add Nostr DM component)
 
 A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
 

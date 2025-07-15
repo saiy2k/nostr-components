@@ -6,5 +6,6 @@ import NostrProfile from './nostr-profile/nostr-profile.ts';
 import NostrFollowButton from './nostr-follow-button/nostr-follow-button.ts';
 import NostrZap from './nostr-zap/nostr-zap.ts';
 import NostrComment from './nostr-comment/nostr-comment.ts';
+import NostrDm from './nostr-dm/nostr-dm.ts';
 
-export { NostrProfileBadge, NostrPost, NostrProfile, NostrFollowButton, NostrZap, NostrComment };
+export { NostrProfileBadge, NostrPost, NostrProfile, NostrFollowButton, NostrZap, NostrComment, NostrDm };
