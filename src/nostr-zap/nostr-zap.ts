@@ -1,9 +1,9 @@
-import { DEFAULT_RELAYS } from '../common/constants';
-import { Theme } from '../common/types';
-import { injectCSS, init as openZapModal } from './dialog';
-import { renderZapButton, RenderZapButtonOptions } from './render';
-import { nip19 } from 'nostr-tools';
-import { resolveNip05 } from './zap-utils';
+import { DEFAULT_RELAYS } from "../common/constants";
+import { Theme } from "../common/types";
+import { injectCSS, init as openZapModal } from "./dialog";
+import { renderZapButton, RenderZapButtonOptions } from "./render";
+import { nip19 } from "nostr-tools";
+import { resolveNip05 } from "./zap-utils";
 
 /**
  * <nostr-zap>
@@ -21,12 +21,12 @@ import { resolveNip05 } from './zap-utils';
 export default class NostrZap extends HTMLElement {
   private rendered = false;
 
-  private theme: Theme = 'light';
+  private theme: Theme = "light";
 
   private isLoading = false;
   private isError = false;
   private isSuccess = false;
-  private errorMessage = '';
+  private errorMessage = "";
 
   private boundHandleClick: (() => void) | null = null;
   private static cssInjected = false;
@@ -34,20 +34,20 @@ export default class NostrZap extends HTMLElement {
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
+    this.attachShadow({ mode: "open" });
   }
 
   private getRelays(): string[] {
-    const relaysAttr = this.getAttribute('relays');
-    if (relaysAttr) return relaysAttr.split(',');
+    const relaysAttr = this.getAttribute("relays");
+    if (relaysAttr) return relaysAttr.split(",");
     return DEFAULT_RELAYS;
   }
 
   private getTheme() {
-    this.theme = 'light';
-    const th = this.getAttribute('theme');
+    this.theme = "light";
+    const th = this.getAttribute("theme");
     if (th) {
-      if (!['light', 'dark'].includes(th)) {
+      if (!["light", "dark"].includes(th)) {
         console.warn(`Invalid theme '${th}', defaulting to light`);
       } else {
         this.theme = th as Theme;
@@ -68,26 +68,43 @@ export default class NostrZap extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['relays', 'npub', 'pubkey', 'nip05', 'theme', 'button-text', 'button-color', 'amount', 'default-amount'];
+    return [
+      "relays",
+      "npub",
+      "pubkey",
+      "nip05",
+      "theme",
+      "button-text",
+      "button-color",
+      "amount",
+      "default-amount",
+    ];
   }
 
-  attributeChangedCallback(name: string, _oldVal: string | null, _newVal: string | null) {
-    if (name === 'theme') this.getTheme();
+  attributeChangedCallback(
+    name: string,
+    _oldVal: string | null,
+    _newVal: string | null
+  ) {
+    if (name === "theme") this.getTheme();
     this.render();
   }
 
   disconnectedCallback() {
-    const btn = this.shadowRoot?.querySelector('.nostr-zap-button');
+    const btn = this.shadowRoot?.querySelector(".nostr-zap-button");
     if (btn && this.boundHandleClick) {
-      btn.removeEventListener('click', this.boundHandleClick);
+      btn.removeEventListener("click", this.boundHandleClick);
     }
-    if (this.cachedAmountDialog && typeof this.cachedAmountDialog.close === 'function') {
+    if (
+      this.cachedAmountDialog &&
+      typeof this.cachedAmountDialog.close === "function"
+    ) {
       this.cachedAmountDialog.close();
     }
   }
 
   private isValidHex(hex: string): boolean {
-    return /^[0-9a-fA-F]+$/.test(hex) && (hex.length === 64 || hex.length === 66);
+    return /^[0-9a-fA-F]+$/.test(hex) && hex.length === 64;
   }
 
   private async handleZapClick() {
@@ -95,17 +112,18 @@ export default class NostrZap extends HTMLElement {
     this.isLoading = true;
     this.render();
 
-    const relays = this.getRelays().join(',');
-    let npub = this.getAttribute('npub');
-    const pubkeyAttr = this.getAttribute('pubkey');
-    const nip05Attr = this.getAttribute('nip05');
+    const relays = this.getRelays().join(",");
+    let npub = this.getAttribute("npub");
+    const pubkeyAttr = this.getAttribute("pubkey");
+    const nip05Attr = this.getAttribute("nip05");
 
     try {
       if (!npub) {
         if (pubkeyAttr) {
           if (!this.isValidHex(pubkeyAttr)) {
             this.isError = true;
-            this.errorMessage = 'Invalid pubkey format. Must be a 64-character hex string.';
+            this.errorMessage =
+              "Invalid pubkey format. Must be a 64-character hex string.";
             this.render();
             return;
           }
@@ -120,22 +138,22 @@ export default class NostrZap extends HTMLElement {
         }
       }
 
-      if (!npub) throw new Error('Provide npub, nip05 or pubkey attribute');
+      if (!npub) throw new Error("Provide npub, nip05 or pubkey attribute");
 
       this.cachedAmountDialog = await openZapModal({
         npub,
         relays,
-        buttonColor: this.getAttribute('button-color') || undefined,
+        buttonColor: this.getAttribute("button-color") || undefined,
         cachedAmountDialog: this.cachedAmountDialog,
         theme: this.theme,
         fixedAmount: (() => {
-          const amtAttr = this.getAttribute('amount');
+          const amtAttr = this.getAttribute("amount");
           if (!amtAttr) return undefined;
           const num = Number(amtAttr);
           return isNaN(num) || num <= 0 ? undefined : num;
         })(),
         defaultAmount: (() => {
-          const defAttr = this.getAttribute('default-amount');
+          const defAttr = this.getAttribute("default-amount");
           if (!defAttr) return undefined;
           const num = Number(defAttr);
           return isNaN(num) || num <= 0 ? undefined : num;
@@ -143,10 +161,10 @@ export default class NostrZap extends HTMLElement {
         anon: false,
       });
       this.isError = false;
-      this.errorMessage = '';
+      this.errorMessage = "";
     } catch (e: any) {
       this.isError = true;
-      this.errorMessage = e?.message || 'Unable to zap';
+      this.errorMessage = e?.message || "Unable to zap";
     } finally {
       this.isLoading = false;
       this.render();
@@ -155,20 +173,20 @@ export default class NostrZap extends HTMLElement {
 
   private attachEventListeners() {
     if (!this.shadowRoot) return;
-    const btn = this.shadowRoot.querySelector('.nostr-zap-button');
+    const btn = this.shadowRoot.querySelector(".nostr-zap-button");
     if (!btn) return;
     if (this.boundHandleClick) {
-      btn.removeEventListener('click', this.boundHandleClick);
+      btn.removeEventListener("click", this.boundHandleClick);
     }
     this.boundHandleClick = this.handleZapClick.bind(this);
-    btn.addEventListener('click', this.boundHandleClick);
+    btn.addEventListener("click", this.boundHandleClick);
   }
 
   private render() {
-    const buttonTextAttr = this.getAttribute('button-text');
-    const buttonColorAttr = this.getAttribute('button-color');
-    const iconWidthAttr = this.getAttribute('icon-width');
-    const iconHeightAttr = this.getAttribute('icon-height');
+    const buttonTextAttr = this.getAttribute("button-text");
+    const buttonColorAttr = this.getAttribute("button-color");
+    const iconWidthAttr = this.getAttribute("icon-width");
+    const iconHeightAttr = this.getAttribute("icon-height");
 
     const options: RenderZapButtonOptions = {
       theme: this.theme,
@@ -176,7 +194,7 @@ export default class NostrZap extends HTMLElement {
       isError: this.isError,
       isSuccess: this.isSuccess,
       errorMessage: this.errorMessage,
-      buttonText: buttonTextAttr || 'Zap',
+      buttonText: buttonTextAttr || "Zap",
       buttonColor: buttonColorAttr,
       iconWidth: iconWidthAttr ? Number(iconWidthAttr) : 25,
       iconHeight: iconHeightAttr ? Number(iconHeightAttr) : 25,
@@ -189,4 +207,4 @@ export default class NostrZap extends HTMLElement {
   }
 }
 
-customElements.define('nostr-zap', NostrZap);
+customElements.define("nostr-zap", NostrZap);
