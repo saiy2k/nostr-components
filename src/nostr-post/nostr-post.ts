@@ -1,21 +1,11 @@
-import { NDKEvent, NDKUserProfile, ProfilePointer } from '@nostr-dev-kit/ndk';
-import { nip21 } from 'nostr-tools';
-import { DEFAULT_RELAYS } from '../common/constants';
+import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { getPostStats, Stats } from '../common/utils';
-import { Theme } from '../common/types';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
-import { NostrService } from '../common/nostr-service';
 import { parseText } from './parse-text';
 import { renderContent } from './render-content';
+import { NostrBaseComponent } from '../nostr-base-component';
 
-export default class NostrPost extends HTMLElement {
-  private rendered: boolean = false;
-  private nostrService: NostrService = NostrService.getInstance();
-
-  private isLoading: boolean = true;
-  private isError: boolean = false;
-
-  private theme: Theme = 'light';
+export default class NostrPost extends NostrBaseComponent {
 
   private post: NDKEvent | null = null;
   private stats: Stats | null = null;
@@ -34,31 +24,9 @@ export default class NostrPost extends HTMLElement {
     | ((npub: string, author: NDKUserProfile | null | undefined) => void)
     | null = null;
 
-  getRelays = () => {
-    const userRelays = this.getAttribute('relays');
-    if (userRelays) {
-      return userRelays.split(',');
-    }
-    return [...DEFAULT_RELAYS];
-  };
-
-  getTheme = async () => {
-    this.theme = 'light';
-
-    const userTheme = this.getAttribute('theme');
-
-    if (userTheme) {
-      const isValidTheme = ['light', 'dark'].includes(userTheme);
-
-      if (!isValidTheme) {
-        throw new Error(
-          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
-        );
-      }
-
-      this.theme = userTheme as Theme;
-    }
-  };
+  constructor() {
+    super(false);
+  }
 
   async connectedCallback() {
     const onClick = this.getAttribute('onClick');
@@ -88,9 +56,8 @@ export default class NostrPost extends HTMLElement {
 
   static get observedAttributes() {
     return [
-      'relays',
+      ...super.observedAttributes,
       'id',
-      'theme',
       'show-stats',
       'onClick',
       'onAuthorClick',
@@ -103,9 +70,7 @@ export default class NostrPost extends HTMLElement {
     _oldValue: string | null,
     newValue: string | null
   ) {
-    if (name === 'relays') {
-      this.nostrService.connectToNostr(this.getRelays());
-    }
+    super.attributeChangedCallback(name, _oldValue, newValue);
 
     if (['relays', 'id'].includes(name)) {
       this.getPost();
@@ -129,7 +94,6 @@ export default class NostrPost extends HTMLElement {
     }
 
     if (name === 'theme') {
-      this.getTheme();
       this.render();
     }
 

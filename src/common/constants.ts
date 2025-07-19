@@ -9,7 +9,7 @@ export const DEFAULT_RELAYS = [
   'wss://relay.getalby.com',
   'wss://relay.primal.net',
   // 'wss://nostr.malin.onl',
-  'wss://nostrsatva.net',
+  // 'wss://nostrsatva.net',
   'wss://purplepag.es',
 ] as const;
 

@@ -1,49 +1,27 @@
-import { NDKUser, NDKNip07Signer } from '@nostr-dev-kit/ndk';
-import { parseRelays, parseTheme, parseBooleanAttribute } from '../common/utils';
-import { Theme } from '../common/types';
-import { NostrService } from '../common/nostr-service';
+import { NDKNip07Signer } from '@nostr-dev-kit/ndk';
+import { NostrBaseComponent } from '../nostr-base-component';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 
 /**
  * TODO:
  *  * To have a text attribute. Default value being "Follow me on Nostr"
  */
-export default class NostrFollowButton extends HTMLElement {
-  private nostrService: NostrService = NostrService.getInstance();
-
-  private theme: Theme = 'light';
-  private isLoading: boolean = false;
-  private isError: boolean = false;
-  private rendered: boolean = false;
-  private errorMessage: string = '';
+export default class NostrFollowButton extends NostrBaseComponent {
 
   private isFollowed: boolean = false;
   private boundHandleClick: (() => Promise<void>) | null = null;
 
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
-
-  private getRelays() {
-    return parseRelays(this.getAttribute('relays'));
-  }
-
-  private getTheme() {
-    this.theme = parseTheme(this.getAttribute('theme'));
-  }
-
   connectedCallback() {
     if (!this.rendered) {
       this.getTheme();
-      this.nostrService.connectToNostr(this.getRelays());
+      this.connectToNostr();
       this.render();
       this.rendered = true;
     }
   }
 
   static get observedAttributes() {
-    return ['relays', 'npub', 'pubkey', 'nip05', 'theme'];
+    return [...super.observedAttributes, 'npub', 'pubkey', 'nip05'];
   }
 
   attributeChangedCallback(
@@ -51,14 +29,7 @@ export default class NostrFollowButton extends HTMLElement {
     _oldValue: string | null,
     _newValue: string | null
   ) {
-    if (name === 'relays') {
-      this.nostrService.connectToNostr(this.getRelays());
-    }
-
-    if (name === 'theme') {
-      this.getTheme();
-    }
-
+    super.attributeChangedCallback(name, _oldValue, _newValue);
     this.render();
   }
 
@@ -72,40 +43,27 @@ export default class NostrFollowButton extends HTMLElement {
     try {
       const ndk = this.nostrService.getNDK();
       ndk.signer = nip07signer;
-      await this.nostrService.connectToNostr(this.getRelays());
+      await this.connectToNostr();
 
-      const userToFollowNpub = this.getAttribute('npub');
-      const userToFollowNip05 = this.getAttribute('nip05');
-      const userToFollowPubkey = this.getAttribute('pubkey');
+      const userToFollow = await this.resolveNDKUser();
 
-      if (!userToFollowNpub && !userToFollowNip05 && !userToFollowPubkey) {
-        this.errorMessage = 'Provide npub, nip05 or pubkey';
-        this.isError = true;
-      } else {
-        const userToFollow = await this.nostrService.resolveNDKUser({
-          npub: userToFollowNpub,
-          nip05: userToFollowNip05,
-          pubkey: userToFollowPubkey,
-        });
-
-        if (userToFollow != null) {
-          const signer = ndk.signer;
-          if (!signer) {
-            throw new Error('No signer available');
-          }
-          const signedUser = await signer.user();
-          if (signedUser) {
-            await signedUser.follow(userToFollow);
-          }
-
-          this.isFollowed = true;
-        } else {
-          this.errorMessage = 'Could not resolve user to follow.';
-          this.isError = true;
-          this.isLoading = false;
-          this.render();
-          return;
+      if (userToFollow != null) {
+        const signer = ndk.signer;
+        if (!signer) {
+          throw new Error('No signer available');
         }
+        const signedUser = await signer.user();
+        if (signedUser) {
+          await signedUser.follow(userToFollow);
+        }
+
+        this.isFollowed = true;
+      } else {
+        this.errorMessage = 'Could not resolve user to follow.';
+        this.isError = true;
+        this.isLoading = false;
+        this.render();
+        return;
       }
     } catch (err) {
       this.isError = true;

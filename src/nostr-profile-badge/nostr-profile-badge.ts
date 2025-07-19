@@ -1,42 +1,32 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { Theme } from '../common/types';
-import { NostrService } from '../common/nostr-service';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 import { parseRelays, parseTheme, parseBooleanAttribute } from '../common/utils';
 import { renderProfileBadge } from './render';
 import { getProfileBadgeStyles } from './style';
+import { NostrBaseComponent } from '../nostr-base-component';
 
 /**
  * TODO: Improve Follow button placement
  */
-export default class NostrProfileBadge extends HTMLElement {
-  private nostrService: NostrService = NostrService.getInstance();
+export default class NostrProfileBadge extends NostrBaseComponent {
 
   private userProfile: NDKUserProfile = {
     name: '',
     picture: '',
     nip05: '',
   };
-  private theme: Theme = 'light';
-  private isLoading: boolean = true;
-  private isError: boolean = false;
-  private rendered: boolean = false;
 
   private ndkUser: NDKUser | null = null;
 
-  private shadow: ShadowRoot;
-
-  constructor() {
-    super();
-    this.shadow = this.attachShadow({ mode: 'open' });
-  }
-
-  private getRelays() {
-    return parseRelays(this.getAttribute('relays'));
-  }
-
-  private getTheme() {
-    this.theme = parseTheme(this.getAttribute('theme'));
+  static get observedAttributes() {
+    return [
+      ...super.observedAttributes,
+      'npub',
+      'pubkey',
+      'nip05',
+      'show-npub',
+      'show-follow',
+    ];
   }
 
   getUserProfileAndRender = async () => {
@@ -44,11 +34,7 @@ export default class NostrProfileBadge extends HTMLElement {
       this.isLoading = true;
       this.render();
 
-      const user = await this.nostrService.resolveNDKUser({
-        npub: this.getAttribute('npub'),
-        nip05: this.getAttribute('nip05'),
-        pubkey: this.getAttribute('pubkey'),
-      });
+      const user = await this.resolveNDKUser();
 
       if (user?.npub) {
         this.ndkUser = user;
@@ -87,22 +73,9 @@ export default class NostrProfileBadge extends HTMLElement {
     }
   }
 
-  static get observedAttributes() {
-    return [
-      'relays',
-      'npub',
-      'pubkey',
-      'nip05',
-      'theme',
-      'show-npub',
-      'show-follow',
-    ];
-  }
 
-  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-    if (name === 'relays') {
-      this.nostrService.connectToNostr(this.getRelays());
-    }
+  attributeChangedCallback(name: string, _oldValue: string, _newValue: string) {
+    super.attributeChangedCallback(name, _oldValue, _newValue);
 
     if (['relays', 'pubkey', 'npub', 'nip05'].includes(name)) {
       // TODO: Validate npub, pubkey
@@ -110,7 +83,6 @@ export default class NostrProfileBadge extends HTMLElement {
     }
 
     if (name === 'theme') {
-      this.getTheme();
       this.render();
     }
 
