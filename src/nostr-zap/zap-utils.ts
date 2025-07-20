@@ -267,7 +267,7 @@ export const fetchTotalZapAmount = async ({
     ]);
 
         for (const event of events) {
-      const descriptionTag = event.tags.find((tag: string[]) => tag[0] === 'description');
+      const descriptionTag = event.tags?.find((tag: string[]) => tag[0] === 'description');
       if (descriptionTag?.[1]) {
         try {
           const zapRequest = JSON.parse(descriptionTag[1]);
