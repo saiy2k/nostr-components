@@ -67,9 +67,10 @@ export const injectCSS = (() => {
       .nostr-zap-dialog .close-btn{position:absolute;top:8px;right:8px;border:none;background:#f7fafc;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer}
       .nostr-zap-dialog img.qr{margin-top:16px;border:1px solid #e2e8f0;border-radius:8px}
       .nostr-zap-dialog .copy-btn{margin-top:12px;cursor:pointer;font-size:14px;background:none;border:none;color:#7f00ff}
-      .nostr-zap-dialog .update-zap-container{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-      .nostr-zap-dialog .update-zap-container .custom-amount{flex:1 1 auto}
-      @media(max-width:480px){.nostr-zap-dialog .update-zap-container{flex-direction:column}}
+      .nostr-zap-dialog .update-zap-container{display:flex;gap:8px;align-items:center;margin-top:8px}
+      .nostr-zap-dialog .update-zap-container .custom-amount{flex-grow:1;}
+      .nostr-zap-dialog .comment-container{display:flex;gap:8px;align-items:center;margin-top:8px}
+      .nostr-zap-dialog .comment-container .comment-input{flex-grow:1;}
       .nostr-zap-dialog.dark input{background:#262626;border:1px solid #3a3a3a;color:#fff}
       .nostr-zap-dialog.dark .update-zap-btn{background:#7f00ff;color:#fff}
       .nostr-zap-dialog .loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.7);display:flex;justify-content:center;align-items:center;border-radius:10px;opacity:0;transition:opacity .2s ease;pointer-events:none}
@@ -101,6 +102,17 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   const { npub, relays, cachedAmountDialog, buttonColor, fixedAmount, defaultAmount, initialAmount } = params;
   const npubHex = decodeNpub(npub);
   if (cachedAmountDialog) {
+    // remove success class if it exists
+    cachedAmountDialog.classList.remove('success');
+    // show all controls that might have been hidden
+    const controls = cachedAmountDialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-input, .cta-btn, .copy-btn');
+    controls.forEach(el => {
+      if (el instanceof HTMLElement) el.style.display = '';
+    });
+    // reset the update button
+    const updateZapBtn = cachedAmountDialog.querySelector('.update-zap-btn') as HTMLButtonElement | null;
+    if (updateZapBtn) updateZapBtn.style.display = '';
+
     cachedAmountDialog.showModal();
     return cachedAmountDialog;
   }
@@ -214,12 +226,14 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       <button class="close-btn">✕</button>
       <h2>Send a Zap</h2>
       ${hideAmountUI ? '' : `<div class="amount-buttons">${amountButtonsHtml}</div>`}
+      ${hideAmountUI ? `<p class="zapping-amount">Zapping ${fixedAmount} sats</p>` : ''}
       ${hideAmountUI ? '' : `<div class="update-zap-container">
         <input type="number" min="1" placeholder="Custom sats" class="custom-amount" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
-        <button type="button" class="update-zap-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Update zap</button>
+        <button type="button" class="update-zap-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Update Zap</button>
       </div>`}
-      ${hideAmountUI ? '' : `<div style="margin-top:8px">
+      ${hideAmountUI ? '' : `<div class="comment-container">
         <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
+        <button type="button" class="add-comment-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Add</button>
       </div>`}
       <img class="qr" width="240" height="240" alt="QR" style="cursor:pointer" />
       <br />
@@ -290,6 +304,13 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     }
   });
 
+  const addCommentBtn = dialog.querySelector('.add-comment-btn') as HTMLButtonElement | null;
+  if (addCommentBtn) addCommentBtn.addEventListener('click', async () => {
+    addCommentBtn.disabled = true;
+    await refreshUI(dialog);
+    addCommentBtn.disabled = false;
+  });
+
   (dialog.querySelector('.cta-btn') as HTMLButtonElement).onclick = async () => {
     if (!currentInvoice) return;
     // try WebLN first
@@ -299,8 +320,9 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
         await window.webln.sendPayment(currentInvoice);
         markSuccess();
         return;
-      } catch {
-        // fall-through
+      } catch (e) {
+        console.error('Nostr-Components: Zap button: webln payment failed', e);
+        dialog.close();
       }
     }
     window.location.href = `lightning:${currentInvoice}`;
@@ -311,9 +333,13 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     const overlay = dialog.querySelector('.success-overlay') as HTMLElement;
     overlay.style.opacity = '1';
     // hide other controls for clarity
-    const controls = dialog.querySelectorAll('.amount-buttons, .custom-amount, .comment-input, .cta-btn, .copy-btn');
-    controls.forEach(el => ((el as HTMLElement).style.display = 'none'));
-    setTimeout(() => dialog.close(), 2000);
+    const controls = dialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn');
+    controls.forEach(el => {
+      if (el instanceof HTMLElement) el.style.display = 'none';
+    });
+    // ensure close button is still clickable
+    const closeBtn = dialog.querySelector('.close-btn') as HTMLElement;
+    if (closeBtn) closeBtn.style.pointerEvents = 'auto';
   }
 
   dialog.addEventListener('close', () => {

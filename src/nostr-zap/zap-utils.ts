@@ -248,6 +248,47 @@ declare module 'nostr-tools' {
   }
 }
 
+export const fetchTotalZapAmount = async ({
+  pubkey,
+  relays,
+}: {
+  pubkey: string;
+  relays: string[];
+}): Promise<number> => {
+  const pool = new SimplePool();
+  let totalAmount = 0;
+
+  try {
+    const events = await (pool as any).list(relays, [
+      {
+        kinds: [9735],
+        '#p': [pubkey],
+      },
+    ]);
+
+        for (const event of events) {
+      const descriptionTag = event.tags.find((tag: string[]) => tag[0] === 'description');
+      if (descriptionTag && descriptionTag[1]) {
+        try {
+          const zapRequest = JSON.parse(descriptionTag[1]);
+          const amountTag = zapRequest.tags.find((tag: string[]) => tag[0] === 'amount');
+          if (amountTag && amountTag[1]) {
+            totalAmount += parseInt(amountTag[1], 10);
+          }
+        } catch (e) {
+          console.error("Nostr-Components: Zap button: Could not parse zap request from description tag", e);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Nostr-Components: Zap button: Error fetching zap receipts", error);
+  } finally {
+    pool.close(relays);
+  }
+
+  return totalAmount / 1000; // convert from msats to sats
+};
+
 export const listenForZapReceipt = ({
   relays,
   receiversPubKey,
@@ -263,7 +304,7 @@ export const listenForZapReceipt = ({
   const normalizedRelays = Array.from(new Set([...relays, 'wss://relay.nostr.band']));
   const since = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000); // current time - 24 hours
 
-  const sub = pool.subscribe(
+  pool.subscribe(
     normalizedRelays,
     {
       kinds: [9735],

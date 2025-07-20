@@ -11,9 +11,10 @@ export interface RenderZapButtonOptions {
   isSuccess: boolean;
   errorMessage: string;
   buttonText: string;
-  buttonColor?: string | null;
+
   iconWidth: number;
   iconHeight: number;
+  totalZapAmount: number | null;
 }
 
 export function renderZapButton({
@@ -23,11 +24,11 @@ export function renderZapButton({
   isSuccess,
   errorMessage,
   buttonText,
-  buttonColor,
   iconWidth,
   iconHeight,
+  totalZapAmount,
 }: RenderZapButtonOptions): string {
-  const backgroundColorStyle = buttonColor ? `background-color: ${buttonColor}; color: ${getTextColor(buttonColor)};` : '';
+
 
   return `
     ${getZapButtonStyles(theme, isLoading)}
@@ -42,7 +43,7 @@ export function renderZapButton({
     </style>
     <div class="nostr-zap-button-container ${isError ? 'nostr-zap-button-error' : ''}">
       <div class="nostr-zap-button-wrapper">
-        <button class="nostr-zap-button" style="${backgroundColorStyle}">
+        <button class="nostr-zap-button">
           ${
             isLoading
               ? `${getLoadingNostrich(theme, iconWidth, iconHeight)} <span>Zapping...</span>`
@@ -51,6 +52,7 @@ export function renderZapButton({
                 : `${getLightningIcon(iconWidth, iconHeight)} <span>${buttonText}</span>`
           }
         </button>
+        ${totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} sats</span>` : ''}
       </div>
       ${isError ? `<small>${errorMessage}</small>` : ''}
     </div>
@@ -68,6 +70,8 @@ export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {
       :host {
         --nstrc-zap-btn-padding: 10px 16px;
         --nstrc-zap-btn-font-size: 16px;
+        --nstrc-zap-btn-bg: var(--nstrc-zap-btn-background-light);
+        --nstrc-zap-btn-color: var(--nstrc-zap-btn-text-color-light);
         --nstrc-zap-btn-background-dark: #000000;
         --nstrc-zap-btn-background-light: #ffffff;
         --nstrc-zap-btn-hover-background-dark: #222222;
@@ -91,20 +95,21 @@ export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {
       }
       .nostr-zap-button-wrapper {
         display: flex;
-        justify-content: start;
+        align-items: center;
+        gap: 8px;
       }
       .nostr-zap-button {
         display: flex;
         align-items: center;
         gap: 12px;
         border-radius: var(--nstrc-zap-btn-border-radius);
-        background-color: var(--nstrc-zap-btn-background-${theme});
+        background-color: var(--nstrc-zap-btn-bg);
         cursor: pointer;
         min-height: var(--nstrc-zap-btn-min-height);
         border: var(--nstrc-zap-btn-border-${theme});
         padding: var(--nstrc-zap-btn-padding);
         font-size: var(--nstrc-zap-btn-font-size);
-        color: var(--nstrc-zap-btn-text-color-${theme});
+        color: var(--nstrc-zap-btn-color);
         ${isLoading ? 'pointer-events: none; user-select: none; background-color: var(--nstrc-zap-btn-hover-background-${theme});' : ''}
       }
       .nostr-zap-button:hover {
@@ -119,13 +124,4 @@ export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {
       }
     </style>
   `;
-}
-
-function getTextColor(background: string) {
-  const hex = background.replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness < 128 ? '#fff' : '#000';
 }
