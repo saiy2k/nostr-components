@@ -268,11 +268,11 @@ export const fetchTotalZapAmount = async ({
 
         for (const event of events) {
       const descriptionTag = event.tags.find((tag: string[]) => tag[0] === 'description');
-      if (descriptionTag && descriptionTag[1]) {
+      if (descriptionTag?.[1]) {
         try {
           const zapRequest = JSON.parse(descriptionTag[1]);
-          const amountTag = zapRequest.tags.find((tag: string[]) => tag[0] === 'amount');
-          if (amountTag && amountTag[1]) {
+          const amountTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'amount');
+          if (amountTag?.[1]) {
             totalAmount += parseInt(amountTag[1], 10);
           }
         } catch (e) {

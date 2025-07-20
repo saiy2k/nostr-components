@@ -65,6 +65,8 @@ function getLightningIcon(w: number, h: number): string {
 }
 
 export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {
+  const safeTheme = theme === 'dark' ? 'dark' : 'light';
+
   return `
     <style>
       :host {
@@ -106,14 +108,14 @@ export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {
         background-color: var(--nstrc-zap-btn-bg);
         cursor: pointer;
         min-height: var(--nstrc-zap-btn-min-height);
-        border: var(--nstrc-zap-btn-border-${theme});
+        border: var(--nstrc-zap-btn-border-${safeTheme});
         padding: var(--nstrc-zap-btn-padding);
         font-size: var(--nstrc-zap-btn-font-size);
         color: var(--nstrc-zap-btn-color);
-        ${isLoading ? 'pointer-events: none; user-select: none; background-color: var(--nstrc-zap-btn-hover-background-${theme});' : ''}
+        ${isLoading ? `pointer-events: none; user-select: none; background-color: var(--nstrc-zap-btn-hover-background-${safeTheme});` : ''}
       }
       .nostr-zap-button:hover {
-        background-color: var(--nstrc-zap-btn-hover-background-${theme});
+        background-color: var(--nstrc-zap-btn-hover-background-${safeTheme});
       }
       .nostr-zap-button-error small {
         color: red;
