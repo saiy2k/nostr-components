@@ -5,6 +5,8 @@ import {
 } from '../common/theme';
 
 export interface RenderZapButtonOptions {
+  /** Shows loader next to zap count while fetching */
+  isAmountLoading: boolean;
   theme: Theme;
   isLoading: boolean;
   isError: boolean;
@@ -27,6 +29,7 @@ export function renderZapButton({
   iconWidth,
   iconHeight,
   totalZapAmount,
+  isAmountLoading,
 }: RenderZapButtonOptions): string {
 
 
@@ -52,7 +55,7 @@ export function renderZapButton({
                 : `${getLightningIcon(iconWidth, iconHeight)} <span>${buttonText}</span>`
           }
         </button>
-        ${totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} sats</span>` : ''}
+        ${isAmountLoading ? `${getLoadingNostrich(theme, 18, 18)}` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
       </div>
       ${isError ? `<small>${errorMessage}</small>` : ''}
     </div>

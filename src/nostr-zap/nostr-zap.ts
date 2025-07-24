@@ -3,7 +3,8 @@ import { Theme } from "../common/types";
 import { injectCSS, init as openZapModal } from "./dialog";
 import { renderZapButton, RenderZapButtonOptions } from "./render";
 import { nip19 } from "nostr-tools";
-import { resolveNip05, fetchTotalZapAmount, decodeNpub } from "./zap-utils";
+import { resolveNip05, decodeNpub } from "./zap-utils";
+import { NostrService } from "../common/nostr-service";
 
 /**
  * <nostr-zap>
@@ -28,6 +29,7 @@ export default class NostrZap extends HTMLElement {
   private isSuccess = false;
   private errorMessage = "";
   private totalZapAmount: number | null = null;
+  private isAmountLoading = false;
 
   private boundHandleClick: (() => void) | null = null;
   private static cssInjected = false;
@@ -65,7 +67,7 @@ export default class NostrZap extends HTMLElement {
       }
       this.render();
       this.rendered = true;
-      this.updateTotalZapAmount();
+      this.updateZapCount();
     }
   }
 
@@ -221,9 +223,10 @@ export default class NostrZap extends HTMLElement {
     btn.addEventListener("click", this.boundHandleClick);
   }
 
-  private async updateTotalZapAmount() {
+  private async updateZapCount() {
     const npub = this.getAttribute("npub");
     const pubkey = this.getAttribute("pubkey");
+    const nip05 = this.getAttribute("nip05");
     const relays = this.getRelays();
 
     let hexPubkey: string | null = null;
@@ -231,12 +234,33 @@ export default class NostrZap extends HTMLElement {
     if (pubkey) {
       hexPubkey = pubkey;
     } else if (npub) {
-      hexPubkey = decodeNpub(npub);
+      const decoded = decodeNpub(npub);
+      if (decoded) hexPubkey = decoded;
+    } else if (nip05) {
+      // Resolve nip05 to pubkey
+      try {
+        const resolved = await resolveNip05(nip05);
+        if (resolved) hexPubkey = resolved;
+      } catch (e) {
+        console.warn("Nostr-Components: Zap button: nip05 resolution failed", e);
+      }
     }
 
     if (hexPubkey) {
-      this.totalZapAmount = await fetchTotalZapAmount({ pubkey: hexPubkey, relays });
-      this.render();
+      try {
+        this.isAmountLoading = true;
+        this.render();
+        const service = NostrService.getInstance();
+        await service.connectToNostr(relays);
+        const count = await service.getZapCount({ pubkey: hexPubkey });
+        this.totalZapAmount = count;
+      } catch (e) {
+        console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
+        this.totalZapAmount = null;
+      } finally {
+        this.isAmountLoading = false;
+        this.render();
+      }
     }
   }
 
@@ -273,6 +297,7 @@ export default class NostrZap extends HTMLElement {
       iconWidth: iconWidthAttr ? Number(iconWidthAttr) : 25,
       iconHeight: iconHeightAttr ? Number(iconHeightAttr) : 25,
       totalZapAmount: this.totalZapAmount,
+    isAmountLoading: this.isAmountLoading,
     };
 
     if (this.shadowRoot) {
