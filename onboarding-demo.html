@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Nostr Onboarding Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .demo-section h2 {
+            color: #333;
+            margin-top: 0;
+            border-bottom: 2px solid #8a63d2;
+            padding-bottom: 8px;
+        }
+        
+        .demo-section h3 {
+            color: #555;
+            margin-top: 24px;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .demo-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            background: #fafafa;
+        }
+        
+        .demo-card h4 {
+            margin-top: 0;
+            color: #8a63d2;
+        }
+        
+        .demo-button {
+            background: #8a63d2;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px 8px 8px 0;
+        }
+        
+        .demo-button:hover {
+            background: #7952c7;
+        }
+        
+        .demo-button.secondary {
+            background: #e5e5e5;
+            color: #333;
+        }
+        
+        .demo-button.secondary:hover {
+            background: #d5d5d5;
+        }
+        
+        .status-display {
+            background: #f0f8ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .feature-list li:before {
+            content: "✅ ";
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 12px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            color: #856404;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Enhanced Nostr Onboarding System Demo</h1>
+    
+    <div class="demo-section">
+        <h2>🎯 Overview</h2>
+        <p>This demo showcases the comprehensive onboarding system built for nostr-components with 6 different authentication methods, secure key storage, and modern UX.</p>
+        
+        <div class="info">
+            <strong>Built with:</strong> nostr-tools, @nostr-dev-kit/ndk, and native browser APIs only - no external authentication libraries!
+        </div>
+        
+        <ul class="feature-list">
+            <li>Browser Extension Detection & Switching</li>
+            <li>QR Code Authentication with Connection Strings</li>
+            <li>NIP-46 Bunker Support (nsec.app, Amber, etc.)</li>
+            <li>OTP/DM Authentication via Nostr</li>
+            <li>Secure Key Storage with Encryption</li>
+            <li>Local Key Generation</li>
+            <li>Legacy Key Migration</li>
+            <li>Modern Multi-Screen UI Flow</li>
+        </ul>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔐 Authentication Methods</h2>
+        
+        <div class="demo-grid">
+            <div class="demo-card">
+                <h4>1. Browser Extensions</h4>
+                <p>Auto-detects Alby, nos2x, Horse, Flamingo, Blockcore and allows switching between them.</p>
+                <button class="demo-button" onclick="triggerOnboarding('Browser Extension')">Test Extension Auth</button>
+                <button class="demo-button secondary" onclick="showExtensionStatus()">Check Extensions</button>
+            </div>
+            
+            <div class="demo-card">
+                <h4>2. QR Code</h4>
+                <p>Generates connection strings with QR codes for mobile app authentication.</p>
+                <button class="demo-button" onclick="triggerOnboarding('QR Code')">Test QR Auth</button>
+                <button class="demo-button secondary" onclick="generateTestQR()">Generate Test QR</button>
+            </div>
+            
+            <div class="demo-card">
+                <h4>3. NIP-46 Bunker</h4>
+                <p>Full bunker URL support for nsec.app, Amber, and other NIP-46 signers.</p>
+                <button class="demo-button" onclick="triggerOnboarding('Bunker')">Test Bunker Auth</button>
+                <button class="demo-button secondary" onclick="testBunkerUrl()">Test Bunker URL</button>
+            </div>
+            
+            <div class="demo-card">
+                <h4>4. OTP/DM Authentication</h4>
+                <p>Send verification codes via Nostr DMs with NIP-05 resolution.</p>
+                <button class="demo-button" onclick="triggerOnboarding('OTP')">Test OTP Auth</button>
+                <button class="demo-button secondary" onclick="testNip05Resolution()">Test NIP-05</button>
+            </div>
+            
+            <div class="demo-card">
+                <h4>5. Secure Key Storage</h4>
+                <p>Encrypted localStorage with PBKDF2 + AES-GCM encryption.</p>
+                <button class="demo-button" onclick="triggerOnboarding('Secure Key')">Test Secure Storage</button>
+                <button class="demo-button secondary" onclick="showStoredKeys()">Show Stored Keys</button>
+            </div>
+            
+            <div class="demo-card">
+                <h4>6. Key Generation</h4>
+                <p>Generate new keypairs locally with secure storage.</p>
+                <button class="demo-button" onclick="triggerOnboarding('Generate Key')">Test Key Generation</button>
+                <button class="demo-button secondary" onclick="generateTestKey()">Generate Test Key</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🧪 Component Integration</h2>
+        <p>The enhanced onboarding system integrates seamlessly with existing components:</p>
+        
+        <h3>Follow Button Integration</h3>
+        <p>Try following someone - the onboarding modal will appear if no signer is available:</p>
+        <nostr-follow-button npub="npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m"></nostr-follow-button>
+        
+        <h3>Manual Trigger Example</h3>
+        <button class="demo-button" onclick="manualTrigger()">Trigger Onboarding Manually</button>
+        
+        <div class="code-block">
+// Manual onboarding trigger example
+const modal = document.createElement('nostr-onboarding-modal');
+document.body.appendChild(modal);
+modal.setPendingAction('like this post', () => {
+    console.log('User authenticated, now liking post...');
+});
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>📊 Status & Debugging</h2>
+        <div id="status-display" class="status-display">
+            Status information will appear here...
+        </div>
+        
+        <div style="margin-top: 16px;">
+            <button class="demo-button secondary" onclick="clearStorage()">Clear All Storage</button>
+            <button class="demo-button secondary" onclick="showDebugInfo()">Show Debug Info</button>
+            <button class="demo-button secondary" onclick="testAllServices()">Test All Services</button>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔧 Technical Implementation</h2>
+        
+        <h3>Architecture</h3>
+        <ul>
+            <li><strong>ExtensionService:</strong> Detects and manages browser extensions</li>
+            <li><strong>SecureStorage:</strong> Encrypted key storage with WebCrypto API</li>
+            <li><strong>ConnectionStringService:</strong> Generates connection strings and QR codes</li>
+            <li><strong>Nip46Service:</strong> Full NIP-46 bunker implementation</li>
+            <li><strong>OTPService:</strong> OTP/DM authentication with NIP-05 resolution</li>
+        </ul>
+        
+        <h3>Security Features</h3>
+        <ul>
+            <li>PBKDF2 key derivation (100,000 iterations)</li>
+            <li>AES-GCM authenticated encryption</li>
+            <li>Secure random generation for all secrets</li>
+            <li>Password-protected key storage</li>
+            <li>Legacy key migration support</li>
+        </ul>
+        
+        <div class="warning">
+            <strong>Note:</strong> This is a demo environment. In production, ensure proper relay configuration and error handling.
+        </div>
+    </div>
+
+    <!-- Load the components -->
+    <script type="module" src="./dist/nostr-components.es.js"></script>
+    
+    <script>
+        // Demo functionality
+        let statusEl;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            statusEl = document.getElementById('status-display');
+            updateStatus('Demo loaded successfully!');
+            
+            // Initialize services for testing
+            initializeServices();
+        });
+        
+        function updateStatus(message) {
+            if (statusEl) {
+                const timestamp = new Date().toLocaleTimeString();
+                statusEl.innerHTML += `[${timestamp}] ${message}\n`;
+                statusEl.scrollTop = statusEl.scrollHeight;
+            }
+        }
+        
+        async function initializeServices() {
+            try {
+                // Import services dynamically
+                const { ExtensionService } = await import('./dist/components/nostr-follow-button.es.js');
+                updateStatus('Services initialized');
+            } catch (error) {
+                updateStatus(`Error initializing services: ${error.message}`);
+            }
+        }
+        
+        function triggerOnboarding(method) {
+            updateStatus(`Triggering onboarding with method: ${method}`);
+            
+            const modal = document.createElement('nostr-onboarding-modal');
+            document.body.appendChild(modal);
+            
+            modal.setPendingAction(`test ${method.toLowerCase()} authentication`, () => {
+                updateStatus(`✅ Authentication successful with ${method}!`);
+            });
+            
+            // Navigate to specific screen based on method
+            setTimeout(() => {
+                switch(method) {
+                    case 'Browser Extension':
+                        modal.setScreen?.('extension');
+                        break;
+                    case 'QR Code':
+                        modal.setScreen?.('qr');
+                        break;
+                    case 'Bunker':
+                        modal.setScreen?.('bunker');
+                        break;
+                    case 'OTP':
+                        modal.setScreen?.('otp');
+                        break;
+                    case 'Secure Key':
+                        modal.setScreen?.('secure-key');
+                        break;
+                    case 'Generate Key':
+                        modal.setScreen?.('generate-key');
+                        break;
+                }
+            }, 100);
+        }
+        
+        function manualTrigger() {
+            updateStatus('Manual onboarding trigger');
+            
+            const modal = document.createElement('nostr-onboarding-modal');
+            document.body.appendChild(modal);
+            modal.setPendingAction('perform this demo action', () => {
+                updateStatus('✅ Demo action completed after authentication!');
+            });
+        }
+        
+        function showExtensionStatus() {
+            updateStatus('Checking browser extensions...');
+            
+            // Check for common extensions
+            const extensions = [];
+            if (window.nostr) extensions.push('window.nostr');
+            if (window.alby?.nostr) extensions.push('Alby');
+            if (window.nos2x) extensions.push('nos2x');
+            
+            if (extensions.length > 0) {
+                updateStatus(`Found extensions: ${extensions.join(', ')}`);
+            } else {
+                updateStatus('No Nostr extensions detected');
+            }
+        }
+        
+        function generateTestQR() {
+            updateStatus('Generating test QR code...');
+            // This would normally use ConnectionStringService
+            updateStatus('QR code generation would happen here (requires service import)');
+        }
+        
+        function testBunkerUrl() {
+            const testUrl = 'bunker://npub1234...?relay=wss://relay.damus.io';
+            updateStatus(`Testing bunker URL format: ${testUrl}`);
+            updateStatus('Bunker URL validation would happen here');
+        }
+        
+        function testNip05Resolution() {
+            updateStatus('Testing NIP-05 resolution...');
+            updateStatus('Would resolve username@domain.com to pubkey');
+        }
+        
+        function showStoredKeys() {
+            updateStatus('Checking stored keys...');
+            
+            // Check localStorage for stored keys
+            const legacyKey = localStorage.getItem('nostr_nsec');
+            const secureKeys = localStorage.getItem('nostr_secure_keys');
+            
+            if (legacyKey) {
+                updateStatus('⚠️ Legacy unencrypted key found');
+            }
+            
+            if (secureKeys) {
+                try {
+                    const keys = JSON.parse(secureKeys);
+                    updateStatus(`Found ${keys.length} securely stored keys`);
+                } catch {
+                    updateStatus('Error parsing stored keys');
+                }
+            } else {
+                updateStatus('No securely stored keys found');
+            }
+        }
+        
+        function generateTestKey() {
+            updateStatus('Test key generation would happen here');
+            updateStatus('Would generate new keypair with secure storage');
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('nostr_nsec');
+            localStorage.removeItem('nostr_secure_keys');
+            localStorage.removeItem('nostr_current_key');
+            updateStatus('🗑️ All storage cleared');
+        }
+        
+        function showDebugInfo() {
+            updateStatus('=== DEBUG INFO ===');
+            updateStatus(`User Agent: ${navigator.userAgent.substring(0, 50)}...`);
+            updateStatus(`Local Storage Available: ${typeof Storage !== 'undefined'}`);
+            updateStatus(`WebCrypto Available: ${typeof crypto.subtle !== 'undefined'}`);
+            updateStatus(`Canvas Available: ${typeof HTMLCanvasElement !== 'undefined'}`);
+            updateStatus('=== END DEBUG ===');
+        }
+        
+        function testAllServices() {
+            updateStatus('Testing all services...');
+            showExtensionStatus();
+            showStoredKeys();
+            updateStatus('All service tests completed');
+        }
+    </script>
+</body>
+</html>

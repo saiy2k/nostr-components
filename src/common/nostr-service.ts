@@ -270,6 +270,18 @@ export class NostrService {
   /** Check if window.nostr (NIP-07) or stored nsec is available */
   public hasSigner(): boolean {
     if ((window as any).nostr) return true;
-    return !!localStorage.getItem('nostr_nsec');
+    
+    // Check for legacy nsec storage
+    if (localStorage.getItem('nostr_nsec')) return true;
+    
+    // Check for new onboarding system signer storage
+    const signerType = localStorage.getItem('nostr-signer-type');
+    const pubkey = localStorage.getItem('nostr-pubkey');
+    
+    if (signerType && pubkey) {
+      return true;
+    }
+    
+    return false;
   }
 }
