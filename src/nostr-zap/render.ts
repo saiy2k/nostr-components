@@ -72,8 +72,8 @@ export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {
       :host {
         --nstrc-zap-btn-padding: 10px 16px;
         --nstrc-zap-btn-font-size: 16px;
-        --nstrc-zap-btn-bg: var(--nstrc-zap-btn-background-light);
-        --nstrc-zap-btn-color: var(--nstrc-zap-btn-text-color-light);
+        --nstrc-zap-btn-bg: var(--nstrc-zap-btn-background-${safeTheme});
+        --nstrc-zap-btn-color: var(--nstrc-zap-btn-text-color-${safeTheme});
         --nstrc-zap-btn-background-dark: #000000;
         --nstrc-zap-btn-background-light: #ffffff;
         --nstrc-zap-btn-hover-background-dark: #222222;
