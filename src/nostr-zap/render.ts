@@ -46,13 +46,15 @@ export function renderZapButton({
     </style>
     <div class="nostr-zap-button-container ${isError ? 'nostr-zap-button-error' : ''}">
       <div class="nostr-zap-button-wrapper">
-        <button class="nostr-zap-button">
+        <button class="nostr-zap-button" ${isLoading || isError ? 'disabled' : ''}>
           ${
-            isLoading
-              ? `${getLoadingNostrich(theme, iconWidth, iconHeight)} <span>Zapping...</span>`
-              : isSuccess
-                ? `${getSuccessAnimation(theme, iconWidth, iconHeight)} ${buttonText}`
-                : `${getLightningIcon(iconWidth, iconHeight)} <span>${buttonText}</span>`
+            isError
+              ? `<span>ERROR</span>`
+              : isLoading
+                ? `${getLoadingNostrich(theme, iconWidth, iconHeight)} <span>Zapping...</span>`
+                : isSuccess
+                  ? `${getSuccessAnimation(theme, iconWidth, iconHeight)} ${buttonText}`
+                  : `${getLightningIcon(iconWidth, iconHeight)} <span>${buttonText}</span>`
           }
         </button>
         ${isAmountLoading ? `${getLoadingNostrich(theme, 18, 18)}` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
@@ -118,6 +120,13 @@ export function getZapButtonStyles(theme: Theme, isLoading: boolean): string {
         ${isLoading ? `pointer-events: none; user-select: none; background-color: var(--nstrc-zap-btn-hover-background-${safeTheme});` : ''}
       }
       .nostr-zap-button:hover {
+        background-color: var(--nstrc-zap-btn-hover-background-${safeTheme});
+      }
+      .nostr-zap-button:disabled {
+        pointer-events: none;
+        user-select: none;
+        opacity: 0.6;
+      }
         background-color: var(--nstrc-zap-btn-hover-background-${safeTheme});
       }
       .nostr-zap-button-error small {
