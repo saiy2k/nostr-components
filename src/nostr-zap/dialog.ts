@@ -105,13 +105,19 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     // remove success class if it exists
     cachedAmountDialog.classList.remove('success');
     // show all controls that might have been hidden
-    const controls = cachedAmountDialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-input, .cta-btn, .copy-btn');
+    const controls = cachedAmountDialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn');
     controls.forEach(el => {
       if (el instanceof HTMLElement) el.style.display = '';
     });
     // reset the update button
     const updateZapBtn = cachedAmountDialog.querySelector('.update-zap-btn') as HTMLButtonElement | null;
     if (updateZapBtn) updateZapBtn.style.display = '';
+    // reset success overlay opacity if it was previously shown
+    const successOverlay = cachedAmountDialog.querySelector('.success-overlay') as HTMLElement | null;
+    if (successOverlay) {
+      successOverlay.style.opacity = '0';
+      successOverlay.style.pointerEvents = 'none';
+    }
 
     cachedAmountDialog.showModal();
     return cachedAmountDialog;
@@ -332,6 +338,8 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     dialog.classList.add('success');
     const overlay = dialog.querySelector('.success-overlay') as HTMLElement;
     overlay.style.opacity = '1';
+    // Ensure overlay does not block interactions (close button)
+    overlay.style.pointerEvents = 'none';
     // hide other controls for clarity
     const controls = dialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn');
     controls.forEach(el => {
