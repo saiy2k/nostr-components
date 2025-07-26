@@ -30,6 +30,10 @@ export default defineConfig({
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
         'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
+        'nostr-live-chat': resolve(
+          __dirname,
+          'src/nostr-live-chat/nostr-live-chat.ts'
+        ),
       },
       external: [],
       output: [
