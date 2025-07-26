@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nostr Live Chat Component Example</title>
+    <style>
+      body {
+        font-family: Inter, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        gap: 2rem;
+        background-color: #f0f2f5;
+      }
+      h1 {
+        color: #333;
+      }
+      .component-container {
+        width: 100%;
+        max-width: 420px;
+        height: 600px;
+        border: 1px solid #ccc;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+    </style>
+    <script type="module" src="/src/nostr-live-chat/nostr-live-chat.ts"></script>
+  </head>
+  <body>
+    <h1>Nostr Live Chat Example</h1>
+
+    <div class="component-container">
+      <!-- Optional: Pre-fill a recipient's npub using the recipient-npub attribute -->
+      <!-- e.g. recipient-npub="npub1..." -->
+      <nostr-live-chat 
+        theme="light"
+        relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+      ></nostr-live-chat>
+    </div>
+
+  </body>
+</html>

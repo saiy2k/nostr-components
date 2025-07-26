@@ -29,6 +29,10 @@ export default defineConfig({
           __dirname,
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
+        'nostr-live-chat': resolve(
+          __dirname,
+          'src/nostr-live-chat/nostr-live-chat.ts'
+        ),
       },
       external: ['lit', 'dayjs'],
       output: [
