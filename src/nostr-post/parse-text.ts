@@ -1,13 +1,13 @@
-import { NDKEvent } from "@nostr-dev-kit/ndk";
+import { NDKEvent, ProfilePointer } from "@nostr-dev-kit/ndk";
 import { NostrService } from "../common/nostr-service";
 import { nip21 } from 'nostr-tools';
 
-    // Handle URLs and Nostr attachments
-    type ContentItem = {
-      type: 'text' | 'image' | 'gif' | 'video' | 'link' | 'embedded-note';
-      value?: string;
-      noteId?: string;
-    };
+// Handle URLs and Nostr attachments
+export type ContentItem = {
+  type: 'text' | 'image' | 'gif' | 'video' | 'link' | 'embedded-note';
+  value?: string;
+  noteId?: string;
+};
  
 export async function parseText(text: string, post: NDKEvent | null, embeddedPosts: Map<String, NDKEvent>, nostrService: NostrService): Promise<ContentItem[]> {
     let textContent = text;
@@ -151,6 +151,10 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
     }
 
     // Add embedded notes to the result
+    // TODO: Embedded notes lose their original position in text and are appended at the end,
+    // losing their inline context. Consider inserting embedded notes at their original 
+    // positions using the captured position data to maintain content flow and semantic meaning.
+    // See: https://github.com/saiy2k/nostr-components/pull/23#discussion_r2238652376
     if (embeddedNotes.length > 0) {
       // Sort by position in descending order to avoid affecting earlier positions
       embeddedNotes.sort((a, b) => b.position - a.position);

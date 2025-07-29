@@ -159,7 +159,7 @@ export class NostrService {
         notes: notesRepliesCount[0],
         replies: notesRepliesCount[1],
         zaps: shouldFetch('zaps') ? await this.fetchZaps(user) : 0,
-        relays: 0,
+        relays: 0, // TODO:
       };
     } catch (error) {
       console.error('Error in getProfileStats:', error);

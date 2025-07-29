@@ -139,7 +139,6 @@ export default class NostrPost extends NostrBaseComponent {
       }
     } catch (err) {
       console.error('Failed to fetch post:', err);
-      console.log(err);
       this.isError = true;
       throw err;
     } finally {

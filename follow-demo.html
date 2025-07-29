@@ -6,10 +6,12 @@
     <title>Follow button - Demo</title>
 
     <script type="module" src="./dist/components/nostr-follow-button.es.js"></script>
+    <script type="module" src="./dist/components/nostr-post.es.js"></script>
+    <script type="module" src="./dist/components/nostr-profile-badge.es.js"></script>
 
     <style>
       body {
-        margin: 10 !important;
+        margin: 10px !important;
       }
     </style>
 
@@ -17,13 +19,20 @@
   <body>
     <div style="width: 500px">
         <nostr-follow-button
-          npub="npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs"
-          relays="wss://relay.nostrasia.net"
+          nip05="saiy2k@iris.to"
         ></nostr-follow-button>
 
       <br />
       <br />
 
+      <nostr-post
+          id="note1kmf8n3c8fxfm3q26ys6vgrg306w05yrddt3txd4jtln47tunhscqp09muz"
+          show-stats="true"
+          ></nostr-post>
+    
+
+    <nostr-profile-badge id="TestNos2" pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8"
+      ></nostr-profile-badge>
     </div>
   </body>
 </html>

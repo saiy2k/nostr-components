@@ -1,5 +1,7 @@
-  // TODO: Fix types
-  export async function renderContent(content: any[]): Promise<string> {
+  import { ContentItem } from './parse-text';
+  import { escapeHtml, isValidUrl } from '../common/utils';
+
+  export async function renderContent(content: ContentItem[]): Promise<string> {
     const html: string[] = [];
     let mediaCount = 0;
     let textBuffer = '';
@@ -11,7 +13,7 @@
         // Handle embedded note placeholder
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
@@ -22,32 +24,34 @@
       } else {
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
 
+        const url = item.value ?? "";
+        if (!isValidUrl(url)) break;
         switch (item.type) {
           case 'image':
             html.push(
-              `<div class="post-media-item"><img src="${item.value}" alt="Image"></div>`
+              `<div class="post-media-item"><img src="${url}" alt="User uploaded image" loading="lazy"></div>`
             );
             mediaCount++;
             break;
           case 'gif':
             html.push(
-              `<div class="post-media-item"><img src="${item.value}" alt="GIF"></div>`
+              `<div class="post-media-item"><img src="${url}" alt="User uploaded GIF" loading="lazy"></div>`
             );
             mediaCount++;
             break;
           case 'video':
             html.push(
-              `<div class="post-media-item"><video src="${item.value}" controls></video></div>`
+              `<div class="post-media-item"><video src="${url}" controls></video></div>`
             );
             mediaCount++;
             break;
           case 'link':
-            html.push(`<a href="${item.value}">${item.value}</a>`);
+            html.push(`<a href="${url}">${url}</a>`);
             break;
         }
       }
@@ -55,7 +59,7 @@
 
     if (textBuffer) {
       html.push(
-        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+        `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
       );
     }
 

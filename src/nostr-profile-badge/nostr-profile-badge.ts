@@ -40,7 +40,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
         await this.getProfile();
 
-        if (this.profile.name == "ERROR") {
+        if (this.profile == null) {
           throw new Error(`Could not fetch profile initially for user ${this.user.npub}`);
         } else {
           this.isError = false;

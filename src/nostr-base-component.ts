@@ -41,7 +41,11 @@ export class NostrBaseComponent extends HTMLElement {
     _newValue: string | null
   ) {
     if (name === 'relays') {
-      this.connectToNostr();
+      this.connectToNostr().catch(error => {
+        console.error('Failed to connect to Nostr relays:', error);
+        this.isError = true;
+        this.errorMessage = 'Failed to connect to relays';
+      });
     }
 
     if (name === 'theme') {

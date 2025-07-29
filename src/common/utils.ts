@@ -124,8 +124,11 @@ export function parseTheme(themeAttr: string | null): Theme {
 
   const theme = themeAttr?.trim().toLowerCase();
 
-  if (!theme || theme === 'light' || theme === 'dark') {
-    return theme as Theme || 'light';
+  if (theme === 'light' || theme === 'dark') {
+    return theme;
+  }
+  if (!theme) {
+    return 'light';
   }
 
   throw new Error(
@@ -138,4 +141,19 @@ export function parseBooleanAttribute(attr: string | null): boolean {
   if (attr === null) return false;
   if (attr === '' || attr.toLowerCase() === 'true') return true;
   return false;
+}
+
+export function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+export function isValidUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
 }

@@ -4,11 +4,7 @@ import { DEFAULT_PROFILE_IMAGE } from './common/constants';
 
 export class NostrUserComponent extends NostrBaseComponent {
 
-  protected profile: NDKUserProfile = {
-    name: '',
-    picture: '',
-    nip05: '',
-  };
+  protected profile: NDKUserProfile | null = null;
 
   protected user: NDKUser | null = null;
 
@@ -26,38 +22,35 @@ export class NostrUserComponent extends NostrBaseComponent {
   }
 
   protected async resolveNDKUser(): Promise<NDKUser | null> {
-    const userToFollowNpub = this.getAttribute('npub');
-    const userToFollowNip05 = this.getAttribute('nip05');
-    const userToFollowPubkey = this.getAttribute('pubkey');
+    const userNpub = this.getAttribute('npub');
+    const userNip05 = this.getAttribute('nip05');
+    const userPubkey = this.getAttribute('pubkey');
 
-    if (!userToFollowNpub && !userToFollowNip05 && !userToFollowPubkey) {
+    if (!userNpub && !userNip05 && !userPubkey) {
       this.errorMessage = 'Provide npub, nip05 or pubkey';
       this.isError = true;
       return null;
     } else {
       this.user = await this.nostrService.resolveNDKUser({
-        npub: this.getAttribute('npub'),
-        nip05: this.getAttribute('nip05'),
-        pubkey: this.getAttribute('pubkey'),
+        npub: userNpub,
+        nip05: userNip05,
+        pubkey: userPubkey,
       });
       return this.user;
     }
   }
 
-  protected async getProfile(): Promise<NDKUserProfile> {
-    const profile = await this.nostrService.getProfile(this.user);
-    if (profile == null) {
-      this.profile = {
-        name: "ERROR",
-        nip05: "",
-        picture: DEFAULT_PROFILE_IMAGE
-      };
-    } else {
-      this.profile = profile;
-      if (this.profile.picture === undefined) {
-        this.profile.picture = DEFAULT_PROFILE_IMAGE;
+  protected async getProfile(): Promise<NDKUserProfile | null> {
+    if (!this.user) {
+      this.profile = await this.nostrService.getProfile(this.user);
+
+      if (this.profile != null) {
+        if (this.profile.picture === undefined) {
+          this.profile.picture = DEFAULT_PROFILE_IMAGE;
+        }
       }
+      return this.profile;
     }
-    return this.profile;
+    return null;
   }
 }

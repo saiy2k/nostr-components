@@ -57,7 +57,7 @@ export default class NostrProfile extends NostrUserComponent {
 
         await this.getProfile();
 
-        if (this.profile.name != 'ERROR') {
+        if (this.profile != null) {
 
           // Fetch stats only if profile exists
           this.isStatsLoading = true;
@@ -229,7 +229,7 @@ export default class NostrProfile extends NostrUserComponent {
     }
 
     if (this.onClick !== null && typeof this.onClick === 'function') {
-      this.onClick(this.profile);
+      this.onClick(this.profile!);
       return;
     }
 
@@ -267,7 +267,7 @@ export default class NostrProfile extends NostrUserComponent {
         this.copy(this.getAttribute('npub') || this.user?.npub || '');
         break;
       case 'copy-nip05':
-        this.copy(this.profile.nip05 || '');
+        this.copy(this.profile!.nip05 || '');
         break;
     }
   };
@@ -300,7 +300,7 @@ export default class NostrProfile extends NostrUserComponent {
 
     const renderOptions = {
       npub: this.user?.npub || '',
-      userProfile: this.profile,
+      userProfile: this.profile!,
       theme: this.theme,
       isLoading: this.isLoading,
       isStatsLoading: this.isStatsLoading,
