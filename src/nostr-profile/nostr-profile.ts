@@ -1,17 +1,14 @@
-import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { maskNPub } from '../common/utils';
-import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
-import { NostrBaseComponent } from '../nostr-base-component';
+import { NostrUserComponent } from '../nostr-user-component';
 import { renderProfile, renderLoadingState, renderErrorState } from './render';
 
-export default class NostrProfile extends NostrBaseComponent {
-  private userProfile: NDKUserProfile = {
-    name: '',
-    image: '',
-    nip05: '',
-  };
+/**
+ * 1. Do `CustomEvent for click handler. Refer profile-badge.
+ */
+export default class NostrProfile extends NostrUserComponent {
 
-    // Stats loading states
+  // Stats loading states
   private isStatsLoading: boolean = true;
   private isStatsFollowsLoading: boolean = true;
   private isStatsFollowersLoading: boolean = true;
@@ -27,22 +24,40 @@ export default class NostrProfile extends NostrBaseComponent {
 
   private onClick: ((profile: NDKUserProfile) => void) | null = null;
 
-  private ndkUser: NDKUser | null = null;
+  static get observedAttributes() {
+    return [
+      ...super.observedAttributes,
+      'show-npub',
+      'show-follow',
+      'onClick',
+    ];
+  }
+
+  async connectedCallback() {
+    if (!this.rendered) {
+      this.getTheme();
+      this.connectToNostr();
+      this.getUserProfile();
+      this.rendered = true;
+    }
+  }
+
+  disconnectedCallback() {
+    // TODO: Check for cleanup method
+  }
 
   getUserProfile = async () => {
     try {
       this.isLoading = true;
       this.render();
 
-      const user = await this.resolveNDKUser();
+      await this.resolveNDKUser();
 
-      if (user?.npub) {
-        this.ndkUser = user;
+      if (this.user) {
 
-        const profile = await this.nostrService.getProfile(user);
+        await this.getProfile();
 
-        if (profile) {
-          this.userProfile = profile;
+        if (this.profile.name != 'ERROR') {
 
           // Fetch stats only if profile exists
           this.isStatsLoading = true;
@@ -54,7 +69,7 @@ export default class NostrProfile extends NostrBaseComponent {
 
           // Fetch follows
           this.nostrService
-            .getProfileStats(user, ['follows'])
+            .getProfileStats(this.user, ['follows'])
             .then(({ follows }) => {
               currentStats.follows = follows;
               this.stats = { ...this.stats, follows };
@@ -69,7 +84,7 @@ export default class NostrProfile extends NostrBaseComponent {
 
           // Fetch followers
           this.nostrService
-            .getProfileStats(user, ['followers'])
+            .getProfileStats(this.user, ['followers'])
             .then(({ followers }) => {
               currentStats.followers = followers;
               this.stats = { ...this.stats, followers };
@@ -84,7 +99,7 @@ export default class NostrProfile extends NostrBaseComponent {
 
           // Fetch other stats
           this.nostrService
-            .getProfileStats(user, ['notes', 'replies', 'zaps'])
+            .getProfileStats(this.user, ['notes', 'replies', 'zaps'])
             .then(({ notes, replies, zaps }) => {
               currentStats.notes = notes;
               currentStats.replies = replies;
@@ -99,17 +114,10 @@ export default class NostrProfile extends NostrBaseComponent {
               this.render();
             });
 
-          // Set default image only if profile exists but image is missing
-          if (!this.userProfile.image) {
-            this.userProfile.image = DEFAULT_PROFILE_IMAGE;
-          }
           this.isError = false;
         } else {
           // Profile not found or fetch failed, use default image and clear stats
-          console.warn(`Could not fetch profile for user ${user.npub}`);
-          this.userProfile.image = DEFAULT_PROFILE_IMAGE;
-          this.userProfile.name = '';
-          this.userProfile.nip05 = '';
+          console.warn(`Could not fetch profile for user ${this.user.npub}`);
           this.stats = {
             follows: 0,
             followers: 0,
@@ -121,8 +129,6 @@ export default class NostrProfile extends NostrBaseComponent {
           this.isStatsLoading = false;
           this.isError = true;
         }
-      } else {
-        throw new Error('Either npub or nip05 should be provided');
       }
     } catch (err) {
       this.isError = true;
@@ -133,27 +139,6 @@ export default class NostrProfile extends NostrBaseComponent {
     }
   };
 
-  async connectedCallback() {
-    if (!this.rendered) {
-      this.getTheme();
-      await this.nostrService.connectToNostr(this.getRelays());
-      this.getUserProfile();
-
-      this.rendered = true;
-    }
-  }
-
-  static get observedAttributes() {
-    return [
-      ...super.observedAttributes,
-      'npub',
-      'pubkey',
-      'nip05',
-      'show-npub',
-      'show-follow',
-      'onClick',
-    ];
-  }
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     super.attributeChangedCallback(name, _oldValue, newValue);
@@ -187,10 +172,6 @@ export default class NostrProfile extends NostrBaseComponent {
     }
   }
 
-  disconnectedCallback() {
-    // TODO: Check for cleanup method
-  }
-
   renderNpub() {
     const npubAttribute = this.getAttribute('npub');
     const showNpub = this.getAttribute('show-npub');
@@ -199,23 +180,23 @@ export default class NostrProfile extends NostrBaseComponent {
       return '';
     }
 
-    if (showNpub === null && this.userProfile.nip05) {
+    if (showNpub === null && this.profile.nip05) {
       return '';
     }
 
-    if (this.ndkUser == null) {
+    if (this.user == null) {
       return '';
     }
 
-    if (!npubAttribute && !this.ndkUser.npub) {
+    if (!npubAttribute && !this.user.npub) {
       console.warn('Cannot use showNpub without providing a nPub');
       return '';
     }
 
     let npub = npubAttribute;
 
-    if (!npub && this.ndkUser && this.ndkUser.npub) {
-      npub = this.ndkUser.npub;
+    if (!npub && this.user && this.user.npub) {
+      npub = this.user.npub;
     }
 
     if (!npub) {
@@ -248,7 +229,7 @@ export default class NostrProfile extends NostrBaseComponent {
     }
 
     if (this.onClick !== null && typeof this.onClick === 'function') {
-      this.onClick(this.userProfile);
+      this.onClick(this.profile);
       return;
     }
 
@@ -283,10 +264,10 @@ export default class NostrProfile extends NostrBaseComponent {
         this.onProfileClick();
         break;
       case 'copy-npub':
-        this.copy(this.getAttribute('npub') || this.ndkUser?.npub || '');
+        this.copy(this.getAttribute('npub') || this.user?.npub || '');
         break;
       case 'copy-nip05':
-        this.copy(this.userProfile.nip05 || '');
+        this.copy(this.profile.nip05 || '');
         break;
     }
   };
@@ -318,8 +299,8 @@ export default class NostrProfile extends NostrBaseComponent {
     }
 
     const renderOptions = {
-      npub: this.ndkUser?.npub || '',
-      userProfile: this.userProfile,
+      npub: this.user?.npub || '',
+      userProfile: this.profile,
       theme: this.theme,
       isLoading: this.isLoading,
       isStatsLoading: this.isStatsLoading,
@@ -336,7 +317,7 @@ export default class NostrProfile extends NostrBaseComponent {
       error: this.isError ? 'Error loading profile' : null,
       onNpubClick: this.onProfileClick.bind(this),
       onProfileClick: this.onProfileClick.bind(this),
-      showFollow: showFollow && this.ndkUser?.npub ? this.ndkUser.npub : '',
+      showFollow: showFollow && this.user?.npub ? this.user.npub : '',
       showNpub: showNpub,
     };
 

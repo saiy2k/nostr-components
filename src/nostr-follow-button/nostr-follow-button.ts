@@ -1,15 +1,20 @@
 import { NDKNip07Signer } from '@nostr-dev-kit/ndk';
-import { NostrBaseComponent } from '../nostr-base-component';
+import { NostrUserComponent } from '../nostr-user-component';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 
 /**
  * TODO:
  *  * To have a text attribute. Default value being "Follow me on Nostr"
+ *  * iconWidth, iconHeight should be customized via CSS4 vars
  */
-export default class NostrFollowButton extends NostrBaseComponent {
+export default class NostrFollowButton extends NostrUserComponent {
 
   private isFollowed: boolean = false;
   private boundHandleClick: (() => Promise<void>) | null = null;
+
+  static get observedAttributes() {
+    return [...super.observedAttributes];
+  }
 
   connectedCallback() {
     if (!this.rendered) {
@@ -20,8 +25,12 @@ export default class NostrFollowButton extends NostrBaseComponent {
     }
   }
 
-  static get observedAttributes() {
-    return [...super.observedAttributes, 'npub', 'pubkey', 'nip05'];
+  disconnectedCallback() {
+    const button = this.shadowRoot?.querySelector('.nostr-follow-button');
+    if (button && this.boundHandleClick) {
+      button.removeEventListener('click', this.boundHandleClick);
+      this.boundHandleClick = null;
+    }
   }
 
   attributeChangedCallback(
@@ -95,13 +104,6 @@ export default class NostrFollowButton extends NostrBaseComponent {
     button.addEventListener('click', this.boundHandleClick);
   }
 
-  disconnectedCallback() {
-    const button = this.shadowRoot?.querySelector('.nostr-follow-button');
-    if (button && this.boundHandleClick) {
-      button.removeEventListener('click', this.boundHandleClick);
-      this.boundHandleClick = null;
-    }
-  }
 
   render() {
     const iconWidthAttribute = this.getAttribute('icon-width');

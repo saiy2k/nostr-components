@@ -1,32 +1,32 @@
-import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
-import { parseRelays, parseTheme, parseBooleanAttribute } from '../common/utils';
+import { parseBooleanAttribute } from '../common/utils';
 import { renderProfileBadge } from './render';
 import { getProfileBadgeStyles } from './style';
-import { NostrBaseComponent } from '../nostr-base-component';
+import { NostrUserComponent } from '../nostr-user-component';
 
 /**
  * TODO: Improve Follow button placement
  */
-export default class NostrProfileBadge extends NostrBaseComponent {
-
-  private userProfile: NDKUserProfile = {
-    name: '',
-    picture: '',
-    nip05: '',
-  };
-
-  private ndkUser: NDKUser | null = null;
+export default class NostrProfileBadge extends NostrUserComponent {
 
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
-      'npub',
-      'pubkey',
-      'nip05',
       'show-npub',
       'show-follow',
     ];
+  }
+
+  async connectedCallback() {
+    if (!this.rendered) {
+      this.getTheme();
+      this.connectToNostr();
+      this.getUserProfileAndRender();
+      this.rendered = true;
+    }
+  }
+
+  disconnectedCallback() {
+    // TODO: Check for cleanup method
   }
 
   getUserProfileAndRender = async () => {
@@ -34,25 +34,17 @@ export default class NostrProfileBadge extends NostrBaseComponent {
       this.isLoading = true;
       this.render();
 
-      const user = await this.resolveNDKUser();
+      await this.resolveNDKUser();
 
-      if (user?.npub) {
-        this.ndkUser = user;
+      if (this.user) {
 
-        const profile = await this.nostrService.getProfile(user);
+        await this.getProfile();
 
-        if (profile) {
-          this.userProfile = profile;
-          // Set default image only if profile exists but image is missing
-          if (!this.userProfile.picture) {
-            this.userProfile.picture = DEFAULT_PROFILE_IMAGE;
-          }
-          this.isError = false;
+        if (this.profile.name == "ERROR") {
+          throw new Error(`Could not fetch profile initially for user ${this.user.npub}`);
         } else {
-          throw new Error(`Could not fetch profile initially for user ${user.npub}`);
+          this.isError = false;
         }
-      } else {
-        throw new Error('Npub, pubkey or nip05 should be provided and valid');
       }
     } catch (err) {
       console.error("Error while rendering nostr-profile-badge", err);
@@ -63,38 +55,6 @@ export default class NostrProfileBadge extends NostrBaseComponent {
     }
   };
 
-
-  async connectedCallback() {
-    if (!this.rendered) {
-      this.getTheme();
-      await this.nostrService.connectToNostr(this.getRelays());
-      this.getUserProfileAndRender();
-      this.rendered = true;
-    }
-  }
-
-
-  attributeChangedCallback(name: string, _oldValue: string, _newValue: string) {
-    super.attributeChangedCallback(name, _oldValue, _newValue);
-
-    if (['relays', 'pubkey', 'npub', 'nip05'].includes(name)) {
-      // TODO: Validate npub, pubkey
-      this.getUserProfileAndRender();
-    }
-
-    if (name === 'theme') {
-      this.render();
-    }
-
-    if (['show-npub', 'show-follow'].includes(name)) {
-      this.render();
-    }
-  }
-
-  disconnectedCallback() {
-    // TODO: Check for cleanup method
-  }
-
   copy(string: string) {
     navigator.clipboard.writeText(string);
   }
@@ -103,7 +63,7 @@ export default class NostrProfileBadge extends NostrBaseComponent {
     if (this.isError) return;
 
     const event = new CustomEvent('profileClick', {
-      detail: this.userProfile,
+      detail: this.profile,
       bubbles: true,
       composed: true,
       cancelable: true,
@@ -113,8 +73,8 @@ export default class NostrProfileBadge extends NostrBaseComponent {
 
     if (notPrevented) {
       // Default behavior: open profile in new tab
-      let key = this.userProfile?.nip05 || this.getAttribute('nip05') ||
-                this.ndkUser?.npub || this.getAttribute('npub');
+      let key = this.profile?.nip05 || this.getAttribute('nip05') ||
+                this.user?.npub || this.getAttribute('npub');
       if (key) {
         window.open(`https://njump.me/${key}`, '_blank');
       }
@@ -123,11 +83,11 @@ export default class NostrProfileBadge extends NostrBaseComponent {
 
   attachEventListeners() {
     // Find elements within the shadow DOM
-    const profileBadge = this.shadow.querySelector(
+    const profileBadge = this.shadow?.querySelector(
       '.nostr-profile-badge-container'
     );
-    const npubCopy = this.shadow.querySelector('#npub-copy');
-    const nip05Copy = this.shadow.querySelector('#nip05-copy');
+    const npubCopy = this.shadow?.querySelector('#npub-copy');
+    const nip05Copy = this.shadow?.querySelector('#nip05-copy');
 
     // Add click handler for the profile badge
     profileBadge?.addEventListener('click', (e: Event) => {
@@ -141,25 +101,17 @@ export default class NostrProfileBadge extends NostrBaseComponent {
     // Add click handler for NPUB copy button
     npubCopy?.addEventListener('click', (e: Event) => {
       e.stopPropagation();
-      this.copy(this.getAttribute('npub') || this.ndkUser?.npub || '');
+      this.copy(this.getAttribute('npub') || this.user?.npub || '');
     });
 
     // Add click handler for NIP-05 copy button
     nip05Copy?.addEventListener('click', (e: Event) => {
       e.stopPropagation();
-      this.copy(this.getAttribute('nip05') || this.userProfile.nip05 || '');
+      this.copy(this.getAttribute('nip05') || this.profile?.nip05 || '');
     });
   }
 
   render() {
-    // Ensure default image if needed
-    if (
-      this.isLoading === false &&
-      this.userProfile &&
-      this.userProfile.picture === undefined
-    ) {
-      this.userProfile.picture = DEFAULT_PROFILE_IMAGE;
-    }
 
     // Update theme class on host element
     this.classList.toggle('dark', this.theme === 'dark');
@@ -175,15 +127,15 @@ export default class NostrProfileBadge extends NostrBaseComponent {
     const contentHTML = renderProfileBadge(
       this.isLoading,
       this.isError,
-      this.userProfile,
-      this.ndkUser,
+      this.profile,
+      this.user,
       npubAttribute,
       showNpub,
       showFollow
     );
 
     // Combine styles and content for shadow DOM
-    this.shadow.innerHTML = `
+    this.shadow!.innerHTML = `
       ${getProfileBadgeStyles(this.theme)}
       <div class="nostr-profile-badge-wrapper">
         ${contentHTML}
