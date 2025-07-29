@@ -7,6 +7,34 @@ import NDK, {
 import { DEFAULT_RELAYS } from './constants';
 
 export class NostrService {
+  /**
+   * Convenience helper to fetch zap count for a profile.
+   * It determines the user based on the provided identifier and
+   * returns the number of zap receipts found (count, **not** total sats).
+   */
+  public async getZapCount(identifier: {
+    npub?: string;
+    nip05?: string;
+    pubkey?: string;
+  }): Promise<number> {
+    let user: NDKUser | null = null;
+
+    if (identifier.npub) {
+      user = this.ndk.getUser({ npub: identifier.npub });
+    } else if (identifier.nip05) {
+      const nip05User = await this.ndk.getUserFromNip05(identifier.nip05);
+      if (nip05User) {
+        user = nip05User;
+      }
+    } else if (identifier.pubkey) {
+      user = this.ndk.getUser({ pubkey: identifier.pubkey });
+    }
+
+    if (!user) return 0;
+
+    const { zaps } = await this.getProfileStats(user, ['zaps']);
+    return zaps;
+  }
   private static instance: NostrService;
   private ndk: NDK;
   private isConnected: boolean = false;

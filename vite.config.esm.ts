@@ -20,6 +20,7 @@ export default defineConfig({
           __dirname,
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
+        'nostr-zap': resolve(__dirname, 'src/nostr-zap/nostr-zap.ts'),
       },
       external: ['lit', 'dayjs'],
       output: [

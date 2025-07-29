@@ -12,11 +12,11 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
-🔹 **[Wordpress Integration](#5-wordpress-integration)** - Wordpress Integration
+🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
+🔹 **[Wordpress Integration](#6-wordpress-integration)** - Wordpress Integration
 
 ### Future roadmap:
 
-🔹 Zap button.  
 🔹 Wordpress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.
 
 ## 📌 Why Use Nostr Components?
@@ -159,7 +159,46 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
-## 5. Wordpress Integration
+## 5. Nostr Zap ⚡
+
+A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="./dist/components/nostr-zap.es.js"></script>
+</head>
+<body>
+  <nostr-zap 
+    npub="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
+    theme="dark"
+    button-text="⚡ Zap Me"
+    button-color="#8a63d2"
+    amount="1000"
+  ></nostr-zap>
+</body>
+```
+
+**Attributes:**
+- `npub` or `pubkey` (required) - Nostr public key (npub or hex)
+- `relays` (optional) - Comma-separated list of relay URLs (default: common Nostr relays)
+- `theme` (optional) - "light" or "dark" theme (default: "light")
+- `button-text` (optional) - Custom text for the zap button (default: "⚡️")
+- `button-color` (optional) - Custom background color for the button
+- `amount` (optional) - Default zap amount in sats (default: 1000)
+
+**Features:**
+- Lightning Network zaps via LNURL
+- WebLN support for browser-based lightning wallets
+- Multiple wallet integration (Phoenix, Wallet of Satoshi, etc.)
+- QR code generation for mobile wallets
+- Customizable styling and theming
+- Responsive design
+
+---
+
+## 6. Wordpress Integration
 
 ![Integrating with Wordpress](images/wordpress_help.png)
 

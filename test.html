@@ -3,22 +3,140 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-
-    <script src="/dist/nostr-profile-badge.js"></script>
-    <script type="module" src="/dist/nostr-profile.js"></script>
-    <script type="module" src="/dist/nostr-post.js"></script>
-    <!-- <script type="module" src="./dist/nostr-follow-button.js"></script> -->
-    <!-- <script type="module" src="./dist/nostr-check.js"></script> -->
-
+    <title>Nostr Zap Component Test</title>
+    <script type="module" src="/dist/components/nostr-zap.es.js"></script>
     <style>
       body {
-        margin: 0 !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1, h2 {
+        border-bottom: 1px solid #eaeaea;
+        padding-bottom: 10px;
+      }
+      .test-case {
+        padding: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+      }
+      .test-case h3 {
+        margin-top: 0;
+      }
+      code {
+        background-color: #f4f4f4;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+      }
+      .custom-color-zap {
+        --nstrc-zap-btn-bg: #8a2be2;
+        --nstrc-zap-btn-color: #ffffff;
       }
     </style>
+  </head>
+  <body>
+    <h1>Nostr Zap Component Test Suite</h1>
 
-    <script>
-      function onProfileClick(profile) {
+    <!-- Functional Tests -->
+    <h2>Functional Tests</h2>
+    <div class="test-case">
+      <h3>Standard Zap (npub)</h3>
+      <p>Should open dialog and allow zapping to pablof7z.</p>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Zap with Pubkey</h3>
+      <p>Should work with a raw hex pubkey.</p>
+      <nostr-zap pubkey="75d5203e4968154b4b6f4034f285150e1a49693353e09a3bf3c0310a8c4391e9"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Zap with NIP-05</h3>
+      <p>Should resolve pablof7z@nostr.band and allow zapping.</p>
+      <nostr-zap nip05="pablof7z@nostr.band"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Fixed Amount Zap</h3>
+      <p>Dialog should show 'Zapping 100 sats' and not allow changing the amount.</p>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" amount="100"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Default Amount Zap</h3>
+      <p>Dialog should pre-fill with 500 sats.</p>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" default-amount="500"></nostr-zap>
+    </div>
+
+    <!-- UI/Cosmetic Tests -->
+    <h2>UI/Cosmetic Tests</h2>
+    <div class="test-case">
+      <h3>Custom Button Text</h3>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" button-text="Tip Me!"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Custom Button Color (via CSS Variable)</h3>
+      <p>Button should be blue-violet.</p>
+      <nostr-zap class="custom-color-zap" npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Dark Theme</h3>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" theme="dark"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Custom Icon Size</h3>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" icon-width="32" icon-height="32"></nostr-zap>
+    </div>
+
+    <!-- Validation/Error Tests -->
+    <h2>Validation / Error Tests</h2>
+    <div class="test-case">
+      <h3>Invalid Npub</h3>
+      <p>Button should be disabled and show 'ERROR'. Check console for logs.</p>
+      <nostr-zap npub="invalid-npub"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Invalid Pubkey</h3>
+      <p>Button should be disabled and show 'ERROR'. Check console for logs.</p>
+      <nostr-zap pubkey="invalid-pubkey"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Invalid NIP-05</h3>
+      <p>Button should be disabled and show 'ERROR'. Check console for logs.</p>
+      <nostr-zap nip05="invalid-nip05"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Button Text Too Long</h3>
+      <p>Check console for error message.</p>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" button-text="This button text is far too long and should trigger a validation error in the console to let the developer know that they have exceeded the one hundred and twenty-eight character limit."></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Amount Too High</h3>
+      <p>Check console for error message.</p>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" amount="300000"></nostr-zap>
+    </div>
+
+    <div class="test-case">
+      <h3>Default Amount Too High</h3>
+      <p>Check console for error message.</p>
+      <nostr-zap npub="npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft" default-amount="300000"></nostr-zap>
+    </div>
+
+  </body>
+</html>
         console.log('onProfileClick');
         console.log(profile);
       }
@@ -54,6 +172,61 @@
             theme="dark"
             onClick="onProfileClick"
         ></nostr-profile-badge> -->
+    </div>
+
+    <div style="margin-top:32px">
+      <!-- 1. Basic usage (default amount field in modal) -->
+      <h3>Basic zap</h3>
+      <nostr-zap
+        npub="npub18az980ulkj4t2jed64t5upe2x9m39junc2j54kwvgamrf8uxw3hsnq6w60"
+        theme="light"
+        relays="wss://relay.nostr.band,wss://strfry.iris.to"
+      ></nostr-zap>
+
+      <!-- 2. Custom button text & colour -->
+      <h3 style="margin-top:24px">Custom label &amp; colour</h3>
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        button-text="Tip 1k⚡"
+        button-color="#facc15"
+        theme="light"
+      ></nostr-zap>
+
+      <!-- 3. Dark-theme button (automatically switches CSS vars) -->
+      <h3 style="margin-top:24px">Dark theme</h3>
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        theme="dark"
+      ></nostr-zap>
+
+      <!-- 4. Fixed amount (no chooser needed) -->
+      <h3 style="margin-top:24px">Preset amount attribute (500 sats)</h3>
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        amount="500"
+        button-text="Zap 500"
+      ></nostr-zap>
+
+      <!-- 6. Using NIP-05 identifier -->
+      <h3 style="margin-top:24px">Using NIP-05 attribute</h3>
+      <nostr-zap
+        nip05="lyn@primal.net"
+        button-text="Zap lyn@primal.net"
+      ></nostr-zap>
+
+      <!-- 5. Using raw pubkey attribute instead of npub -->
+      <h3 style="margin-top:24px">Using hex pubkey attribute</h3>
+      <nostr-zap
+        pubkey="6e06e84ad4c45ea1ecd573349d66bfe9a50e4e756d34b93cf9f5a353a7e9e0e2"
+        button-text="Zap pubkey"
+      ></nostr-zap>
+
+      <nostr-zap
+        npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a"
+        theme="light"
+        relays="wss://relay.nostr.band,wss://strfry.iris.to"
+        button-text="Zap!"
+      ></nostr-zap>
     </div>
 
     <!-- npub="npub1ltt9gry09lf2z6396rvzmk2a8wkh3yx5xhgkjzzg5znh62yr53rs0hk97y" -->
