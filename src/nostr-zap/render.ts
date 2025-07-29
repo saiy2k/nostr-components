@@ -49,7 +49,7 @@ export function renderZapButton({
         <button class="nostr-zap-button" ${isLoading || isError ? 'disabled' : ''}>
           ${
             isError
-              ? `<span>ERROR</span>`
+              ? `<span style="color: red">ERROR</span>`
               : isLoading
                 ? `${getLoadingNostrich(theme, iconWidth, iconHeight)} <span>Zapping...</span>`
                 : isSuccess
@@ -59,7 +59,7 @@ export function renderZapButton({
         </button>
         ${isAmountLoading ? `${getLoadingNostrich(theme, 18, 18)}` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
       </div>
-      ${isError ? `<small>${errorMessage}</small>` : ''}
+      ${isError ? `<small style="color: red">${errorMessage}</small>` : ''}
     </div>
   `;
 }

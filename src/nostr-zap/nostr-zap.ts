@@ -65,9 +65,12 @@ export default class NostrZap extends HTMLElement {
         injectCSS();
         NostrZap.cssInjected = true;
       }
+      const isValid = this.validateInputs();
       this.render();
       this.rendered = true;
-      this.updateZapCount();
+      if (isValid == true) {
+        this.updateZapCount();
+      }
     }
   }
 
@@ -105,6 +108,76 @@ export default class NostrZap extends HTMLElement {
     ) {
       this.cachedAmountDialog.close();
     }
+  }
+
+  private validateInputs(): boolean {
+
+    const npub = this.getAttribute("npub");
+    const pubkeyAttr = this.getAttribute("pubkey");
+    const nip05Attr = this.getAttribute("nip05");
+    const buttonTextAttr = this.getAttribute("button-text");
+    const amtAttr = this.getAttribute("amount");
+    const defaultAmtAttr = this.getAttribute("default-amount");
+
+    if (npub == null && pubkeyAttr == null && nip05Attr == null) {
+      console.error("Nostr-Components: Zap button: Provide npub, nip05 or pubkey attribute");
+      this.isError = true;
+      this.errorMessage = "Provide npub, nip05 or pubkey attribute";
+      return false;
+    }
+
+    if (pubkeyAttr && !this.isValidHex(pubkeyAttr)) {
+      console.error("Nostr-Components: Zap button: pubkey is in invalid format");
+      this.isError = true;
+      this.errorMessage = "ERR: Invalid Pubkey";
+      return false;
+    } else if (nip05Attr && !this.validateNip05(nip05Attr)) {
+      console.error("Nostr-Components: Zap button: nip05 is in invalid format");
+      this.isError = true;
+      this.errorMessage = "ERR: Invalid Nip05";
+      return false;
+    } else if (npub && !this.validateNpub(npub)) {
+      console.error("Nostr-Components: Zap button: npub is in invalid format");
+      this.isError = true;
+      this.errorMessage = "ERR: Invalid Npub";
+      return false;
+    } else if (buttonTextAttr && buttonTextAttr.length > 128) {
+      console.error("Nostr-Components: Zap button: Max button-text length: 128 characters");
+      this.isError = true;
+      this.errorMessage = "ERR: Text length too long";
+      return false;
+    } else if (amtAttr) {
+        const num = Number(amtAttr);
+        if (isNaN(num) || num <= 0) {
+          console.error("Nostr-Components: Zap button: Zap amount: Invalid amount");
+          this.isError = true;
+          this.errorMessage = "ERR: Invalid Amount";
+          return false;
+        } else if (num > 210000) {
+          console.error("Nostr-Components: Zap button: Zap amount: 210 000 sats");
+          this.isError = true;
+          this.errorMessage = "ERR: Amount too high";
+          return false;
+        }
+    } else if (defaultAmtAttr) {
+        const num = Number(defaultAmtAttr);
+        if (isNaN(num) || num <= 0) {
+          console.error("Nostr-Components: Zap button: Default zap amount: Invalid amount");
+          this.isError = true;
+          this.errorMessage = "ERR: Invalid default-amount";
+          return false;
+        } else if (num > 210000) {
+          console.error("Nostr-Components: Zap button: Default zap amount: 210 000 sats");
+          this.isError = true;
+          this.errorMessage = "ERR: default-amount too high";
+          return false;
+        }
+    }
+
+    this.isError = false;
+    this.errorMessage = "";
+    return true;
+
   }
 
   private isValidHex(hex: string): boolean {
@@ -165,7 +238,7 @@ export default class NostrZap extends HTMLElement {
         if (!this.validateNpub(npub)) {
           console.error("Nostr-Components: Zap button: npub is in invalid format");
           this.isError = true;
-          this.errorMessage = "ERROR";
+          this.errorMessage = "ERR: Invalid Npub";
           this.render();
           return;
         }
@@ -274,9 +347,6 @@ export default class NostrZap extends HTMLElement {
 
   private render() {
     const buttonTextAttr = this.getAttribute("button-text");
-    if (buttonTextAttr && buttonTextAttr.length > 128) {
-      console.error("Nostr-Components: Zap button: Max button-text length: 128 characters");
-    }
     const buttonColorAttr = this.getAttribute("button-color");
     const iconWidthAttr = this.getAttribute("icon-width");
     const iconHeightAttr = this.getAttribute("icon-height");
