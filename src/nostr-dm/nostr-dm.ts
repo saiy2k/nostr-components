@@ -5,6 +5,7 @@
  *  - nip05            (optional) : user@domain nip-05 identifier (alternative to recipient-npub)
  *  - relays           (optional) : comma-separated relay URLs (defaults to common public set)
  *  - theme            (optional) : "light" | "dark" (default "light")
+ *  - debug            (optional) : "true" | "false" - whether to log debug messages (default "false")
  *
  * Behaviour:
  *  • If neither recipient-npub nor nip05 is supplied the component shows an input + Find button.
@@ -25,6 +26,25 @@ import { NostrService } from "../common/nostr-service";
 // ---------------------------------------------------------------------------
 // Import the resolveNip05 function from our common utils
 import { resolveNip05 } from '../common/nip05-utils';
+
+/**
+ * Debug utility that only logs in development mode or when debug attribute is set
+ * @param message The message to log
+ * @param data Additional data to log
+ */
+function debug(component: NostrDm, message: string, data?: any) {
+  // Check if we're in development environment or debug attribute is true
+  const isDev = process.env.NODE_ENV === 'development';
+  const isDebug = component.getAttribute('debug') === 'true';
+  
+  if (isDev || isDebug) {
+    if (data) {
+      console.log(`[NostrDm] ${message}`, data);
+    } else {
+      console.log(`[NostrDm] ${message}`);
+    }
+  }
+}
 
 
 export default class NostrDm extends HTMLElement {
@@ -99,16 +119,18 @@ export default class NostrDm extends HTMLElement {
 
   connectedCallback() {
     if (!this.rendered) {
+      this.rendered = true;
+      
+      // Initialize the component
       this.getTheme();
       this.getRecipient();
       this.nostrService.connectToNostr(this.getRelays());
       this.render();
-      this.rendered = true;
     }
   }
 
   static get observedAttributes() {
-    return ["relays", "recipient-npub", "nip05", "theme"];
+    return ["relays", "recipient-npub", "nip05", "theme", "debug"];
   }
 
   attributeChangedCallback(
@@ -216,7 +238,7 @@ export default class NostrDm extends HTMLElement {
   }
 
   private async handleSendClick() {
-    console.log("Send button clicked!");
+    debug(this, "Send button clicked!");
     
     if (!this.recipientPubkey || !this.message.trim()) {
       this.isError = true;
@@ -235,10 +257,10 @@ export default class NostrDm extends HTMLElement {
     // Check for signer availability
     // The hasSigner check was already performed earlier in this method, so this block is redundant
 
-    let signer;
-    if ((window as any).nostr) {
+    let signer = null;
+    if (typeof window !== 'undefined' && (window as any).nostr) {
       signer = new NDKNip07Signer();
-    } else {
+    } else if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem("nostr_nsec");
       if (stored) {
         const { NDKPrivateKeySigner } = await import("@nostr-dev-kit/ndk");
@@ -270,14 +292,14 @@ export default class NostrDm extends HTMLElement {
       });
 
       // For extension-based signers (NIP-07), use the extension's encryption
-      if ((window as any).nostr) {
+      if (typeof window !== 'undefined' && (window as any).nostr) {
         // Here we encrypt through the extension using nip04
         const encryptedContent = await (window as any).nostr.nip04.encrypt(
           this.recipientPubkey!,
           this.message.trim()
         );
         event.content = encryptedContent;
-      } else {
+      } else if (typeof localStorage !== 'undefined') {
         // For private key signers
         const privateKeyHex = localStorage.getItem("nostr_nsec");
         if (!privateKeyHex) throw new Error("No private key available");
@@ -310,14 +332,14 @@ export default class NostrDm extends HTMLElement {
         }
       }
 
-      console.log("Sending encrypted DM:", {
+      debug(this, "Sending encrypted DM:", {
         to: this.recipientPubkey!,
         encryptedContent: event.content,
       });
 
       // Publish the event with the encrypted content
       await event.publish();
-      console.log("DM sent with encrypted content:", event);
+      debug(this, "DM sent with encrypted content:", event);
 
       this.isSent = true;
       this.message = "";
@@ -357,15 +379,15 @@ export default class NostrDm extends HTMLElement {
       // Create and store a new bound handler
       this.boundHandleFind = this.handleFindClick.bind(this);
       findButton.addEventListener("click", this.boundHandleFind);
-      console.log("Find button event listener attached");
+      debug(this, "Find button event listener attached");
     } else {
-      console.warn("Find button not found in DOM");
+      debug(this, "Find button not found in DOM");
     }
 
     // Send button
     const sendButton = this.shadowRoot!.querySelector(".nostr-dm-send-btn");
     if (sendButton) {
-      console.log("Send button found, disabled:", sendButton.hasAttribute("disabled"));
+      debug(this, "Send button found, disabled:", sendButton.hasAttribute("disabled"));
       
       // Remove any existing listener
       if (this.boundHandleSend) {
@@ -381,9 +403,9 @@ export default class NostrDm extends HTMLElement {
         sendButton.removeAttribute("disabled");
       }
       
-      console.log("Send button event listener attached");
+      debug(this, "Send button event listener attached");
     } else {
-      console.warn("Send button not found in DOM");
+      debug(this, "Send button not found in DOM");
     }
 
     // Textarea
@@ -429,8 +451,8 @@ export default class NostrDm extends HTMLElement {
     }
   }
 
-  render() {
-    console.log("Rendering with state:", {
+  private render() {
+    debug(this, "Rendering with state:", {
       recipientNpub: this.recipientNpub,
       recipientPubkey: this.recipientPubkey,
       message: this.message ? "[message content]" : "[empty]",
