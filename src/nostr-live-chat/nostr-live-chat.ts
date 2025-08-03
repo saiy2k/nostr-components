@@ -20,6 +20,7 @@ import { Theme } from "../common/types";
 import { renderLiveChat, RenderLiveChatOptions } from "./render";
 import { nip19 } from "nostr-tools";
 import { NostrService } from "../common/nostr-service";
+import { resolveNip05 } from "../common/nip05-utils";
 
 interface Message {
   id: string;
@@ -29,20 +30,7 @@ interface Message {
   status: 'sending' | 'sent';
 }
 
-// ---------------------------------------------------------------------------
-// nip05 resolution helper – very lightweight fetch to /.well-known/nostr.json
-// ---------------------------------------------------------------------------
-async function resolveNip05(nip05: string): Promise<string> {
-  const [name, domain] = nip05.split("@");
-  if (!domain) throw new Error("Invalid nip05");
-  const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`;
-  const res = await fetch(url, { headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error("Unable to resolve nip05");
-  const json = await res.json();
-  const pubkey = json.names?.[name];
-  if (!pubkey) throw new Error("nip05 not found");
-  return pubkey as string;
-}
+// Using shared resolveNip05 utility from common/nip05-utils
 
 export default class NostrLiveChat extends HTMLElement {
   private rendered: boolean = false;
@@ -316,6 +304,15 @@ export default class NostrLiveChat extends HTMLElement {
     }
     if (!this.recipientPubkey) return;
 
+    // Check if NIP-07 extension is available before creating signer
+    if (typeof window === 'undefined' || !(window as any).nostr) {
+      console.error("NIP-07 extension not available");
+      this.isError = true;
+      this.errorMessage = "Nostr browser extension not found. Please install a Nostr extension like nos2x or Alby.";
+      this.render();
+      return;
+    }
+    
     const signer = new NDKNip07Signer();
     const currentUser = await signer.user();
 
