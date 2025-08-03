@@ -247,8 +247,8 @@ export function getLiveChatStyles(theme: Theme): string {
       }
 
       .nostr-chat-message-me .nostr-chat-message-bubble {
-        background-color: var(--nostr-chat-accent-color, #8a2be2);
-        color: var(--nostr-chat-accent-text-color, #ffffff);
+        background-color: var(--nostr-chat-accent-color);
+        color: var(--nostr-chat-accent-text-color);
         border-radius: 15px 15px 0 15px;
         opacity: 1;
       }
