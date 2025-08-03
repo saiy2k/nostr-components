@@ -136,6 +136,8 @@ export function getLiveChatStyles(theme: Theme): string {
         --nstrc-chat-background-dark: #222222;
         --nstrc-chat-background-light: #FFFFFF;
         --nstrc-chat-text-color-dark: #FFFFFF;
+        --nostr-chat-accent-color: #8a2be2;
+        --nostr-chat-accent-text-color: #FFFFFF;
         --nstrc-chat-text-color-light: #000000;
         --nstrc-chat-border-dark: 1px solid #444444;
         --nstrc-chat-border-light: 1px solid #DDDDDD;
