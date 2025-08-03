@@ -169,9 +169,7 @@ export default class NostrLiveChat extends HTMLElement {
       this.recipientPicture = user.profile?.image || null;
       this.render(); // Re-render to show profile info
       
-      this.subscribeToDms();
-      
-      this.subscribeToDms();
+      this.subscribeToDms(); // Subscribe to direct messages once
 
     } catch (e: any) {
       this.isError = true;

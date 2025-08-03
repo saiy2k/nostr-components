@@ -23,17 +23,8 @@ import { NostrService } from "../common/nostr-service";
 // ---------------------------------------------------------------------------
 // nip05 resolution helper – very lightweight fetch to /.well-known/nostr.json
 // ---------------------------------------------------------------------------
-async function resolveNip05(nip05: string): Promise<string> {
-  const [name, domain] = nip05.split("@");
-  if (!domain) throw new Error("Invalid nip05");
-  const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`;
-  const res = await fetch(url, { headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error("Unable to resolve nip05");
-  const json = await res.json();
-  const pubkey = json.names?.[name];
-  if (!pubkey) throw new Error("nip05 not found");
-  return pubkey as string;
-}
+// Import the resolveNip05 function from our common utils
+import { resolveNip05 } from '../common/nip05-utils';
 
 
 export default class NostrDm extends HTMLElement {
@@ -242,12 +233,7 @@ export default class NostrDm extends HTMLElement {
     this.render();
 
     // Check for signer availability
-    if (!this.nostrService.hasSigner()) {
-      this.isError = true;
-      this.errorMessage = "No Nostr signer available. Please install or configure a signer (e.g., NIP-07 browser extension).";
-      this.render();
-      return;
-    }
+    // The hasSigner check was already performed earlier in this method, so this block is redundant
 
     let signer;
     if ((window as any).nostr) {
@@ -267,7 +253,6 @@ export default class NostrDm extends HTMLElement {
       return;
     }
 
-    this.isFinding = true;
     this.render();
 
     try {
