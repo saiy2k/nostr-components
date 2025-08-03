@@ -218,9 +218,23 @@ export default class NostrLiveChat extends HTMLElement {
     try {
       const ndk = this.nostrService.getNDK();
       let signer;
-      if ((window as any).nostr) {
-        signer = new NDKNip07Signer();
-      } else {
+      
+      // Enhanced check for NIP-07 extension - verify if fully available with required methods
+      if (typeof window !== 'undefined' && 
+          (window as any).nostr && 
+          (window as any).nostr.getPublicKey && 
+          (window as any).nostr.signEvent) {
+        try {
+          signer = new NDKNip07Signer();
+        } catch (err) {
+          console.error("Error creating NIP-07 signer:", err);
+          this.isError = true;
+          this.errorMessage = `Error connecting to Nostr extension: ${(err as Error).message}`;
+          this.isLoading = false;
+          this.render();
+          return;
+        }
+      } else if (typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem("nostr_nsec");
         if (stored) {
           const { NDKPrivateKeySigner } = await import("@nostr-dev-kit/ndk");
@@ -304,16 +318,29 @@ export default class NostrLiveChat extends HTMLElement {
     }
     if (!this.recipientPubkey) return;
 
-    // Check if NIP-07 extension is available before creating signer
-    if (typeof window === 'undefined' || !(window as any).nostr) {
-      console.error("NIP-07 extension not available");
+    // Enhanced check for NIP-07 extension - verify if fully available with required methods
+    if (typeof window === 'undefined' || 
+        !(window as any).nostr || 
+        !(window as any).nostr.getPublicKey || 
+        !(window as any).nostr.signEvent) {
+      console.error("NIP-07 extension not available or incomplete");
       this.isError = true;
-      this.errorMessage = "Nostr browser extension not found. Please install a Nostr extension like nos2x or Alby.";
+      this.errorMessage = "Nostr browser extension not found or is incompatible. Please install a Nostr extension like nos2x or Alby.";
       this.render();
       return;
     }
     
-    const signer = new NDKNip07Signer();
+    let signer;
+    try {
+      signer = new NDKNip07Signer();
+    } catch (err) {
+      console.error("Error creating NIP-07 signer:", err);
+      this.isError = true;
+      this.errorMessage = `Error connecting to Nostr extension: ${(err as Error).message}`;
+      this.render();
+      return;
+    }
+    
     const currentUser = await signer.user();
 
     // Reset messages for new recipient

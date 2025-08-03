@@ -254,9 +254,16 @@ export default class NostrDm extends HTMLElement {
     this.isLoading = true;
     this.render();
 
-    // Check for signer availability
-    // The hasSigner check was already performed earlier in this method, so this block is redundant
-
+    // Check for signer availability using NostrService's hasSigner method
+    if (!this.nostrService.hasSigner()) {
+      this.isError = true;
+      this.errorMessage = "No Nostr signer available. Please ensure your Nostr extension is installed or provide a private key.";
+      this.isLoading = false;
+      this.render();
+      return;
+    }
+    
+    // Create appropriate signer based on what's available
     let signer = null;
     if (typeof window !== 'undefined' && (window as any).nostr) {
       signer = new NDKNip07Signer();
