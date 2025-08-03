@@ -15,7 +15,8 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
 🔹 **[Nostr Comment](#6-nostr-comment-)** - Decentralized comment system for any website  
 🔹 **[Nostr DM](#5-nostr-dm-)** - Send a direct message on Nostr
-🔹 **[Wordpress Integration](#6-wordpress-integration)** - Wordpress Integration
+🔹 **[Nostr Live Chat](#6-nostr-live-chat-)** - Real-time chat with message history  
+🔹 **[Wordpress Integration](#7-wordpress-integration)** - Wordpress Integration
 
 ### Future roadmap:
 
@@ -168,28 +169,104 @@ A simple button that allows users to follow a Nostr profile.
 
 ## 5. Nostr DM 💬
 
-Send a direct message to a Nostr user.
+A simple direct message composer for sending one-time messages to any Nostr user.
+
+**Features:**
+- 📝 Clean message composition interface
+- 🎯 Send to any user via npub or NIP-05 identifier  
+- ✅ Success confirmation with visual feedback
+- 🔄 Ready for immediate next message after sending
 
 **Usage:**
 
 ```html
 <head>
-  <script
-    type="module"
-    src="./dist/components/nostr-dm.es.js"
-  ></script>
+  <script type="module" src="./dist/components/nostr-dm.es.js"></script>
 </head>
 <body>
   <!-- Basic DM, user will be prompted to enter a recipient -->
-  <nostr-dm></nostr-dm>
+  <nostr-dm theme="light"></nostr-dm>
 
-  <!-- Pre-configured recipient -->
-  <nostr-dm recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"></nostr-dm>
+  <!-- Pre-configured recipient with npub -->
+  <nostr-dm 
+    recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
+    theme="light"
+    relays="wss://relay.damus.io,wss://relay.primal.net"
+  ></nostr-dm>
+
+  <!-- Using NIP-05 identifier -->
+  <nostr-dm 
+    nip05="user@domain.com"
+    theme="dark"
+  ></nostr-dm>
 </body>
 ```
 
+<<<<<<< HEAD
 ## 6. Wordpress Integration
 >>>>>>> f9ce3c3 (feat: Add Nostr DM component)
+=======
+**Attributes:**
+- `recipient-npub` (optional): Pre-fill recipient's npub
+- `nip05` (optional): Use NIP-05 identifier instead of npub
+- `theme` (optional): "light" or "dark" (default: "light")
+- `relays` (optional): Comma-separated relay URLs
+
+---
+
+## 6. Nostr Live Chat 💬
+
+Real-time chat component with persistent message history and live updates.
+
+**Features:**
+- 💬 Full conversation history display
+- ⚡ Real-time message updates via Nostr relays
+- 🔄 Optimistic message rendering with relay confirmation
+- 👥 Shows messages from both participants with proper attribution
+- 🕐 Chronological message ordering by timestamp
+- 📱 Responsive design for all screen sizes
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="./dist/components/nostr-live-chat.es.js"></script>
+</head>
+<body>
+  <!-- Basic live chat, user will be prompted to enter a recipient -->
+  <nostr-live-chat theme="light"></nostr-live-chat>
+
+  <!-- Pre-configured recipient with npub -->
+  <nostr-live-chat 
+    recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
+    theme="light"
+    relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+  ></nostr-live-chat>
+
+  <!-- Using NIP-05 identifier -->
+  <nostr-live-chat 
+    nip05="user@domain.com"
+    theme="dark"
+  ></nostr-live-chat>
+</body>
+```
+
+**Attributes:**
+- `recipient-npub` (optional): Pre-fill recipient's npub
+- `nip05` (optional): Use NIP-05 identifier instead of npub
+- `theme` (optional): "light" or "dark" (default: "light")
+- `relays` (optional): Comma-separated relay URLs
+
+**Use Cases:**
+- Customer support chat widgets
+- Real-time discussions on websites
+- Community chat integration
+- Direct communication between users
+
+---
+
+## 7. Wordpress Integration
+>>>>>>> 79d2d9d (Updated redme)
 
 A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
 
