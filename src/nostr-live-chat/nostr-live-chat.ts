@@ -353,12 +353,24 @@ export default class NostrLiveChat extends HTMLElement {
         const isSender = event.pubkey === currentUser.pubkey;
         const peer = isSender ? event.tags.find(t => t[0] === 'p')?.[1] : event.pubkey;
 
-        // Ignore events from the current user, as they are handled optimistically
-        if (isSender) return;
-
+        // Validate that this message is between the current user and the recipient
         if (peer !== this.recipientPubkey) {
             // not for me
             return;
+        }
+
+        // For messages sent by current user, skip if we already have an optimistic version
+        // This prevents duplicate display of sent messages
+        if (isSender) {
+          const existingMessage = this.messages.find(m => m.id === event.id);
+          if (existingMessage) {
+            // Message already exists (optimistic version), just update status if needed
+            if (existingMessage.status === 'sending') {
+              existingMessage.status = 'sent';
+              this.render();
+            }
+            return;
+          }
         }
 
         let decryptedText = "";
@@ -395,11 +407,17 @@ export default class NostrLiveChat extends HTMLElement {
           status: 'sent'
         };
         
-        if (!this.messages.find(m => m.id === message.id)) {
+        // Check for duplicates by ID, content, and timestamp to handle edge cases
+        const isDuplicate = this.messages.find(m => 
+          m.id === message.id || 
+          (m.text === message.text && m.sender === message.sender && Math.abs(m.timestamp - message.timestamp) < 2)
+        );
+        
+        if (!isDuplicate) {
           this.messages.push(message);
           this.messages.sort((a, b) => a.timestamp - b.timestamp);
-          this.render(); // Full render for history, then append for new messages
-        }
+          this.render();
+        }  
       } catch (e: any) {
         console.error("Failed to decrypt DM content:", e);
       }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nostr Live Chat Component Example</title>
+    <title>Nostr Chat Components Example</title>
     <style>
       body {
         font-family: Inter, sans-serif;
@@ -14,9 +14,28 @@
         min-height: 100vh;
         gap: 2rem;
         background-color: #f0f2f5;
+        padding: 2rem;
       }
       h1 {
         color: #333;
+        margin-bottom: 1rem;
+      }
+      h2 {
+        color: #555;
+        margin-bottom: 0.5rem;
+        font-size: 1.2rem;
+      }
+      .components-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        width: 100%;
+        max-width: 900px;
+      }
+      .component-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
       }
       .component-container {
         width: 100%;
@@ -25,20 +44,58 @@
         border: 1px solid #ccc;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        background: white;
+      }
+      .description {
+        text-align: center;
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+        max-width: 400px;
+      }
+      @media (max-width: 900px) {
+        .components-grid {
+          grid-template-columns: 1fr;
+          gap: 3rem;
+        }
       }
     </style>
     <script type="module" src="/src/nostr-live-chat/nostr-live-chat.ts"></script>
+    <script type="module" src="/src/nostr-dm/nostr-dm.ts"></script>
   </head>
   <body>
-    <h1>Nostr Live Chat Example</h1>
+    <h1>Nostr Chat Components Example</h1>
 
-    <div class="component-container">
-      <!-- Optional: Pre-fill a recipient's npub using the recipient-npub attribute -->
-      <!-- e.g. recipient-npub="npub1..." -->
-      <nostr-live-chat 
-        theme="light"
-        relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
-      ></nostr-live-chat>
+    <div class="components-grid">
+      <div class="component-section">
+        <h2>Live Chat Component</h2>
+        <p class="description">
+          Real-time chat with message history. Shows conversation between you and another user with live updates.
+        </p>
+        <div class="component-container">
+          <!-- Optional: Pre-fill a recipient's npub using the recipient-npub attribute -->
+          <!-- e.g. recipient-npub="npub1..." -->
+          <nostr-live-chat 
+            theme="light"
+            relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+          ></nostr-live-chat>
+        </div>
+      </div>
+
+      <div class="component-section">
+        <h2>DM Component</h2>
+        <p class="description">
+          Simple direct message composer. Send a one-time message to any Nostr user by their npub or NIP-05.
+        </p>
+        <div class="component-container">
+          <!-- Optional: Pre-fill a recipient's npub using the recipient-npub attribute -->
+          <!-- e.g. recipient-npub="npub1..." or nip05="user@domain.com" -->
+          <nostr-dm 
+            theme="light"
+            relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+          ></nostr-dm>
+        </div>
+      </div>
     </div>
 
   </body>

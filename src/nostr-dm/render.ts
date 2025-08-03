@@ -26,7 +26,7 @@ export function renderDm({
   errorMessage,
   isSent,
 }: RenderDmOptions): string {
-  const buttonText = isLoading ? "Sending..." : isSent ? "Sent" : "Send DM";
+  const buttonText = isLoading ? "Sending..." : "Send DM";
   const iconSize = 24;
   const placeholderText = recipientNpub
     ? "Type your message here..."

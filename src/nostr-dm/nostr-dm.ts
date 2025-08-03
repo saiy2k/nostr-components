@@ -347,9 +347,9 @@ export default class NostrDm extends HTMLElement {
     } catch (err) {
       this.isError = true;
       this.errorMessage = `Failed to send message: ${(err as Error).message}`;
-
-      
+      this.isSent = false; // Reset sent state on error
     } finally {
+      this.isLoading = false; // Reset loading state
       this.isFinding = false;
       this.render();
     }
