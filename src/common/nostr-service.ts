@@ -285,12 +285,12 @@ export class NostrService {
    */
   public hasSigner(): boolean {
     // Check for NIP-07 browser extension
-    if ((window as any).nostr) {
+    if (typeof window !== 'undefined' && (window as any).nostr) {
       return true;
     }
     
     // Check for stored private key
-    if (typeof localStorage !== 'undefined' && localStorage.getItem("nostr_nsec")) {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage.getItem("nostr_nsec")) {
       return true;
     }
     

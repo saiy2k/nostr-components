@@ -22,6 +22,23 @@ export interface RenderLiveChatOptions {
   errorMessage: string;
 }
 
+/**
+ * Sanitizes a string to prevent XSS attacks
+ * @param input String to sanitize
+ * @returns Sanitized string with HTML special characters escaped
+ */
+function sanitizeHtml(input: string | null | undefined): string {
+  if (input === null || input === undefined) {
+    return '';
+  }
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export function renderLiveChat({
   theme,
   recipientNpub,
@@ -48,12 +65,12 @@ export function renderLiveChat({
           <div class="nostr-chat-recipient">
             <div class="nostr-chat-recipient-info">
               <img 
-                src="${recipientPicture || ''}" 
-                alt="${recipientName || ''}" 
+                src="${sanitizeHtml(recipientPicture) || ''}" 
+                alt="${sanitizeHtml(recipientName) || ''}" 
                 class="nostr-chat-recipient-avatar"
                 onerror="this.onerror=null; this.src='https://via.placeholder.com/40';"
               >
-              <span class="nostr-chat-recipient-name">${recipientName || recipientNpub}</span>
+              <span class="nostr-chat-recipient-name">${sanitizeHtml(recipientName) || sanitizeHtml(recipientNpub)}</span>
             </div>
           </div>
         `
@@ -85,7 +102,7 @@ export function renderLiveChat({
           <div class="nostr-chat-history">
             ${messages.map(msg => `
               <div class="nostr-chat-message-row nostr-chat-message-${msg.sender} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''}">
-                <div class="nostr-chat-message-bubble">${msg.text}</div>
+                <div class="nostr-chat-message-bubble">${sanitizeHtml(msg.text)}</div>
               </div>
             `).join('')}
           </div>
@@ -93,7 +110,7 @@ export function renderLiveChat({
             <textarea 
               class="nostr-chat-textarea" 
               placeholder="Type your message..."
-            >${message}</textarea>
+            >${sanitizeHtml(message)}</textarea>
             <button class="nostr-chat-send-btn" ${isLoading ? "disabled" : ""}>
               ${
                 isLoading
@@ -106,7 +123,7 @@ export function renderLiveChat({
         }
       </div>
 
-      ${isError ? `<small class="nostr-chat-error-message">${errorMessage}</small>` : ""}
+      ${isError ? `<small class="nostr-chat-error-message">${sanitizeHtml(errorMessage)}</small>` : ""}
     </div>
 
   `;
@@ -126,6 +143,8 @@ export function getLiveChatStyles(theme: Theme): string {
         --nstrc-chat-input-background-light: #F9F9F9;
         --nstrc-chat-my-message-background-dark: #5A3E85;
         --nstrc-chat-my-message-background-light: #E6DDF4;
+        --nostr-chat-accent-color: #8a2be2;
+        --nostr-chat-accent-text-color: #ffffff;
         --nstrc-chat-their-message-background-dark: #3A3A3A;
         --nstrc-chat-their-message-background-light: #F0F0F0;
         --nstrc-chat-button-background-dark: #5A3E85;
