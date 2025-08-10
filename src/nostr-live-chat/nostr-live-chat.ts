@@ -17,7 +17,7 @@
 import { NDKNip07Signer, NDKEvent, NDKKind, NDKFilter, NDKSubscription } from "@nostr-dev-kit/ndk";
 import { DEFAULT_RELAYS } from "../common/constants";
 import { Theme } from "../common/types";
-import { renderLiveChat, RenderLiveChatOptions } from "./render";
+import { getLiveChatStyles, renderLiveChatInner, RenderLiveChatOptions } from "./render";
 import { nip19 } from "nostr-tools";
 import { NostrService } from "../common/nostr-service";
 import { resolveNip05 } from "../common/nip05-utils";
@@ -45,6 +45,20 @@ export default class NostrLiveChat extends HTMLElement {
   private recipientPubkey: string | null = null;
   private message: string = "";
   private messages: Message[] = [];
+  
+  // Current user (signer) info for "Logged in as" UI
+  private currentUserPubkey: string | null = null;
+  private currentUserNpub: string | null = null;
+  private currentUserName: string | null = null;
+  private currentUserPicture: string | null = null;
+
+  // Display controls
+  private displayType: 'fab' | 'bottom-bar' | 'full' | 'embed' = 'embed';
+  private isOpen: boolean = false; // For floating modes
+  private showWelcome: boolean = false; // Show welcome screen before starting chat
+  private welcomeText: string = "Welcome! How can we help you today?";
+  private startChatText: string = "Start chat";
+  private readonly MESSAGE_MAX_LENGTH = 1000;
 
   // isLoading -> sending DM, isFinding -> looking up recipient
   private isLoading: boolean = false;
@@ -56,6 +70,9 @@ export default class NostrLiveChat extends HTMLElement {
   private boundHandleFind: (() => void) | null = null;
   private boundHandleSend: (() => void) | null = null;
   private boundHandleTextareaChange: ((e: Event) => void) | null = null;
+  private boundHandleLauncherClick: (() => void) | null = null;
+  private boundHandleCloseClick: (() => void) | null = null;
+  private boundHandleStartChat: (() => void) | null = null;
 
   constructor() {
     super();
@@ -69,6 +86,78 @@ export default class NostrLiveChat extends HTMLElement {
     }
     return DEFAULT_RELAYS;
   };
+
+  private async getCurrentUserInfo() {
+    try {
+      const ndk = this.nostrService.getNDK();
+      let pubkey: string | null = null;
+
+      if (typeof window !== 'undefined' && (window as any).nostr && (window as any).nostr.getPublicKey) {
+        try {
+          const signer = new NDKNip07Signer();
+          const u = await signer.user();
+          pubkey = u.pubkey;
+        } catch {
+          // ignore extension errors
+        }
+      }
+
+      if (!pubkey && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('nostr_nsec');
+        if (stored) {
+          try {
+            const { NDKPrivateKeySigner } = await import('@nostr-dev-kit/ndk');
+            let sk = stored;
+            if (stored.startsWith('nsec')) {
+              const decoded = nip19.decode(stored);
+              sk = decoded.data as string;
+            }
+            const signer = new NDKPrivateKeySigner(sk);
+            const u = await signer.user();
+            pubkey = u.pubkey;
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      if (pubkey) {
+        this.currentUserPubkey = pubkey;
+        this.currentUserNpub = nip19.npubEncode(pubkey);
+        try {
+          const user = ndk.getUser({ pubkey });
+          await user.fetchProfile();
+          this.currentUserName = user.profile?.displayName || user.profile?.name || this.currentUserNpub?.substring(0, 10) || null;
+          this.currentUserPicture = user.profile?.image || null;
+        } catch {
+          // ignore profile fetch errors
+        }
+        this.render();
+      }
+    } catch {
+      // ignore global errors
+    }
+  }
+
+  private getDisplayType() {
+    // Support both kebab and camel attributes
+    const attr = this.getAttribute('display-type') || this.getAttribute('displayType');
+    const allowed = ['fab', 'bottom-bar', 'full', 'embed'];
+    this.displayType = (allowed.includes((attr || '').toLowerCase()) ? (attr as any) : 'embed') as any;
+    // Initialize open state
+    if (this.displayType === 'full') {
+      this.isOpen = true;
+    } else if (this.displayType === 'fab' || this.displayType === 'bottom-bar') {
+      if (this.isOpen === undefined || this.isOpen === null) this.isOpen = false;
+    } else {
+      this.isOpen = false;
+    }
+    // Reflect attribute for :host([display-type=...]) CSS to apply
+    const current = this.getAttribute('display-type');
+    if (current !== this.displayType) {
+      this.setAttribute('display-type', this.displayType);
+    }
+  }
 
   getTheme = async () => {
     this.theme = "light";
@@ -89,6 +178,17 @@ export default class NostrLiveChat extends HTMLElement {
   };
 
   getRecipient = () => {
+    const recipientPub = this.getAttribute("recipient-pubkey") || this.getAttribute("recipientPubkey");
+    if (recipientPub) {
+      try {
+        this.recipientPubkey = recipientPub;
+        this.recipientNpub = nip19.npubEncode(recipientPub);
+        this.lookupRecipient(this.recipientNpub);
+        return;
+      } catch (e) {
+        // Fallback to other methods if encoding fails
+      }
+    }
     const nip05Attr = this.getAttribute("nip05");
     if (nip05Attr) {
       this.recipientNip05 = nip05Attr;
@@ -106,15 +206,28 @@ export default class NostrLiveChat extends HTMLElement {
   connectedCallback() {
     if (!this.rendered) {
       this.getTheme();
+      this.getDisplayType();
       this.getRecipient();
       this.nostrService.connectToNostr(this.getRelays());
+      this.getCurrentUserInfo();
       this.render();
       this.rendered = true;
     }
   }
 
   static get observedAttributes() {
-    return ["recipient-npub", "nip05", "relays", "theme"];
+    return [
+      "recipient-npub",
+      "recipient-pubkey",
+      "recipientPubkey",
+      "nip05",
+      "relays",
+      "theme",
+      "display-type",
+      "displayType",
+      "welcome-text",
+      "start-chat-text"
+    ];
   }
 
   attributeChangedCallback(
@@ -127,6 +240,14 @@ export default class NostrLiveChat extends HTMLElement {
     if (name === "recipient-npub" && newValue) {
       this.recipientNpub = newValue;
       this.lookupRecipient();
+    } else if ((name === 'recipient-pubkey' || name === 'recipientPubkey') && newValue) {
+      try {
+        this.recipientPubkey = newValue;
+        this.recipientNpub = nip19.npubEncode(newValue);
+        this.lookupRecipient(this.recipientNpub);
+      } catch {
+        // ignore
+      }
     } else if (name === "nip05" && newValue) {
       this.recipientNip05 = newValue;
       this.lookupRecipientByNip05();
@@ -134,6 +255,15 @@ export default class NostrLiveChat extends HTMLElement {
       this.nostrService.connectToNostr(this.getRelays());
     } else if (name === "theme") {
       this.getTheme();
+      this.render();
+    } else if (name === 'display-type' || name === 'displayType') {
+      this.getDisplayType();
+      this.render();
+    } else if (name === 'welcome-text') {
+      this.welcomeText = newValue || this.welcomeText;
+      this.render();
+    } else if (name === 'start-chat-text') {
+      this.startChatText = newValue || this.startChatText;
       this.render();
     }
   }
@@ -155,9 +285,10 @@ export default class NostrLiveChat extends HTMLElement {
 
       this.recipientName = user.profile?.displayName || user.profile?.name || recipientNpub.substring(0, 10);
       this.recipientPicture = user.profile?.image || null;
-      this.render(); // Re-render to show profile info
-      
-      this.subscribeToDms(); // Subscribe to direct messages once
+      // Prepare welcome screen; user starts chat to subscribe
+      this.showWelcome = true;
+      this.messages = [];
+      this.render(); // Re-render to show profile info & welcome view
 
     } catch (e: any) {
       this.isError = true;
@@ -211,6 +342,12 @@ export default class NostrLiveChat extends HTMLElement {
 
   private async handleSendClick() {
     if (!this.message.trim() || !this.recipientPubkey) return;
+    if (this.message.length > this.MESSAGE_MAX_LENGTH) {
+      this.isError = true;
+      this.errorMessage = `Message is too long (max ${this.MESSAGE_MAX_LENGTH} characters).`;
+      this.render();
+      return;
+    }
 
     this.isLoading = true;
     this.render();
@@ -238,7 +375,13 @@ export default class NostrLiveChat extends HTMLElement {
         const stored = localStorage.getItem("nostr_nsec");
         if (stored) {
           const { NDKPrivateKeySigner } = await import("@nostr-dev-kit/ndk");
-          signer = new NDKPrivateKeySigner(stored);
+          const { nip19 } = await import("nostr-tools");
+          let sk = stored;
+          if (stored.startsWith("nsec")) {
+            const decoded = nip19.decode(stored);
+            sk = decoded.data as string;
+          }
+          signer = new NDKPrivateKeySigner(sk);
         }
       }
 
@@ -309,7 +452,21 @@ export default class NostrLiveChat extends HTMLElement {
 
   private handleTextareaChange(e: Event) {
     const textarea = e.target as HTMLTextAreaElement;
+    if (textarea.value.length > this.MESSAGE_MAX_LENGTH) {
+      textarea.value = textarea.value.slice(0, this.MESSAGE_MAX_LENGTH);
+      this.isError = true;
+      this.errorMessage = `Maximum length is ${this.MESSAGE_MAX_LENGTH} characters.`;
+    } else {
+      this.isError = false;
+      this.errorMessage = "";
+    }
     this.message = textarea.value;
+  }
+
+  private handleStartChat() {
+    this.showWelcome = false;
+    this.subscribeToDms();
+    this.render();
   }
 
   private async subscribeToDms() {
@@ -317,31 +474,36 @@ export default class NostrLiveChat extends HTMLElement {
       this.dmSubscription.stop();
     }
     if (!this.recipientPubkey) return;
-
-    // Enhanced check for NIP-07 extension - verify if fully available with required methods
-    if (typeof window === 'undefined' || 
-        !(window as any).nostr || 
-        !(window as any).nostr.getPublicKey || 
-        !(window as any).nostr.signEvent) {
-      console.error("NIP-07 extension not available or incomplete");
-      this.isError = true;
-      this.errorMessage = "Nostr browser extension not found or is incompatible. Please install a Nostr extension like nos2x or Alby.";
-      this.render();
-      return;
-    }
     
-    let signer;
+    // Determine current user using available signer (extension or local key)
+    let currentUser: { pubkey: string } | null = null;
     try {
-      signer = new NDKNip07Signer();
+      if (typeof window !== 'undefined' && (window as any).nostr && (window as any).nostr.getPublicKey && (window as any).nostr.signEvent) {
+        const signer = new NDKNip07Signer();
+        currentUser = await signer.user();
+      } else if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('nostr_nsec');
+        if (stored) {
+          const { NDKPrivateKeySigner } = await import('@nostr-dev-kit/ndk');
+          let sk = stored;
+          if (stored.startsWith('nsec')) {
+            const decoded = nip19.decode(stored);
+            sk = decoded.data as string;
+          }
+          const signer = new NDKPrivateKeySigner(sk);
+          currentUser = await signer.user();
+        }
+      }
     } catch (err) {
-      console.error("Error creating NIP-07 signer:", err);
+      console.error('Failed to determine current user for subscription', err);
+    }
+
+    if (!currentUser) {
       this.isError = true;
-      this.errorMessage = `Error connecting to Nostr extension: ${(err as Error).message}`;
+      this.errorMessage = 'No signer available. Please install a NIP-07 extension or set a private key to start the chat.';
       this.render();
       return;
     }
-    
-    const currentUser = await signer.user();
 
     // Reset messages for new recipient
     this.messages = [];
@@ -371,6 +533,14 @@ export default class NostrLiveChat extends HTMLElement {
 
     this.dmSubscription.on('event', async (event: NDKEvent) => {
       try {
+        // Update current user info if missing
+        if (!this.currentUserPubkey) {
+          try {
+            const signerUser = await new NDKNip07Signer().user();
+            this.currentUserPubkey = signerUser.pubkey;
+            this.currentUserNpub = nip19.npubEncode(signerUser.pubkey);
+          } catch {}
+        }
         // Determine if we are the sender or receiver of the event
         const isSender = event.pubkey === currentUser.pubkey;
         const peer = isSender ? event.tags.find(t => t[0] === 'p')?.[1] : event.pubkey;
@@ -447,6 +617,20 @@ export default class NostrLiveChat extends HTMLElement {
   }
 
   private attachEventListeners() {
+    // Floating launchers
+    const launcher = this.shadowRoot!.querySelector('.nostr-chat-launcher');
+    if (launcher) {
+      if (this.boundHandleLauncherClick) launcher.removeEventListener('click', this.boundHandleLauncherClick);
+      this.boundHandleLauncherClick = () => { this.isOpen = true; this.render(); };
+      launcher.addEventListener('click', this.boundHandleLauncherClick);
+    }
+    const closeBtn = this.shadowRoot!.querySelector('.nostr-chat-close-btn');
+    if (closeBtn && (this.displayType === 'fab' || this.displayType === 'bottom-bar')) {
+      if (this.boundHandleCloseClick) closeBtn.removeEventListener('click', this.boundHandleCloseClick);
+      this.boundHandleCloseClick = (e?: Event) => { e?.stopPropagation(); this.isOpen = false; this.render(); };
+      closeBtn.addEventListener('click', this.boundHandleCloseClick);
+    }
+
     const findButton = this.shadowRoot!.querySelector(".nostr-chat-find-btn");
     if (findButton) {
       if (this.boundHandleFind) findButton.removeEventListener("click", this.boundHandleFind);
@@ -459,6 +643,13 @@ export default class NostrLiveChat extends HTMLElement {
       if (this.boundHandleSend) sendButton.removeEventListener("click", this.boundHandleSend);
       this.boundHandleSend = this.handleSendClick.bind(this);
       sendButton.addEventListener("click", this.boundHandleSend);
+    }
+
+    const startBtn = this.shadowRoot!.querySelector('.nostr-chat-start-btn');
+    if (startBtn) {
+      if (this.boundHandleStartChat) startBtn.removeEventListener('click', this.boundHandleStartChat);
+      this.boundHandleStartChat = this.handleStartChat.bind(this);
+      startBtn.addEventListener('click', this.boundHandleStartChat);
     }
 
     const textarea = this.shadowRoot!.querySelector(".nostr-chat-textarea");
@@ -481,6 +672,10 @@ export default class NostrLiveChat extends HTMLElement {
       this.dmSubscription.stop();
     }
     // Clean up event listeners
+    const launcher = this.shadowRoot?.querySelector('.nostr-chat-launcher');
+    if (launcher && this.boundHandleLauncherClick) launcher.removeEventListener('click', this.boundHandleLauncherClick);
+    const closeBtn = this.shadowRoot?.querySelector('.nostr-chat-close-btn');
+    if (closeBtn && this.boundHandleCloseClick) closeBtn.removeEventListener('click', this.boundHandleCloseClick);
     const findButton = this.shadowRoot?.querySelector(".nostr-chat-find-btn");
     if (findButton && this.boundHandleFind) findButton.removeEventListener("click", this.boundHandleFind);
 
@@ -503,16 +698,61 @@ export default class NostrLiveChat extends HTMLElement {
       isFinding: this.isFinding,
       isError: this.isError,
       errorMessage: this.errorMessage,
+      currentUserName: this.currentUserName,
+      currentUserPicture: this.currentUserPicture,
+      showWelcome: this.showWelcome,
+      welcomeText: this.welcomeText,
+      startChatText: this.startChatText,
     };
 
-    this.shadowRoot!.innerHTML = renderLiveChat(renderOptions);
+    const styles = getLiveChatStyles(this.theme);
+    const inner = renderLiveChatInner(renderOptions);
+
+    let html = styles;
+    if (this.displayType === 'embed') {
+      html += inner;
+    } else if (this.displayType === 'full') {
+      html += `
+        <div class="nostr-chat-float-panel open">${inner}</div>
+      `;
+    } else if (this.displayType === 'fab') {
+      html += `
+        ${this.isOpen ? '' : `
+          <div class="nostr-chat-launcher fab" role="button" aria-label="Open live chat">
+            <div class="bubble">
+              <div class="title">We're Online!</div>
+              <div class="subtitle">How may I help you today?</div>
+            </div>
+            <button class="fab-btn" aria-label="Open chat">💬</button>
+          </div>
+        `}
+        <div class="nostr-chat-float-panel ${this.isOpen ? 'open' : ''}">
+          <button class="nostr-chat-close-btn" title="Minimize">×</button>
+          ${inner}
+        </div>
+      `;
+    } else if (this.displayType === 'bottom-bar') {
+      html += `
+        ${this.isOpen ? '' : `
+          <div class="nostr-chat-launcher bottom-bar" role="button" aria-label="Open live chat">
+            <button class="bar-btn">Live chat</button>
+          </div>
+        `}
+        <div class="nostr-chat-float-panel ${this.isOpen ? 'open' : ''}">
+          <button class="nostr-chat-close-btn" title="Minimize">×</button>
+          ${inner}
+        </div>
+      `;
+    }
+
+    this.shadowRoot!.innerHTML = html;
     this.attachEventListeners();
 
     // Scroll to bottom after render
     setTimeout(() => {
       const chatHistory = this.shadowRoot?.querySelector('.nostr-chat-history');
       if (chatHistory) {
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+        (chatHistory as HTMLElement).scrollTop = (chatHistory as HTMLElement).scrollHeight;
       }
     }, 0);
   }

@@ -97,6 +97,43 @@
         </div>
       </div>
     </div>
+    
+    <hr style="margin: 3rem 0; width: 100%; max-width: 900px; border: none; border-top: 1px solid #ddd;" />
+
+    <div style="width: 100%; max-width: 900px;">
+      <h2>Floating Modes (display-type)</h2>
+      <p class="description">
+        The following examples demonstrate the new floating modes. Only keep ONE active at a time to avoid overlapping panels.
+        You can also set a fixed recipient using <code>recipient-pubkey</code>, <code>recipient-npub</code>, or <code>nip05</code>.
+      </p>
+
+      <!-- FAB mode: floating action button in bottom-right that opens the panel.
+           To set a fixed recipient, add ONE of the following attributes to the element:
+           recipient-pubkey="HEX_PUBKEY_HERE" OR recipient-npub="npub1..." OR nip05="user@domain.com" -->
+      <nostr-live-chat
+        display-type="fab"
+        theme="light"
+        relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+      ></nostr-live-chat>
+
+      <!-- Bottom bar mode (centered button that opens the panel). Uncomment to try: -->
+      <!--
+      <nostr-live-chat
+        display-type="bottom-bar"
+        theme="light"
+        relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+      ></nostr-live-chat>
+      -->
+
+      <!-- Full floating panel (always open). Uncomment to try: -->
+      <!--
+      <nostr-live-chat
+        display-type="full"
+        theme="light"
+        relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+      ></nostr-live-chat>
+      -->
+    </div>
 
   </body>
 </html>
