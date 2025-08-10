@@ -461,6 +461,15 @@ export default class NostrLiveChat extends HTMLElement {
       this.errorMessage = "";
     }
     this.message = textarea.value;
+
+    // Live update character counter without full re-render
+    const counterEl = this.shadowRoot?.querySelector('.nostr-chat-char-counter') as HTMLElement | null;
+    if (counterEl) {
+      const typed = textarea.value.length;
+      const remaining = Math.max(0, this.MESSAGE_MAX_LENGTH - typed);
+      counterEl.textContent = `${typed}/${this.MESSAGE_MAX_LENGTH} • ${remaining} left`;
+      counterEl.classList.toggle('warn', remaining <= 100);
+    }
   }
 
   private handleStartChat() {
@@ -703,6 +712,7 @@ export default class NostrLiveChat extends HTMLElement {
       showWelcome: this.showWelcome,
       welcomeText: this.welcomeText,
       startChatText: this.startChatText,
+      maxMessageLength: this.MESSAGE_MAX_LENGTH,
     };
 
     const styles = getLiveChatStyles(this.theme);
