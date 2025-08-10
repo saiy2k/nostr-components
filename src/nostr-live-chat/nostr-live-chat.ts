@@ -82,7 +82,11 @@ export default class NostrLiveChat extends HTMLElement {
   getRelays = () => {
     const userRelays = this.getAttribute("relays");
     if (userRelays) {
-      return userRelays.split(",");
+      return userRelays
+        .split(",")
+        .map(r => r.trim())
+        .filter(r => r.length > 0)
+        .filter((r, i, arr) => arr.indexOf(r) === i);
     }
     return DEFAULT_RELAYS;
   };
