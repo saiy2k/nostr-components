@@ -1,12 +1,12 @@
 import { Theme } from "../common/types";
 import { getLoadingNostrich, getNostrLogo } from "../common/theme";
 
-interface Message {
+export interface ChatMessage {
   id: string;
   text: string;
   sender: 'me' | 'them';
   timestamp: number;
-  status: 'sending' | 'sent';
+  status: 'sending' | 'sent' | 'failed';
 }
 
 function formatTimestamp(ts: number): string {
@@ -23,7 +23,7 @@ export interface RenderLiveChatOptions {
   recipientName: string | null;
   recipientPicture: string | null;
   message: string;
-  messages: Message[];
+  messages: ChatMessage[];
   isLoading: boolean;
   isFinding: boolean;
   isError: boolean;
@@ -191,7 +191,7 @@ export function renderLiveChatInner({
             : `
           <div class="nostr-chat-history">
             ${messages.map(msg => `
-              <div class="nostr-chat-message-row nostr-chat-message-${msg.sender} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''}">
+              <div class="nostr-chat-message-row nostr-chat-message-${msg.sender} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''} ${msg.sender === 'me' && msg.status === 'failed' ? 'failed' : ''}">
                 <div class="nostr-chat-message-bubble" title="${formatTimestamp(msg.timestamp)}">${sanitizeHtml(msg.text)}</div>
                 <div class="nostr-chat-message-meta">
                   <span class="nostr-chat-message-timestamp">${formatTimestamp(msg.timestamp)}</span>
@@ -230,8 +230,6 @@ export function getLiveChatStyles(theme: Theme): string {
         --nstrc-chat-background-dark: #222222;
         --nstrc-chat-background-light: #FFFFFF;
         --nstrc-chat-text-color-dark: #FFFFFF;
-        --nostr-chat-accent-color: #8a2be2;
-        --nostr-chat-accent-text-color: #FFFFFF;
         --nstrc-chat-text-color-light: #000000;
         --nstrc-chat-border-dark: 1px solid #444444;
         --nstrc-chat-border-light: 1px solid #DDDDDD;
@@ -239,8 +237,11 @@ export function getLiveChatStyles(theme: Theme): string {
         --nstrc-chat-input-background-light: #F9F9F9;
         --nstrc-chat-my-message-background-dark: #5A3E85;
         --nstrc-chat-my-message-background-light: #E6DDF4;
-        --nostr-chat-accent-color: #8a2be2;
-        --nostr-chat-accent-text-color: #ffffff;
+        /* Unified accent variables with light/dark variants */
+        --nstrc-chat-accent-color-dark: #5A3E85;
+        --nstrc-chat-accent-color-light: #7E4FD2;
+        --nstrc-chat-accent-text-color-dark: #FFFFFF;
+        --nstrc-chat-accent-text-color-light: #FFFFFF;
         --nstrc-chat-their-message-background-dark: #3A3A3A;
         --nstrc-chat-their-message-background-light: #F0F0F0;
         --nstrc-chat-button-background-dark: #5A3E85;
@@ -258,6 +259,8 @@ export function getLiveChatStyles(theme: Theme): string {
         --nstrc-chat-their-message-background: var(--nstrc-chat-their-message-background-${theme});
         --nstrc-chat-button-background: var(--nstrc-chat-button-background-${theme});
         --nstrc-chat-button-text: var(--nstrc-chat-button-text-${theme});
+        --nstrc-chat-accent-color: var(--nstrc-chat-accent-color-${theme});
+        --nstrc-chat-accent-text-color: var(--nstrc-chat-accent-text-color-${theme});
       }
 
       /* Floating modes shrink the host so it doesn't affect page layout */
@@ -324,8 +327,8 @@ export function getLiveChatStyles(theme: Theme): string {
         width: 56px;
         height: 56px;
         border-radius: 50%;
-        background: var(--nostr-chat-accent-color);
-        color: var(--nostr-chat-accent-text-color);
+        background: var(--nstrc-chat-accent-color);
+        color: var(--nstrc-chat-accent-text-color);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -345,8 +348,8 @@ export function getLiveChatStyles(theme: Theme): string {
       .nostr-chat-launcher .bar-btn {
         padding: 12px 20px;
         border-radius: 999px;
-        background: var(--nostr-chat-accent-color);
-        color: var(--nostr-chat-accent-text-color);
+        background: var(--nstrc-chat-accent-color);
+        color: var(--nstrc-chat-accent-text-color);
         border: none;
         cursor: pointer;
         font-weight: 700;
@@ -454,14 +457,19 @@ export function getLiveChatStyles(theme: Theme): string {
       }
 
       .nostr-chat-message-me .nostr-chat-message-bubble {
-        background-color: var(--nostr-chat-accent-color);
-        color: var(--nostr-chat-accent-text-color);
+        background-color: var(--nstrc-chat-accent-color);
+        color: var(--nstrc-chat-accent-text-color);
         border-radius: 15px 15px 0 15px;
         opacity: 1;
       }
 
       .nostr-chat-message-me.sending .nostr-chat-message-bubble {
         opacity: 0.5;
+      }
+
+      .nostr-chat-message-me.failed .nostr-chat-message-bubble {
+        opacity: 1;
+        border: 1px dashed var(--nstrc-chat-error-color);
       }
 
       .nostr-chat-message-them .nostr-chat-message-bubble {

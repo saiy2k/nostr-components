@@ -27,7 +27,7 @@ interface Message {
   text: string;
   sender: 'me' | 'them';
   timestamp: number;
-  status: 'sending' | 'sent';
+  status: 'sending' | 'sent' | 'failed';
 }
 
 // Using shared resolveNip05 utility from common/nip05-utils
@@ -143,7 +143,10 @@ export default class NostrLiveChat extends HTMLElement {
     // Support both kebab and camel attributes
     const attr = this.getAttribute('display-type') || this.getAttribute('displayType');
     const allowed = ['fab', 'bottom-bar', 'full', 'embed'];
-    this.displayType = (allowed.includes((attr || '').toLowerCase()) ? (attr as any) : 'embed') as any;
+    const raw = attr ? String(attr) : '';
+    const lower = raw.toLowerCase();
+    const normalized = allowed.includes(lower) ? lower : 'embed';
+    this.displayType = normalized as any;
     // Initialize open state
     if (this.displayType === 'full') {
       this.isOpen = true;
@@ -154,26 +157,21 @@ export default class NostrLiveChat extends HTMLElement {
     }
     // Reflect attribute for :host([display-type=...]) CSS to apply
     const current = this.getAttribute('display-type');
-    if (current !== this.displayType) {
-      this.setAttribute('display-type', this.displayType);
+    if (current !== normalized) {
+      this.setAttribute('display-type', normalized);
     }
   }
 
-  getTheme = async () => {
-    this.theme = "light";
-
-    const userTheme = this.getAttribute("theme");
-
-    if (userTheme) {
-      const isValidTheme = ["light", "dark"].includes(userTheme);
-
-      if (!isValidTheme) {
-        throw new Error(
-          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
-        );
+  getTheme = () => {
+    const attr = this.getAttribute("theme");
+    const value = (attr || "").toLowerCase();
+    if (value === "light" || value === "dark") {
+      this.theme = value as Theme;
+    } else {
+      if (attr) {
+        console.warn(`Invalid theme '${attr}'. Accepted values are 'light', 'dark'. Falling back to 'light'.`);
       }
-
-      this.theme = userTheme as Theme;
+      this.theme = "light";
     }
   };
 
@@ -207,6 +205,11 @@ export default class NostrLiveChat extends HTMLElement {
     if (!this.rendered) {
       this.getTheme();
       this.getDisplayType();
+      // Apply initial textual attributes before first render
+      const welcomeAttr = this.getAttribute('welcome-text');
+      if (welcomeAttr) this.welcomeText = welcomeAttr;
+      const startAttr = this.getAttribute('start-chat-text');
+      if (startAttr) this.startChatText = startAttr;
       this.getRecipient();
       this.nostrService.connectToNostr(this.getRelays());
       this.getCurrentUserInfo();
@@ -288,6 +291,9 @@ export default class NostrLiveChat extends HTMLElement {
       // Prepare welcome screen; user starts chat to subscribe
       this.showWelcome = true;
       this.messages = [];
+      // Clear any previous error state on successful lookup
+      this.isError = false;
+      this.errorMessage = "";
       this.render(); // Re-render to show profile info & welcome view
 
     } catch (e: any) {
@@ -311,6 +317,9 @@ export default class NostrLiveChat extends HTMLElement {
       const pubkey = await resolveNip05(recipientNip05);
       const npub = nip19.npubEncode(pubkey);
       this.recipientNpub = npub;
+      // Clear any previous error state on successful nip05 resolution
+      this.isError = false;
+      this.errorMessage = "";
       await this.lookupRecipient(npub);
 
     } catch (e: any) {
@@ -325,6 +334,10 @@ export default class NostrLiveChat extends HTMLElement {
   private handleFindClick() {
     const input = this.shadowRoot!.querySelector(".nostr-chat-npub-input") as HTMLInputElement;
     const value = input.value.trim();
+    // Reset previous error state when starting a new find
+    this.isError = false;
+    this.errorMessage = "";
+    this.render();
     if (!value) return;
 
     if (value.startsWith("npub")) {
@@ -351,6 +364,8 @@ export default class NostrLiveChat extends HTMLElement {
 
     this.isLoading = true;
     this.render();
+
+    let tempId: string | null = null;
 
     try {
       const ndk = this.nostrService.getNDK();
@@ -421,7 +436,7 @@ export default class NostrLiveChat extends HTMLElement {
         );
       }
 
-      const tempId = `temp_${Date.now()}`;
+      tempId = `temp_${Date.now()}`;
       this.messages.push({
         id: tempId,
         text: this.message,
@@ -444,6 +459,14 @@ export default class NostrLiveChat extends HTMLElement {
     } catch (e: any) {
       this.isError = true;
       this.errorMessage = e.message;
+      // If publish failed, mark the optimistic message as failed
+      if (tempId) {
+        const msg = this.messages.find(m => m.id === tempId);
+        if (msg) {
+          msg.status = 'failed';
+        }
+        this.render();
+      }
     } finally {
       this.isLoading = false;
       this.render();
