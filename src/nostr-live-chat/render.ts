@@ -33,6 +33,7 @@ export interface RenderLiveChatOptions {
   showWelcome?: boolean;
   welcomeText?: string;
   startChatText?: string;
+  maxMessageLength: number;
 }
 
 /**
@@ -68,6 +69,7 @@ export function renderLiveChat({
   showWelcome,
   welcomeText,
   startChatText,
+  maxMessageLength,
 }: RenderLiveChatOptions): string {
   // Build inner chat UI only
   const inner = renderLiveChatInner({
@@ -86,6 +88,7 @@ export function renderLiveChat({
     showWelcome,
     welcomeText,
     startChatText,
+    maxMessageLength,
   });
 
   // Include styles + inner UI (legacy behavior)
@@ -112,8 +115,13 @@ export function renderLiveChatInner({
   showWelcome,
   welcomeText,
   startChatText,
+  maxMessageLength,
 }: RenderLiveChatOptions): string {
   const iconSize = 24;
+  const maxLen = typeof maxMessageLength === 'number' ? maxMessageLength : 1000;
+  const typed = (message || '').length;
+  const remaining = Math.max(0, maxLen - typed);
+  const counterClass = remaining <= 100 ? 'nostr-chat-char-counter warn' : 'nostr-chat-char-counter';
 
   return `
     <div class="nostr-chat-container ${isError ? "nostr-chat-error" : ""}">
@@ -195,8 +203,9 @@ export function renderLiveChatInner({
             <textarea 
               class="nostr-chat-textarea" 
               placeholder="Type your message..."
-              maxlength="1000"
+              maxlength="${maxLen}"
             >${sanitizeHtml(message)}</textarea>
+            <div class="${counterClass}" aria-live="polite">${typed}/${maxLen} • ${remaining} left</div>
             <button class="nostr-chat-send-btn" ${isLoading ? "disabled" : ""}>
               ${
                 isLoading
@@ -546,6 +555,21 @@ export function getLiveChatStyles(theme: Theme): string {
         font-family: Inter, sans-serif;
         resize: none;
         overflow-y: auto;
+      }
+
+      /* Character counter */
+      .nostr-chat-char-counter {
+        align-self: center;
+        font-size: 12px;
+        opacity: 0.75;
+        color: var(--nstrc-chat-text-color);
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .nostr-chat-char-counter.warn {
+        color: var(--nstrc-chat-error-color);
+        opacity: 1;
+        font-weight: 600;
       }
 
       .nostr-chat-find-btn, .nostr-chat-send-btn {
