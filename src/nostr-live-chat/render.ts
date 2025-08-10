@@ -9,6 +9,14 @@ interface Message {
   status: 'sending' | 'sent';
 }
 
+function formatTimestamp(ts: number): string {
+  try {
+    return new Date(ts * 1000).toLocaleString();
+  } catch {
+    return '';
+  }
+}
+
 export interface RenderLiveChatOptions {
   theme: Theme;
   recipientNpub: string | null;
@@ -20,6 +28,11 @@ export interface RenderLiveChatOptions {
   isFinding: boolean;
   isError: boolean;
   errorMessage: string;
+  currentUserName?: string | null;
+  currentUserPicture?: string | null;
+  showWelcome?: boolean;
+  welcomeText?: string;
+  startChatText?: string;
 }
 
 /**
@@ -50,36 +63,98 @@ export function renderLiveChat({
   isFinding,
   isError,
   errorMessage,
+  currentUserName,
+  currentUserPicture,
+  showWelcome,
+  welcomeText,
+  startChatText,
+}: RenderLiveChatOptions): string {
+  // Build inner chat UI only
+  const inner = renderLiveChatInner({
+    theme,
+    recipientNpub,
+    recipientName,
+    recipientPicture,
+    message,
+    messages,
+    isLoading,
+    isFinding,
+    isError,
+    errorMessage,
+    currentUserName,
+    currentUserPicture,
+    showWelcome,
+    welcomeText,
+    startChatText,
+  });
+
+  // Include styles + inner UI (legacy behavior)
+  return `
+    ${getLiveChatStyles(theme)}
+    ${inner}
+  `;
+}
+
+// Returns only the chat UI (no <style>) for composing inside wrappers
+export function renderLiveChatInner({
+  theme,
+  recipientNpub,
+  recipientName,
+  recipientPicture,
+  message,
+  messages,
+  isLoading,
+  isFinding,
+  isError,
+  errorMessage,
+  currentUserName,
+  currentUserPicture,
+  showWelcome,
+  welcomeText,
+  startChatText,
 }: RenderLiveChatOptions): string {
   const iconSize = 24;
 
-
-
   return `
-    ${getLiveChatStyles(theme)}
     <div class="nostr-chat-container ${isError ? "nostr-chat-error" : ""}">
       <div class="nostr-chat-header">
-        ${
-          recipientNpub && recipientName
-            ? `
-          <div class="nostr-chat-recipient">
-            <div class="nostr-chat-recipient-info">
-              <img 
-                src="${sanitizeHtml(recipientPicture) || ''}" 
-                alt="${sanitizeHtml(recipientName) || ''}" 
-                class="nostr-chat-recipient-avatar"
-                onerror="this.onerror=null; this.src='https://via.placeholder.com/40';"
-              >
-              <span class="nostr-chat-recipient-name">${sanitizeHtml(recipientName) || sanitizeHtml(recipientNpub)}</span>
+        <div class="nostr-chat-header-left">
+          ${
+            recipientNpub && recipientName
+              ? `
+            <div class="nostr-chat-recipient">
+              <div class="nostr-chat-recipient-info">
+                <img 
+                  src="${sanitizeHtml(recipientPicture) || ''}" 
+                  alt="${sanitizeHtml(recipientName) || ''}" 
+                  class="nostr-chat-recipient-avatar"
+                  onerror="this.onerror=null; this.src='https://via.placeholder.com/40';"
+                >
+                <span class="nostr-chat-recipient-name">${sanitizeHtml(recipientName) || sanitizeHtml(recipientNpub)}</span>
+              </div>
             </div>
+          `
+              : `
+            <div class="nostr-chat-recipient-placeholder">
+              ${getNostrLogo(iconSize, iconSize)}
+              <span>Nostr Live Chat</span>
+            </div>
+          `
+          }
+        </div>
+        ${
+          currentUserName
+            ? `
+          <div class="nostr-chat-self">
+            <img 
+              src="${sanitizeHtml(currentUserPicture) || ''}"
+              alt="${sanitizeHtml(currentUserName) || 'You'}"
+              class="nostr-chat-self-avatar"
+              onerror="this.onerror=null; this.src='https://via.placeholder.com/32';"
+            >
+            <span class="nostr-chat-self-name">${sanitizeHtml(currentUserName)}</span>
           </div>
-        `
-            : `
-          <div class="nostr-chat-recipient-placeholder">
-            ${getNostrLogo(iconSize, iconSize)}
-            <span>Nostr Live Chat</span>
-          </div>
-        `
+        ` : ''
         }
       </div>
 
@@ -98,11 +173,21 @@ export function renderLiveChat({
             </button>
           </div>
         `
+            : showWelcome
+            ? `
+          <div class="nostr-chat-welcome">
+            <div class="nostr-chat-welcome-text">${sanitizeHtml(welcomeText) || 'Welcome!'}</div>
+            <button class="nostr-chat-start-btn">${sanitizeHtml(startChatText) || 'Start chat'}</button>
+          </div>
+        `
             : `
           <div class="nostr-chat-history">
             ${messages.map(msg => `
               <div class="nostr-chat-message-row nostr-chat-message-${msg.sender} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''}">
-                <div class="nostr-chat-message-bubble">${sanitizeHtml(msg.text)}</div>
+                <div class="nostr-chat-message-bubble" title="${formatTimestamp(msg.timestamp)}">${sanitizeHtml(msg.text)}</div>
+                <div class="nostr-chat-message-meta">
+                  <span class="nostr-chat-message-timestamp">${formatTimestamp(msg.timestamp)}</span>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -110,6 +195,7 @@ export function renderLiveChat({
             <textarea 
               class="nostr-chat-textarea" 
               placeholder="Type your message..."
+              maxlength="1000"
             >${sanitizeHtml(message)}</textarea>
             <button class="nostr-chat-send-btn" ${isLoading ? "disabled" : ""}>
               ${
@@ -125,7 +211,6 @@ export function renderLiveChat({
 
       ${isError ? `<small class="nostr-chat-error-message">${sanitizeHtml(errorMessage)}</small>` : ""}
     </div>
-
   `;
 }
 
@@ -166,6 +251,99 @@ export function getLiveChatStyles(theme: Theme): string {
         --nstrc-chat-button-text: var(--nstrc-chat-button-text-${theme});
       }
 
+      /* Floating modes shrink the host so it doesn't affect page layout */
+      :host([display-type="fab"]),
+      :host([display-type="bottom-bar"]),
+      :host([display-type="full"]) {
+        width: 0;
+        height: 0;
+      }
+
+      /* Floating panel wrapper */
+      .nostr-chat-float-panel {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 2147483000;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+        border-radius: var(--nstrc-chat-border-radius);
+        display: none;
+      }
+      .nostr-chat-float-panel.open { display: block; }
+
+      /* Close (minimize) button for floating panel */
+      .nostr-chat-close-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        cursor: pointer;
+        background: rgba(0,0,0,0.5);
+        color: #fff;
+        border: none;
+        z-index: 1;
+      }
+
+      /* Launcher: FAB */
+      .nostr-chat-launcher.fab {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 2147483000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: Inter, sans-serif;
+      }
+      .nostr-chat-launcher .bubble {
+        background: var(--nstrc-chat-background);
+        color: var(--nstrc-chat-text-color);
+        border: var(--nstrc-chat-border);
+        border-radius: 14px;
+        padding: 10px 12px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      }
+      .nostr-chat-launcher .bubble .title { font-weight: 700; font-size: 14px; }
+      .nostr-chat-launcher .bubble .subtitle { font-size: 12px; opacity: 0.8; }
+      .nostr-chat-launcher .fab-btn {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--nostr-chat-accent-color);
+        color: var(--nostr-chat-accent-text-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+      }
+
+      /* Launcher: Bottom bar */
+      .nostr-chat-launcher.bottom-bar {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 20px;
+        z-index: 2147483000;
+      }
+      .nostr-chat-launcher .bar-btn {
+        padding: 12px 20px;
+        border-radius: 999px;
+        background: var(--nostr-chat-accent-color);
+        color: var(--nostr-chat-accent-text-color);
+        border: none;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+      }
+
       .nostr-chat-container {
         display: flex;
         flex-direction: column;
@@ -187,6 +365,7 @@ export function getLiveChatStyles(theme: Theme): string {
         border-bottom: var(--nstrc-chat-border);
         display: flex;
         align-items: center;
+        justify-content: space-between;
         flex-shrink: 0;
       }
 
@@ -208,6 +387,20 @@ export function getLiveChatStyles(theme: Theme): string {
         font-size: 16px;
       }
 
+      .nostr-chat-self {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        opacity: 0.85;
+        font-size: 12px;
+      }
+      .nostr-chat-self-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
       .nostr-chat-content {
         padding: 16px;
         display: flex;
@@ -224,19 +417,24 @@ export function getLiveChatStyles(theme: Theme): string {
         flex-grow: 1;
         overflow-y: auto;
         padding-right: 10px; /* For scrollbar */
+        padding-bottom: 16px;
       }
 
       .nostr-chat-message-row {
         display: flex;
         width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
       }
 
       .nostr-chat-message-me {
         justify-content: flex-end;
+        align-items: flex-end;
       }
 
       .nostr-chat-message-them {
         justify-content: flex-start;
+        align-items: flex-start;
       }
 
       .nostr-chat-message-bubble {
@@ -262,6 +460,30 @@ export function getLiveChatStyles(theme: Theme): string {
         border-bottom-left-radius: 4px;
       }
 
+      /* Message timestamp under bubble, shown on hover */
+      .nostr-chat-message-meta {
+        display: none;
+        font-size: 10px;
+        margin-top: 4px;
+        opacity: 0.75;
+        color: var(--nstrc-chat-text-color);
+        max-width: 75%;
+      }
+      .nostr-chat-message-row:hover .nostr-chat-message-meta {
+        display: block;
+      }
+      .nostr-chat-message-me .nostr-chat-message-meta {
+        text-align: right;
+      }
+      .nostr-chat-message-them .nostr-chat-message-meta {
+        text-align: left;
+      }
+
+      /* Always show timestamp for the last message (use last-of-type to ignore text nodes) */
+      .nostr-chat-history > .nostr-chat-message-row:last-of-type .nostr-chat-message-meta {
+        display: block;
+      }
+
       .nostr-chat-npub-input-container {
         display: flex;
         gap: 8px;
@@ -285,6 +507,31 @@ export function getLiveChatStyles(theme: Theme): string {
         flex-shrink: 0;
         border-top: var(--nstrc-chat-border);
         padding-top: 12px;
+      }
+
+      .nostr-chat-welcome {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 12px 8px;
+      }
+      .nostr-chat-welcome-text {
+        opacity: 0.9;
+      }
+      .nostr-chat-start-btn {
+        padding: 10px 16px;
+        border-radius: 20px;
+        border: none;
+        background-color: var(--nstrc-chat-button-background);
+        color: var(--nstrc-chat-button-text);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
       }
 
       .nostr-chat-textarea {
