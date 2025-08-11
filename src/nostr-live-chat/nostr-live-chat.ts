@@ -247,6 +247,34 @@ export default class NostrLiveChat extends HTMLElement {
     ];
   }
 
+  // Stop any active DM subscription and clear debounce timer
+  private unsubscribeFromDms() {
+    if (this.dmSubscription) {
+      try { this.dmSubscription.stop(); } catch {}
+      this.dmSubscription = null;
+    }
+    if (this.resubscribeTimer) {
+      clearTimeout(this.resubscribeTimer);
+      this.resubscribeTimer = null;
+    }
+  }
+
+  // Clear all recipient-related and chat UI state
+  private clearRecipientAndChatState() {
+    this.recipientPubkey = null;
+    this.recipientNpub = null;
+    this.recipientNip05 = null;
+    this.recipientName = null;
+    this.recipientPicture = null;
+    this.messages = [];
+    this.message = "";
+    this.showWelcome = false; // reset start chat flag
+    this.isLoading = false;
+    this.isFinding = false;
+    this.isError = false;
+    this.errorMessage = "";
+  }
+
   attributeChangedCallback(
     name: string,
     _oldValue: string | null,
@@ -254,20 +282,55 @@ export default class NostrLiveChat extends HTMLElement {
   ) {
     if (!this.rendered) return;
 
-    if (name === "recipient-npub" && newValue) {
-      this.recipientNpub = newValue;
-      this.lookupRecipient();
-    } else if ((name === 'recipient-pubkey' || name === 'recipientPubkey') && newValue) {
-      try {
-        this.recipientPubkey = newValue;
-        this.recipientNpub = nip19.npubEncode(newValue);
-        this.lookupRecipient(this.recipientNpub);
-      } catch {
-        // ignore
+    if (name === "recipient-npub") {
+      if (newValue === null) {
+        // Attribute removed: stop subscription and clear state
+        this.unsubscribeFromDms();
+        this.clearRecipientAndChatState();
+        this.render();
+        return;
       }
-    } else if (name === "nip05" && newValue) {
-      this.recipientNip05 = newValue;
-      this.lookupRecipientByNip05();
+      if (newValue !== _oldValue) {
+        // Changed: stop subscription, clear state, then lookup new recipient
+        this.unsubscribeFromDms();
+        this.clearRecipientAndChatState();
+        this.recipientNpub = newValue!;
+        this.lookupRecipient();
+      }
+      return;
+    } else if (name === 'recipient-pubkey' || name === 'recipientPubkey') {
+      if (newValue === null) {
+        this.unsubscribeFromDms();
+        this.clearRecipientAndChatState();
+        this.render();
+        return;
+      }
+      if (newValue !== _oldValue) {
+        this.unsubscribeFromDms();
+        this.clearRecipientAndChatState();
+        try {
+          this.recipientPubkey = newValue!;
+          this.recipientNpub = nip19.npubEncode(newValue!);
+          this.lookupRecipient(this.recipientNpub);
+        } catch {
+          // ignore invalid value
+        }
+      }
+      return;
+    } else if (name === "nip05") {
+      if (newValue === null) {
+        this.unsubscribeFromDms();
+        this.clearRecipientAndChatState();
+        this.render();
+        return;
+      }
+      if (newValue !== _oldValue) {
+        this.unsubscribeFromDms();
+        this.clearRecipientAndChatState();
+        this.recipientNip05 = newValue!;
+        this.lookupRecipientByNip05();
+      }
+      return;
     } else if (name === "relays") {
       this.nostrService.connectToNostr(this.getRelays());
     } else if (name === "theme") {
@@ -298,6 +361,11 @@ export default class NostrLiveChat extends HTMLElement {
   }
 
   private async lookupRecipient(npub?: string) {
+    // Stop any existing DM subscription and reset chat state before new lookup
+    this.unsubscribeFromDms();
+    this.messages = [];
+    this.showWelcome = false;
+
     this.isFinding = true;
     this.render();
 
