@@ -73,6 +73,7 @@ export default class NostrLiveChat extends HTMLElement {
   private boundHandleLauncherClick: (() => void) | null = null;
   private boundHandleCloseClick: (() => void) | null = null;
   private boundHandleStartChat: (() => void) | null = null;
+  private boundHandleNpubKeydown: ((e: Event) => void) | null = null;
 
   constructor() {
     super();
@@ -695,11 +696,14 @@ export default class NostrLiveChat extends HTMLElement {
       textarea.addEventListener("input", this.boundHandleTextareaChange);
     }
 
-    const npubInput = this.shadowRoot!.querySelector(".nostr-chat-npub-input");
+    const npubInput = this.shadowRoot!.querySelector(".nostr-chat-npub-input") as HTMLElement | null;
     if (npubInput) {
-      npubInput.addEventListener("keydown", (e: Event) => {
-        if ((e as KeyboardEvent).key === "Enter") this.handleFindClick();
-      });
+      if (this.boundHandleNpubKeydown) npubInput.removeEventListener("keydown", this.boundHandleNpubKeydown);
+      this.boundHandleNpubKeydown = (e: Event) => {
+        const ke = e as KeyboardEvent;
+        if (ke.key === "Enter") this.handleFindClick();
+      };
+      npubInput.addEventListener("keydown", this.boundHandleNpubKeydown as EventListener);
     }
   }
 
@@ -720,6 +724,8 @@ export default class NostrLiveChat extends HTMLElement {
 
     const textarea = this.shadowRoot?.querySelector(".nostr-chat-textarea");
     if (textarea && this.boundHandleTextareaChange) textarea.removeEventListener("input", this.boundHandleTextareaChange);
+    const npubInput = this.shadowRoot?.querySelector('.nostr-chat-npub-input') as HTMLElement | null;
+    if (npubInput && this.boundHandleNpubKeydown) npubInput.removeEventListener('keydown', this.boundHandleNpubKeydown as EventListener);
   }
 
   private render() {
