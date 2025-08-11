@@ -236,7 +236,8 @@ export default class NostrLiveChat extends HTMLElement {
       "display-type",
       "displayType",
       "welcome-text",
-      "start-chat-text"
+      "start-chat-text",
+      "history-days"
     ];
   }
 
@@ -277,6 +278,11 @@ export default class NostrLiveChat extends HTMLElement {
       // Reset to default when attribute is removed (newValue === null)
       this.startChatText = newValue !== null ? newValue : NostrLiveChat.DEFAULT_START_CHAT_TEXT;
       this.render();
+    } else if (name === 'history-days') {
+      // If history window changes while a chat is active, resubscribe to reload history
+      if (newValue !== _oldValue && this.recipientPubkey && !this.showWelcome) {
+        this.subscribeToDms();
+      }
     }
   }
 
@@ -549,23 +555,33 @@ export default class NostrLiveChat extends HTMLElement {
     // Reset messages for new recipient
     this.messages = [];
 
-    const since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+    // Determine history window from attribute: default 30 days, 'all' or <=0 => full history
+    const historyDaysAttr = this.getAttribute('history-days');
+    let since: number | undefined;
+    if (!historyDaysAttr) {
+      since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+    } else if (historyDaysAttr.toLowerCase() === 'all' || parseInt(historyDaysAttr, 10) <= 0) {
+      since = undefined; // omit since -> full history
+    } else {
+      const historyDays = Math.max(1, parseInt(historyDaysAttr, 10) || 30);
+      since = Math.floor((Date.now() - historyDays * 24 * 60 * 60 * 1000) / 1000);
+    }
 
-    // Filter for messages sent by the recipient to the current user
-    const filter1: NDKFilter = {
+    // Base filters
+    const baseFilter1: NDKFilter = {
       kinds: [NDKKind.EncryptedDirectMessage],
       '#p': [currentUser.pubkey],
-      authors: [this.recipientPubkey],
-      since,
+      authors: [this.recipientPubkey!],
+    };
+    const baseFilter2: NDKFilter = {
+      kinds: [NDKKind.EncryptedDirectMessage],
+      '#p': [this.recipientPubkey!],
+      authors: [currentUser.pubkey],
     };
 
-    // Filter for messages sent by the current user to the recipient
-    const filter2: NDKFilter = {
-      kinds: [NDKKind.EncryptedDirectMessage],
-      '#p': [this.recipientPubkey],
-      authors: [currentUser.pubkey],
-      since,
-    };
+    // Conditionally include since
+    const filter1: NDKFilter = since !== undefined ? { ...baseFilter1, since } : baseFilter1;
+    const filter2: NDKFilter = since !== undefined ? { ...baseFilter2, since } : baseFilter2;
 
     this.dmSubscription = this.nostrService.getNDK().subscribe([filter1, filter2], { 
       closeOnEose: false, 
