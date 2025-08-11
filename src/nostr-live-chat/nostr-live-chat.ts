@@ -53,11 +53,13 @@ export default class NostrLiveChat extends HTMLElement {
   private currentUserPicture: string | null = null;
 
   // Display controls
+  private static readonly DEFAULT_WELCOME_TEXT = "Welcome! How can we help you today?";
+  private static readonly DEFAULT_START_CHAT_TEXT = "Start chat";
   private displayType: 'fab' | 'bottom-bar' | 'full' | 'embed' = 'embed';
   private isOpen: boolean = false; // For floating modes
   private showWelcome: boolean = false; // Show welcome screen before starting chat
-  private welcomeText: string = "Welcome! How can we help you today?";
-  private startChatText: string = "Start chat";
+  private welcomeText: string = NostrLiveChat.DEFAULT_WELCOME_TEXT;
+  private startChatText: string = NostrLiveChat.DEFAULT_START_CHAT_TEXT;
   private readonly MESSAGE_MAX_LENGTH = 1000;
 
   // isLoading -> sending DM, isFinding -> looking up recipient
@@ -268,10 +270,12 @@ export default class NostrLiveChat extends HTMLElement {
       this.getDisplayType();
       this.render();
     } else if (name === 'welcome-text') {
-      this.welcomeText = newValue || this.welcomeText;
+      // Reset to default when attribute is removed (newValue === null)
+      this.welcomeText = newValue !== null ? newValue : NostrLiveChat.DEFAULT_WELCOME_TEXT;
       this.render();
     } else if (name === 'start-chat-text') {
-      this.startChatText = newValue || this.startChatText;
+      // Reset to default when attribute is removed (newValue === null)
+      this.startChatText = newValue !== null ? newValue : NostrLiveChat.DEFAULT_START_CHAT_TEXT;
       this.render();
     }
   }
