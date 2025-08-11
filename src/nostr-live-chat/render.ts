@@ -17,6 +17,13 @@ function formatTimestamp(ts: number): string {
   }
 }
 
+// Whitelist sender to avoid injecting untrusted values into class names
+function safeSenderClass(sender: string): 'me' | 'them' {
+  if (sender === 'me' || sender === 'them') return sender;
+  // Default to 'them' for unknown values to ensure safe styling
+  return 'them';
+}
+
 export interface RenderLiveChatOptions {
   theme: Theme;
   recipientNpub: string | null;
@@ -191,10 +198,10 @@ export function renderLiveChatInner({
             : `
           <div class="nostr-chat-history">
             ${messages.map(msg => `
-              <div class="nostr-chat-message-row nostr-chat-message-${msg.sender} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''} ${msg.sender === 'me' && msg.status === 'failed' ? 'failed' : ''}">
-                <div class="nostr-chat-message-bubble" title="${formatTimestamp(msg.timestamp)}">${sanitizeHtml(msg.text)}</div>
+              <div class="nostr-chat-message-row nostr-chat-message-${safeSenderClass((msg as any).sender)} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''} ${msg.sender === 'me' && msg.status === 'failed' ? 'failed' : ''}">
+                <div class="nostr-chat-message-bubble" title="${sanitizeHtml(formatTimestamp(msg.timestamp))}">${sanitizeHtml(msg.text)}</div>
                 <div class="nostr-chat-message-meta">
-                  <span class="nostr-chat-message-timestamp">${formatTimestamp(msg.timestamp)}</span>
+                  <span class="nostr-chat-message-timestamp">${sanitizeHtml(formatTimestamp(msg.timestamp))}</span>
                 </div>
               </div>
             `).join('')}
