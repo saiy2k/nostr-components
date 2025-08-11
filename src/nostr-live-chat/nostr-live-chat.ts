@@ -1,10 +1,15 @@
 /**
  * <nostr-live-chat>
  * Attributes:
- *  - recipient-npub   (optional) : pre-set npub of recipient
- *  - nip05            (optional) : user@domain nip-05 identifier (alternative to recipient-npub)
- *  - relays           (optional) : comma-separated relay URLs (defaults to common public set)
- *  - theme            (optional) : "light" | "dark" (default "light")
+ *  - recipient-npub     (optional): pre-set npub of recipient
+ *  - recipient-pubkey   (optional): hex recipient pubkey (alias: recipientPubkey)
+ *  - nip05              (optional): user@domain nip-05 identifier (alternative to recipient-npub)
+ *  - relays             (optional): comma-separated relay URLs (defaults to common public set)
+ *  - theme              (optional): "light" | "dark" (default "light")
+ *  - display-type       (optional): "fab" | "bottom-bar" | "full" | "embed" (default "embed") (alias: displayType)
+ *  - welcome-text       (optional): custom text for the welcome screen
+ *  - start-chat-text    (optional): label for the Start button on the welcome screen
+ *  - history-days       (optional): positive integer N to load last N days; "all" or <=0 or omitted -> full history
  *
  * Behaviour:
  *  • If neither recipient-npub nor nip05 is supplied the component shows an input + Find button.
@@ -76,6 +81,7 @@ export default class NostrLiveChat extends HTMLElement {
   private boundHandleCloseClick: (() => void) | null = null;
   private boundHandleStartChat: (() => void) | null = null;
   private boundHandleNpubKeydown: ((e: Event) => void) | null = null;
+  private resubscribeTimer: number | null = null;
 
   constructor() {
     super();
@@ -279,9 +285,14 @@ export default class NostrLiveChat extends HTMLElement {
       this.startChatText = newValue !== null ? newValue : NostrLiveChat.DEFAULT_START_CHAT_TEXT;
       this.render();
     } else if (name === 'history-days') {
-      // If history window changes while a chat is active, resubscribe to reload history
+      // If history window changes while a chat is active, resubscribe to reload history (debounced)
       if (newValue !== _oldValue && this.recipientPubkey && !this.showWelcome) {
-        this.subscribeToDms();
+        if (this.resubscribeTimer) {
+          clearTimeout(this.resubscribeTimer);
+        }
+        this.resubscribeTimer = window.setTimeout(() => {
+          this.subscribeToDms();
+        }, 250);
       }
     }
   }
@@ -555,11 +566,11 @@ export default class NostrLiveChat extends HTMLElement {
     // Reset messages for new recipient
     this.messages = [];
 
-    // Determine history window from attribute: default 30 days, 'all' or <=0 => full history
+    // Determine history window from attribute: default full history when unset; numeric days > 0 => limit; 'all' or <=0 => full
     const historyDaysAttr = this.getAttribute('history-days');
     let since: number | undefined;
     if (!historyDaysAttr) {
-      since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      since = undefined; // attribute not set -> full history
     } else if (historyDaysAttr.toLowerCase() === 'all' || parseInt(historyDaysAttr, 10) <= 0) {
       since = undefined; // omit since -> full history
     } else {
@@ -746,6 +757,10 @@ export default class NostrLiveChat extends HTMLElement {
     if (textarea && this.boundHandleTextareaChange) textarea.removeEventListener("input", this.boundHandleTextareaChange);
     const npubInput = this.shadowRoot?.querySelector('.nostr-chat-npub-input') as HTMLElement | null;
     if (npubInput && this.boundHandleNpubKeydown) npubInput.removeEventListener('keydown', this.boundHandleNpubKeydown as EventListener);
+    if (this.resubscribeTimer) {
+      clearTimeout(this.resubscribeTimer);
+      this.resubscribeTimer = null;
+    }
   }
 
   private render() {

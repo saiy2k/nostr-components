@@ -253,9 +253,27 @@ Real-time chat component with persistent message history and live updates.
 
 **Attributes:**
 - `recipient-npub` (optional): Pre-fill recipient's npub
+- `recipient-pubkey` (optional): Hex recipient pubkey. Alias: `recipientPubkey`
 - `nip05` (optional): Use NIP-05 identifier instead of npub
-- `theme` (optional): "light" or "dark" (default: "light")
 - `relays` (optional): Comma-separated relay URLs
+- `theme` (optional): "light" or "dark" (default: "light")
+- `display-type` (optional): "fab" | "bottom-bar" | "full" | "embed" (default: "embed"). Alias: `displayType`
+- `welcome-text` (optional): Custom text for the welcome screen
+- `start-chat-text` (optional): Label for the Start button on the welcome screen
+- `history-days` (optional): Positive integer N to load the last N days. Set to "all" or any value <= 0, or omit the attribute, to load full history (omits `since` in filters).
+
+History window examples:
+
+```html
+<!-- Load last 7 days -->
+<nostr-live-chat history-days="7" ...></nostr-live-chat>
+
+<!-- Load full history -->
+<nostr-live-chat history-days="all" ...></nostr-live-chat>
+
+<!-- Also full history when attribute is omitted -->
+<nostr-live-chat ...></nostr-live-chat>
+```
 
 **Use Cases:**
 - Customer support chat widgets
