@@ -697,6 +697,12 @@ export default class NostrLiveChat extends HTMLElement {
         const isSender = event.pubkey === currentUser.pubkey;
         const peer = isSender ? event.tags.find(t => t[0] === 'p')?.[1] : event.pubkey;
 
+        // Guard: malformed event without a peer (missing 'p' tag or pubkey)
+        if (!peer) {
+          try { console.debug('nostr-live-chat: skipping event with missing peer', event.id); } catch {}
+          return;
+        }
+
         // Validate that this message is between the current user and the recipient
         if (peer !== this.recipientPubkey) {
             // not for me
@@ -720,6 +726,12 @@ export default class NostrLiveChat extends HTMLElement {
         let decryptedText = "";
         const { nip04 } = await import("nostr-tools");
 
+        // Guard again before any decryption — never decrypt with a missing peer
+        if (!peer) {
+            try { console.debug('nostr-live-chat: missing peer prior to decrypt, skipping', event.id); } catch {}
+            return;
+        }
+
         if ((window as any).nostr) {
             decryptedText = await (window as any).nostr.nip04.decrypt(
                 peer,
@@ -738,7 +750,7 @@ export default class NostrLiveChat extends HTMLElement {
 
             decryptedText = await nip04.decrypt(
                 privateKey,
-                peer!,
+                peer,
                 event.content!
             );
         }
