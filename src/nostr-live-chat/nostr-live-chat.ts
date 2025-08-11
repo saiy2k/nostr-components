@@ -332,7 +332,23 @@ export default class NostrLiveChat extends HTMLElement {
       }
       return;
     } else if (name === "relays") {
-      this.nostrService.connectToNostr(this.getRelays());
+      if (newValue !== _oldValue) {
+        const relays = this.getRelays();
+        const chatActive = this.recipientPubkey && !this.showWelcome;
+        if (chatActive) {
+          if (this.resubscribeTimer) {
+            clearTimeout(this.resubscribeTimer);
+          }
+          this.resubscribeTimer = window.setTimeout(() => {
+            // Unsubscribe from current DMs, reconnect to new relays, then resubscribe
+            this.unsubscribeFromDms();
+            this.nostrService.connectToNostr(relays);
+            this.subscribeToDms();
+          }, 300);
+        } else {
+          this.nostrService.connectToNostr(relays);
+        }
+      }
     } else if (name === "theme") {
       this.getTheme();
       this.render();
