@@ -820,6 +820,9 @@ export default class NostrLiveChat extends HTMLElement {
 
     const sendButton = this.shadowRoot?.querySelector(".nostr-chat-send-btn");
     if (sendButton && this.boundHandleSend) sendButton.removeEventListener("click", this.boundHandleSend);
+    
+    const startBtn = this.shadowRoot?.querySelector('.nostr-chat-start-btn');
+    if (startBtn && this.boundHandleStartChat) startBtn.removeEventListener('click', this.boundHandleStartChat);
 
     const textarea = this.shadowRoot?.querySelector(".nostr-chat-textarea");
     if (textarea && this.boundHandleTextareaChange) textarea.removeEventListener("input", this.boundHandleTextareaChange);
