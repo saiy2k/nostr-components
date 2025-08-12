@@ -3,6 +3,8 @@ import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NostrService } from '../common/nostr-service';
+import { onboardingService } from '../onboarding/onboarding-service';
+import '../onboarding/onboarding-modal'; // Ensure the modal component is registered
 
 export default class NostrFollowButton extends HTMLElement {
   private rendered: boolean = false;
@@ -78,15 +80,45 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   private async handleFollowClick() {
+    if (onboardingService.hasNip07Extension()) {
+      await this._executeFollowWithNip07();
+    } else {
+      this._showOnboardingModal();
+    }
+  }
+
+  private _showOnboardingModal() {
+    let modal = document.body.querySelector('nostr-onboarding-modal');
+    if (!modal) {
+      modal = document.createElement('nostr-onboarding-modal');
+      document.body.appendChild(modal);
+    }
+    modal.setAttribute('open', 'true');
+  }
+
+  private async _executeFollowWithNip07() {
     this.isError = false;
-    const nip07signer = new NDKNip07Signer();
+    
+    // Check if we already have a signer in the NostrService
+    const ndk = this.nostrService.getNDK();
+    if (!ndk.signer) {
+      // If we don't have a signer yet, try to use the NIP-07 extension
+      if (window.nostr) {
+        const nip07signer = new NDKNip07Signer();
+        this.nostrService.setSigner(nip07signer);
+      } else {
+        // If we have neither a stored signer nor extension, show an error
+        this.errorMessage = 'No authentication method available';
+        this.isError = true;
+        this.render();
+        return;
+      }
+    }
 
     this.isLoading = true;
     this.render();
 
     try {
-      const ndk = this.nostrService.getNDK();
-      ndk.signer = nip07signer;
       await this.nostrService.connectToNostr(this.getRelays());
 
       const userToFollowNpub = this.getAttribute('npub');
@@ -135,10 +167,9 @@ export default class NostrFollowButton extends HTMLElement {
 
       const error = err as Error;
       if (error.message && error.message.includes('NIP-07')) {
-        this.errorMessage = `Looks like you don't have any nostr signing browser extension.
-                          Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
+        this.errorMessage = `Looks like you don't have any nostr signing browser extension.`;
       } else {
-        this.errorMessage = 'Please authorize, click the button to try again!';
+        this.errorMessage = 'An error occurred. Please try again.';
       }
     } finally {
       this.isLoading = false;

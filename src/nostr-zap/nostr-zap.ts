@@ -5,6 +5,8 @@ import { renderZapButton, RenderZapButtonOptions } from "./render";
 import { nip19 } from "nostr-tools";
 import { resolveNip05, decodeNpub } from "./zap-utils";
 import { NostrService } from "../common/nostr-service";
+import { onboardingService } from '../onboarding/onboarding-service';
+import '../onboarding/onboarding-modal';
 
 /**
  * <nostr-zap>
@@ -198,7 +200,21 @@ export default class NostrZap extends HTMLElement {
     return nip05Regex.test(nip05);
   }
 
+  private _showOnboardingModal() {
+    let modal = document.body.querySelector('nostr-onboarding-modal');
+    if (!modal) {
+      modal = document.createElement('nostr-onboarding-modal');
+      document.body.appendChild(modal);
+    }
+    modal.setAttribute('open', 'true');
+  }
+
   private async handleZapClick() {
+    if (!onboardingService.hasNip07Extension()) {
+      this._showOnboardingModal();
+      return;
+    }
+
     // show loader and disable the button immediately
     this.isLoading = true;
     this.render();

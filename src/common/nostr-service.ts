@@ -1,8 +1,9 @@
 import NDK, {
-  NDKKind,
-  NDKUser,
-  NDKUserProfile,
   NDKEvent,
+  NDKKind,
+  NDKUserProfile,
+  NDKUser,
+  NDKSigner,
 } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from './constants';
 
@@ -293,5 +294,33 @@ export class NostrService {
 
   public getNDK(): NDK {
     return this.ndk;
+  }
+
+  setSigner(signer: NDKSigner) {
+    this.ndk.signer = signer;
+    console.log('Signer set successfully in NostrService');
+    
+    // Store that we have an active signer for later use
+    localStorage.setItem('nostr-has-active-signer', 'true');
+    
+    // Dispatch a custom event to notify all components that the signer has changed
+    const signerEvent = new CustomEvent('nostr-signer-changed', { 
+      detail: { signerReady: true } 
+    });
+    window.dispatchEvent(signerEvent);
+    
+    // Test the signer by getting the user's pubkey
+    this.testSigner(signer);
+  }
+  
+  private async testSigner(signer: NDKSigner) {
+    try {
+      const user = await signer.user();
+      console.log('Active user pubkey:', user.pubkey);
+      // Store the pubkey in localStorage for later retrieval
+      localStorage.setItem('nostr-active-pubkey', user.pubkey);
+    } catch (error) {
+      console.error('Error testing signer:', error);
+    }
   }
 }
