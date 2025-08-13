@@ -227,6 +227,10 @@ export default class NostrLiveChat extends HTMLElement {
       if (welcomeAttr) this.welcomeText = welcomeAttr;
       const startAttr = this.getAttribute('start-chat-text');
       if (startAttr) this.startChatText = startAttr;
+      const onlineAttr = this.getAttribute('online-text');
+      if (onlineAttr) this.onlineText = onlineAttr;
+      const helpAttr = this.getAttribute('help-text');
+      if (helpAttr) this.helpText = helpAttr;
       this.getRecipient();
       this.nostrService.connectToNostr(this.getRelays());
       this.getCurrentUserInfo();
@@ -691,12 +695,9 @@ export default class NostrLiveChat extends HTMLElement {
     this.dmSubscription.on('event', async (event: NDKEvent) => {
       try {
         // Update current user info if missing
-        if (!this.currentUserPubkey) {
-          try {
-            const signerUser = await new NDKNip07Signer().user();
-            this.currentUserPubkey = signerUser.pubkey;
-            this.currentUserNpub = nip19.npubEncode(signerUser.pubkey);
-          } catch {}
+        if (!this.currentUserPubkey && currentUser) {
+          this.currentUserPubkey = currentUser.pubkey;
+          this.currentUserNpub = nip19.npubEncode(currentUser.pubkey);
         }
         // Determine if we are the sender or receiver of the event
         const isSender = event.pubkey === currentUser.pubkey;
@@ -738,10 +739,15 @@ export default class NostrLiveChat extends HTMLElement {
         }
 
         if ((window as any).nostr) {
-            decryptedText = await (window as any).nostr.nip04.decrypt(
-                peer,
-                event.content
-            );
+            try {
+                decryptedText = await (window as any).nostr.nip04.decrypt(
+                    peer,
+                    event.content
+                );
+            } catch (e: any) {
+                console.error("Failed to decrypt DM content:", e);
+                return;
+            }
         } else {
             const privateKeyHex = localStorage.getItem("nostr_nsec");
             if (!privateKeyHex) throw new Error("No private key available for decryption");
