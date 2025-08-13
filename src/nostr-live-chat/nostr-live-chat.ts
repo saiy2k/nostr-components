@@ -60,11 +60,15 @@ export default class NostrLiveChat extends HTMLElement {
   // Display controls
   private static readonly DEFAULT_WELCOME_TEXT = "Welcome! How can we help you today?";
   private static readonly DEFAULT_START_CHAT_TEXT = "Start chat";
+  private static readonly DEFAULT_ONLINE_TEXT = "We're Online!";
+  private static readonly DEFAULT_HELP_TEXT = "How may I help you today?";
   private displayType: 'fab' | 'bottom-bar' | 'full' | 'embed' = 'embed';
   private isOpen: boolean = false; // For floating modes
   private showWelcome: boolean = false; // Show welcome screen before starting chat
   private welcomeText: string = NostrLiveChat.DEFAULT_WELCOME_TEXT;
   private startChatText: string = NostrLiveChat.DEFAULT_START_CHAT_TEXT;
+  private onlineText: string = NostrLiveChat.DEFAULT_ONLINE_TEXT;
+  private helpText: string = NostrLiveChat.DEFAULT_HELP_TEXT;
   private readonly MESSAGE_MAX_LENGTH = 1000;
 
   // isLoading -> sending DM, isFinding -> looking up recipient
@@ -235,15 +239,17 @@ export default class NostrLiveChat extends HTMLElement {
     return [
       "recipient-npub",
       "recipient-pubkey",
-      "recipientPubkey",
+      "recipientPubkey", // Alias for recipient-pubkey
       "nip05",
       "relays",
       "theme",
       "display-type",
-      "displayType",
+      "displayType", // Alias for display-type
       "welcome-text",
       "start-chat-text",
-      "history-days"
+      "online-text",      // New: FAB online text
+      "help-text",       // New: FAB help text
+      "history-days",
     ];
   }
 
@@ -362,6 +368,14 @@ export default class NostrLiveChat extends HTMLElement {
     } else if (name === 'start-chat-text') {
       // Reset to default when attribute is removed (newValue === null)
       this.startChatText = newValue !== null ? newValue : NostrLiveChat.DEFAULT_START_CHAT_TEXT;
+      this.render();
+    } else if (name === 'online-text') {
+      // Reset to default when attribute is removed (newValue === null)
+      this.onlineText = newValue !== null ? newValue : NostrLiveChat.DEFAULT_ONLINE_TEXT;
+      this.render();
+    } else if (name === 'help-text') {
+      // Reset to default when attribute is removed (newValue === null)
+      this.helpText = newValue !== null ? newValue : NostrLiveChat.DEFAULT_HELP_TEXT;
       this.render();
     } else if (name === 'history-days') {
       // If history window changes while a chat is active, resubscribe to reload history (debounced)
@@ -585,22 +599,13 @@ export default class NostrLiveChat extends HTMLElement {
 
   private handleTextareaChange(e: Event) {
     const textarea = e.target as HTMLTextAreaElement;
-    if (textarea.value.length > this.MESSAGE_MAX_LENGTH) {
-      textarea.value = textarea.value.slice(0, this.MESSAGE_MAX_LENGTH);
-      this.isError = true;
-      this.errorMessage = `Maximum length is ${this.MESSAGE_MAX_LENGTH} characters.`;
-    } else {
-      this.isError = false;
-      this.errorMessage = "";
-    }
     this.message = textarea.value;
-
-    // Live update character counter without full re-render
-    const counterEl = this.shadowRoot?.querySelector('.nostr-chat-char-counter') as HTMLElement | null;
+    
+    // Update character counter
+    const remaining = Math.max(0, this.MESSAGE_MAX_LENGTH - this.message.length);
+    const counterEl = this.shadowRoot?.querySelector('.nostr-chat-char-counter');
     if (counterEl) {
-      const typed = textarea.value.length;
-      const remaining = Math.max(0, this.MESSAGE_MAX_LENGTH - typed);
-      counterEl.textContent = `${typed}/${this.MESSAGE_MAX_LENGTH} • ${remaining} left`;
+      counterEl.textContent = `${remaining} chars left`;
       counterEl.classList.toggle('warn', remaining <= 100);
     }
   }
@@ -879,6 +884,8 @@ export default class NostrLiveChat extends HTMLElement {
       showWelcome: this.showWelcome,
       welcomeText: this.welcomeText,
       startChatText: this.startChatText,
+      onlineText: this.onlineText,
+      helpText: this.helpText,
       maxMessageLength: this.MESSAGE_MAX_LENGTH,
     };
 
@@ -897,8 +904,8 @@ export default class NostrLiveChat extends HTMLElement {
         ${this.isOpen ? '' : `
           <div class="nostr-chat-launcher fab" role="button" aria-label="Open live chat">
             <div class="bubble">
-              <div class="title">We're Online!</div>
-              <div class="subtitle">How may I help you today?</div>
+              <div class="title">${this.onlineText}</div>
+              <div class="subtitle">${this.helpText}</div>
             </div>
             <button class="fab-btn" aria-label="Open chat">💬</button>
           </div>
