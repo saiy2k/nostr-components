@@ -541,12 +541,23 @@ export default class NostrLiveChat extends HTMLElement {
         created_at: Math.floor(Date.now() / 1000),
       });
 
-      if ((window as any).nostr) {
-        event.content = await (window as any).nostr.nip04.encrypt(
-          this.recipientPubkey!,
-          this.message.trim()
-        );
-      } else {
+      let encryptionSucceeded = false;
+      
+      // Try NIP-07 encryption first if available
+      if (typeof (window as any).nostr?.nip04?.encrypt === 'function') {
+        try {
+          event.content = await (window as any).nostr.nip04.encrypt(
+            this.recipientPubkey!,
+            this.message.trim()
+          );
+          encryptionSucceeded = true;
+        } catch (e: any) {
+          console.error("NIP-07 encryption failed, falling back to local encryption:", e);
+        }
+      }
+      
+      // Fall back to local encryption if NIP-07 failed or unavailable
+      if (!encryptionSucceeded) {
         const privateKeyHex = localStorage.getItem("nostr_nsec");
         if (!privateKeyHex) throw new Error("No private key available");
 
@@ -738,7 +749,13 @@ export default class NostrLiveChat extends HTMLElement {
             return;
         }
 
-        if ((window as any).nostr) {
+        // Guard against missing or empty content before decryption
+        if (!event.content || event.content.trim() === '') {
+            try { console.debug('nostr-live-chat: missing or empty content prior to decrypt, skipping', event.id); } catch {}
+            return;
+        }
+
+        if ((window as any).nostr && (window as any).nostr.nip04 && typeof (window as any).nostr.nip04.decrypt === "function") {
             try {
                 decryptedText = await (window as any).nostr.nip04.decrypt(
                     peer,
@@ -873,6 +890,15 @@ export default class NostrLiveChat extends HTMLElement {
     }
   }
 
+  private escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   private render() {
     const renderOptions: RenderLiveChatOptions = {
       theme: this.theme,
@@ -910,8 +936,8 @@ export default class NostrLiveChat extends HTMLElement {
         ${this.isOpen ? '' : `
           <div class="nostr-chat-launcher fab" role="button" aria-label="Open live chat">
             <div class="bubble">
-              <div class="title">${this.onlineText}</div>
-              <div class="subtitle">${this.helpText}</div>
+              <div class="title">${this.escapeHtml(this.onlineText)}</div>
+              <div class="subtitle">${this.escapeHtml(this.helpText)}</div>
             </div>
             <button class="fab-btn" aria-label="Open chat">💬</button>
           </div>
