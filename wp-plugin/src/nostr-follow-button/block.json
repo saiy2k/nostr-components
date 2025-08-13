@@ -1,0 +1,31 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "create-block/nostr-follow-button",
+	"version": "0.1.0",
+	"title": "Nostr Follow Button",
+	"category": "nostr",
+	"icon": "share-alt2",
+	"description": "Integrate Nostr follow button into your WordPress site.",
+	"keywords": [
+		"nostr",
+		"follow",
+		"button",
+		"social",
+		"media"
+	],
+	"attributes": {
+		"npub": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"supports": {
+		"html": false
+	},
+	"textdomain": "nostr-follow-button",
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"viewScript": "file:./view.js"
+}

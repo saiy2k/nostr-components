@@ -1,0 +1,56 @@
+import { TextControl, PanelBody } from '@wordpress/components';
+import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
+import { useLayoutEffect } from '@wordpress/element';
+
+export default function Edit({ attributes, setAttributes }) {
+  const { npub } = attributes;
+
+  // Load the external script when npub changes
+  useLayoutEffect(() => {
+  if (!npub) return;
+
+  const iframe = document.querySelector('iframe[name="editor-canvas"]');
+  if (!iframe || !iframe.contentDocument) return;
+
+  const scriptId = 'nostr-profile-badge-script';
+  const iframeDoc = iframe.contentDocument;
+
+  if (!iframeDoc.getElementById(scriptId)) {
+    const script = iframeDoc.createElement('script');
+    script.type = 'module';
+    script.src = 'https://nostr-components.web.app/dist/nostr-profile-badge.js';
+    script.id = scriptId;
+    iframeDoc.body.appendChild(script);
+  }
+
+  return () => {
+    const existingScript = iframeDoc.getElementById(scriptId);
+    if (existingScript) {
+      existingScript.remove();
+    }
+  };
+}, [npub]);
+
+  return (
+    <div {...useBlockProps()}>
+      <InspectorControls>
+        <PanelBody title="Nostr Profile Badge Settings">
+          <TextControl
+            label="Nostr Public Key (npub)"
+            value={npub}
+            onChange={(value) => setAttributes({ npub: value })}
+            placeholder="npub1..."
+          />
+        </PanelBody>
+      </InspectorControls>
+
+      <div className="nostr-profile-container" style={{ color: 'red' }}>
+        {npub ? (
+          <nostr-profile-badge pubkey={npub}></nostr-profile-badge>
+        ) : (
+          <p>Enter npub to display nostr Badge</p>
+        )}
+      </div>
+    </div>
+  );
+}
