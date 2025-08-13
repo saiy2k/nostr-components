@@ -17,6 +17,56 @@ function formatTimestamp(ts: number): string {
   }
 }
 
+/**
+ * Format timestamp as relative time (e.g., "2 mins ago", "1 month ago")
+ * @param ts Timestamp in seconds
+ * @returns Formatted relative time string
+ */
+function formatRelativeTime(ts: number): string {
+  try {
+    const now = Date.now();
+    const messageTime = ts * 1000;
+    const diffMs = now - messageTime;
+    
+    // Convert to seconds
+    const diffSec = Math.floor(diffMs / 1000);
+    
+    if (diffSec < 60) {
+      return 'just now';
+    }
+    
+    // Minutes
+    if (diffSec < 3600) {
+      const mins = Math.floor(diffSec / 60);
+      return `${mins} ${mins === 1 ? 'min' : 'mins'} ago`;
+    }
+    
+    // Hours
+    if (diffSec < 86400) {
+      const hours = Math.floor(diffSec / 3600);
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    }
+    
+    // Days
+    if (diffSec < 2592000) { // ~30 days
+      const days = Math.floor(diffSec / 86400);
+      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    }
+    
+    // Months
+    if (diffSec < 31536000) { // ~365 days
+      const months = Math.floor(diffSec / 2592000);
+      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+    }
+    
+    // Years
+    const years = Math.floor(diffSec / 31536000);
+    return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  } catch {
+    return '';
+  }
+}
+
 // Whitelist sender to avoid injecting untrusted values into class names
 function safeSenderClass(sender: string): 'me' | 'them' {
   if (sender === 'me' || sender === 'them') return sender;
@@ -40,6 +90,8 @@ export interface RenderLiveChatOptions {
   showWelcome?: boolean;
   welcomeText?: string;
   startChatText?: string;
+  onlineText?: string;
+  helpText?: string;
   maxMessageLength: number;
 }
 
@@ -76,6 +128,8 @@ export function renderLiveChat({
   showWelcome,
   welcomeText,
   startChatText,
+  onlineText,
+  helpText,
   maxMessageLength,
 }: RenderLiveChatOptions): string {
   // Build inner chat UI only
@@ -95,6 +149,8 @@ export function renderLiveChat({
     showWelcome,
     welcomeText,
     startChatText,
+    onlineText,
+    helpText,
     maxMessageLength,
   });
 
@@ -122,12 +178,15 @@ export function renderLiveChatInner({
   showWelcome,
   welcomeText,
   startChatText,
+  onlineText,
+  helpText,
   maxMessageLength,
 }: RenderLiveChatOptions): string {
   const iconSize = 24;
   const maxLen = typeof maxMessageLength === 'number' ? maxMessageLength : 1000;
   const typed = (message || '').length;
   const remaining = Math.max(0, maxLen - typed);
+  // Use warn class only when remaining characters are <= 100
   const counterClass = remaining <= 100 ? 'nostr-chat-char-counter warn' : 'nostr-chat-char-counter';
 
   return `
@@ -199,9 +258,9 @@ export function renderLiveChatInner({
           <div class="nostr-chat-history">
             ${messages.map(msg => `
               <div class="nostr-chat-message-row nostr-chat-message-${safeSenderClass((msg as any).sender)} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''} ${msg.sender === 'me' && msg.status === 'failed' ? 'failed' : ''}">
-                <div class="nostr-chat-message-bubble" title="${sanitizeHtml(formatTimestamp(msg.timestamp))}">${sanitizeHtml(msg.text)}</div>
+                <div class="nostr-chat-message-bubble">${sanitizeHtml(msg.text)}</div>
                 <div class="nostr-chat-message-meta">
-                  <span class="nostr-chat-message-timestamp">${sanitizeHtml(formatTimestamp(msg.timestamp))}</span>
+                  <span class="nostr-chat-message-timestamp" title="${sanitizeHtml(formatTimestamp(msg.timestamp))}">${sanitizeHtml(formatRelativeTime(msg.timestamp))}</span>
                 </div>
               </div>
             `).join('')}
@@ -212,7 +271,7 @@ export function renderLiveChatInner({
               placeholder="Type your message..."
               maxlength="${maxLen}"
             >${sanitizeHtml(message)}</textarea>
-            <div class="${counterClass}" aria-live="polite">${typed}/${maxLen} • ${remaining} left</div>
+            <div class="${counterClass}" aria-live="polite">${remaining} chars left</div>
             <button class="nostr-chat-send-btn" ${isLoading ? "disabled" : ""}>
               ${
                 isLoading
@@ -293,15 +352,17 @@ export function getLiveChatStyles(theme: Theme): string {
       /* Close (minimize) button for floating panel */
       .nostr-chat-close-btn {
         position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 28px;
-        height: 28px;
+        top: 50%;
+        transform: translateY(-50%);
+        right: 12px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
+        font-size: 18px; /* Larger X symbol */
         cursor: pointer;
         background: rgba(0,0,0,0.5);
         color: #fff;
@@ -331,8 +392,8 @@ export function getLiveChatStyles(theme: Theme): string {
       .nostr-chat-launcher .bubble .title { font-weight: 700; font-size: 14px; }
       .nostr-chat-launcher .bubble .subtitle { font-size: 12px; opacity: 0.8; }
       .nostr-chat-launcher .fab-btn {
-        width: 56px;
-        height: 56px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         background: var(--nstrc-chat-accent-color);
         color: var(--nstrc-chat-accent-text-color);
@@ -342,6 +403,7 @@ export function getLiveChatStyles(theme: Theme): string {
         border: none;
         cursor: pointer;
         box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+        font-size: 24px; /* Larger emoji/icon */
       }
 
       /* Launcher: Bottom bar */
@@ -383,14 +445,14 @@ export function getLiveChatStyles(theme: Theme): string {
         padding: 12px 16px;
         border-bottom: var(--nstrc-chat-border);
         display: flex;
-        align-items: center;
+        align-items: center; /* Already centered vertically */
         justify-content: space-between;
         flex-shrink: 0;
       }
 
       .nostr-chat-recipient, .nostr-chat-recipient-placeholder {
         display: flex;
-        align-items: center;
+        align-items: center; /* Ensures vertical centering */
         gap: 12px;
       }
 
@@ -401,9 +463,18 @@ export function getLiveChatStyles(theme: Theme): string {
         object-fit: cover;
       }
 
+      .nostr-chat-recipient-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .nostr-chat-recipient-name {
         font-weight: 600;
         font-size: 16px;
+        display: flex;
+        align-items: center;
+        height: 36px; /* Match avatar height */
       }
 
       .nostr-chat-self {
@@ -484,17 +555,18 @@ export function getLiveChatStyles(theme: Theme): string {
         border-bottom-left-radius: 4px;
       }
 
-      /* Message timestamp under bubble, shown on hover */
+      /* Message timestamp under bubble, always visible but with opacity change on hover */
       .nostr-chat-message-meta {
-        display: none;
         font-size: 10px;
         margin-top: 4px;
-        opacity: 0.75;
+        opacity: 0.5;
         color: var(--nstrc-chat-text-color);
         max-width: 75%;
+        transition: opacity 0.2s ease;
+        height: 14px; /* Fixed height to prevent layout jumps */
       }
       .nostr-chat-message-row:hover .nostr-chat-message-meta {
-        display: block;
+        opacity: 0.9;
       }
       .nostr-chat-message-me .nostr-chat-message-meta {
         text-align: right;
@@ -503,9 +575,9 @@ export function getLiveChatStyles(theme: Theme): string {
         text-align: left;
       }
 
-      /* Always show timestamp for the last message (use last-of-type to ignore text nodes) */
+      /* Slightly highlight timestamp for the last message */
       .nostr-chat-history > .nostr-chat-message-row:last-of-type .nostr-chat-message-meta {
-        display: block;
+        opacity: 0.75;
       }
 
       .nostr-chat-npub-input-container {
