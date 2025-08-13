@@ -76,6 +76,11 @@ export default class NostrLiveChat extends HTMLElement {
   private isFinding: boolean = false;
   private isError: boolean = false;
   private errorMessage: string = "";
+  private recipientError: string = "";
+
+  // Key management options
+  private persistKey: boolean = false;
+  private keySupplier: (() => string | Promise<string>) | null = null;
 
   // Event handlers
   private boundHandleFind: (() => void) | null = null;
@@ -117,14 +122,37 @@ export default class NostrLiveChat extends HTMLElement {
         }
       }
 
-      if (!pubkey && typeof localStorage !== 'undefined') {
-        const stored = localStorage.getItem('nostr_nsec');
-        if (stored) {
+      if (!pubkey) {
+        let privateKey: string | null = null;
+
+        // Try in-memory key supplier first
+        if (this.keySupplier) {
+          try {
+            privateKey = await this.keySupplier();
+          } catch {
+            // ignore key supplier errors
+          }
+        }
+
+        // Try sessionStorage next (preferred for security)
+        if (!privateKey && typeof sessionStorage !== 'undefined') {
+          privateKey = sessionStorage.getItem('nostr_nsec');
+        }
+
+        // Fall back to localStorage only if persistence is explicitly enabled
+        if (!privateKey && this.persistKey && typeof localStorage !== 'undefined') {
+          privateKey = localStorage.getItem('nostr_nsec');
+          if (privateKey) {
+            console.warn('nostr-live-chat: Using persistent private key from localStorage. Consider using sessionStorage or in-memory key supplier for better security.');
+          }
+        }
+
+        if (privateKey) {
           try {
             const { NDKPrivateKeySigner } = await import('@nostr-dev-kit/ndk');
-            let sk = stored;
-            if (stored.startsWith('nsec')) {
-              const decoded = nip19.decode(stored);
+            let sk = privateKey;
+            if (privateKey.startsWith('nsec')) {
+              const decoded = nip19.decode(privateKey);
               sk = decoded.data as string;
             }
             const signer = new NDKPrivateKeySigner(sk);
@@ -199,7 +227,13 @@ export default class NostrLiveChat extends HTMLElement {
         this.lookupRecipient(this.recipientNpub);
         return;
       } catch (e) {
-        // Fallback to other methods if encoding fails
+        const errorMsg = `Invalid recipient pubkey "${recipientPub}": ${e instanceof Error ? e.message : String(e)}`;
+        this.recipientError = errorMsg;
+        this.isError = true;
+        this.errorMessage = errorMsg;
+        console.error('nostr-live-chat:', errorMsg, e);
+        this.render();
+        return; // Stop fallback flow
       }
     }
     const nip05Attr = this.getAttribute("nip05");
@@ -641,13 +675,36 @@ export default class NostrLiveChat extends HTMLElement {
       if (typeof window !== 'undefined' && (window as any).nostr && (window as any).nostr.getPublicKey) {
         const pubkey = await (window as any).nostr.getPublicKey();
         currentUser = { pubkey };
-      } else if (typeof localStorage !== 'undefined') {
-        const stored = localStorage.getItem('nostr_nsec');
-        if (stored) {
+      } else {
+        let privateKey: string | null = null;
+
+        // Try in-memory key supplier first
+        if (this.keySupplier) {
+          try {
+            privateKey = await this.keySupplier();
+          } catch {
+            // ignore key supplier errors
+          }
+        }
+
+        // Try sessionStorage next (preferred for security)
+        if (!privateKey && typeof sessionStorage !== 'undefined') {
+          privateKey = sessionStorage.getItem('nostr_nsec');
+        }
+
+        // Fall back to localStorage only if persistence is explicitly enabled
+        if (!privateKey && this.persistKey && typeof localStorage !== 'undefined') {
+          privateKey = localStorage.getItem('nostr_nsec');
+          if (privateKey) {
+            console.warn('nostr-live-chat: Using persistent private key from localStorage for DM subscription. Consider using sessionStorage or in-memory key supplier for better security.');
+          }
+        }
+
+        if (privateKey) {
           const { NDKPrivateKeySigner } = await import('@nostr-dev-kit/ndk');
-          let sk = stored;
-          if (stored.startsWith('nsec')) {
-            const decoded = nip19.decode(stored);
+          let sk = privateKey;
+          if (privateKey.startsWith('nsec')) {
+            const decoded = nip19.decode(privateKey);
             sk = decoded.data as string;
           }
           const signer = new NDKPrivateKeySigner(sk);
@@ -886,6 +943,15 @@ export default class NostrLiveChat extends HTMLElement {
       clearTimeout(this.resubscribeTimer);
       this.resubscribeTimer = null;
     }
+  }
+
+  // Public methods for key management configuration
+  public setPersistKey(persist: boolean): void {
+    this.persistKey = persist;
+  }
+
+  public setKeySupplier(supplier: (() => string | Promise<string>) | null): void {
+    this.keySupplier = supplier;
   }
 
   private escapeHtml(s: string): string {
