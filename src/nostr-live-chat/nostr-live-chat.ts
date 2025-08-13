@@ -111,9 +111,7 @@ export default class NostrLiveChat extends HTMLElement {
 
       if (typeof window !== 'undefined' && (window as any).nostr && (window as any).nostr.getPublicKey) {
         try {
-          const signer = new NDKNip07Signer();
-          const u = await signer.user();
-          pubkey = u.pubkey;
+          pubkey = await (window as any).nostr.getPublicKey();
         } catch {
           // ignore extension errors
         }
@@ -640,9 +638,9 @@ export default class NostrLiveChat extends HTMLElement {
     // Determine current user using available signer (extension or local key)
     let currentUser: { pubkey: string } | null = null;
     try {
-      if (typeof window !== 'undefined' && (window as any).nostr && (window as any).nostr.getPublicKey && (window as any).nostr.signEvent) {
-        const signer = new NDKNip07Signer();
-        currentUser = await signer.user();
+      if (typeof window !== 'undefined' && (window as any).nostr && (window as any).nostr.getPublicKey) {
+        const pubkey = await (window as any).nostr.getPublicKey();
+        currentUser = { pubkey };
       } else if (typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem('nostr_nsec');
         if (stored) {
