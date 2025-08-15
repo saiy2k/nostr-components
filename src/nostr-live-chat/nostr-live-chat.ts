@@ -109,16 +109,79 @@ export default class NostrLiveChat extends HTMLElement {
     return DEFAULT_RELAYS;
   };
 
-  private async getCurrentUserInfo() {
+  private async getCurrentUserInfo(): Promise<void> {
     try {
       const ndk = this.nostrService.getNDK();
       let pubkey: string | null = null;
 
-      if (typeof window !== 'undefined' && (window as any).nostr && (window as any).nostr.getPublicKey) {
+      if (typeof window !== 'undefined' && (window as any).nostr) {
+        const nostr = (window as any).nostr;
+        console.log('Nostr extension found, checking for public key...');
+        
         try {
-          pubkey = await (window as any).nostr.getPublicKey();
-        } catch {
-          // ignore extension errors
+          // Special handling for nos2x extension
+          // Check if this is nos2x by looking for specific patterns in the API
+          const isNos2x = !!(nostr.enable && typeof nostr.enable === 'function' && 
+                            nostr.getPublicKey && typeof nostr.getPublicKey === 'function');
+          
+          console.log('Is this nos2x extension?', isNos2x);
+          
+          if (isNos2x) {
+            console.log('Using nos2x specific flow');
+            try {
+              // First enable the extension
+              await nostr.enable();
+              console.log('nos2x extension enabled');
+              
+              // Use a timeout to ensure extension is ready
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              // Get public key from nos2x
+              const nos2xResult = await nostr.getPublicKey();
+              console.log('nos2x returned pubkey:', nos2xResult);
+              if (nos2xResult && typeof nos2xResult === 'string' && nos2xResult.length === 64) {
+                pubkey = nos2xResult;
+                console.log('Successfully got pubkey from nos2x:', pubkey);
+              }
+            } catch (nos2xError) {
+              console.error('Error with nos2x extension:', nos2xError);
+            }
+          } else {
+            // Generic extension handling
+            // First try to enable the extension if it supports it
+            if (typeof nostr.enable === 'function') {
+              console.log('Attempting to enable generic extension...');
+              try {
+                await nostr.enable();
+                console.log('Extension enabled successfully');
+              } catch (enableError) {
+                console.warn('Extension enable failed, continuing anyway:', enableError);
+              }
+            }
+            
+            // Try to get public key
+            if (typeof nostr.getPublicKey === 'function') {
+              console.log('Calling getPublicKey()...');
+              try {
+                const result = await nostr.getPublicKey();
+                pubkey = result;
+                console.log('Got pubkey from extension:', pubkey);
+              } catch (getKeyError) {
+                console.error('Error getting public key:', getKeyError);
+              }
+            } else if (nostr.getPublicKey) {
+              console.log('Found getPublicKey property, resolving...');
+              try {
+                pubkey = await Promise.resolve(nostr.getPublicKey);
+                console.log('Got pubkey from extension (property):', pubkey);
+              } catch (getKeyError) {
+                console.error('Error resolving public key:', getKeyError);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error in extension interaction:', error);
+          // Don't re-throw, we'll continue with null pubkey
         }
       }
 
@@ -167,15 +230,81 @@ export default class NostrLiveChat extends HTMLElement {
       if (pubkey) {
         this.currentUserPubkey = pubkey;
         this.currentUserNpub = nip19.npubEncode(pubkey);
+        console.log('Got pubkey from extension and will use it:', pubkey);
+        
         try {
           const user = ndk.getUser({ pubkey });
+          console.log('Fetching profile for user:', pubkey);
           await user.fetchProfile();
+          console.log('Fetched profile:', user.profile);
+          
           this.currentUserName = user.profile?.displayName || user.profile?.name || this.currentUserNpub?.substring(0, 10) || null;
           this.currentUserPicture = user.profile?.image || null;
-        } catch {
-          // ignore profile fetch errors
+          
+          if (!this.currentUserName) {
+            console.warn('No username found in profile');
+          }
+          if (!this.currentUserPicture) {
+            console.warn('No profile picture found');
+          }
+          
+          console.log('Profile info set:', { 
+            name: this.currentUserName, 
+            picture: this.currentUserPicture, 
+            npub: this.currentUserNpub 
+          });
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+          // Fallback to just showing the npub if we can't fetch the profile
+          this.currentUserName = this.currentUserNpub?.substring(0, 10) || null;
         }
         this.render();
+      } else {
+        console.log('Checking for direct nos2x logs in console...');
+        
+        // Try to detect the pubkey from window level objects that nos2x might set
+        try {
+          // Wait a bit for the extension to initialize
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Try again once more with direct extension call
+          if (typeof window !== 'undefined' && (window as any).nostr) {
+            console.log('Trying direct call to extension again...');
+            try {
+              const directPubkey = await (window as any).nostr.getPublicKey();
+              if (directPubkey && typeof directPubkey === 'string') {
+                console.log('Got pubkey on second try:', directPubkey);
+                // Call ourselves recursively with the pubkey we found
+                this.currentUserPubkey = directPubkey;
+                this.currentUserNpub = nip19.npubEncode(directPubkey);
+                
+                // Get user profile
+                try {
+                  const user = ndk.getUser({ pubkey: directPubkey });
+                  console.log('Fetching profile for user on second try:', directPubkey);
+                  await user.fetchProfile();
+                  console.log('Fetched profile on second try:', user.profile);
+                  
+                  this.currentUserName = user.profile?.displayName || user.profile?.name || this.currentUserNpub?.substring(0, 10) || null;
+                  this.currentUserPicture = user.profile?.image || null;
+                  
+                  this.render();
+                  return;
+                } catch (profileError) {
+                  console.error('Error fetching profile on second try:', profileError);
+                  this.currentUserName = this.currentUserNpub?.substring(0, 10) || null;
+                  this.render();
+                  return;
+                }
+              }
+            } catch (directError) {
+              console.error('Error getting pubkey on direct second try:', directError);
+            }
+          }
+        } catch (fallbackError) {
+          console.error('Error in fallback pubkey detection:', fallbackError);
+        }
+        console.warn('No pubkey available from extension - trying fallback method');
       }
     } catch {
       // ignore global errors
