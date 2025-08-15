@@ -653,7 +653,7 @@ export default class NostrLiveChat extends HTMLElement {
     const counterEl = this.shadowRoot?.querySelector('.nostr-chat-char-counter');
     if (counterEl) {
       counterEl.textContent = `${remaining} chars left`;
-      counterEl.classList.toggle('warn', remaining <= 100);
+      counterEl.classList.toggle('warn', remaining <= 10);
     }
   }
 
