@@ -186,8 +186,8 @@ export function renderLiveChatInner({
   const maxLen = typeof maxMessageLength === 'number' ? maxMessageLength : 1000;
   const typed = (message || '').length;
   const remaining = Math.max(0, maxLen - typed);
-  // Use warn class only when remaining characters are <= 100
-  const counterClass = remaining <= 100 ? 'nostr-chat-char-counter warn' : 'nostr-chat-char-counter';
+  // Use warn class when remaining characters are <= 10
+  const counterClass = remaining <= 10 ? 'nostr-chat-char-counter warn' : 'nostr-chat-char-counter';
 
   return `
     <div class="nostr-chat-container ${isError ? "nostr-chat-error" : ""}">
@@ -654,7 +654,7 @@ export function getLiveChatStyles(theme: Theme): string {
         min-width: max-content;
       }
       .nostr-chat-char-counter.warn {
-        color: var(--nstrc-chat-error-color);
+        color: #ffcc00; /* Yellow color for warning */
         opacity: 1;
         font-weight: 600;
       }
