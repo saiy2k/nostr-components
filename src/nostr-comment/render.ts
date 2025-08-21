@@ -77,8 +77,7 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
       ${depth > 0 ? `<div class="comment-thread-line" style="left: ${depth * 60 + 10}px;"></div>` : ''}
       <div class="comment-container">
         <div class="comment-sidebar">
-          <img src="${escapeHtml(avatar)}" alt="Avatar" class="comment-avatar" 
-               onerror="this.src='./assets/default_dp.png'" />
+          <img src="${escapeHtml(avatar)}" alt="Avatar" class="comment-avatar" />
           ${depth < maxDepth && comment.replies.length > 0 ? '<div class="comment-collapse-line"></div>' : ''}
         </div>
         <div class="comment-main">
@@ -134,8 +133,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, 
       </div>
       <div class="reply-form-container">
         <div class="reply-form-sidebar">
-          <img src="${escapeHtml(userAvatar)}" alt="Your avatar" class="reply-user-avatar" 
-               onerror="this.src='./assets/default_dp.png'" />
+          <img src="${escapeHtml(userAvatar)}" alt="Your avatar" class="reply-user-avatar" />
         </div>
         <div class="reply-form-main">
           <div class="reply-form-header">
@@ -198,8 +196,7 @@ function renderCommentForm(
     <div class="comment-form reddit-comment-form">
       <div class="comment-form-container">
         <div class="comment-form-sidebar">
-          <img src="${escapeHtml(userAvatar)}" alt="Your avatar" class="current-user-avatar" 
-               onerror="this.src='./assets/default_dp.png'" />
+          <img src="${escapeHtml(userAvatar)}" alt="Your avatar" class="current-user-avatar" />
         </div>
         <div class="comment-form-main">
           <div class="comment-form-header">
