@@ -25,6 +25,62 @@ class OnboardingService {
   private static instance: OnboardingService;
   private nostrService: NostrService = NostrService.getInstance();
 
+  private normalizeRelayUrl(relayInput: string): string {
+    if (!relayInput || typeof relayInput !== 'string') {
+      throw new Error('Invalid relay input');
+    }
+
+    // Trim whitespace
+    let relay = relayInput.trim();
+
+    if (!relay) {
+      throw new Error('Empty relay URL');
+    }
+
+    // Strip existing scheme if present
+    relay = relay.replace(/^wss?:\/\//i, '');
+
+    // Basic validation - ensure it looks like a valid host
+    if (!/^[a-zA-Z0-9.-]+([:/][a-zA-Z0-9._~:/?#[\]@!$&'()*+,;=-]*)?$/.test(relay)) {
+      throw new Error(`Invalid relay format: ${relay}`);
+    }
+
+    // Add wss:// scheme
+    return `wss://${relay}`;
+  }
+
+  private validatePubkey(pubkey: string): boolean {
+    return typeof pubkey === 'string' && pubkey.length === 64 && /^[0-9a-f]+$/i.test(pubkey);
+  }
+
+  // Use sessionStorage for sensitive data, localStorage for non-sensitive preferences
+  public setSecretItem(key: string, value: string): void {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(key, value);
+    }
+  }
+
+  public getSecretItem(key: string): string | null {
+    if (typeof sessionStorage !== 'undefined') {
+      return sessionStorage.getItem(key);
+    }
+    return null;
+  }
+
+  private removeSecretItem(key: string): void {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(key);
+    }
+  }
+
+  private clearAllSecrets(): void {
+    this.removeSecretItem('local-nsec');
+    this.removeSecretItem('local-relay');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('nostr-has-active-signer');
+    }
+  }
+
   private constructor() { }
 
   public static getInstance(): OnboardingService {
@@ -107,8 +163,8 @@ class OnboardingService {
 
     this.reconnectPromise = (async () => {
       try {
-        const localNsec = localStorage.getItem('local-nsec');
-        const localRelay = localStorage.getItem('local-relay');
+        const localNsec = this.getSecretItem('local-nsec');
+        const localRelay = this.getSecretItem('local-relay');
 
         if (!localNsec || !localRelay) {
           console.log('Missing stored credentials, cannot auto-reconnect');
@@ -131,16 +187,12 @@ class OnboardingService {
           console.log('Auto-reconnect successful');
         } else {
           console.log('Auto-reconnect failed - no signer returned');
-          localStorage.removeItem('nostr-has-active-signer');
-          localStorage.removeItem('local-nsec');
-          localStorage.removeItem('local-relay');
+          this.clearAllSecrets();
         }
       } catch (error) {
         console.error('Auto-reconnect failed:', error);
         console.log('Clearing all stored authentication data');
-        localStorage.removeItem('nostr-has-active-signer');
-        localStorage.removeItem('local-nsec');
-        localStorage.removeItem('local-relay');
+        this.clearAllSecrets();
       } finally {
         this.reconnectPromise = null;
       }
@@ -162,10 +214,8 @@ class OnboardingService {
   clearAuthentication(): void {
     console.log('Clearing authentication state');
 
-    // Clear localStorage
-    localStorage.removeItem('nostr-has-active-signer');
-    localStorage.removeItem('local-nsec');
-    localStorage.removeItem('local-relay');
+    // Clear all stored authentication data
+    this.clearAllSecrets();
 
     // Clear signer from NostrService
     const ndk = this.nostrService.getNDK();
@@ -237,9 +287,10 @@ class OnboardingService {
         const [identifier, provider] = bunkerUrl.split('@');
 
         // Check if it's a valid hex pubkey (64 chars) or if it looks like a username
-        if (identifier.length === 64 && /^[0-9a-f]+$/i.test(identifier)) {
+        if (this.validatePubkey(identifier)) {
           // It's a pubkey@relay format
-          bunkerUrl = `bunker://${identifier}?relay=wss://${provider}`;
+          const normalizedRelay = this.normalizeRelayUrl(provider);
+          bunkerUrl = `bunker://${identifier}?relay=${encodeURIComponent(normalizedRelay)}`;
         } else {
           // It's a username@provider format, need to resolve via NIP-05
           try {
@@ -253,10 +304,20 @@ class OnboardingService {
 
               if (typeof bunkerProfile === 'string') {
                 const [pubkey, relay] = bunkerProfile.split('@');
-                bunkerUrl = `bunker://${pubkey}?relay=wss://${relay}`;
+                if (this.validatePubkey(pubkey)) {
+                  const normalizedRelay = this.normalizeRelayUrl(relay);
+                  bunkerUrl = `bunker://${pubkey}?relay=${encodeURIComponent(normalizedRelay)}`;
+                } else {
+                  throw new Error('Invalid pubkey in NIP-46 profile');
+                }
               } else {
                 // Fallback: use the user's pubkey with a default relay
-                bunkerUrl = `bunker://${user.pubkey}?relay=wss://${provider}`;
+                if (this.validatePubkey(user.pubkey)) {
+                  const normalizedRelay = this.normalizeRelayUrl(provider);
+                  bunkerUrl = `bunker://${user.pubkey}?relay=${encodeURIComponent(normalizedRelay)}`;
+                } else {
+                  throw new Error('Invalid user pubkey from NIP-05');
+                }
               }
             } else {
               throw new Error('Could not resolve user from NIP-05');
@@ -280,7 +341,12 @@ class OnboardingService {
         const decoded = nip19.decode(bunkerUrl);
         if (decoded.type === 'npub') {
           const pubkey = decoded.data as string;
-          bunkerUrl = `bunker://${pubkey}?relay=wss://relay.nsec.app`;
+          if (this.validatePubkey(pubkey)) {
+            const normalizedRelay = this.normalizeRelayUrl('relay.nsec.app');
+            bunkerUrl = `bunker://${pubkey}?relay=${encodeURIComponent(normalizedRelay)}`;
+          } else {
+            throw new Error('Invalid pubkey from npub');
+          }
         } else {
           throw new Error('Unsupported format');
         }
@@ -305,20 +371,22 @@ class OnboardingService {
   }
 
   connectWithQr() {
+    // Capture NDK reference outside the async function for cleanup access
+    const ndk = this.nostrService.getNDK();
+    let originalRelays: string[] | undefined;
+
     return {
       on: (_event: string, callback: (data: any) => void) => {
         (async () => {
           try {
             console.log('Initializing NIP-46 nostrconnect flow...');
 
-            const ndk = this.nostrService.getNDK();
-
             // Choose a relay to be used to communicate with the signer (try nsec.app's preferred relay)
             const relay = 'wss://relay.nsec.app';
 
             // Clear existing relays and use only our specified relay for NIP-46
             console.log('Setting up relay for NIP-46:', relay);
-            const originalRelays = ndk.explicitRelayUrls;
+            originalRelays = ndk.explicitRelayUrls;
             ndk.explicitRelayUrls = [relay];
 
             try {
@@ -331,8 +399,8 @@ class OnboardingService {
               ndk.explicitRelayUrls = originalRelays;
             }
 
-            // Restore this from whatever storage your app is using, if you have it
-            const localNsec = localStorage.getItem('local-nsec') || undefined;
+            // Restore this from session storage (safer for secrets)
+            const localNsec = this.getSecretItem('local-nsec') || undefined;
 
             // Instantiate the signer using NDK 2.14.33 (cast ndk for type compatibility)
             const signer = NDKNip46Signer.nostrconnect(ndk as any, relay, localNsec, {
@@ -391,12 +459,12 @@ class OnboardingService {
             const user = await connectionPromise;
             console.log("Welcome", (user as any).npub);
 
-            // If you didn't have a localNsec you should store it for future sessions of your app
+            // Store secrets in sessionStorage for security (session-only persistence)
             if (signer.localSigner?.nsec) {
-              localStorage.setItem('local-nsec', signer.localSigner.nsec);
-              console.log('Saved local nsec for future sessions');
+              this.setSecretItem('local-nsec', signer.localSigner.nsec);
+              console.log('Saved local nsec for this session');
             }
-            localStorage.setItem('local-relay', relay);
+            this.setSecretItem('local-relay', relay);
 
             // Set the signer in our service (cast for type compatibility)
             const success = await this.nostrService.setSigner(signer as any);
@@ -410,15 +478,38 @@ class OnboardingService {
 
           } catch (error) {
             console.error('Failed to initialize QR code signer:', error);
+            // Clear secrets on failure
+            this.clearAllSecrets();
             callback({
               error: 'Failed to establish connection. Please try again.',
               details: error instanceof Error ? error.message : String(error)
             });
+          } finally {
+            // Always restore original relays after the flow
+            if (originalRelays !== undefined) {
+              ndk.explicitRelayUrls = originalRelays;
+              try {
+                await ndk.connect();
+              } catch (connectError) {
+                console.warn('Failed to reconnect to original relays:', connectError);
+              }
+            }
           }
         })();
 
         return {
-          off: () => { }
+          off: () => {
+            console.log('QR flow cancelled by user');
+            // Basic cancellation - restore relays immediately
+            if (originalRelays !== undefined) {
+              ndk.explicitRelayUrls = originalRelays;
+              try {
+                ndk.connect();
+              } catch (connectError) {
+                console.warn('Failed to reconnect to original relays after cancellation:', connectError);
+              }
+            }
+          }
         };
       }
     };
@@ -541,16 +632,16 @@ class OnboardingService {
         throw new Error('Failed to set signer after verification');
       }
 
-      // If you didn't have a localNsec you should store it for future sessions of your app
+      // Store secrets in sessionStorage for security (session-only persistence)
       if (signer.localSigner?.nsec) {
-        localStorage.setItem('local-nsec', signer.localSigner.nsec);
+        this.setSecretItem('local-nsec', signer.localSigner.nsec);
       }
-      localStorage.setItem('local-relay', relay);
+      this.setSecretItem('local-relay', relay);
 
       return signer;
     } catch (error) {
       console.error('Failed to reconnect with nsec:', error);
-      localStorage.removeItem('local-nsec');
+      this.clearAllSecrets();
       return null;
     }
   }
@@ -569,8 +660,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     const ndk = onboardingService['nostrService'].getNDK();
     console.log('🔍 Authentication status:', {
       hasStoredSigner: localStorage.getItem('nostr-has-active-signer'),
-      hasLocalNsec: !!localStorage.getItem('local-nsec'),
-      hasLocalRelay: localStorage.getItem('local-relay'),
+      hasLocalNsec: !!onboardingService.getSecretItem('local-nsec'),
+      hasLocalRelay: onboardingService.getSecretItem('local-relay'),
       hasNdkSigner: !!ndk.signer,
       hasWindow: typeof window !== 'undefined',
       hasNostrExtension: typeof window !== 'undefined' && 'nostr' in window
