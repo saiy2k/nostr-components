@@ -14,11 +14,11 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
 🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
 🔹 **[Nostr Comment](#6-nostr-comment-)** - Decentralized comment system for any website  
-🔹 **[Wordpress Integration](#7-wordpress-integration)** - Wordpress Integration
+🔹 **[WordPress Integration](#7-wordpress-integration)** - WordPress Integration
 
 ### Future roadmap:
 
-🔹 Wordpress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.
+🔹 WordPress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.
 
 ## 📌 Why Use Nostr Components?
 
@@ -207,6 +207,14 @@ A complete decentralized comment system that stores comments on the Nostr networ
 
 ```html
 <head>
+  <script type="importmap">
+  {
+    "imports": {
+      "lit": "https://unpkg.com/lit@3.1.0/index.js?module",
+      "dayjs": "https://unpkg.com/dayjs@1.11.10/dayjs.min.js?module"
+    }
+  }
+  </script>
   <script type="module" src="./dist/components/nostr-comment.es.js"></script>
 </head>
 <body>
@@ -252,9 +260,9 @@ A complete decentralized comment system that stores comments on the Nostr networ
 
 ---
 
-## 7. Wordpress Integration
+## 7. WordPress Integration
 
-![Integrating with Wordpress](images/wordpress_help.png)
+![Integrating with WordPress](images/wordpress_help.png)
 
 1. In your WP dashboard, navigate to `Appearance -> Theme file editor`
 2. Select your current theme
@@ -287,7 +295,7 @@ add_action( 'wp_head', 'my_custom_js' );
 
 5. (Optional) Rather than hotlinking from `nostr-components.web.app`, you can download the `dist/nostr-components.umd.js` (or `.es.js`) file, upload it to your own server/WordPress media library, and update the `src` path in the code above.
 6. Now you can use the components anywhere in your post or sidebar by adding the HTML tags (e.g., `<nostr-profile-badge pubkey="..."></nostr-profile-badge>`).
-   ![Integrating in wordpress post](images/wordpress_post.png)
+   ![Integrating in WordPress post](images/wordpress_post.png)
 
 ---
 
