@@ -674,9 +674,9 @@ export default class NostrComment extends HTMLElement {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         `;
         errorDiv.textContent = message;
-        
+
         document.body.appendChild(errorDiv);
-        
+
         // Auto-remove after 5 seconds
         setTimeout(() => {
             if (errorDiv.parentNode) {
