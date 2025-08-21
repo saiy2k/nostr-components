@@ -48,19 +48,24 @@ function getUserAvatar(comment: Comment): string {
   if (comment.userProfile?.image && comment.userProfile.image.trim() !== '') {
     // Handle IPFS links and ensure proper URL format
     let imageUrl = comment.userProfile.image.trim();
+    console.log('Processing image URL:', imageUrl, 'for user:', comment.userProfile.name || comment.pubkey);
 
     // Convert IPFS hash to gateway URL if needed
     if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
       imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
+      console.log('Converted IPFS to gateway URL:', imageUrl);
     }
 
     // Ensure protocol is included
     if (imageUrl.startsWith('//')) {
       imageUrl = 'https:' + imageUrl;
+      console.log('Added protocol to URL:', imageUrl);
     }
 
+    console.log('Final image URL:', imageUrl);
     return imageUrl;
   }
+  console.log('No image found for user:', comment.userProfile?.name || comment.pubkey, 'using default');
   return './assets/default_dp.png';
 }
 

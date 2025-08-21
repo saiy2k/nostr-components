@@ -147,10 +147,12 @@ export default class NostrComment extends HTMLElement {
             // Fetch all unique profiles in parallel
             const profilePromises = Array.from(uniquePubkeys).map(async (pubkey) => {
                 try {
+                    console.log('Fetching profile for pubkey:', pubkey);
                     const profile = await this.nostrService.getProfile({ pubkey });
+                    console.log('Profile fetched for', pubkey, ':', profile);
                     return { pubkey, profile };
                 } catch (error) {
-                    console.warn('Failed to fetch profile for:', pubkey);
+                    console.warn('Failed to fetch profile for:', pubkey, error);
                     return { pubkey, profile: null };
                 }
             });
@@ -168,6 +170,7 @@ export default class NostrComment extends HTMLElement {
             // Attach profiles to comments
             allComments.forEach(comment => {
                 comment.userProfile = pubkeyToProfile.get(comment.pubkey) || undefined;
+                console.log('Attached profile to comment:', comment.pubkey, 'Profile:', comment.userProfile);
             });
 
             // Build threaded comment structure
