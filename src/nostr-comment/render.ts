@@ -140,8 +140,8 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, 
             <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
             <div class="identity-toggle">
               <label class="toggle-label">Identity:</label>
-              <button id="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
-              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
+              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
+              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
             </div>
           </div>
           <textarea 
@@ -203,8 +203,8 @@ function renderCommentForm(
             <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
             <div class="identity-toggle">
               <label class="toggle-label">Identity:</label>
-              <button id="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
-              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
+              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
+              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
             </div>
           </div>
           <div class="comment-form-body">

@@ -101,8 +101,10 @@ export default class NostrComment extends HTMLElement {
             const idToRaw = new Map<string, { content: string; id: string; tags: string[][] }>();
             commentsArray.forEach(ev => idToRaw.set(ev.id, { content: ev.content, id: ev.id, tags: ev.tags as any }));
 
-            // Convert events to comment format and fetch user profiles
+            // Convert events to comment format
             const allComments: Comment[] = [];
+            const uniquePubkeys = new Set<string>();
+
             for (const event of commentsArray) {
                 // Determine immediate parent (reply) robustly
                 let replyTo: string | undefined = undefined;
@@ -137,18 +139,35 @@ export default class NostrComment extends HTMLElement {
                     depth: 0
                 };
 
-                // Fetch user profile
-                try {
-                    const profile = await this.nostrService.getProfile({ pubkey: event.pubkey });
-                    if (profile) {
-                        comment.userProfile = profile;
-                    }
-                } catch (error) {
-                    console.warn('Failed to fetch profile for:', event.pubkey);
-                }
-
+                uniquePubkeys.add(event.pubkey);
                 allComments.push(comment);
             }
+
+            // Fetch all unique profiles in parallel
+            const profilePromises = Array.from(uniquePubkeys).map(async (pubkey) => {
+                try {
+                    const profile = await this.nostrService.getProfile({ pubkey });
+                    return { pubkey, profile };
+                } catch (error) {
+                    console.warn('Failed to fetch profile for:', pubkey);
+                    return { pubkey, profile: null };
+                }
+            });
+
+            const profileResults = await Promise.allSettled(profilePromises);
+            const pubkeyToProfile = new Map<string, NDKUserProfile | null>();
+
+            profileResults.forEach((result) => {
+                if (result.status === 'fulfilled') {
+                    const { pubkey, profile } = result.value;
+                    pubkeyToProfile.set(pubkey, profile);
+                }
+            });
+
+            // Attach profiles to comments
+            allComments.forEach(comment => {
+                comment.userProfile = pubkeyToProfile.get(comment.pubkey) || undefined;
+            });
 
             // Build threaded comment structure
             this.comments = this.buildCommentTree(allComments);
@@ -227,35 +246,27 @@ export default class NostrComment extends HTMLElement {
                 console.log('Connected to NIP-07 extension');
             } catch (error) {
                 console.warn('NIP-07 extension available but failed to get public key');
+                // Explicitly fall back to anon identity
+                this.commentAs = 'anon';
+                this.userPublicKey = null;
+                this.userPrivateKey = null;
             }
         }
 
-        // If not using extension or commenting as anon, generate/use anon key
+        // If not using extension or we fell back to anon, generate/use anon key
         if (!this.userPublicKey) {
-            const storageKey = 'nostr-comment-anon-private-key';
-            let anon = localStorage.getItem(storageKey);
-            if (!anon || !anon.match(/^[a-f0-9]{64}$/)) {
-                const { generateSecretKey } = await import('nostr-tools/pure');
-                anon = Array.from(generateSecretKey()).map(b => b.toString(16).padStart(2, '0')).join('');
-                localStorage.setItem(storageKey, anon);
-            }
-            this.anonPrivateKeyHex = anon;
-            this.userPrivateKey = anon;
+            const anonKey = await this.ensureAnonKey();
+            this.anonPrivateKeyHex = anonKey;
+            this.userPrivateKey = anonKey;
             const { getPublicKey } = await import('nostr-tools/pure');
-            this.userPublicKey = getPublicKey(new Uint8Array(anon.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+            this.userPublicKey = getPublicKey(new Uint8Array(anonKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
             console.log('Using anonymous key');
         }
 
         // Ensure anonymous key is available when in anonymous mode
         if (this.commentAs === 'anon' && !this.anonPrivateKeyHex) {
-            const storageKey = 'nostr-comment-anon-private-key';
-            let anon = localStorage.getItem(storageKey);
-            if (!anon || !anon.match(/^[a-f0-9]{64}$/)) {
-                const { generateSecretKey } = await import('nostr-tools/pure');
-                anon = Array.from(generateSecretKey()).map(b => b.toString(16).padStart(2, '0')).join('');
-                localStorage.setItem(storageKey, anon);
-            }
-            this.anonPrivateKeyHex = anon;
+            const anonKey = await this.ensureAnonKey();
+            this.anonPrivateKeyHex = anonKey;
             console.log('Ensured anonymous key is available');
         }
 
@@ -571,7 +582,7 @@ export default class NostrComment extends HTMLElement {
         this.shadow.querySelectorAll('.reply-button').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
-                const commentId = (e.target as HTMLElement).getAttribute('data-comment-id');
+                const commentId = (e.currentTarget as HTMLElement).getAttribute('data-comment-id');
                 if (commentId) {
                     this.startReply(commentId);
                 }
@@ -579,7 +590,7 @@ export default class NostrComment extends HTMLElement {
         });
 
         // Identity toggle buttons (handle all buttons, both main form and inline forms)
-        this.shadow.querySelectorAll('#toggle-as-user').forEach(btnUser => {
+        this.shadow.querySelectorAll('[data-role="toggle-as-user"]').forEach(btnUser => {
             if (!this.hasNip07) {
                 (btnUser as HTMLButtonElement).disabled = true;
             } else {
@@ -594,7 +605,7 @@ export default class NostrComment extends HTMLElement {
             }
         });
 
-        this.shadow.querySelectorAll('#toggle-as-anon').forEach(btnAnon => {
+        this.shadow.querySelectorAll('[data-role="toggle-as-anon"]').forEach(btnAnon => {
             // Anonymous toggle is always enabled
             (btnAnon as HTMLButtonElement).disabled = false;
             btnAnon.addEventListener('click', async (e) => {
@@ -617,6 +628,33 @@ export default class NostrComment extends HTMLElement {
                 target.src = './assets/default_dp.png';
             });
         });
+    }
+
+    private async ensureAnonKey(): Promise<string> {
+        const storageKey = 'nostr-comment-anon-private-key';
+
+        try {
+            // Try to read existing key from localStorage
+            const stored = localStorage.getItem(storageKey);
+            if (stored && stored.match(/^[a-f0-9]{64}$/)) {
+                return stored;
+            }
+        } catch (error) {
+            console.warn('Failed to read from localStorage:', error);
+        }
+
+        // Generate new key
+        const { generateSecretKey } = await import('nostr-tools/pure');
+        const newKey = Array.from(generateSecretKey()).map(b => b.toString(16).padStart(2, '0')).join('');
+
+        try {
+            // Try to persist to localStorage
+            localStorage.setItem(storageKey, newKey);
+        } catch (error) {
+            console.warn('Failed to write to localStorage, using ephemeral key:', error);
+        }
+
+        return newKey;
     }
 
     render() {
