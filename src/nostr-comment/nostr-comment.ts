@@ -4,6 +4,7 @@ import { Theme } from '../common/types';
 import { renderCommentWidget, getCommentStyles } from './render';
 import { NostrService } from '../common/nostr-service';
 import { normalizeURL } from './utils';
+import DOMPurify from 'dompurify';
 
 interface Comment {
     id: string;
@@ -392,14 +393,14 @@ export default class NostrComment extends HTMLElement {
             if (this.replyingToComment) {
                 // Clear inline reply textarea
                 const inlineForm = this.shadow.querySelector('.inline-reply-form');
-                const inlineTextarea = inlineForm?.querySelector('#comment-input') as HTMLTextAreaElement;
+                const inlineTextarea = inlineForm?.querySelector('[data-role="comment-input"]') as HTMLTextAreaElement;
                 if (inlineTextarea) {
                     inlineTextarea.value = '';
                 }
             } else {
                 // Clear main form textarea
                 const mainForm = this.shadow.querySelector('.comment-form');
-                const mainTextarea = mainForm?.querySelector('#comment-input') as HTMLTextAreaElement;
+                const mainTextarea = mainForm?.querySelector('[data-role="comment-input"]') as HTMLTextAreaElement;
                 if (mainTextarea) {
                     mainTextarea.value = '';
                 }
@@ -472,7 +473,7 @@ export default class NostrComment extends HTMLElement {
             setTimeout(() => {
                 // Find the inline reply form textarea, not the main form one
                 const inlineForm = this.shadow.querySelector('.inline-reply-form');
-                const textarea = inlineForm?.querySelector('#comment-input') as HTMLTextAreaElement;
+                const textarea = inlineForm?.querySelector('[data-role="comment-input"]') as HTMLTextAreaElement;
                 if (textarea) {
                     textarea.focus();
                     // Don't scroll - let the user stay where they are
@@ -535,11 +536,11 @@ export default class NostrComment extends HTMLElement {
 
     attachEventListeners() {
         // Handle both main form and inline form submit buttons
-        this.shadow.querySelectorAll('#submit-comment').forEach(submitButton => {
+        this.shadow.querySelectorAll('[data-role="submit-comment"]').forEach(submitButton => {
             submitButton.addEventListener('click', (e) => {
                 e.preventDefault();
                 const form = (e.target as HTMLElement).closest('.comment-form, .inline-reply-form');
-                const textarea = form?.querySelector('#comment-input') as HTMLTextAreaElement;
+                const textarea = form?.querySelector('[data-role="comment-input"]') as HTMLTextAreaElement;
                 if (textarea) {
                     this.submitComment(textarea.value);
                 }
@@ -547,7 +548,7 @@ export default class NostrComment extends HTMLElement {
         });
 
         // Handle textareas (main form and inline forms)
-        this.shadow.querySelectorAll('#comment-input').forEach(textarea => {
+        this.shadow.querySelectorAll('[data-role="comment-input"]').forEach(textarea => {
             // Allow Ctrl+Enter to submit
             textarea.addEventListener('keydown', (e: Event) => {
                 const keyEvent = e as KeyboardEvent;
@@ -559,7 +560,7 @@ export default class NostrComment extends HTMLElement {
         });
 
         // Cancel reply buttons
-        this.shadow.querySelectorAll('#cancel-reply').forEach(cancelButton => {
+        this.shadow.querySelectorAll('[data-role="cancel-reply"]').forEach(cancelButton => {
             cancelButton.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.cancelReply();
@@ -633,13 +634,20 @@ export default class NostrComment extends HTMLElement {
             this.hasNip07
         );
 
-        // Combine styles and content for shadow DOM
-        this.shadow.innerHTML = `
+        // Combine styles and content for shadow DOM with XSS protection
+        const fullHTML = `
       ${getCommentStyles(this.theme)}
       <div class="nostr-comment-wrapper">
         ${contentHTML}
       </div>
     `;
+
+        // Sanitize HTML to prevent XSS attacks
+        this.shadow.innerHTML = DOMPurify.sanitize(fullHTML, {
+            ALLOWED_TAGS: ['div', 'span', 'button', 'textarea', 'img', 'a', 'h3', 'h4', 'p', 'ul', 'li', 'small', 'strong', 'em'],
+            ALLOWED_ATTR: ['class', 'id', 'data-role', 'data-comment-id', 'data-depth', 'style', 'src', 'alt', 'href', 'target', 'rel', 'placeholder', 'rows', 'disabled', 'onerror'],
+            ALLOW_DATA_ATTR: true
+        });
 
         this.attachEventListeners();
     }
