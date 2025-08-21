@@ -13,7 +13,8 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
 🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
-🔹 **[Wordpress Integration](#6-wordpress-integration)** - Wordpress Integration
+🔹 **[Nostr Comment](#6-nostr-comment-)** - Decentralized comment system for any website  
+🔹 **[Wordpress Integration](#7-wordpress-integration)** - Wordpress Integration
 
 ### Future roadmap:
 
@@ -198,7 +199,60 @@ A Lightning Network zap button that allows users to send sats to any Nostr user 
 
 ---
 
-## 6. Wordpress Integration
+## 6. Nostr Comment 💬
+
+A complete decentralized comment system that stores comments on the Nostr network instead of a traditional database.
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="./dist/components/nostr-comment.es.js"></script>
+</head>
+<body>
+  <nostr-comment 
+    theme="light"
+    placeholder="Write a comment..."
+    relays="wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net"
+  ></nostr-comment>
+</body>
+```
+
+**Attributes:**
+- `url` (optional) - URL for comment grouping (default: current page URL)
+- `theme` (optional) - "light" or "dark" theme (default: "light")
+- `relays` (optional) - Comma-separated list of relay URLs (default: common Nostr relays)
+- `placeholder` (optional) - Placeholder text for comment input (default: "Write a comment...")
+- `readonly` (optional) - "true" to disable commenting (default: "false")
+
+**Features:**
+- **Decentralized Storage**: Comments stored on Nostr network across multiple relays
+- **No Backend Required**: No database or server infrastructure needed
+- **Identity Management**: Automatic key generation or NIP-07 extension support
+- **Real-time Updates**: Comments appear instantly for all users
+- **Censorship Resistant**: Distributed across multiple relays
+- **Responsive Design**: Works perfectly on desktop and mobile
+- **Themeable**: Full light/dark theme support with CSS customization
+
+**Authentication:**
+- **NIP-07 Extensions**: Automatically detects browser extensions (nos2x, Alby, etc.)
+- **Local Keys**: Generates and stores keys in localStorage as fallback
+- **User Ownership**: Users control their identity and data
+
+**CSS Customization:**
+```css
+:root {
+  --nstrc-comment-background-light: #ffffff;
+  --nstrc-comment-text-color-light: #333333;
+  --nstrc-comment-button-background-light: #007bff;
+  --nstrc-comment-border-color-light: #e1e5e9;
+  /* Dark theme variables also available */
+}
+```
+
+---
+
+## 7. Wordpress Integration
 
 ![Integrating with Wordpress](images/wordpress_help.png)
 
