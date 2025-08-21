@@ -410,10 +410,21 @@ export default class NostrComment extends HTMLElement {
             const replyTag = tags.find(t => t[0] === 'e' && t[3] === 'reply');
             console.log(`[nostr-comment] send: "${event.content}" root=${rootTag ? rootTag[1] : '(none)'} parent=${replyTag ? replyTag[1] : '(none)'} `);
 
-            // Clear input and reset reply state
-            const activeTextarea = this.shadow.querySelector('#comment-input') as HTMLTextAreaElement;
-            if (activeTextarea) {
-                activeTextarea.value = '';
+            // Clear the active textarea and reset reply state
+            if (this.replyingToComment) {
+                // Clear inline reply textarea
+                const inlineForm = this.shadow.querySelector('.inline-reply-form');
+                const inlineTextarea = inlineForm?.querySelector('#comment-input') as HTMLTextAreaElement;
+                if (inlineTextarea) {
+                    inlineTextarea.value = '';
+                }
+            } else {
+                // Clear main form textarea
+                const mainForm = this.shadow.querySelector('.comment-form');
+                const mainTextarea = mainForm?.querySelector('#comment-input') as HTMLTextAreaElement;
+                if (mainTextarea) {
+                    mainTextarea.value = '';
+                }
             }
             this.replyingToComment = null;
 
@@ -479,12 +490,14 @@ export default class NostrComment extends HTMLElement {
             this.replyingToComment = commentId;
             this.render();
 
-            // Focus the textarea after render
+            // Focus the textarea in the inline reply form after render (but don't scroll)
             setTimeout(() => {
-                const textarea = this.shadow.querySelector('#comment-input') as HTMLTextAreaElement;
+                // Find the inline reply form textarea, not the main form one
+                const inlineForm = this.shadow.querySelector('.inline-reply-form');
+                const textarea = inlineForm?.querySelector('#comment-input') as HTMLTextAreaElement;
                 if (textarea) {
                     textarea.focus();
-                    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Don't scroll - let the user stay where they are
                 }
             }, 100);
         }, 10);
@@ -586,16 +599,11 @@ export default class NostrComment extends HTMLElement {
             });
         });
 
-        // Identity toggle buttons
-        const btnUser = this.shadow.querySelector('#toggle-as-user') as HTMLButtonElement | null;
-        const btnAnon = this.shadow.querySelector('#toggle-as-anon') as HTMLButtonElement | null;
-        if (btnUser && btnAnon) {
-            // If no nip07, force anon and disable buttons accordingly
+        // Identity toggle buttons (handle all buttons, both main form and inline forms)
+        this.shadow.querySelectorAll('#toggle-as-user').forEach(btnUser => {
             if (!this.hasNip07) {
-                btnUser.disabled = true;
-                btnAnon.disabled = true; // keep UI static; we already default to anon
+                (btnUser as HTMLButtonElement).disabled = true;
             } else {
-                // Logged-in path: allow switching
                 btnUser.addEventListener('click', async (e) => {
                     e.preventDefault();
                     if (this.commentAs !== 'user') {
@@ -604,6 +612,13 @@ export default class NostrComment extends HTMLElement {
                         await this.initializeUser();
                     }
                 });
+            }
+        });
+
+        this.shadow.querySelectorAll('#toggle-as-anon').forEach(btnAnon => {
+            if (!this.hasNip07) {
+                (btnAnon as HTMLButtonElement).disabled = true;
+            } else {
                 btnAnon.addEventListener('click', async (e) => {
                     e.preventDefault();
                     if (this.commentAs !== 'anon') {
@@ -614,7 +629,7 @@ export default class NostrComment extends HTMLElement {
                     }
                 });
             }
-        }
+        });
     }
 
     render() {
