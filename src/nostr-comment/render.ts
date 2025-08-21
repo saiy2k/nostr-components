@@ -64,7 +64,7 @@ function getUserAvatar(comment: Comment): string {
   return './assets/default_dp.png';
 }
 
-function renderComment(comment: Comment, readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
+function renderComment(comment: Comment, readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: NDKUserProfile | null = null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   const displayName = getUserDisplayName(comment);
   const avatar = getUserAvatar(comment);
   const timeAgo = formatTimeAgo(comment.created_at);
@@ -89,7 +89,7 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
             ${escapeHtml(comment.content)}
           </div>
           <div class="comment-actions">
-            ${!readonly ? `<button class="reply-button" data-comment-id="${escapeHtml(comment.id)}">↩ Reply</button>` : ''}
+            ${!readonly ? `<button class="reply-button" data-comment-id="${escapeHtml(comment.id)}" aria-label="Reply to comment">↩ Reply</button>` : ''}
           </div>
           ${isReplying ? renderInlineReplyForm(comment, currentUserProfile, identityMode, hasNip07) : ''}
         </div>
@@ -103,7 +103,7 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
   `;
 }
 
-function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
+function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUserProfile | null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   // Use the same avatar processing as getUserAvatar
   let userAvatar = './assets/default_dp.png';
   if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
@@ -129,7 +129,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, 
     <div class="inline-reply-form">
       <div class="reply-context">
         <span class="reply-context-text">💬 Replying to <strong>${escapeHtml(parentName)}</strong></span>
-        <button data-role="cancel-reply" class="cancel-reply-btn">✕</button>
+        <button data-role="cancel-reply" class="cancel-reply-btn" aria-label="Cancel reply">✕</button>
       </div>
       <div class="reply-form-container">
         <div class="reply-form-sidebar">
@@ -151,7 +151,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, 
             class="inline-reply-textarea"
           ></textarea>
           <div class="reply-form-actions">
-            <button data-role="submit-comment" class="inline-reply-submit">💬 Reply</button>
+            <button data-role="submit-comment" class="inline-reply-submit" aria-label="Submit reply">💬 Reply</button>
           </div>
         </div>
       </div>
@@ -224,6 +224,7 @@ function renderCommentForm(
                   data-role="submit-comment" 
                   class="reddit-submit-btn"
                   ${isSubmitting ? 'disabled' : ''}
+                  aria-label="${isSubmitting ? 'Submitting comment' : 'Submit comment'}"
                 >
                   ${isSubmitting ? '⏳ Submitting...' : '📝 Comment'}
                 </button>
@@ -236,7 +237,7 @@ function renderCommentForm(
   `;
 }
 
-function renderCommentsList(comments: Comment[], readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
+function renderCommentsList(comments: Comment[], readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: NDKUserProfile | null = null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   // Count total comments including replies
   const totalCount = countTotalComments(comments);
 

@@ -39,6 +39,7 @@ export default class NostrComment extends HTMLElement {
     private commentAs: 'user' | 'anon' = 'anon';
     private hasNip07: boolean = false;
     private anonPrivateKeyHex: string | null = null;
+    private eventListeners: Array<{ element: Element; type: string; handler: EventListener }> = [];
 
     constructor() {
         super();
@@ -108,7 +109,7 @@ export default class NostrComment extends HTMLElement {
             for (const event of commentsArray) {
                 // Determine immediate parent (reply) robustly
                 let replyTo: string | undefined = undefined;
-                const eTags = (event.tags || []).filter((t: any) => t[0] === 'e');
+                const eTags = (event.tags || []).filter((t: string[]) => t[0] === 'e');
 
                 // 1) Prefer explicit marker 'reply'
                 for (let i = eTags.length - 1; i >= 0; i--) {
@@ -420,7 +421,7 @@ export default class NostrComment extends HTMLElement {
 
         } catch (error) {
             console.error('Failed to submit comment:', error);
-            alert('Failed to submit comment: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            this.showError('Failed to submit comment: ' + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             this.isSubmitting = false;
             this.render();
@@ -542,51 +543,63 @@ export default class NostrComment extends HTMLElement {
     }
 
     disconnectedCallback() {
-        // Cleanup if needed
+        // Clean up event listeners to prevent memory leaks
+        this.removeEventListeners();
     }
 
     attachEventListeners() {
+        // Clear existing listeners first
+        this.removeEventListeners();
+
         // Handle both main form and inline form submit buttons
         this.shadow.querySelectorAll('[data-role="submit-comment"]').forEach(submitButton => {
-            submitButton.addEventListener('click', (e) => {
+            const handler = (e: Event) => {
                 e.preventDefault();
                 const form = (e.target as HTMLElement).closest('.comment-form, .inline-reply-form');
                 const textarea = form?.querySelector('[data-role="comment-input"]') as HTMLTextAreaElement;
                 if (textarea) {
                     this.submitComment(textarea.value);
                 }
-            });
+            };
+            submitButton.addEventListener('click', handler);
+            this.eventListeners.push({ element: submitButton, type: 'click', handler });
         });
 
         // Handle textareas (main form and inline forms)
         this.shadow.querySelectorAll('[data-role="comment-input"]').forEach(textarea => {
             // Allow Ctrl+Enter to submit
-            textarea.addEventListener('keydown', (e: Event) => {
+            const handler = (e: Event) => {
                 const keyEvent = e as KeyboardEvent;
                 if (keyEvent.key === 'Enter' && (keyEvent.ctrlKey || keyEvent.metaKey)) {
                     keyEvent.preventDefault();
                     this.submitComment((textarea as HTMLTextAreaElement).value);
                 }
-            });
+            };
+            textarea.addEventListener('keydown', handler);
+            this.eventListeners.push({ element: textarea, type: 'keydown', handler });
         });
 
         // Cancel reply buttons
         this.shadow.querySelectorAll('[data-role="cancel-reply"]').forEach(cancelButton => {
-            cancelButton.addEventListener('click', (e) => {
+            const handler = (e: Event) => {
                 e.preventDefault();
                 this.cancelReply();
-            });
+            };
+            cancelButton.addEventListener('click', handler);
+            this.eventListeners.push({ element: cancelButton, type: 'click', handler });
         });
 
         // Reply buttons for each comment
         this.shadow.querySelectorAll('.reply-button').forEach(button => {
-            button.addEventListener('click', (e) => {
+            const handler = (e: Event) => {
                 e.preventDefault();
                 const commentId = (e.currentTarget as HTMLElement).getAttribute('data-comment-id');
                 if (commentId) {
                     this.startReply(commentId);
                 }
-            });
+            };
+            button.addEventListener('click', handler);
+            this.eventListeners.push({ element: button, type: 'click', handler });
         });
 
         // Identity toggle buttons (handle all buttons, both main form and inline forms)
@@ -594,21 +607,23 @@ export default class NostrComment extends HTMLElement {
             if (!this.hasNip07) {
                 (btnUser as HTMLButtonElement).disabled = true;
             } else {
-                btnUser.addEventListener('click', async (e) => {
+                const handler = async (e: Event) => {
                     e.preventDefault();
                     if (this.commentAs !== 'user') {
                         this.commentAs = 'user';
                         this.userPrivateKey = null; // ensure nip07 signing path
                         await this.initializeUser();
                     }
-                });
+                };
+                btnUser.addEventListener('click', handler);
+                this.eventListeners.push({ element: btnUser, type: 'click', handler });
             }
         });
 
         this.shadow.querySelectorAll('[data-role="toggle-as-anon"]').forEach(btnAnon => {
             // Anonymous toggle is always enabled
             (btnAnon as HTMLButtonElement).disabled = false;
-            btnAnon.addEventListener('click', async (e) => {
+            const handler = async (e: Event) => {
                 e.preventDefault();
                 if (this.commentAs !== 'anon') {
                     this.commentAs = 'anon';
@@ -616,18 +631,58 @@ export default class NostrComment extends HTMLElement {
                     this.userPrivateKey = null; // Clear user key to force anon path
                     await this.initializeUser();
                 }
-            });
+            };
+            btnAnon.addEventListener('click', handler);
+            this.eventListeners.push({ element: btnAnon, type: 'click', handler });
         });
     }
 
     attachAvatarErrorHandlers() {
         // Add error handlers for all avatar images to provide fallbacks
         this.shadow.querySelectorAll('img[src]').forEach(img => {
-            img.addEventListener('error', (e) => {
+            const handler = (e: Event) => {
                 const target = e.target as HTMLImageElement;
                 target.src = './assets/default_dp.png';
-            });
+            };
+            img.addEventListener('error', handler);
+            this.eventListeners.push({ element: img, type: 'error', handler });
         });
+    }
+
+    private removeEventListeners() {
+        this.eventListeners.forEach(({ element, type, handler }) => {
+            element.removeEventListener(type, handler);
+        });
+        this.eventListeners = [];
+    }
+
+    private showError(message: string) {
+        // Create a user-friendly error notification
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'nostr-comment-error';
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            max-width: 300px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+        errorDiv.textContent = message;
+        
+        document.body.appendChild(errorDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 5000);
     }
 
     private async ensureAnonKey(): Promise<string> {
