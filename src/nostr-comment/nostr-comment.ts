@@ -609,6 +609,16 @@ export default class NostrComment extends HTMLElement {
         });
     }
 
+    attachAvatarErrorHandlers() {
+        // Add error handlers for all avatar images to provide fallbacks
+        this.shadow.querySelectorAll('img[src]').forEach(img => {
+            img.addEventListener('error', (e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = './assets/default_dp.png';
+            });
+        });
+    }
+
     render() {
         // Update theme class on host element
         this.classList.toggle('dark', this.theme === 'dark');
@@ -634,22 +644,23 @@ export default class NostrComment extends HTMLElement {
             this.hasNip07
         );
 
-        // Combine styles and content for shadow DOM with XSS protection
-        const fullHTML = `
-      ${getCommentStyles(this.theme)}
-      <div class="nostr-comment-wrapper">
-        ${contentHTML}
-      </div>
-    `;
-
-        // Sanitize HTML to prevent XSS attacks
-        this.shadow.innerHTML = DOMPurify.sanitize(fullHTML, {
+        // Sanitize only the dynamic content to prevent XSS attacks
+        const sanitizedContent = DOMPurify.sanitize(contentHTML, {
             ALLOWED_TAGS: ['div', 'span', 'button', 'textarea', 'img', 'a', 'h3', 'h4', 'p', 'ul', 'li', 'small', 'strong', 'em'],
-            ALLOWED_ATTR: ['class', 'id', 'data-role', 'data-comment-id', 'data-depth', 'style', 'src', 'alt', 'href', 'target', 'rel', 'placeholder', 'rows', 'disabled', 'onerror'],
+            ALLOWED_ATTR: ['class', 'id', 'data-role', 'data-comment-id', 'data-depth', 'style', 'src', 'alt', 'href', 'target', 'rel', 'placeholder', 'rows', 'disabled'],
             ALLOW_DATA_ATTR: true
         });
 
+        // Combine styles and sanitized content for shadow DOM
+        this.shadow.innerHTML = `
+      ${getCommentStyles(this.theme)}
+      <div class="nostr-comment-wrapper">
+        ${sanitizedContent}
+      </div>
+    `;
+
         this.attachEventListeners();
+        this.attachAvatarErrorHandlers();
     }
 }
 
