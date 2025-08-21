@@ -105,22 +105,45 @@ export default class NostrComment extends HTMLElement {
             const relays = this.getRelays();
             await this.nostrService.connectToNostr(relays);
 
-            // Search for comments related to this URL
+            // Search for comments related to this URL (custom kind 1111, tagged by URL with #I)
             const filter = {
-                kinds: [1], // text notes
-                '#r': [this.baseUrl], // URL reference
-                limit: 100
-            };
+                kinds: [1111],
+                '#I': [this.baseUrl],
+                limit: 200
+            } as any;
 
-            const events = await this.nostrService.getNDK().fetchEvents(filter);
+            const events = await this.nostrService.getNDK().fetchEvents(filter as any);
             const commentsArray = Array.from(events);
+
+            // Temporary map for debugging to resolve content by id
+            const idToRaw = new Map<string, { content: string; id: string; tags: string[][] }>();
+            commentsArray.forEach(ev => idToRaw.set(ev.id, { content: ev.content, id: ev.id, tags: ev.tags as any }));
 
             // Convert events to comment format and fetch user profiles
             const allComments: Comment[] = [];
             for (const event of commentsArray) {
-                // Check if this is a reply to another comment
-                const replyToTag = event.tags?.find(tag => tag[0] === 'e' && tag[3] === 'reply');
-                const replyTo = replyToTag ? replyToTag[1] : undefined;
+                // Determine immediate parent (reply) robustly
+                let replyTo: string | undefined = undefined;
+                const eTags = (event.tags || []).filter((t: any) => t[0] === 'e');
+
+                // 1) Prefer explicit marker 'reply'
+                for (let i = eTags.length - 1; i >= 0; i--) {
+                    const t = eTags[i];
+                    if (t[3] === 'reply') {
+                        replyTo = t[1];
+                        break;
+                    }
+                }
+                // 2) Fallback: if no marker, use the last e tag (most clients order root first, then reply)
+                if (!replyTo && eTags.length > 0) {
+                    // If any e tag has marker 'root', prefer the last e tag that is not marked 'root'
+                    const nonRoot = eTags.filter((t: any) => t[3] !== 'root');
+                    if (nonRoot.length > 0) {
+                        replyTo = nonRoot[nonRoot.length - 1][1];
+                    } else {
+                        replyTo = eTags[eTags.length - 1][1];
+                    }
+                }
 
                 const comment: Comment = {
                     id: event.id,
@@ -148,6 +171,23 @@ export default class NostrComment extends HTMLElement {
             // Build threaded comment structure
             this.comments = this.buildCommentTree(allComments);
 
+            // Debug: log resolved parent chains
+            const idToComment = new Map<string, Comment>();
+            this.comments.forEach(root => {
+                const stack: Comment[] = [root];
+                while (stack.length) {
+                    const c = stack.pop()!;
+                    idToComment.set(c.id, c);
+                    c.replies.forEach(r => stack.push(r));
+                }
+            });
+
+            allComments.forEach(c => {
+                const parent = c.replyTo ? idToComment.get(c.replyTo) : undefined;
+                const parentContent = parent ? parent.content : '(no parent)';
+                console.log(`[nostr-comment] recv: "${c.content}" -> parent: ${parentContent}`);
+            });
+
         } catch (error) {
             this.isError = true;
             this.errorMessage = error instanceof Error ? error.message : 'Failed to load comments';
@@ -168,12 +208,11 @@ export default class NostrComment extends HTMLElement {
             commentMap.set(comment.id, comment);
         });
 
-        // Second pass: build the tree
+        // Second pass: build the tree (link replies)
         allComments.forEach(comment => {
             if (comment.replyTo && commentMap.has(comment.replyTo)) {
                 // This is a reply to another comment
                 const parent = commentMap.get(comment.replyTo)!;
-                comment.depth = (parent.depth || 0) + 1;
                 parent.replies.push(comment);
                 // Sort replies by timestamp (oldest first for natural conversation flow)
                 parent.replies.sort((a, b) => a.created_at - b.created_at);
@@ -182,6 +221,15 @@ export default class NostrComment extends HTMLElement {
                 rootComments.push(comment);
             }
         });
+
+        // Third pass: compute depths from roots to ensure correct indentation
+        const assignDepths = (nodes: Comment[], depth: number) => {
+            for (const n of nodes) {
+                n.depth = depth;
+                if (n.replies && n.replies.length) assignDepths(n.replies, depth + 1);
+            }
+        };
+        assignDepths(rootComments, 0);
 
         // Sort root comments by timestamp (newest first)
         return rootComments.sort((a, b) => b.created_at - a.created_at);
@@ -256,18 +304,26 @@ export default class NostrComment extends HTMLElement {
         this.render();
 
         try {
-            const tags: string[][] = [
-                ['r', this.baseUrl], // URL reference
-                ['client', 'nostr-components']
-            ];
+            // Build tags using NoComment-like structure
+            const tags: string[][] = [];
 
-            // Add reply tag if this is a reply
+            // Root/thread identification tag for URL thread root used on read (#I)
+            tags.push(['I', this.baseUrl]);
+
             if (this.replyingToComment) {
+                // Walk the current in-memory tree to find the immediate parent and its root
+                const { rootId } = this.findRootAndParent(this.replyingToComment);
+                // Root reference
+                tags.push(['e', rootId || this.replyingToComment, '', 'root']);
+                // Immediate parent reference
                 tags.push(['e', this.replyingToComment, '', 'reply']);
+                // Parent kind hint
+                tags.push(['k', '1111']);
             }
 
+            // Construct the custom comment event (kind 1111)
             const event = {
-                kind: 1,
+                kind: 1111,
                 pubkey: this.userPublicKey!,
                 content: content.trim(),
                 created_at: Math.floor(Date.now() / 1000),
@@ -327,6 +383,11 @@ export default class NostrComment extends HTMLElement {
                 this.comments.unshift(newComment);
             }
 
+            // Debug: log what we sent
+            const rootTag = tags.find(t => t[0] === 'e' && t[3] === 'root');
+            const replyTag = tags.find(t => t[0] === 'e' && t[3] === 'reply');
+            console.log(`[nostr-comment] send: "${event.content}" root=${rootTag ? rootTag[1] : '(none)'} parent=${replyTag ? replyTag[1] : '(none)'} `);
+
             // Clear input and reset reply state
             const activeTextarea = this.shadow.querySelector('#comment-input') as HTMLTextAreaElement;
             if (activeTextarea) {
@@ -362,6 +423,29 @@ export default class NostrComment extends HTMLElement {
 
         findAndAddReply(this.comments);
     };
+
+    // Find the root id for a given comment id by walking up the tree
+    private findRootAndParent(targetId: string): { rootId?: string; parentId?: string } {
+        let rootId: string | undefined;
+        let parentId: string | undefined;
+
+        const dfs = (nodes: Comment[], currentRoot?: string, currentParent?: string): boolean => {
+            for (const node of nodes) {
+                const thisRoot = currentRoot ?? node.id;
+                if (node.id === targetId) {
+                    rootId = thisRoot;
+                    parentId = currentParent;
+                    return true;
+                }
+                if (node.replies?.length) {
+                    if (dfs(node.replies, thisRoot, node.id)) return true;
+                }
+            }
+            return false;
+        };
+        dfs(this.comments);
+        return { rootId, parentId };
+    }
 
     startReply = (commentId: string): void => {
         // Cancel any existing reply first
