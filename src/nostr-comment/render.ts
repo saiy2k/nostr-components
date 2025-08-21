@@ -143,7 +143,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, 
             <div class="identity-toggle">
               <label class="toggle-label">Identity:</label>
               <button id="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
-              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>Anonymous</button>
+              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
             </div>
           </div>
           <textarea 
@@ -207,7 +207,7 @@ function renderCommentForm(
             <div class="identity-toggle">
               <label class="toggle-label">Identity:</label>
               <button id="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
-              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>Anonymous</button>
+              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
             </div>
           </div>
           <div class="comment-form-body">

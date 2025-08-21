@@ -31,6 +31,7 @@ export default defineConfig({
         ),
         'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
       },
+      external: [],
       output: [
         {
           // ESM output for all entries

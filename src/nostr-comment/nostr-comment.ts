@@ -3,6 +3,7 @@ import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
 import { renderCommentWidget, getCommentStyles } from './render';
 import { NostrService } from '../common/nostr-service';
+import { normalizeURL } from './utils';
 
 interface Comment {
     id: string;
@@ -71,32 +72,9 @@ export default class NostrComment extends HTMLElement {
     getBaseUrl = (): string => {
         const urlAttr = this.getAttribute('url');
         if (urlAttr) {
-            return this.normalizeURL(urlAttr);
+            return normalizeURL(urlAttr);
         }
-        return this.normalizeURL(window.location.href);
-    };
-
-    normalizeURL = (raw: string): string => {
-        try {
-            const url = new URL(raw);
-            return (
-                url.origin
-                    .replace('://m.', '://') // remove known 'mobile' subdomains
-                    .replace('://mobile.', '://')
-                    .replace('http://', 'https://') // default everything to https
-                    .replace(
-                        /:\d+/,
-                        // remove 443 and 80 ports
-                        port => (port === ':443' || port === ':80' ? '' : port)
-                    ) +
-                url.pathname
-                    .replace(/\/+/g, '/') // remove duplicated slashes in the middle of the path
-                    .replace(/\/*$/, '') // remove slashes from the end of path
-            );
-        } catch (error) {
-            console.error('Invalid URL:', raw);
-            return raw;
-        }
+        return normalizeURL(window.location.href);
     };
 
     loadComments = async (): Promise<void> => {
@@ -616,19 +594,17 @@ export default class NostrComment extends HTMLElement {
         });
 
         this.shadow.querySelectorAll('#toggle-as-anon').forEach(btnAnon => {
-            if (!this.hasNip07) {
-                (btnAnon as HTMLButtonElement).disabled = true;
-            } else {
-                btnAnon.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    if (this.commentAs !== 'anon') {
-                        this.commentAs = 'anon';
-                        this.userPublicKey = null; // Clear so initializeUser will set up anon identity
-                        this.userPrivateKey = null; // Clear user key to force anon path
-                        await this.initializeUser();
-                    }
-                });
-            }
+            // Anonymous toggle is always enabled
+            (btnAnon as HTMLButtonElement).disabled = false;
+            btnAnon.addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (this.commentAs !== 'anon') {
+                    this.commentAs = 'anon';
+                    this.userPublicKey = null; // Clear so initializeUser will set up anon identity
+                    this.userPrivateKey = null; // Clear user key to force anon path
+                    await this.initializeUser();
+                }
+            });
         });
     }
 
@@ -669,4 +645,7 @@ export default class NostrComment extends HTMLElement {
     }
 }
 
-customElements.define('nostr-comment', NostrComment);
+// Guard against duplicate registration
+if (!customElements.get('nostr-comment')) {
+    customElements.define('nostr-comment', NostrComment);
+}

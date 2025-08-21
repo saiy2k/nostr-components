@@ -68,6 +68,16 @@
         ></nostr-comment>
     </div>
 
+    <!-- Import map for ESM module resolution -->
+    <script type="importmap">
+    {
+        "imports": {
+            "lit": "https://unpkg.com/lit@3.1.0/index.js?module",
+            "dayjs": "https://unpkg.com/dayjs@1.11.10/dayjs.min.js?module"
+        }
+    }
+    </script>
+
     <!-- Load the component -->
     <script type="module" src="./dist/components/nostr-comment.es.js"></script>
 
