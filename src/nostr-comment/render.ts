@@ -82,7 +82,7 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
       ${depth > 0 ? `<div class="comment-thread-line" style="left: ${depth * 60 + 10}px;"></div>` : ''}
       <div class="comment-container">
         <div class="comment-sidebar">
-          <img src="${escapeHtml(avatar)}" alt="Avatar" class="comment-avatar" />
+          <img src="${avatar}" alt="Avatar" class="comment-avatar" />
           ${depth < maxDepth && comment.replies.length > 0 ? '<div class="comment-collapse-line"></div>' : ''}
         </div>
         <div class="comment-main">
@@ -111,20 +111,28 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
 function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUserProfile | null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   // Use the same avatar processing as getUserAvatar
   let userAvatar = './assets/default_dp.png';
+  console.log('renderInlineReplyForm - currentUserProfile:', currentUserProfile);
+
   if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
     let imageUrl = currentUserProfile.image.trim();
+    console.log('Inline reply form - Processing image URL:', imageUrl);
 
     // Convert IPFS hash to gateway URL if needed
     if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
       imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
+      console.log('Inline reply form - Converted IPFS to gateway URL:', imageUrl);
     }
 
     // Ensure protocol is included
     if (imageUrl.startsWith('//')) {
       imageUrl = 'https:' + imageUrl;
+      console.log('Inline reply form - Added protocol to URL:', imageUrl);
     }
 
+    console.log('Inline reply form - Final image URL:', imageUrl);
     userAvatar = imageUrl;
+  } else {
+    console.log('Inline reply form - No image found, using default');
   }
 
   const parentName = getUserDisplayName(parentComment);
@@ -138,7 +146,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUs
       </div>
       <div class="reply-form-container">
         <div class="reply-form-sidebar">
-          <img src="${escapeHtml(userAvatar)}" alt="Your avatar" class="reply-user-avatar" />
+          <img src="${userAvatar}" alt="Your avatar" class="reply-user-avatar" />
         </div>
         <div class="reply-form-main">
           <div class="reply-form-header">
@@ -177,22 +185,30 @@ function renderCommentForm(
     return '';
   }
 
+  console.log('renderCommentForm - currentUserProfile:', currentUserProfile);
+
   // Use the same avatar processing as getUserAvatar
   let userAvatar = './assets/default_dp.png';
   if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
     let imageUrl = currentUserProfile.image.trim();
+    console.log('Comment form - Processing image URL:', imageUrl);
 
     // Convert IPFS hash to gateway URL if needed
     if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
       imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
+      console.log('Comment form - Converted IPFS to gateway URL:', imageUrl);
     }
 
     // Ensure protocol is included
     if (imageUrl.startsWith('//')) {
       imageUrl = 'https:' + imageUrl;
+      console.log('Comment form - Added protocol to URL:', imageUrl);
     }
 
+    console.log('Comment form - Final image URL:', imageUrl);
     userAvatar = imageUrl;
+  } else {
+    console.log('Comment form - No image found, using default');
   }
 
   const userName = currentUserProfile?.displayName || currentUserProfile?.name || 'Anonymous';
@@ -201,7 +217,7 @@ function renderCommentForm(
     <div class="comment-form reddit-comment-form">
       <div class="comment-form-container">
         <div class="comment-form-sidebar">
-          <img src="${escapeHtml(userAvatar)}" alt="Your avatar" class="current-user-avatar" />
+          <img src="${userAvatar}" alt="Your avatar" class="current-user-avatar" />
         </div>
         <div class="comment-form-main">
           <div class="comment-form-header">
