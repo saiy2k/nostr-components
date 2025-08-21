@@ -80,9 +80,25 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   private async handleFollowClick() {
-    if (onboardingService.hasNip07Extension()) {
-      await this._executeFollowWithNip07();
-    } else {
+    // Show loading state immediately
+    this.isLoading = true;
+    this.render();
+
+    try {
+      // Wait for authentication to be ready (handles async reconnection)
+      const hasAuth = await onboardingService.waitForAuthentication();
+
+      if (hasAuth) {
+        await this._executeFollowWithNip07();
+      } else {
+        this.isLoading = false;
+        this.render();
+        this._showOnboardingModal();
+      }
+    } catch (error) {
+      console.error('Authentication check failed:', error);
+      this.isLoading = false;
+      this.render();
       this._showOnboardingModal();
     }
   }
@@ -98,7 +114,7 @@ export default class NostrFollowButton extends HTMLElement {
 
   private async _executeFollowWithNip07() {
     this.isError = false;
-    
+
     // Check if we already have a signer in the NostrService
     const ndk = this.nostrService.getNDK();
     if (!ndk.signer) {

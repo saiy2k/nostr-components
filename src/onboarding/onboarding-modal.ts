@@ -14,9 +14,6 @@ export default class NostrOnboardingModal extends LitElement {
   private _view: OnboardingView = 'welcome';
 
   @state()
-  private _connectionString = '';
-
-  @state()
   private _bunkerUrl = '';
 
   @state()
@@ -27,6 +24,12 @@ export default class NostrOnboardingModal extends LitElement {
 
   @state()
   private _isLoading = false;
+
+  @state()
+  private _isConnectingBunker = false;
+
+  @state()
+  private _nostrConnectUri = '';
 
   static styles = css`
     .modal-backdrop {
@@ -161,55 +164,107 @@ export default class NostrOnboardingModal extends LitElement {
   }
 
   private _handleGenerateQrCode() {
+    // Clear any existing QR code
+    this._qrCodeDataUrl = '';
     this._isLoading = true;
-    
-    // Set button text to indicate QR code generation is in progress
-    const button = this.renderRoot.querySelector('.generate-button');
-    if (button) {
-      button.textContent = 'Generating QR Code...';
-    }
 
-    const signer = onboardingService.connectWithQr(() => {
-      // Success callback
-      this._connected = true;
-      this._isLoading = false;
-      setTimeout(() => {
-        this.open = false;
-        this._resetState();
-      }, 2000);
+    // Update the UI immediately
+    this.requestUpdate();
+
+    // Listen for global signer ready event to reflect connection success in UI
+    const handleSignerChanged = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { signerReady?: boolean };
+      if (detail?.signerReady && this.isConnected) {
+        this._connected = true;
+        this._isLoading = false;
+        this.requestUpdate();
+        setTimeout(() => {
+          if (this.isConnected) {
+            this.open = false;
+            this._resetState();
+          }
+        }, 1500);
+      }
+    };
+    window.addEventListener('nostr-signer-changed', handleSignerChanged, { once: true });
+
+    const signer = onboardingService.connectWithQr();
+
+    // Store the cleanup function
+    const cleanup = signer.on('authUrl', async (data: { qrCodeUrl?: string; connected?: boolean; nostrConnectUri?: string }) => {
+      try {
+        console.log('authUrl event received in modal:', data);
+
+        // Check if component is still connected to the DOM
+        if (!this.isConnected) {
+          console.log('Component no longer connected, skipping UI update');
+          return;
+        }
+
+        // Show QR if present; otherwise, if connected flag arrives, reflect success
+        if (data.qrCodeUrl) {
+          this._qrCodeDataUrl = data.qrCodeUrl;
+          this._isLoading = false;
+        }
+        if (data.nostrConnectUri) {
+          this._nostrConnectUri = data.nostrConnectUri;
+        }
+        if (data.connected) {
+          this._connected = true;
+          this._isLoading = false;
+        }
+
+        // Let Lit handle the update
+        await this.requestUpdate();
+
+        console.log('QR code generated:', this._qrCodeDataUrl ? 'Success' : 'Failed');
+      } catch (error) {
+        console.error('Error in authUrl handler:', error);
+      }
     });
 
-    signer.on('authUrl', async (url: string) => {
-      console.log('authUrl event received in modal:', url);
-      this._connectionString = url;
-      this._qrCodeDataUrl = await onboardingService.generateQrCode(url);
-      this._isLoading = false; // Stop loading once we have the QR code
-      
-      // Force UI update
-      this.requestUpdate();
-      
-      // Debug output to verify QR code data
-      console.log('QR code generated:', this._qrCodeDataUrl ? 'Success' : 'Failed');
-      console.log('Connection string:', this._connectionString);
+    // Clean up the event listener when component is disconnected
+    this.addController({
+      hostConnected: () => { },
+      hostDisconnected: () => {
+        if (cleanup && typeof cleanup.off === 'function') {
+          cleanup.off();
+        }
+        window.removeEventListener('nostr-signer-changed', handleSignerChanged as any);
+      }
     });
   }
 
   private async _handleConnect(connectionString: string) {
-    if (!connectionString) return;
+    if (!connectionString || !this.isConnected) return;
+
     try {
-      this._isLoading = true;
-      await onboardingService.connectWithBunker(connectionString, () => {
+      this._isConnectingBunker = true;
+      this.requestUpdate(); // Update UI to show loading state
+
+      await onboardingService.connectWithBunker(connectionString, async () => {
+        if (!this.isConnected) return;
+
         // Success callback
         this._connected = true;
+        this._isConnectingBunker = false;
+        this.requestUpdate();
+
+        // Close the modal after a short delay
         setTimeout(() => {
-          this.open = false;
-          this._resetState();
+          if (this.isConnected) {
+            this.open = false;
+            this._resetState();
+          }
         }, 2000);
-        this._isLoading = false;
       });
     } catch (error) {
+      console.error('Connection error:', error);
+      if (this.isConnected) {
+        this._isConnectingBunker = false;
+        this.requestUpdate();
+      }
       // Error is already handled in the service with an alert
-      this._isLoading = false;
     }
   }
 
@@ -237,23 +292,59 @@ export default class NostrOnboardingModal extends LitElement {
           .value=${this._bunkerUrl}
           @input=${(e: Event) => this._bunkerUrl = (e.target as HTMLInputElement).value}
         >
-        <button @click=${() => this._handleConnect(this._bunkerUrl)} ?disabled=${!this._bunkerUrl}>Connect</button>
+        <button @click=${() => this._handleConnect(this._bunkerUrl)} ?disabled=${!this._bunkerUrl || this._isConnectingBunker}>
+          ${this._isConnectingBunker ? 'Connecting...' : 'Connect'}
+        </button>
       </div>
       <hr style="margin: 1.5rem 0;">
       <div>
-        <p>Or connect with a mobile signer.</p>
-        <button @click=${this._handleGenerateQrCode} ?disabled=${this._isLoading}>
-          ${this._isLoading ? 'Generating...' : 'Generate QR Code'}
+        <p>Or generate a Nostr connection QR code:</p>
+        <button 
+          @click=${this._handleGenerateQrCode} 
+          ?disabled=${this._isLoading}
+          class="generate-button"
+        >
+          ${this._isLoading && !this._qrCodeDataUrl ? 'Generating QR Code...' :
+        this._qrCodeDataUrl ? 'Regenerate QR Code' : 'Generate QR Code'}
         </button>
         ${this._qrCodeDataUrl
-          ? html`
-              <div style="text-align: center; margin-top: 1rem;">
-                <img src="${this._qrCodeDataUrl}" alt="Nostr Connect QR Code">
-                <p style="font-size: 0.8rem; word-break: break-all;">${this._connectionString}</p>
-                ${this._isLoading ? html`<p style="margin-top: 1rem;">Waiting for approval from your signer app...</p>` : ''}
+        ? html`
+              <div style="text-align: center; margin: 1.5rem 0;">
+                <img 
+                  src="${this._qrCodeDataUrl}" 
+                  alt="Nostr Connect QR Code"
+                  style="max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; cursor: pointer;"
+                  @click=${() => this._copyToClipboard(this._nostrConnectUri)}
+                  title="Click to copy connection URL"
+                >
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                  Scan this QR code with your Nostr signer app (e.g., nsec.app)<br>
+                  <em>Click the QR code to copy the connection URL</em>
+                </p>
+                ${this._nostrConnectUri ? html`
+                  <details style="margin-top: 1rem; text-align: left;">
+                    <summary style="cursor: pointer; font-size: 0.8rem; color: #888;">Show connection URL</summary>
+                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; font-family: monospace; font-size: 0.7rem; word-break: break-all; max-height: 100px; overflow-y: auto;">
+                      ${this._nostrConnectUri}
+                    </div>
+                    <button 
+                      @click=${() => this._copyToClipboard(this._nostrConnectUri)}
+                      style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer;"
+                    >
+                      Copy URL
+                    </button>
+                  </details>
+                ` : ''}
+                ${this._isLoading ? html`
+                  <div style="margin-top: 1rem; padding: 0.75rem; background: #f8f9fa; border-radius: 4px;">
+                    <p style="margin: 0; color: #0c5460;">
+                      ⏳ Waiting for approval from your signer app...
+                    </p>
+                  </div>
+                ` : ''}
               </div>
             `
-          : ''}
+        : ''}
       </div>
       <div class="button-group">
         <button @click=${() => this._view = 'welcome'}>Back</button>
@@ -293,12 +384,36 @@ export default class NostrOnboardingModal extends LitElement {
     this._resetState();
   }
 
+  private async _copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+      console.log('Copied to clipboard:', text);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+  }
+
   private _resetState() {
     this._view = 'welcome';
     this._isLoading = false;
+    this._isConnectingBunker = false;
     this._qrCodeDataUrl = '';
-    this._connectionString = '';
+    this._nostrConnectUri = '';
     this._bunkerUrl = '';
     this._connected = false;
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    // Clean up any pending timeouts or intervals
+    // The event listener cleanup is handled by the controller
   }
 }

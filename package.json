@@ -35,9 +35,12 @@
   },
   "dependencies": {
     "@glidejs/glide": "^3.7.1",
-    "@nostr-dev-kit/ndk": "^2.10.0",
+    "@lit/task": "^1.0.3",
+    "@nostr-dev-kit/ndk": "^2.13.1",
+    "@nostr-dev-kit/ndk-nc": "npm:@nostr-dev-kit/ndk@2.14.33",
+    "buffer": "^6.0.3",
     "light-bolt11-decoder": "^3.2.0",
-    "nostr-tools": "^2.7.2",
+    "nostr-tools": "^2.12.0",
     "npm": "^11.3.0",
     "qrcode": "^1.5.4"
   }
