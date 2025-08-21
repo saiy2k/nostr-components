@@ -279,21 +279,27 @@ export default class NostrComment extends HTMLElement {
             try {
                 console.log('Fetching profile for user:', this.userPublicKey);
                 const profile = await this.nostrService.getProfile({ pubkey: this.userPublicKey });
+                console.log('Profile fetched for current user:', profile);
+
                 if (profile) {
                     this.currentUserProfile = profile;
+                    console.log('Set currentUserProfile to:', this.currentUserProfile);
                 } else {
                     this.currentUserProfile = {
                         name: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                         displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                         image: './assets/default_dp.png'
                     };
+                    console.log('Set fallback currentUserProfile to:', this.currentUserProfile);
                 }
             } catch (error) {
+                console.error('Error fetching current user profile:', error);
                 this.currentUserProfile = {
                     name: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                     displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                     image: './assets/default_dp.png'
                 };
+                console.log('Set error fallback currentUserProfile to:', this.currentUserProfile);
             }
             this.render();
         }
