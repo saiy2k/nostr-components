@@ -2,77 +2,77 @@ import { Theme } from '../common/types';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 
 interface Comment {
-    id: string;
-    pubkey: string;
-    content: string;
-    created_at: number;
-    replies: Comment[];
-    userProfile?: NDKUserProfile;
-    replyTo?: string;
-    depth?: number;
+  id: string;
+  pubkey: string;
+  content: string;
+  created_at: number;
+  replies: Comment[];
+  userProfile?: NDKUserProfile;
+  replyTo?: string;
+  depth?: number;
 }
 
 function escapeHtml(unsafe: string): string {
-    return unsafe
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function formatTimeAgo(timestamp: number): string {
-    const now = Date.now() / 1000;
-    const diff = now - timestamp;
+  const now = Date.now() / 1000;
+  const diff = now - timestamp;
 
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
 
-    return new Date(timestamp * 1000).toLocaleDateString();
+  return new Date(timestamp * 1000).toLocaleDateString();
 }
 
 function getUserDisplayName(comment: Comment): string {
-    if (comment.userProfile?.displayName) {
-        return comment.userProfile.displayName;
-    }
-    if (comment.userProfile?.name) {
-        return comment.userProfile.name;
-    }
-    // Fallback to masked pubkey
-    return `${comment.pubkey.slice(0, 8)}...${comment.pubkey.slice(-4)}`;
+  if (comment.userProfile?.displayName) {
+    return comment.userProfile.displayName;
+  }
+  if (comment.userProfile?.name) {
+    return comment.userProfile.name;
+  }
+  // Fallback to masked pubkey
+  return `${comment.pubkey.slice(0, 8)}...${comment.pubkey.slice(-4)}`;
 }
 
 function getUserAvatar(comment: Comment): string {
-    if (comment.userProfile?.image && comment.userProfile.image.trim() !== '') {
-        // Handle IPFS links and ensure proper URL format
-        let imageUrl = comment.userProfile.image.trim();
+  if (comment.userProfile?.image && comment.userProfile.image.trim() !== '') {
+    // Handle IPFS links and ensure proper URL format
+    let imageUrl = comment.userProfile.image.trim();
 
-        // Convert IPFS hash to gateway URL if needed
-        if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
-            imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
-        }
-
-        // Ensure protocol is included
-        if (imageUrl.startsWith('//')) {
-            imageUrl = 'https:' + imageUrl;
-        }
-
-        return imageUrl;
+    // Convert IPFS hash to gateway URL if needed
+    if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
+      imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
     }
-    return './assets/default_dp.png';
+
+    // Ensure protocol is included
+    if (imageUrl.startsWith('//')) {
+      imageUrl = 'https:' + imageUrl;
+    }
+
+    return imageUrl;
+  }
+  return './assets/default_dp.png';
 }
 
 function renderComment(comment: Comment, readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null): string {
-    const displayName = getUserDisplayName(comment);
-    const avatar = getUserAvatar(comment);
-    const timeAgo = formatTimeAgo(comment.created_at);
-    const depth = comment.depth || 0;
-    const maxDepth = 6; // Maximum nesting depth
-    const isReplying = replyingToComment === comment.id;
+  const displayName = getUserDisplayName(comment);
+  const avatar = getUserAvatar(comment);
+  const timeAgo = formatTimeAgo(comment.created_at);
+  const depth = comment.depth || 0;
+  const maxDepth = 6; // Maximum nesting depth
+  const isReplying = replyingToComment === comment.id;
 
-    return `
+  return `
     <div class="comment reddit-comment" data-comment-id="${escapeHtml(comment.id)}" data-depth="${depth}" style="--depth: ${depth};">
       ${depth > 0 ? `<div class="comment-thread-line" style="left: ${depth * 60 + 10}px;"></div>` : ''}
       <div class="comment-container">
@@ -105,27 +105,27 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
 }
 
 function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any): string {
-    // Use the same avatar processing as getUserAvatar
-    let userAvatar = './assets/default_dp.png';
-    if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
-        let imageUrl = currentUserProfile.image.trim();
+  // Use the same avatar processing as getUserAvatar
+  let userAvatar = './assets/default_dp.png';
+  if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
+    let imageUrl = currentUserProfile.image.trim();
 
-        // Convert IPFS hash to gateway URL if needed
-        if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
-            imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
-        }
-
-        // Ensure protocol is included
-        if (imageUrl.startsWith('//')) {
-            imageUrl = 'https:' + imageUrl;
-        }
-
-        userAvatar = imageUrl;
+    // Convert IPFS hash to gateway URL if needed
+    if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
+      imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
     }
 
-    const parentName = getUserDisplayName(parentComment);
+    // Ensure protocol is included
+    if (imageUrl.startsWith('//')) {
+      imageUrl = 'https:' + imageUrl;
+    }
 
-    return `
+    userAvatar = imageUrl;
+  }
+
+  const parentName = getUserDisplayName(parentComment);
+
+  return `
     <div class="inline-reply-form">
       <div class="reply-context">
         <span class="reply-context-text">💬 Replying to <strong>${escapeHtml(parentName)}</strong></span>
@@ -153,37 +153,39 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any):
 }
 
 function renderCommentForm(
-    readonly: boolean,
-    placeholder: string,
-    isSubmitting: boolean,
-    currentUserProfile: NDKUserProfile | null,
-    _replyingToComment: string | null
+  readonly: boolean,
+  placeholder: string,
+  isSubmitting: boolean,
+  currentUserProfile: NDKUserProfile | null,
+  _replyingToComment: string | null,
+  identityMode: 'user' | 'anon' = 'anon',
+  hasNip07: boolean = false
 ): string {
-    if (readonly) {
-        return '';
+  if (readonly) {
+    return '';
+  }
+
+  // Use the same avatar processing as getUserAvatar
+  let userAvatar = './assets/default_dp.png';
+  if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
+    let imageUrl = currentUserProfile.image.trim();
+
+    // Convert IPFS hash to gateway URL if needed
+    if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
+      imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
     }
 
-    // Use the same avatar processing as getUserAvatar
-    let userAvatar = './assets/default_dp.png';
-    if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
-        let imageUrl = currentUserProfile.image.trim();
-
-        // Convert IPFS hash to gateway URL if needed
-        if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
-            imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
-        }
-
-        // Ensure protocol is included
-        if (imageUrl.startsWith('//')) {
-            imageUrl = 'https:' + imageUrl;
-        }
-
-        userAvatar = imageUrl;
+    // Ensure protocol is included
+    if (imageUrl.startsWith('//')) {
+      imageUrl = 'https:' + imageUrl;
     }
 
-    const userName = currentUserProfile?.displayName || currentUserProfile?.name || 'Anonymous';
+    userAvatar = imageUrl;
+  }
 
-    return `
+  const userName = currentUserProfile?.displayName || currentUserProfile?.name || 'Anonymous';
+
+  return `
     <div class="comment-form reddit-comment-form">
       <div class="comment-form-container">
         <div class="comment-form-sidebar">
@@ -193,6 +195,11 @@ function renderCommentForm(
         <div class="comment-form-main">
           <div class="comment-form-header">
             <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
+            <div class="identity-toggle">
+              <label class="toggle-label">Identity:</label>
+              <button id="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
+              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>Anonymous</button>
+            </div>
           </div>
           <div class="comment-form-body">
             <textarea 
@@ -224,18 +231,18 @@ function renderCommentForm(
 }
 
 function renderCommentsList(comments: Comment[], readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null): string {
-    // Count total comments including replies
-    const totalCount = countTotalComments(comments);
+  // Count total comments including replies
+  const totalCount = countTotalComments(comments);
 
-    if (totalCount === 0) {
-        return `
+  if (totalCount === 0) {
+    return `
       <div class="no-comments">
         <p>No comments yet. Be the first to comment!</p>
       </div>
     `;
-    }
+  }
 
-    return `
+  return `
     <div class="comments-list">
       <div class="comments-header">
         <h3>${totalCount} Comment${totalCount !== 1 ? 's' : ''}</h3>
@@ -248,26 +255,28 @@ function renderCommentsList(comments: Comment[], readonly: boolean = false, repl
 }
 
 function countTotalComments(comments: Comment[]): number {
-    let count = 0;
-    for (const comment of comments) {
-        count += 1 + countTotalComments(comment.replies);
-    }
-    return count;
+  let count = 0;
+  for (const comment of comments) {
+    count += 1 + countTotalComments(comment.replies);
+  }
+  return count;
 }
 
 export function renderCommentWidget(
-    isLoading: boolean,
-    isError: boolean,
-    errorMessage: string,
-    comments: Comment[],
-    readonly: boolean,
-    placeholder: string,
-    isSubmitting: boolean,
-    currentUserProfile: NDKUserProfile | null = null,
-    replyingToComment: string | null = null
+  isLoading: boolean,
+  isError: boolean,
+  errorMessage: string,
+  comments: Comment[],
+  readonly: boolean,
+  placeholder: string,
+  isSubmitting: boolean,
+  currentUserProfile: NDKUserProfile | null = null,
+  replyingToComment: string | null = null,
+  identityMode: 'user' | 'anon' = 'anon',
+  hasNip07: boolean = false
 ): string {
-    if (isLoading) {
-        return `
+  if (isLoading) {
+    return `
       <div class="comment-widget loading">
         <div class="loading-indicator">
           <div class="loading-spinner"></div>
@@ -275,10 +284,10 @@ export function renderCommentWidget(
         </div>
       </div>
     `;
-    }
+  }
 
-    if (isError) {
-        return `
+  if (isError) {
+    return `
       <div class="comment-widget error">
         <div class="error-message">
           <p>❌ Failed to load comments</p>
@@ -286,11 +295,11 @@ export function renderCommentWidget(
         </div>
       </div>
     `;
-    }
+  }
 
-    return `
+  return `
     <div class="comment-widget">
-      ${renderCommentForm(readonly, placeholder, isSubmitting, currentUserProfile, replyingToComment)}
+      ${renderCommentForm(readonly, placeholder, isSubmitting, currentUserProfile, replyingToComment, identityMode, hasNip07)}
       ${renderCommentsList(comments, readonly, replyingToComment, currentUserProfile)}
       <div class="powered-by">
         <small>Powered by <a href="https://nostr.org" target="_blank">Nostr</a></small>
@@ -300,7 +309,7 @@ export function renderCommentWidget(
 }
 
 export function getCommentStyles(theme: Theme): string {
-    return `
+  return `
     <style>
       :host {
         /* Define CSS variables on the host element */
@@ -427,12 +436,42 @@ export function getCommentStyles(theme: Theme): string {
 
       .comment-form-header {
         margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
 
       .current-user-name {
         font-weight: 500;
         font-size: 13px;
         color: var(--nstrc-comment-meta-color, #6c757d);
+      }
+
+      .identity-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .toggle-label {
+        font-size: 12px;
+        color: var(--nstrc-comment-meta-color, #6c757d);
+      }
+      .identity-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        background: var(--nstrc-comment-input-background, #ffffff);
+        color: var(--nstrc-comment-text-color, #333333);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .identity-btn:hover {
+        background: var(--nstrc-comment-hover-background);
+      }
+      .identity-btn.active {
+        background: var(--nstrc-comment-button-background);
+        color: var(--nstrc-comment-button-text, #ffffff);
+        border-color: var(--nstrc-comment-button-background);
       }
 
       .reply-indicator {
