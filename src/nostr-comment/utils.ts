@@ -61,7 +61,7 @@ export function parseCommentEvent(event: NDKEvent): ParsedComment | null {
 
     // Parse tags to find references
     for (const tag of event.tags || []) {
-        if (tag[0] === 'r' && tag[1]) {
+        if (tag[0] === 'I' && tag[1]) {
             comment.rootUrl = tag[1];
         } else if (tag[0] === 'e' && tag[1]) {
             comment.replyTo = tag[1];
@@ -81,7 +81,7 @@ export function createCommentEvent(
     replyTo?: string
 ): Omit<CommentEvent, 'id' | 'sig'> {
     const tags: string[][] = [
-        ['r', url], // URL reference
+        ['I', url], // URL reference
         ['client', 'nostr-components']
     ];
 
@@ -231,9 +231,9 @@ export function debounce<T extends (...args: any[]) => any>(
     func: T,
     wait: number
 ): (...args: Parameters<T>) => void {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     return (...args: Parameters<T>) => {
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => func(...args), wait);
     };
 }

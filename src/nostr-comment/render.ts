@@ -130,7 +130,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, 
     <div class="inline-reply-form">
       <div class="reply-context">
         <span class="reply-context-text">💬 Replying to <strong>${escapeHtml(parentName)}</strong></span>
-        <button id="cancel-reply" class="cancel-reply-btn">✕</button>
+        <button data-role="cancel-reply" class="cancel-reply-btn">✕</button>
       </div>
       <div class="reply-form-container">
         <div class="reply-form-sidebar">
@@ -147,13 +147,13 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, 
             </div>
           </div>
           <textarea 
-            id="comment-input" 
+            data-role="comment-input" 
             placeholder="Write your reply..."
             rows="3"
             class="inline-reply-textarea"
           ></textarea>
           <div class="reply-form-actions">
-            <button id="submit-comment" class="inline-reply-submit">💬 Reply</button>
+            <button data-role="submit-comment" class="inline-reply-submit">💬 Reply</button>
           </div>
         </div>
       </div>
@@ -212,7 +212,7 @@ function renderCommentForm(
           </div>
           <div class="comment-form-body">
             <textarea 
-              id="comment-input" 
+              data-role="comment-input" 
               placeholder="${escapeHtml(placeholder)}"
               rows="4"
               ${isSubmitting ? 'disabled' : ''}
@@ -224,7 +224,7 @@ function renderCommentForm(
               </div>
               <div class="comment-form-actions">
                 <button 
-                  id="submit-comment" 
+                  data-role="submit-comment" 
                   class="reddit-submit-btn"
                   ${isSubmitting ? 'disabled' : ''}
                 >
