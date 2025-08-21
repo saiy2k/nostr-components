@@ -34,6 +34,9 @@ export default class NostrComment extends HTMLElement {
 
     private isSubmitting: boolean = false;
     private replyingToComment: string | null = null; // ID of comment being replied to
+    private commentAs: 'user' | 'anon' = 'anon';
+    private hasNip07: boolean = false;
+    private anonPrivateKeyHex: string | null = null;
 
     constructor() {
         super();
@@ -236,61 +239,69 @@ export default class NostrComment extends HTMLElement {
     };
 
     initializeUser = async (): Promise<void> => {
-        // Check for NIP-07 extension (like nos2x, Alby, etc.)
-        if ((window as any).nostr) {
+        // Detect nip07
+        this.hasNip07 = !!(window as any).nostr;
+
+        if (this.hasNip07 && this.commentAs === 'user') {
             try {
                 this.userPublicKey = await (window as any).nostr.getPublicKey();
                 console.log('Connected to NIP-07 extension');
-                return;
             } catch (error) {
                 console.warn('NIP-07 extension available but failed to get public key');
             }
         }
 
-        // Fall back to generating/storing local keys
-        const storedKey = localStorage.getItem('nostr-comment-private-key');
-        if (storedKey && storedKey.match(/^[a-f0-9]{64}$/)) {
-            this.userPrivateKey = storedKey;
-            // Generate public key from private key
+        // If not using extension or commenting as anon, generate/use anon key
+        if (!this.userPublicKey) {
+            const storageKey = 'nostr-comment-anon-private-key';
+            let anon = localStorage.getItem(storageKey);
+            if (!anon || !anon.match(/^[a-f0-9]{64}$/)) {
+                const { generateSecretKey } = await import('nostr-tools/pure');
+                anon = Array.from(generateSecretKey()).map(b => b.toString(16).padStart(2, '0')).join('');
+                localStorage.setItem(storageKey, anon);
+            }
+            this.anonPrivateKeyHex = anon;
+            this.userPrivateKey = anon;
             const { getPublicKey } = await import('nostr-tools/pure');
-            this.userPublicKey = getPublicKey(Buffer.from(storedKey, 'hex'));
-        } else {
-            // Generate new key pair
-            const { generateSecretKey, getPublicKey } = await import('nostr-tools/pure');
-            const privateKey = generateSecretKey();
-            this.userPrivateKey = Buffer.from(privateKey).toString('hex');
-            this.userPublicKey = getPublicKey(privateKey);
-            localStorage.setItem('nostr-comment-private-key', this.userPrivateKey);
-            console.log('Generated new Nostr key pair');
+            this.userPublicKey = getPublicKey(new Uint8Array(anon.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+            console.log('Using anonymous key');
         }
 
-        // Fetch current user's profile
+        // Ensure anonymous key is available when in anonymous mode
+        if (this.commentAs === 'anon' && !this.anonPrivateKeyHex) {
+            const storageKey = 'nostr-comment-anon-private-key';
+            let anon = localStorage.getItem(storageKey);
+            if (!anon || !anon.match(/^[a-f0-9]{64}$/)) {
+                const { generateSecretKey } = await import('nostr-tools/pure');
+                anon = Array.from(generateSecretKey()).map(b => b.toString(16).padStart(2, '0')).join('');
+                localStorage.setItem(storageKey, anon);
+            }
+            this.anonPrivateKeyHex = anon;
+            console.log('Ensured anonymous key is available');
+        }
+
+        // Fetch current identity profile (or fallback)
         if (this.userPublicKey) {
             try {
                 console.log('Fetching profile for user:', this.userPublicKey);
                 const profile = await this.nostrService.getProfile({ pubkey: this.userPublicKey });
                 if (profile) {
                     this.currentUserProfile = profile;
-                    console.log('Profile loaded:', profile);
                 } else {
-                    console.log('No profile found, using default');
-                    // Create a basic profile with the public key
                     this.currentUserProfile = {
-                        name: `User ${this.userPublicKey.slice(0, 8)}`,
-                        displayName: `User ${this.userPublicKey.slice(0, 8)}`,
+                        name: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
+                        displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                         image: './assets/default_dp.png'
                     };
                 }
             } catch (error) {
-                console.warn('Failed to fetch current user profile, using default');
-                // Create a basic profile as fallback
                 this.currentUserProfile = {
-                    name: `User ${this.userPublicKey.slice(0, 8)}`,
-                    displayName: `User ${this.userPublicKey.slice(0, 8)}`,
+                    name: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
+                    displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                     image: './assets/default_dp.png'
                 };
             }
-            this.render(); // Re-render to show user profile
+            this.render();
         }
     };
 
@@ -331,15 +342,26 @@ export default class NostrComment extends HTMLElement {
             };
 
             let signedEvent;
-            if ((window as any).nostr && !this.userPrivateKey) {
+            console.log(`[nostr-comment] Signing attempt - commentAs: ${this.commentAs}, hasNip07: ${!!(window as any).nostr}, anonKey: ${!!this.anonPrivateKeyHex}, userKey: ${!!this.userPrivateKey}`);
+
+            if (this.commentAs === 'user' && (window as any).nostr && !this.userPrivateKey) {
                 // Use NIP-07 extension to sign
+                console.log('[nostr-comment] Using NIP-07 extension to sign');
                 signedEvent = await (window as any).nostr.signEvent(event);
-            } else if (this.userPrivateKey) {
-                // Sign with local private key
+            } else if (this.commentAs === 'anon' && this.anonPrivateKeyHex) {
+                // Sign with anonymous private key
+                console.log('[nostr-comment] Using anonymous private key to sign');
                 const { finalizeEvent } = await import('nostr-tools/pure');
-                const privateKeyBytes = Buffer.from(this.userPrivateKey, 'hex');
+                const privateKeyBytes = new Uint8Array(this.anonPrivateKeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+                signedEvent = finalizeEvent(event, privateKeyBytes);
+            } else if (this.userPrivateKey) {
+                // Sign with local private key (fallback)
+                console.log('[nostr-comment] Using local private key to sign (fallback)');
+                const { finalizeEvent } = await import('nostr-tools/pure');
+                const privateKeyBytes = new Uint8Array(this.userPrivateKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
                 signedEvent = finalizeEvent(event, privateKeyBytes);
             } else {
+                console.error('[nostr-comment] No signing method available - commentAs:', this.commentAs, 'hasNip07:', !!(window as any).nostr, 'anonKey:', !!this.anonPrivateKeyHex, 'userKey:', !!this.userPrivateKey);
                 throw new Error('No signing method available');
             }
 
@@ -563,6 +585,36 @@ export default class NostrComment extends HTMLElement {
                 }
             });
         });
+
+        // Identity toggle buttons
+        const btnUser = this.shadow.querySelector('#toggle-as-user') as HTMLButtonElement | null;
+        const btnAnon = this.shadow.querySelector('#toggle-as-anon') as HTMLButtonElement | null;
+        if (btnUser && btnAnon) {
+            // If no nip07, force anon and disable buttons accordingly
+            if (!this.hasNip07) {
+                btnUser.disabled = true;
+                btnAnon.disabled = true; // keep UI static; we already default to anon
+            } else {
+                // Logged-in path: allow switching
+                btnUser.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (this.commentAs !== 'user') {
+                        this.commentAs = 'user';
+                        this.userPrivateKey = null; // ensure nip07 signing path
+                        await this.initializeUser();
+                    }
+                });
+                btnAnon.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (this.commentAs !== 'anon') {
+                        this.commentAs = 'anon';
+                        this.userPublicKey = null; // Clear so initializeUser will set up anon identity
+                        this.userPrivateKey = null; // Clear user key to force anon path
+                        await this.initializeUser();
+                    }
+                });
+            }
+        }
     }
 
     render() {
@@ -585,7 +637,9 @@ export default class NostrComment extends HTMLElement {
             placeholder,
             this.isSubmitting,
             this.currentUserProfile,
-            this.replyingToComment
+            this.replyingToComment,
+            this.commentAs,
+            this.hasNip07
         );
 
         // Combine styles and content for shadow DOM
