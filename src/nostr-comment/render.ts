@@ -64,7 +64,7 @@ function getUserAvatar(comment: Comment): string {
   return './assets/default_dp.png';
 }
 
-function renderComment(comment: Comment, readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null): string {
+function renderComment(comment: Comment, readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   const displayName = getUserDisplayName(comment);
   const avatar = getUserAvatar(comment);
   const timeAgo = formatTimeAgo(comment.created_at);
@@ -92,19 +92,19 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
           <div class="comment-actions">
             ${!readonly ? `<button class="reply-button" data-comment-id="${escapeHtml(comment.id)}">↩ Reply</button>` : ''}
           </div>
-          ${isReplying ? renderInlineReplyForm(comment, currentUserProfile) : ''}
+          ${isReplying ? renderInlineReplyForm(comment, currentUserProfile, identityMode, hasNip07) : ''}
         </div>
       </div>
       ${comment.replies.length > 0 ? `
         <div class="comment-replies">
-          ${comment.replies.map(reply => renderComment(reply, readonly, replyingToComment, currentUserProfile)).join('')}
+          ${comment.replies.map(reply => renderComment(reply, readonly, replyingToComment, currentUserProfile, identityMode, hasNip07)).join('')}
         </div>
       ` : ''}
     </div>
   `;
 }
 
-function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any): string {
+function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   // Use the same avatar processing as getUserAvatar
   let userAvatar = './assets/default_dp.png';
   if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
@@ -124,6 +124,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any):
   }
 
   const parentName = getUserDisplayName(parentComment);
+  const userName = currentUserProfile?.displayName || currentUserProfile?.name || 'Anonymous';
 
   return `
     <div class="inline-reply-form">
@@ -137,6 +138,14 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: any):
                onerror="this.src='./assets/default_dp.png'" />
         </div>
         <div class="reply-form-main">
+          <div class="reply-form-header">
+            <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
+            <div class="identity-toggle">
+              <label class="toggle-label">Identity:</label>
+              <button id="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
+              <button id="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>Anonymous</button>
+            </div>
+          </div>
           <textarea 
             id="comment-input" 
             placeholder="Write your reply..."
@@ -230,7 +239,7 @@ function renderCommentForm(
   `;
 }
 
-function renderCommentsList(comments: Comment[], readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null): string {
+function renderCommentsList(comments: Comment[], readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: any = null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   // Count total comments including replies
   const totalCount = countTotalComments(comments);
 
@@ -248,7 +257,7 @@ function renderCommentsList(comments: Comment[], readonly: boolean = false, repl
         <h3>${totalCount} Comment${totalCount !== 1 ? 's' : ''}</h3>
       </div>
       <div class="comments-container">
-        ${comments.map(comment => renderComment(comment, readonly, replyingToComment, currentUserProfile)).join('')}
+        ${comments.map(comment => renderComment(comment, readonly, replyingToComment, currentUserProfile, identityMode, hasNip07)).join('')}
       </div>
     </div>
   `;
@@ -300,7 +309,7 @@ export function renderCommentWidget(
   return `
     <div class="comment-widget">
       ${renderCommentForm(readonly, placeholder, isSubmitting, currentUserProfile, replyingToComment, identityMode, hasNip07)}
-      ${renderCommentsList(comments, readonly, replyingToComment, currentUserProfile)}
+      ${renderCommentsList(comments, readonly, replyingToComment, currentUserProfile, identityMode, hasNip07)}
       <div class="powered-by">
         <small>Powered by <a href="https://nostr.org" target="_blank">Nostr</a></small>
       </div>
@@ -772,6 +781,56 @@ export function getCommentStyles(theme: Theme): string {
       .reply-form-main {
         flex: 1;
         min-width: 0;
+      }
+
+      .reply-form-header {
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .reply-form-header .current-user-name {
+        font-size: 12px;
+        color: var(--nstrc-comment-meta-color, #6c757d);
+        font-weight: 500;
+      }
+
+      .reply-form-header .identity-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .reply-form-header .toggle-label {
+        font-size: 11px;
+        color: var(--nstrc-comment-meta-color, #6c757d);
+        font-weight: 500;
+      }
+
+      .reply-form-header .identity-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        background: var(--nstrc-comment-input-background, #ffffff);
+        color: var(--nstrc-comment-text-color, #333333);
+        border-radius: 3px;
+        cursor: pointer;
+      }
+
+      .reply-form-header .identity-btn:hover {
+        background: var(--nstrc-comment-hover-background);
+      }
+
+      .reply-form-header .identity-btn.active {
+        background: var(--nstrc-comment-button-background);
+        color: var(--nstrc-comment-button-text, #ffffff);
+        border-color: var(--nstrc-comment-button-background);
+      }
+
+      .reply-form-header .identity-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .inline-reply-textarea {
