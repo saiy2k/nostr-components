@@ -296,31 +296,52 @@ export class NostrService {
     return this.ndk;
   }
 
-  setSigner(signer: NDKSigner) {
-    this.ndk.signer = signer;
-    console.log('Signer set successfully in NostrService');
-    
-    // Store that we have an active signer for later use
-    localStorage.setItem('nostr-has-active-signer', 'true');
-    
-    // Dispatch a custom event to notify all components that the signer has changed
-    const signerEvent = new CustomEvent('nostr-signer-changed', { 
-      detail: { signerReady: true } 
-    });
-    window.dispatchEvent(signerEvent);
-    
-    // Test the signer by getting the user's pubkey
-    this.testSigner(signer);
-  }
-  
-  private async testSigner(signer: NDKSigner) {
+  async setSigner(signer: NDKSigner): Promise<boolean> {
     try {
+      console.log('Testing signer before setting...');
+
+      // Test the signer first
       const user = await signer.user();
-      console.log('Active user pubkey:', user.pubkey);
-      // Store the pubkey in localStorage for later retrieval
-      localStorage.setItem('nostr-active-pubkey', user.pubkey);
+      if (!user?.pubkey) {
+        throw new Error('Signer test failed: no user pubkey returned');
+      }
+
+      console.log('Signer test successful, pubkey:', user.pubkey);
+
+      // Only set signer after successful verification
+      this.ndk.signer = signer;
+      console.log('Signer set successfully in NostrService');
+
+      // Guard localStorage usage with environment checks
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem('nostr-has-active-signer', 'true');
+        localStorage.setItem('nostr-active-pubkey', user.pubkey);
+      }
+
+      // Dispatch success event
+      if (typeof window !== 'undefined') {
+        const signerEvent = new CustomEvent('nostr-signer-changed', {
+          detail: { signerReady: true, pubkey: user.pubkey }
+        });
+        window.dispatchEvent(signerEvent);
+      }
+
+      return true;
     } catch (error) {
-      console.error('Error testing signer:', error);
+      console.error('Failed to set signer:', error);
+
+      // Dispatch failure event
+      if (typeof window !== 'undefined') {
+        const errorEvent = new CustomEvent('nostr-signer-error', {
+          detail: {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            signerReady: false
+          }
+        });
+        window.dispatchEvent(errorEvent);
+      }
+
+      return false;
     }
   }
 }

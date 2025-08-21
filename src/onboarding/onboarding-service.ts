@@ -4,8 +4,8 @@ import { NDKNip46Signer } from '@nostr-dev-kit/ndk-nc';
 import { nip19 } from 'nostr-tools';
 import { toDataURL } from 'qrcode';
 
-// Test QR code generation when the module loads
-if (typeof window !== 'undefined') {
+// Test QR code generation when the module loads (dev only)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   setTimeout(() => {
     const onboardingService = OnboardingService.getInstance();
     onboardingService.testQrCodeGeneration().catch(console.error);
@@ -180,8 +180,13 @@ class OnboardingService {
     this.showModal();
   }
 
-  // Test function to verify QR code generation
+  // Test function to verify QR code generation (dev only)
   async testQrCodeGeneration(): Promise<void> {
+    if (process.env.NODE_ENV !== 'development') {
+      console.warn('testQrCodeGeneration is only available in development mode');
+      return;
+    }
+
     try {
       const testData = 'nostrconnect://testpubkey?relay=wss%3A%2F%2Frelay.damus.io&metadata=%7B%22name%22%3A%22Test%22%7D';
       console.log('Testing QR code generation with data:', testData);
@@ -290,7 +295,7 @@ class OnboardingService {
       console.log('Attempting to connect with bunker URL:', bunkerUrl);
       const ndk = this.nostrService.getNDK();
       const signer = new NDKNip46Signer(ndk as any, bunkerUrl);
-      this.nostrService.setSigner(signer as any);
+      // Don't set signer yet - let setupNip46Connection handle it after verification
       await this.setupNip46Connection(signer, onSuccess);
     } catch (error) {
       console.error('Failed to connect with bunker:', error);
@@ -394,7 +399,10 @@ class OnboardingService {
             localStorage.setItem('local-relay', relay);
 
             // Set the signer in our service (cast for type compatibility)
-            this.nostrService.setSigner(signer as any);
+            const success = await this.nostrService.setSigner(signer as any);
+            if (!success) {
+              throw new Error('Failed to set signer after verification');
+            }
             console.log('Signer set in NostrService');
 
             // Notify UI of successful connection
@@ -452,8 +460,13 @@ class OnboardingService {
 
       if (user?.pubkey) {
         const npub = nip19.npubEncode(user.pubkey);
-        console.log('✅ NOSTRCONNECT SUCCESS! User npub:', npub);
-        localStorage.setItem('nostr-has-active-signer', 'true');
+        console.log('✅ NIP-46 connection established! User npub:', npub);
+
+        // Set the signer in the service after successful connection
+        const success = await this.nostrService.setSigner(signer as any);
+        if (!success) {
+          throw new Error('Failed to set signer after successful NIP-46 connection');
+        }
 
         try {
           if (onSuccess) {
@@ -523,7 +536,10 @@ class OnboardingService {
       console.log("Welcome back", user.npub);
 
       // Set the signer in the service (cast for type compatibility)
-      this.nostrService.setSigner(signer as any);
+      const success = await this.nostrService.setSigner(signer as any);
+      if (!success) {
+        throw new Error('Failed to set signer after verification');
+      }
 
       // If you didn't have a localNsec you should store it for future sessions of your app
       if (signer.localSigner?.nsec) {
@@ -542,8 +558,8 @@ class OnboardingService {
 
 export const onboardingService = OnboardingService.getInstance();
 
-// Global function for debugging/recovery
-if (typeof window !== 'undefined') {
+// Global functions for debugging/recovery (dev only)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).clearNostrAuth = () => {
     console.log('🔄 Clearing Nostr authentication...');
     onboardingService.clearAuthentication();

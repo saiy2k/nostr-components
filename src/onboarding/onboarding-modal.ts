@@ -31,6 +31,9 @@ export default class NostrOnboardingModal extends LitElement {
   @state()
   private _nostrConnectUri = '';
 
+  private _currentSignerChangedHandler: ((e: Event) => void) | null = null;
+  private _currentSignerCleanup: { off: () => void } | null = null;
+
   static styles = css`
     .modal-backdrop {
       position: fixed;
@@ -171,6 +174,9 @@ export default class NostrOnboardingModal extends LitElement {
     // Update the UI immediately
     this.requestUpdate();
 
+    // Clean up any existing listeners first
+    this._cleanupEventListeners();
+
     // Listen for global signer ready event to reflect connection success in UI
     const handleSignerChanged = (e: Event) => {
       const detail = (e as CustomEvent).detail as { signerReady?: boolean };
@@ -186,12 +192,14 @@ export default class NostrOnboardingModal extends LitElement {
         }, 1500);
       }
     };
-    window.addEventListener('nostr-signer-changed', handleSignerChanged, { once: true });
+
+    this._currentSignerChangedHandler = handleSignerChanged;
+    window.addEventListener('nostr-signer-changed', handleSignerChanged);
 
     const signer = onboardingService.connectWithQr();
 
     // Store the cleanup function
-    const cleanup = signer.on('authUrl', async (data: { qrCodeUrl?: string; connected?: boolean; nostrConnectUri?: string }) => {
+    this._currentSignerCleanup = signer.on('authUrl', async (data: { qrCodeUrl?: string; connected?: boolean; nostrConnectUri?: string }) => {
       try {
         console.log('authUrl event received in modal:', data);
 
@@ -223,16 +231,7 @@ export default class NostrOnboardingModal extends LitElement {
       }
     });
 
-    // Clean up the event listener when component is disconnected
-    this.addController({
-      hostConnected: () => { },
-      hostDisconnected: () => {
-        if (cleanup && typeof cleanup.off === 'function') {
-          cleanup.off();
-        }
-        window.removeEventListener('nostr-signer-changed', handleSignerChanged as any);
-      }
-    });
+    // Note: cleanup will be handled by _cleanupEventListeners and disconnectedCallback
   }
 
   private async _handleConnect(connectionString: string) {
@@ -384,6 +383,18 @@ export default class NostrOnboardingModal extends LitElement {
     this._resetState();
   }
 
+  private _cleanupEventListeners() {
+    if (this._currentSignerChangedHandler) {
+      window.removeEventListener('nostr-signer-changed', this._currentSignerChangedHandler);
+      this._currentSignerChangedHandler = null;
+    }
+
+    if (this._currentSignerCleanup && typeof this._currentSignerCleanup.off === 'function') {
+      this._currentSignerCleanup.off();
+      this._currentSignerCleanup = null;
+    }
+  }
+
   private async _copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -409,11 +420,12 @@ export default class NostrOnboardingModal extends LitElement {
     this._nostrConnectUri = '';
     this._bunkerUrl = '';
     this._connected = false;
+    this._cleanupEventListeners();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    // Clean up any pending timeouts or intervals
-    // The event listener cleanup is handled by the controller
+    // Clean up event listeners to prevent memory leaks
+    this._cleanupEventListeners();
   }
 }

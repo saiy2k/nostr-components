@@ -121,7 +121,17 @@ export default class NostrFollowButton extends HTMLElement {
       // If we don't have a signer yet, try to use the NIP-07 extension
       if (window.nostr) {
         const nip07signer = new NDKNip07Signer();
-        this.nostrService.setSigner(nip07signer);
+
+        // Atomic check and set - only set if still no signer
+        if (!ndk.signer) {
+          const success = await this.nostrService.setSigner(nip07signer);
+          if (!success) {
+            this.errorMessage = 'Failed to set NIP-07 signer';
+            this.isError = true;
+            this.render();
+            return;
+          }
+        }
       } else {
         // If we have neither a stored signer nor extension, show an error
         this.errorMessage = 'No authentication method available';
