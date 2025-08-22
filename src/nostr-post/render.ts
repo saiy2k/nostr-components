@@ -10,13 +10,13 @@ export interface RenderPostOptions {
   isLoading: boolean;
   isError: boolean;
   author:
-    | {
-        image?: string;
-        displayName?: string;
-        nip05?: string;
-      }
-    | null
-    | undefined;
+  | {
+    image?: string;
+    displayName?: string;
+    nip05?: string;
+  }
+  | null
+  | undefined;
   date: string;
   shouldShowStats: boolean;
   stats: {
@@ -24,6 +24,9 @@ export interface RenderPostOptions {
     likes: number;
   } | null;
   htmlToRender: string;
+  showReplies?: boolean;
+  replies?: any[];
+  replyAuthors?: Map<string, any>;
 }
 
 export function renderPost(options: RenderPostOptions): string {
@@ -36,6 +39,9 @@ export function renderPost(options: RenderPostOptions): string {
     shouldShowStats,
     stats,
     htmlToRender,
+    showReplies = false,
+    replies = [],
+    replyAuthors = new Map(),
   } = options;
 
   return `
@@ -44,7 +50,8 @@ export function renderPost(options: RenderPostOptions): string {
     <div class="post-container">
       ${renderPostHeader(isLoading, isError, author, date)}
       ${renderPostBody(isLoading, isError, htmlToRender)}
-      ${shouldShowStats ? renderPostFooter(isLoading, isError, stats) : ''}
+      ${renderPostFooter(isLoading, isError, stats, showReplies, shouldShowStats)}
+      ${renderRepliesSection(theme, isLoading, isError, showReplies, replies, replyAuthors)}
     </div>
   `;
 }
@@ -54,10 +61,10 @@ function renderPostHeader(
   isError: boolean,
   author:
     | {
-        image?: string;
-        displayName?: string;
-        nip05?: string;
-      }
+      image?: string;
+      displayName?: string;
+      nip05?: string;
+    }
     | null
     | undefined,
   date: string
@@ -142,7 +149,9 @@ function renderPostBody(
 function renderPostFooter(
   isLoading: boolean,
   isError: boolean,
-  stats: { replies: number; likes: number } | null
+  stats: { replies: number; likes: number } | null,
+  showReplies: boolean = false,
+  shouldShowStats: boolean = false
 ): string {
   if (isLoading) {
     return `
@@ -162,21 +171,82 @@ function renderPostFooter(
     `;
   }
 
-  if (isError || !stats) {
+  if (isError) {
     return '';
   }
+
+  // Always show the toggle button, but only show stats if shouldShowStats is true
+  const statsHtml = shouldShowStats && stats ? `
+    <div class="stat">
+      ${replyIcon}
+      <span>${stats.replies}</span>
+    </div>
+    <div class="stat">
+      ${heartIcon}
+      <span>${stats.likes}</span>
+    </div>
+  ` : '';
 
   return `
     <div class="post-footer">
       <div class='stats-container'>
-        <div class="stat">
-          ${replyIcon}
-          <span>${stats.replies}</span>
+        ${statsHtml}
+        <div class="stat toggle-replies-btn" style="cursor: pointer;">
+          <span>${showReplies ? 'Hide' : 'Show'} Replies</span>
         </div>
-        <div class="stat">
-          ${heartIcon}
-          <span>${stats.likes}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderRepliesSection(
+  theme: Theme,
+  isLoading: boolean,
+  isError: boolean,
+  showReplies: boolean,
+  replies: any[],
+  replyAuthors: Map<string, any>
+): string {
+  if (isLoading || isError || !showReplies) {
+    return '';
+  }
+
+  if (replies.length === 0) {
+    return `
+      <div class="replies-section">
+        <div class="replies-container">
+          <div class="no-replies">No replies yet</div>
         </div>
+      </div>
+    `;
+  }
+
+  const repliesHtml = replies.map(reply => {
+    const author = replyAuthors.get(reply.author.npub);
+    const authorName = author?.displayName || author?.name || 'Unknown';
+    const authorImage = author?.image || '';
+
+    return `
+      <div class="reply-item">
+        <div class="reply-header">
+          <div class="reply-author-avatar">
+            ${authorImage ? `<img src="${authorImage}" alt="Author" />` : ''}
+          </div>
+          <div class="reply-author-info">
+            <span class="reply-author-name">${authorName}</span>
+          </div>
+        </div>
+        <div class="reply-content">
+          ${reply.content}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="replies-section">
+      <div class="replies-container">
+        ${repliesHtml}
       </div>
     </div>
   `;
@@ -281,6 +351,83 @@ function getPostStyles(theme: Theme): string {
         border-radius: 4px;
         font-size: 14px;
       }
+
+      /* Replies section styles */
+      .replies-section {
+        margin-top: 20px;
+        border-top: 1px solid ${theme === 'light' ? '#e1e8ed' : '#38444d'};
+        padding-top: 15px;
+      }
+
+      .replies-container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .reply-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid ${theme === 'light' ? '#e1e8ed' : '#38444d'};
+        border-radius: 8px;
+        background: ${theme === 'light' ? '#f8f9fa' : '#192734'};
+      }
+
+      .reply-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .reply-author-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        overflow: hidden;
+      }
+
+      .reply-author-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .reply-author-info {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .reply-author-name {
+        font-weight: bold;
+        font-size: 14px;
+        color: ${theme === 'light' ? '#14171a' : '#ffffff'};
+      }
+
+      .reply-content {
+        font-size: 14px;
+        color: ${theme === 'light' ? '#14171a' : '#ffffff'};
+        line-height: 1.4;
+        word-break: break-word;
+        white-space: pre-line;
+      }
+
+      .no-replies {
+        text-align: center;
+        color: ${theme === 'light' ? '#657786' : '#8899a6'};
+        font-size: 14px;
+        font-style: italic;
+      }
+
+      .toggle-replies-btn {
+        color: #1DA1F2;
+        font-weight: 500;
+      }
+
+      .toggle-replies-btn:hover {
+        text-decoration: underline;
+      }
     </style>
   `;
 }
@@ -289,10 +436,10 @@ export function renderEmbeddedPost(
   noteId: string,
   authorProfile:
     | {
-        displayName?: string;
-        image?: string;
-        nip05?: string;
-      }
+      displayName?: string;
+      image?: string;
+      nip05?: string;
+    }
     | undefined,
   date: string,
   content: string

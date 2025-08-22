@@ -113,7 +113,7 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
 ## 3. Nostr Post 📝
 
-Embed any Nostr post by providing the event ID.
+Embed any Nostr post by providing the event ID. Now with support for displaying replies!
 
 **Usage:**
 
@@ -123,11 +123,30 @@ Embed any Nostr post by providing the event ID.
 </head>
 <body>
   <nostr-post
-    eventId="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"
+    id="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"
+    theme="light"
+    show-stats="true"
+    show-replies="false"
   ></nostr-post>
-  <!-- Note: The previous example incorrectly used a pubkey, use eventId for posts -->
 </body>
 ```
+
+**Attributes:**
+- `id` (required) - Note ID to display
+- `theme` (optional) - "light" or "dark" theme (default: "light")
+- `relays` (optional) - Comma-separated relay URLs (default: common Nostr relays)
+- `show-stats` (optional) - "true" or "false" to show post statistics (default: "false")
+- `show-replies` (optional) - "true" or "false" to show replies by default (default: "false")
+- `onClick` (optional) - Global function name for post click handler
+- `onAuthorClick` (optional) - Global function name for author click handler
+
+**Features:**
+- **Rich Content Support**: Images, videos, GIFs, links, and embedded posts
+- **Interactive Replies**: Toggle replies on/off with a clickable button
+- **Reply Display**: Shows user avatar, name, and reply content (no individual stats)
+- **Theme Support**: Light and dark themes
+- **Responsive Design**: Mobile-friendly layouts
+- **Error Handling**: Graceful fallbacks for missing content
 
 **Preview:**
 

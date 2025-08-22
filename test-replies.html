@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nostr Post with Replies Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nostr Post with Replies Feature</h1>
+        
+        <div class="instructions">
+            <h3>How to use the new replies feature:</h3>
+            <ul>
+                <li><strong>Attribute Control:</strong> Set <code>show-replies="true"</code> to show replies by default</li>
+                <li><strong>Interactive Toggle:</strong> Click the "Show Replies" / "Hide Replies" button in the stats section</li>
+                <li><strong>Reply Display:</strong> Shows user avatar, name, and reply content only</li>
+                <li><strong>No Stats:</strong> Replies don't show individual stats (reactions, zaps, etc.)</li>
+            </ul>
+        </div>
+
+                <h3>Example 1: Post with replies hidden by default</h3>
+        <nostr-post
+          id="note1qengsmnrh338g7zar8lnz3m270zl8aln55ttaw78ltzvqs4v2llswqu3y2"
+          theme="light"
+          show-stats="true"
+          show-replies="false"
+        ></nostr-post>
+
+        <h3>Example 2: Post with replies shown by default</h3>
+        <nostr-post
+          id="note1fv2tp2k432uw6te0kqfdgshnhtjsl8qm8hyl4e3re7aadmwleh2s09tytn"
+          theme="light"
+          show-stats="true"
+          show-replies="true"
+        ></nostr-post>
+
+        <h3>Example 3: Dark theme with replies</h3>
+        <nostr-post
+          id="note1qengsmnrh338g7zar8lnz3m270zl8aln55ttaw78ltzvqs4v2llswqu3y2"
+          theme="dark"
+          show-stats="true"
+          show-replies="false"
+        ></nostr-post>
+
+        <h3>Example 4: Popular post that might have replies</h3>
+        <nostr-post
+          id="note1ptpydsx7d2d00d5s55nw7mjt7wznmvlqhznwa8apz35ayuu3ck7qq87t4l"
+          theme="light"
+          show-stats="true"
+          show-replies="true"
+        ></nostr-post>
+
+        <h3>Example 5: Another post to test</h3>
+        <nostr-post
+          id="note1q95df66as8758tvgscyhz5ag4ftpdegkjqttamp46etxa0zp90sq2k0j8m"
+          theme="light"
+          show-stats="true"
+          show-replies="false"
+        ></nostr-post>
+    </div>
+
+    <script type="module" src="./dist/components/nostr-post.es.js"></script>
+    
+    <script>
+        // Optional: Add some console logging to see when replies are toggled
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Nostr Post with Replies test page loaded');
+            console.log('Try clicking the "Show Replies" button to see the toggle functionality');
+            console.log('Check the browser console for debugging information about reply fetching');
+        });
+
+        // Add global function to test post clicks
+        function onPostClick(post) {
+            console.log('Post clicked:', post);
+        }
+
+        function onAuthorClick(npub, author) {
+            console.log('Author clicked:', npub, author);
+        }
+    </script>
+</body>
+</html>

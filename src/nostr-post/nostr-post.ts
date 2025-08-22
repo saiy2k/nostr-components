@@ -27,6 +27,11 @@ export default class NostrPost extends HTMLElement {
     nip05: '',
   };
 
+  // Replies functionality
+  private replies: NDKEvent[] = [];
+  private replyAuthors: Map<string, NDKUserProfile | null> = new Map();
+  private showReplies: boolean = false;
+
   private onClick: ((post: NDKEvent | null) => void) | null = null;
   private onAuthorClick:
     | ((npub: string, author: NDKUserProfile | null | undefined) => void)
@@ -74,6 +79,9 @@ export default class NostrPost extends HTMLElement {
       ) => void;
     }
 
+    // Initialize showReplies from attribute
+    this.showReplies = this.getAttribute('show-replies') === 'true';
+
     this.render();
 
     if (!this.rendered) {
@@ -90,6 +98,7 @@ export default class NostrPost extends HTMLElement {
       'id',
       'theme',
       'show-stats',
+      'show-replies',
       'onClick',
       'onAuthorClick',
       'onMentionClick',
@@ -132,6 +141,11 @@ export default class NostrPost extends HTMLElement {
     }
 
     if (name === 'show-stats') {
+      this.render();
+    }
+
+    if (name === 'show-replies') {
+      this.showReplies = newValue === 'true';
       this.render();
     }
   }
@@ -214,6 +228,50 @@ export default class NostrPost extends HTMLElement {
     event.stopPropagation();
 
     window.open(`https://njump.me/p/${username}`, '_blank');
+  }
+
+  async getReplies() {
+    if (!this.post) return;
+
+    console.log('Fetching replies for post:', this.post.id);
+
+    try {
+      const replies = await this.nostrService.getNDK().fetchEvents({
+        kinds: [1], // Text notes
+        '#e': [this.post.id],
+      });
+
+      this.replies = Array.from(replies);
+      console.log('Found replies:', this.replies.length);
+
+      // Fetch author profiles for all replies
+      for (const reply of this.replies) {
+        try {
+          const author = await reply.author.fetchProfile();
+          this.replyAuthors.set(reply.author.npub, author);
+        } catch (error) {
+          console.error(`Failed to fetch profile for reply author:`, error);
+          this.replyAuthors.set(reply.author.npub, null);
+        }
+      }
+
+      // Re-render after fetching replies
+      this.render();
+    } catch (error) {
+      console.error('Failed to fetch replies:', error);
+    }
+  }
+
+  #_onToggleReplies() {
+    if (!this.post) return;
+
+    this.showReplies = !this.showReplies;
+
+    if (this.showReplies && this.replies.length === 0) {
+      this.getReplies();
+    }
+
+    this.render();
   }
 
   async parseText(text: string) {
@@ -395,10 +453,10 @@ export default class NostrPost extends HTMLElement {
 
     const date = post.created_at
       ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
       : '';
 
     // Process the post content
@@ -410,10 +468,10 @@ export default class NostrPost extends HTMLElement {
       noteId,
       authorProfile
         ? {
-            displayName: authorProfile.displayName || '',
-            image: authorProfile.image || '',
-            nip05: authorProfile.nip05 || '',
-          }
+          displayName: authorProfile.displayName || '',
+          image: authorProfile.image || '',
+          nip05: authorProfile.nip05 || '',
+        }
         : undefined,
       date,
       renderedContent
@@ -617,6 +675,9 @@ export default class NostrPost extends HTMLElement {
       shouldShowStats,
       stats: this.stats,
       htmlToRender,
+      showReplies: this.showReplies,
+      replies: this.replies,
+      replyAuthors: this.replyAuthors,
     };
 
     // Render the post using the new render function
@@ -628,10 +689,24 @@ export default class NostrPost extends HTMLElement {
     // Add click handlers for mentions and author after rendering everything
     this.setupMentionClickHandlers();
 
+    // Add click handler for toggle replies button
+    this.setupRepliesToggleHandler();
+
     // Add cursor pointer to post body to indicate it's clickable
     const postBody = this.querySelector('.post-body');
     if (postBody) {
       postBody.setAttribute('style', 'cursor: pointer;');
+    }
+  }
+
+  setupRepliesToggleHandler() {
+    const toggleButton = this.querySelector('.toggle-replies-btn');
+    if (toggleButton) {
+      toggleButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.#_onToggleReplies();
+      });
     }
   }
 }
