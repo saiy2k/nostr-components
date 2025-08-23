@@ -1,114 +1,108 @@
 import { NDKNip07Signer } from '@nostr-dev-kit/ndk';
 import { NostrUserComponent } from '../nostr-user-component';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
+import { NCStatus } from '../nostr-base-component';
 
 /**
  * TODO:
  *  * To have a text attribute. Default value being "Follow me on Nostr"
  *  * iconWidth, iconHeight should be customized via CSS4 vars
+ *  * Need to have separate loading and following states
  */
 export default class NostrFollowButton extends NostrUserComponent {
 
   private isFollowed: boolean = false;
-  private boundHandleClick: (() => Promise<void>) | null = null;
 
   static get observedAttributes() {
     return [...super.observedAttributes];
   }
 
   connectedCallback() {
-    if (!this.rendered) {
-      this.getTheme();
-      this.connectToNostr();
-      this.render();
-      this.rendered = true;
-    }
-  }
-
-  disconnectedCallback() {
-    const button = this.shadowRoot?.querySelector('.nostr-follow-button');
-    if (button && this.boundHandleClick) {
-      button.removeEventListener('click', this.boundHandleClick);
-      this.boundHandleClick = null;
-    }
+    super.connectedCallback?.();
+    this.attachDelegatedListeners();
+    this.render();
   }
 
   attributeChangedCallback(
     name: string,
-    _oldValue: string | null,
-    _newValue: string | null
+    oldValue: string | null,
+    newValue: string | null
   ) {
-    super.attributeChangedCallback(name, _oldValue, _newValue);
+    if (oldValue === newValue) return;
+    super.attributeChangedCallback(name, oldValue, newValue);
     this.render();
   }
 
+  /** Base class functions */
+  protected onStatusChange(_status: NCStatus) {
+    this.render();
+  }
+
+  protected onUserReady(_user: any, _profile: any) {
+    this.render();
+  }
+
+  /** Private functions */
   private async handleFollowClick() {
-    this.isError = false;
     const nip07signer = new NDKNip07Signer();
 
-    this.isLoading = true;
+    this.setStatus(NCStatus.Loading);
     this.render();
 
     try {
       const ndk = this.nostrService.getNDK();
       ndk.signer = nip07signer;
-      await this.connectToNostr();
 
-      const userToFollow = await this.fetchUser();
-
-      if (userToFollow != null) {
-        const signer = ndk.signer;
-        if (!signer) {
-          throw new Error('No signer available');
-        }
-        const signedUser = await signer.user();
-        if (signedUser) {
-          await signedUser.follow(userToFollow);
-        }
-
-        this.isFollowed = true;
-      } else {
-        this.errorMessage = 'Could not resolve user to follow.';
-        this.isError = true;
-        this.isLoading = false;
+      if (!this.user) {
+        this.setStatus(NCStatus.Error, "Could not resolve user to follow.");
         this.render();
         return;
+
       }
+
+      const signer = ndk.signer;
+      if (!signer) {
+        throw new Error('No signer available');
+      }
+      const signedUser = await signer.user();
+      if (signedUser) {
+        await signedUser.follow(this.user);
+      }
+
+      this.isFollowed = true;
+      this.setStatus(NCStatus.Ready);
     } catch (err) {
-      this.isError = true;
 
       const error = err as Error;
+      let errorMessage;
       if (error.message?.includes('NIP-07')) {
-        this.errorMessage = `Looks like you don't have any nostr signing browser extension.
+        errorMessage = `Looks like you don't have any nostr signing browser extension.
                           Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
       } else {
-        this.errorMessage = 'Please authorize, click the button to try again!';
+        errorMessage = 'Please authorize, click the button to try again!';
       }
+      this.setStatus(NCStatus.Error, errorMessage);
     } finally {
-      this.isLoading = false;
       this.render();
     }
   }
 
-  attachEventListeners() {
-    const button = this.shadowRoot!.querySelector('.nostr-follow-button');
-    if (!button) return;
-
-    // Remove any existing listener
-    if (this.boundHandleClick) {
-      button.removeEventListener('click', this.boundHandleClick);
-    }
-
-    // Create and store a new bound handler
-    this.boundHandleClick = this.handleFollowClick.bind(this);
-    button.addEventListener('click', this.boundHandleClick);
+  private attachDelegatedListeners() {
+    this.delegateEvent('click', '.nostr-follow-button', (e) => {
+      // If you render a disabled state while loading, guard it:
+      if (this.status === NCStatus.Loading) return;
+      e.preventDefault?.();
+      e.stopPropagation?.();
+      void this.handleFollowClick();
+    });
   }
 
-
   render() {
-    const iconWidthAttribute = this.getAttribute('icon-width');
+    const isLoading           = this.status === NCStatus.Loading;
+    const isError             = this.status === NCStatus.Error;
+    const iconWidthAttribute  = this.getAttribute('icon-width');
     const iconHeightAttribute = this.getAttribute('icon-height');
-
+    const errorMessage        = super.renderError(this.errorMessage);
     const iconWidth =
       iconWidthAttribute !== null ? Number(iconWidthAttribute) : 25;
     const iconHeight =
@@ -116,16 +110,15 @@ export default class NostrFollowButton extends NostrUserComponent {
 
     const renderOptions: RenderFollowButtonOptions = {
       theme: this.theme,
-      isLoading: this.isLoading,
-      isError: this.isError,
+      isLoading: isLoading,
+      isError: isError,
       isFollowed: this.isFollowed,
-      errorMessage: this.errorMessage,
+      errorMessage: errorMessage,
       iconWidth,
       iconHeight,
     };
 
     this.shadowRoot!.innerHTML = renderFollowButton(renderOptions);
-    this.attachEventListeners();
   }
 }
 
