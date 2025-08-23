@@ -27,38 +27,38 @@ function formatRelativeTime(ts: number): string {
     const now = Date.now();
     const messageTime = ts * 1000;
     const diffMs = now - messageTime;
-    
+
     // Convert to seconds
     const diffSec = Math.floor(diffMs / 1000);
-    
+
     if (diffSec < 60) {
       return 'just now';
     }
-    
+
     // Minutes
     if (diffSec < 3600) {
       const mins = Math.floor(diffSec / 60);
       return `${mins} ${mins === 1 ? 'min' : 'mins'} ago`;
     }
-    
+
     // Hours
     if (diffSec < 86400) {
       const hours = Math.floor(diffSec / 3600);
       return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
     }
-    
+
     // Days
     if (diffSec < 2592000) { // ~30 days
       const days = Math.floor(diffSec / 86400);
       return `${days} ${days === 1 ? 'day' : 'days'} ago`;
     }
-    
+
     // Months
     if (diffSec < 31536000) { // ~365 days
       const months = Math.floor(diffSec / 2592000);
       return `${months} ${months === 1 ? 'month' : 'months'} ago`;
     }
-    
+
     // Years
     const years = Math.floor(diffSec / 31536000);
     return `${years} ${years === 1 ? 'year' : 'years'} ago`;
@@ -193,9 +193,8 @@ export function renderLiveChatInner({
     <div class="nostr-chat-container ${isError ? "nostr-chat-error" : ""}">
       <div class="nostr-chat-header">
         <div class="nostr-chat-header-left">
-          ${
-            recipientNpub && recipientName
-              ? `
+          ${recipientNpub && recipientName
+      ? `
             <div class="nostr-chat-recipient">
               <div class="nostr-chat-recipient-info">
                 <img 
@@ -208,17 +207,17 @@ export function renderLiveChatInner({
               </div>
             </div>
           `
-              : `
+      : `
             <div class="nostr-chat-recipient-placeholder">
               ${getNostrLogo(iconSize, iconSize)}
               <span>Nostr Live Chat</span>
             </div>
           `
-          }
+    }
         </div>
-        ${
-          currentUserName
-            ? `
+        <div class="nostr-chat-header-right">
+          ${currentUserName
+      ? `
           <div class="nostr-chat-self">
             <img 
               src="${sanitizeHtml(currentUserPicture) || ''}"
@@ -229,32 +228,32 @@ export function renderLiveChatInner({
             <span class="nostr-chat-self-name">${sanitizeHtml(currentUserName)}</span>
           </div>
         ` : ''
-        }
+    }
+          <button class="nostr-chat-close-btn" title="Minimize">×</button>
+        </div>
       </div>
 
       <div class="nostr-chat-content">
-        ${
-          !recipientNpub
-            ? `
+        ${!recipientNpub
+      ? `
           <div class="nostr-chat-npub-input-container">
             <input type="text" class="nostr-chat-npub-input" placeholder="Enter recipient's npub/nip05 address..." />
             <button class="nostr-chat-find-btn" ${isFinding ? "disabled" : ""}>
-              ${
-                isFinding
-                  ? `${getLoadingNostrich(theme, iconSize, iconSize)} <span>Finding...</span>`
-                  : `<span>Find</span>`
-              }
+              ${isFinding
+        ? `${getLoadingNostrich(theme, iconSize, iconSize)} <span>Finding...</span>`
+        : `<span>Find</span>`
+      }
             </button>
           </div>
         `
-            : showWelcome
-            ? `
+      : showWelcome
+        ? `
           <div class="nostr-chat-welcome">
             <div class="nostr-chat-welcome-text">${sanitizeHtml(welcomeText) || 'Welcome!'}</div>
             <button class="nostr-chat-start-btn">${sanitizeHtml(startChatText) || 'Start chat'}</button>
           </div>
         `
-            : `
+        : `
           <div class="nostr-chat-history">
             ${messages.map(msg => `
               <div class="nostr-chat-message-row nostr-chat-message-${safeSenderClass((msg as any).sender)} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''} ${msg.sender === 'me' && msg.status === 'failed' ? 'failed' : ''}">
@@ -273,15 +272,14 @@ export function renderLiveChatInner({
             >${sanitizeHtml(message)}</textarea>
             <div class="${counterClass}" aria-live="polite">${remaining} chars left</div>
             <button class="nostr-chat-send-btn" ${isLoading ? "disabled" : ""}>
-              ${
-                isLoading
-                  ? getLoadingNostrich(theme, 16, 16)
-                  : `Send`
-              }
+              ${isLoading
+          ? getLoadingNostrich(theme, 16, 16)
+          : `Send`
+        }
             </button>
           </div>
         `
-        }
+    }
       </div>
 
       ${isError ? `<small class="nostr-chat-error-message">${sanitizeHtml(errorMessage)}</small>` : ""}
@@ -351,23 +349,27 @@ export function getLiveChatStyles(theme: Theme): string {
 
       /* Close (minimize) button for floating panel */
       .nostr-chat-close-btn {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        right: 12px;
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 18px; /* Larger X symbol */
+        font-size: 16px;
         cursor: pointer;
-        background: rgba(0,0,0,0.5);
-        color: #fff;
+        background: rgba(0,0,0,0.1);
+        color: var(--nstrc-chat-text-color);
         border: none;
-        z-index: 1;
+        transition: background-color 0.2s ease;
+      }
+      .nostr-chat-close-btn:hover {
+        background: rgba(0,0,0,0.2);
+      }
+      
+      /* Hide close button in embed mode */
+      :host([display-type="embed"]) .nostr-chat-close-btn {
+        display: none;
       }
 
       /* Launcher: FAB */
@@ -445,9 +447,15 @@ export function getLiveChatStyles(theme: Theme): string {
         padding: 12px 16px;
         border-bottom: var(--nstrc-chat-border);
         display: flex;
-        align-items: center; /* Already centered vertically */
+        align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
+      }
+      
+      .nostr-chat-header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
       }
 
       .nostr-chat-recipient, .nostr-chat-recipient-placeholder {
@@ -498,6 +506,25 @@ export function getLiveChatStyles(theme: Theme): string {
         gap: 12px;
         flex-grow: 1;
         overflow-y: auto;
+      }
+      
+      /* Scrollbar styling for dark theme */
+      .nostr-chat-content::-webkit-scrollbar,
+      .nostr-chat-history::-webkit-scrollbar {
+        width: 8px;
+      }
+      .nostr-chat-content::-webkit-scrollbar-track,
+      .nostr-chat-history::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .nostr-chat-content::-webkit-scrollbar-thumb,
+      .nostr-chat-history::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+      .nostr-chat-content::-webkit-scrollbar-thumb:hover,
+      .nostr-chat-history::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
       }
       
       .nostr-chat-history {
@@ -654,9 +681,9 @@ export function getLiveChatStyles(theme: Theme): string {
         min-width: max-content;
       }
       .nostr-chat-char-counter.warn {
-        color: #ffcc00; /* Yellow color for warning */
+        color: #ff8c00; /* Brighter orange color for warning */
         opacity: 1;
-        font-weight: 600;
+        font-weight: 700;
       }
 
       .nostr-chat-find-btn, .nostr-chat-send-btn {
