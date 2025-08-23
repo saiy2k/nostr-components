@@ -54,7 +54,7 @@ export default class NostrFollowButton extends NostrUserComponent {
       ndk.signer = nip07signer;
       await this.connectToNostr();
 
-      const userToFollow = await this.resolveNDKUser();
+      const userToFollow = await this.fetchUser();
 
       if (userToFollow != null) {
         const signer = ndk.signer;

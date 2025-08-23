@@ -51,11 +51,11 @@ export default class NostrProfile extends NostrUserComponent {
       this.isLoading = true;
       this.render();
 
-      await this.resolveNDKUser();
+      await this.fetchUser();
 
       if (this.user) {
 
-        await this.getProfile();
+        await this.fetchProfile();
 
         if (this.profile != null) {
 

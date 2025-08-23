@@ -1,17 +1,36 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { NostrBaseComponent } from './nostr-base-component';
+import { NostrBaseComponent, NCStatus } from './nostr-base-component';
 import { DEFAULT_PROFILE_IMAGE } from './common/constants';
 
+const EVT_USER = 'nc:user';
+
+/**
+ * Base class for components that need a resolved Nostr user and profile.
+ * 
+ * Attributes:
+ * - `npub`   — user's Nostr public key in npub format
+ * - `nip05`  — user's NIP-05 identifier
+ * - `pubkey` — raw hex-encoded public key
+ * 
+ * Behavior:
+ * - On connect (and whenever any identifier changes), resolves an `NDKUser`
+ *   via `nostrService.resolveNDKUser`, then fetches the `NDKUserProfile`.
+ * - Updates `status` via the base class `setStatus()`:
+ *   - Loading → Ready on success; Error on failures or missing identifiers.
+ * - Emits `nc:user` event with `{ user, profile }` when ready.
+ */
 export class NostrUserComponent extends NostrBaseComponent {
 
+  protected user: NDKUser | null = null;
   protected profile: NDKUserProfile | null = null;
 
-  protected user: NDKUser | null = null;
+  private loadSeq = 0;
 
   constructor(shadow: boolean = true) {
     super(shadow);
   }
 
+  /** Lifecycle methods */
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
@@ -21,36 +40,93 @@ export class NostrUserComponent extends NostrBaseComponent {
     ];
   }
 
-  protected async resolveNDKUser(): Promise<NDKUser | null> {
-    const userNpub = this.getAttribute('npub');
-    const userNip05 = this.getAttribute('nip05');
-    const userPubkey = this.getAttribute('pubkey');
+  connectedCallback() {
+    super.connectedCallback?.();
+    this.loadUserAndProfile().catch(e => {
+      console.error('[NostrUserComponent] init failed:', e);
+    });
+  }
 
-    if (!userNpub && !userNip05 && !userPubkey) {
-      this.errorMessage = 'Provide npub, nip05 or pubkey';
-      this.isError = true;
-      return null;
-    } else {
-      this.user = await this.nostrService.resolveNDKUser({
-        npub: userNpub,
-        nip05: userNip05,
-        pubkey: userPubkey,
-      });
-      return this.user;
+  attributeChangedCallback(
+    name: string,
+    oldValue: string | null,
+    newValue: string | null
+  ) {
+    if (oldValue === newValue) return;
+    super.attributeChangedCallback?.(name, oldValue, newValue);
+
+    if (name === 'npub' || name === 'nip05' || name === 'pubkey') {
+      // Re-resolve user + profile on identity changes
+      void this.loadUserAndProfile();
     }
   }
 
-  protected async getProfile(): Promise<NDKUserProfile | null> {
-    if (!this.user) {
-      this.profile = await this.nostrService.getProfile(this.user);
+  /** Protected methods */
+  protected async loadUserAndProfile(): Promise<void> {
+    const seq = ++this.loadSeq; // token to prevent stale writes
 
-      if (this.profile != null) {
-        if (this.profile.picture === undefined) {
-          this.profile.picture = DEFAULT_PROFILE_IMAGE;
-        }
-      }
-      return this.profile;
+    // Ensure relays are connected; handle failure inside to avoid unhandled rejection
+    try {
+      await this.ensureNostrConnected();
+    } catch (e) {
+      if (seq !== this.loadSeq) return; // stale
+      // Base already set status=Error, but make the failure explicit here too
+      console.error('[NostrUserComponent] Relay connect failed before user/profile load:', e);
+      return;
     }
-    return null;
+
+    this.setStatus(NCStatus.Loading);
+
+    try {
+      const user = await this.fetchUser();
+      const profile = await this.fetchProfile(user);
+
+      // stale call check
+      if (seq !== this.loadSeq) return;
+
+      this.user = user;
+      this.profile = profile;
+      this.setStatus(NCStatus.Ready);
+      // Notify listeners that user + profile are available
+      this.dispatchEvent(new CustomEvent(EVT_USER, {
+        detail: { user: this.user, profile: this.profile },
+        bubbles: true,
+        composed: true,
+      }));
+      this.onUserReady(this.user!, this.profile);
+    } catch (err) {
+      if (seq !== this.loadSeq) return; // stale
+      const msg = err instanceof Error ? err.message : 'Failed to load user/profile';
+      console.error('[NostrUserComponent] ' + msg, err);
+      this.setStatus(NCStatus.Error, msg);
+    }
   }
+
+  protected async fetchUser(): Promise<NDKUser> {
+    const npub = this.getAttribute('npub');
+    const nip05 = this.getAttribute('nip05');
+    const pubkey = this.getAttribute('pubkey');
+
+    if (!npub && !nip05 && !pubkey) {
+      throw new Error('Provide one of: npub, nip05, or pubkey');
+    }
+
+    const user = await this.nostrService.resolveNDKUser({ npub, nip05, pubkey });
+    if (!user) {
+      throw new Error('Unable to resolve user from provided identifier');
+    }
+    return user;
+  }
+
+  protected async fetchProfile(user: NDKUser): Promise<NDKUserProfile | null> {
+    const profile = await this.nostrService.getProfile(user);
+    if (profile && (profile.picture === undefined || profile.picture === null)) {
+      profile.picture = DEFAULT_PROFILE_IMAGE;
+    }
+    return profile ?? null;
+  }
+
+  /** Hook for subclasses to react when user/profile are ready (e.g., render). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected onUserReady(_user: NDKUser, _profile: NDKUserProfile | null) { }
 }

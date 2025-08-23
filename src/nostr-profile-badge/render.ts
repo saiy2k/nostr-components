@@ -1,24 +1,14 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { maskNPub } from '../common/utils';
+import { escapeHtml, maskNPub } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 
-function escapeHtml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
+/**
+ * Should this become a component on it's own?
+ */
 export function renderNpub(
   ndkUser: NDKUser | null,
   npubAttribute: string | null,
 ): string {
-  if (ndkUser?.profile?.nip05) {
-    return '';
-  }
-
   const npub = npubAttribute || ndkUser?.npub;
   if (!npub) {
     console.warn('Cannot use showNpub without providing a nPub');
@@ -42,10 +32,42 @@ export function renderProfileBadge(
   showNpub: boolean,
   showFollow: boolean
 ): string {
-  let contentHTML = '';
 
   if (isLoading) {
-    contentHTML = `
+    return renderLoading();
+  }
+
+  if (isError || userProfile == null) {
+    return renderError();
+  }
+
+  const profileName = escapeHtml(
+    userProfile.displayName ||
+    userProfile.name ||
+    maskNPub(ndkUser?.npub || '')
+  );
+  const profileImage = escapeHtml(userProfile.picture || DEFAULT_PROFILE_IMAGE);
+  const nip05 = escapeHtml(userProfile?.nip05 || '');
+  const pubkey = escapeHtml(ndkUser?.pubkey || '');
+  const shouldShowNpub = showNpub && !userProfile?.nip05;
+
+  return `
+      <div class='nostr-profile-badge-container'>
+        <div class='nostr-profile-badge-left-container'>
+          <img src='${profileImage}' alt='Nostr profile image of ${profileName}'/>
+        </div>
+        <div class='nostr-profile-badge-right-container'>
+          <div class='nostr-profile-badge-name' title="${profileName}">${profileName}</div>
+          ${userProfile.nip05 ? `<div class='nostr-profile-badge-nip05' title="${nip05}">${nip05}</div>` : ''}
+          ${shouldShowNpub === true ? renderNpub(ndkUser, npubAttribute) : ''}
+          ${showFollow === true && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${pubkey}"></nostr-follow-button>` : ''}
+        </div>
+      </div>
+    `;
+}
+
+function renderLoading(): string {
+  return `
       <div class='nostr-profile-badge-container'>
         <div class='nostr-profile-badge-left-container'>
           <div class="skeleton img-skeleton"></div>
@@ -56,8 +78,10 @@ export function renderProfileBadge(
         </div>
       </div>
     `;
-  } else if (isError || userProfile == null) {
-    contentHTML = `
+}
+
+function renderError(): string {
+  return `
       <div class='nostr-profile-badge-container'>
         <div class='nostr-profile-badge-left-container'>
           <div class="error">&#9888;</div>
@@ -67,27 +91,4 @@ export function renderProfileBadge(
         </div>
       </div>
     `;
-  } else {
-    const profileName =
-      userProfile.displayName ||
-      userProfile.name ||
-      maskNPub(ndkUser?.npub || '');
-    const profileImage = userProfile.picture || DEFAULT_PROFILE_IMAGE;
-
-    contentHTML = `
-      <div class='nostr-profile-badge-container'>
-        <div class='nostr-profile-badge-left-container'>
-          <img src='${escapeHtml(profileImage)}' alt='Nostr profile image of ${escapeHtml(profileName)}'/>
-        </div>
-        <div class='nostr-profile-badge-right-container'>
-          <div class='nostr-profile-badge-name' title="${escapeHtml(profileName)}">${escapeHtml(profileName)}</div>
-          ${userProfile.nip05 ? `<div class='nostr-profile-badge-nip05' title="${escapeHtml(userProfile.nip05)}">${escapeHtml(userProfile.nip05)}</div>` : ''}
-          ${showNpub === true ? renderNpub(ndkUser, npubAttribute ? escapeHtml(npubAttribute) : null) : ''}
-          ${showFollow === true && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${escapeHtml(ndkUser.pubkey)}"></nostr-follow-button>` : ''}
-        </div>
-      </div>
-    `;
-  }
-
-  return contentHTML;
 }
