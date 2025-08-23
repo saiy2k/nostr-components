@@ -51,13 +51,6 @@ export function getProfileBadgeStyles(theme: Theme): string {
         contain: content;
       }
 
-      .nostr-profile-badge-wrapper {
-        /* Wrapper to contain all the component's content */
-        display: block;
-        width: 100%;
-        height: 100%;
-      }
-
       .nostr-profile-badge-container {
         display: flex;
         gap: 12px;
@@ -97,27 +90,20 @@ export function getProfileBadgeStyles(theme: Theme): string {
 
       .nostr-profile-badge-name {
         font-weight: 600;
-        font-size: 16px;
+        font-size: 1em;
         color: var(--nstrc-profile-badge-name-color, #444);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        padding-bottom: 4px;
       }
 
-      .nostr-profile-badge-nip05 {
-        font-size: 14px;
-        color: var(--nstrc-profile-badge-nip05-color, #808080);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .npub-container {
+      .badge-row {
         display: flex;
         align-items: center;
         gap: 4px;
         font-family: monospace;
-        font-size: 12px;
+        font-size: 0.8em;
         color: var(--nstrc-profile-badge-text-color, #666666);
       }
 
@@ -125,6 +111,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
         cursor: pointer;
         opacity: 0.7;
         transition: opacity 0.2s;
+        font-size: 1.5em;
       }
 
       .copy-button:hover {
@@ -180,12 +167,12 @@ export function getProfileBadgeStyles(theme: Theme): string {
         border-radius: 50%;
         background-color: #ffebee;
         color: #d32f2f;
-        font-size: 24px;
+        font-size: 2em;
       }
 
       .error-text {
         color: #d32f2f;
-        font-size: 14px;
+        font-size: 1em;
       }
     </style>
   `;

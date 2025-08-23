@@ -1,6 +1,6 @@
 import { NCStatus } from '../nostr-base-component';
 import { NostrUserComponent } from '../nostr-user-component';
-import { parseBooleanAttribute } from '../common/utils';
+import { parseBooleanAttribute, copyToClipboard } from '../common/utils';
 import { renderProfileBadge } from './render';
 import { getProfileBadgeStyles } from './style';
 
@@ -22,6 +22,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   async connectedCallback() {
     super.connectedCallback?.();
+    this.attachDelegatedListeners();
     this.render();
   }
 
@@ -48,11 +49,6 @@ export default class NostrProfileBadge extends NostrUserComponent {
   }
 
   /** Private functions */
-  private copyToClipboard(text: string) {
-    // ignore promise – we don’t need to block UI
-    navigator.clipboard.writeText(text).catch(() => {/* no-op */});
-  }
-
   private onProfileClick() {
     if (this.status === NCStatus.Error) return;
 
@@ -77,32 +73,28 @@ export default class NostrProfileBadge extends NostrUserComponent {
     }
   }
 
-  private attachEventListeners() {
-    const root = this.shadowRoot;
-    if (!root) return;
+  private attachDelegatedListeners() {
 
-    const profileBadge = root.querySelector('.nostr-profile-badge-container');
-    const npubCopy     = root.querySelector('#npub-copy');
-    const nip05Copy    = root.querySelector('#nip05-copy');
-
-    // Click on the badge (except follow-button area)
-    profileBadge?.addEventListener('click', (e: Event) => {
-      if (!(e.target as HTMLElement).closest('.nostr-follow-button-container')) {
+    // Click anywhere on the profile badge (except follow button, copy buttons)
+    this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.copy-button, .nostr-follow-button-container')) {
         this.onProfileClick();
       }
     });
 
     // NPUB copy
-    npubCopy?.addEventListener('click', (e: Event) => {
+    this.delegateEvent('click', '#npub-copy', (e: Event) => {
       e.stopPropagation();
-      this.copyToClipboard(this.getAttribute('npub') || this.user?.npub || '');
+      copyToClipboard(this.getAttribute('npub') || this.user?.npub || '');
     });
 
     // NIP-05 copy
-    nip05Copy?.addEventListener('click', (e: Event) => {
+    this.delegateEvent('click', '#nip05-copy', (e: Event) => {
       e.stopPropagation();
-      this.copyToClipboard(this.getAttribute('nip05') || this.profile?.nip05 || '');
+      copyToClipboard(this.getAttribute('nip05') || this.profile?.nip05 || '');
     });
+
   }
 
   render() {
@@ -112,20 +104,17 @@ export default class NostrProfileBadge extends NostrUserComponent {
     const isLoading = this.status === NCStatus.Loading;
     const isError   = this.status === NCStatus.Error;
 
-    // Update theme class on host element
-    this.classList.toggle('dark', this.theme === 'dark');
-    this.classList.toggle('loading', isLoading);
-    this.classList.toggle('error-container', isError);
-
     // Get attribute values
     const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
     const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
     const npubAttribute = this.getAttribute('npub') || '';
+    const errorMessage  = super.renderError(this.errorMessage);
 
     // Generate the HTML content
     const contentHTML = renderProfileBadge(
       isLoading,
       isError,
+      errorMessage,
       this.profile,
       this.user,
       npubAttribute,
@@ -136,12 +125,8 @@ export default class NostrProfileBadge extends NostrUserComponent {
     // Combine styles and content for shadow DOM
     root.innerHTML = `
       ${getProfileBadgeStyles(this.theme)}
-      <div class="nostr-profile-badge-wrapper">
-        ${contentHTML}
-      </div>
+      ${contentHTML}
     `;
-
-    this.attachEventListeners();
   }
 }
 

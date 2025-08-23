@@ -1,4 +1,5 @@
 import NDK, { NDKKind, NDKEvent } from '@nostr-dev-kit/ndk';
+import { nip19 } from "nostr-tools";
 
 import { Theme } from './types';
 import { DEFAULT_RELAYS, MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';
@@ -127,13 +128,8 @@ export function parseTheme(themeAttr: string | null): Theme {
   if (theme === 'light' || theme === 'dark') {
     return theme;
   }
-  if (!theme) {
-    return 'light';
-  }
 
-  throw new Error(
-    `Invalid theme '${theme}'. Accepted values are 'light', 'dark'`
-  );
+  return 'light';
 }
 
 export function parseBooleanAttribute(attr: string | null): boolean {
@@ -156,4 +152,27 @@ export function isValidUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function isValidHex(hex: string): boolean {
+  return /^[0-9a-fA-F]+$/.test(hex) && hex.length === 64;
+}
+
+export function validateNpub(npub: string): boolean {
+  try {
+    nip19.decode(npub);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+export function validateNip05(nip05: string): boolean {
+  const nip05Regex = /^[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+\.[a-zA-Z]{2,}$/;
+  return nip05Regex.test(nip05);
+}
+
+export function copyToClipboard(text: string) {
+  // ignore promise – we don’t need to block UI
+  navigator.clipboard.writeText(text).catch(() => {/* no-op */ });
 }

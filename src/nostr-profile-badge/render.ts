@@ -16,9 +16,20 @@ export function renderNpub(
   }
 
   return `
-    <div class="npub-container">
-      <span class="npub">${maskNPub(npub)}</span>
+    <div class="badge-row">
+      ${maskNPub(npub)}
       <span id="npub-copy" class="copy-button">&#x2398;</span>
+    </div>
+  `;
+}
+
+export function renderNip05(
+  nip05: String,
+): string {
+  return `
+    <div class="badge-row">
+      ${nip05}
+      <span id="nip05-copy" class="copy-button">&#x2398;</span>
     </div>
   `;
 }
@@ -26,6 +37,7 @@ export function renderNpub(
 export function renderProfileBadge(
   isLoading: boolean,
   isError: boolean,
+  errorMessage: String,
   userProfile: NDKUserProfile | null,
   ndkUser: NDKUser | null,
   npubAttribute: string | null,
@@ -38,7 +50,7 @@ export function renderProfileBadge(
   }
 
   if (isError || userProfile == null) {
-    return renderError();
+    return renderError(errorMessage);
   }
 
   const profileName = escapeHtml(
@@ -49,7 +61,6 @@ export function renderProfileBadge(
   const profileImage = escapeHtml(userProfile.picture || DEFAULT_PROFILE_IMAGE);
   const nip05 = escapeHtml(userProfile?.nip05 || '');
   const pubkey = escapeHtml(ndkUser?.pubkey || '');
-  const shouldShowNpub = showNpub && !userProfile?.nip05;
 
   return `
       <div class='nostr-profile-badge-container'>
@@ -58,8 +69,8 @@ export function renderProfileBadge(
         </div>
         <div class='nostr-profile-badge-right-container'>
           <div class='nostr-profile-badge-name' title="${profileName}">${profileName}</div>
-          ${userProfile.nip05 ? `<div class='nostr-profile-badge-nip05' title="${nip05}">${nip05}</div>` : ''}
-          ${shouldShowNpub === true ? renderNpub(ndkUser, npubAttribute) : ''}
+          ${userProfile.nip05 ? renderNip05(nip05) : ''}
+          ${showNpub === true ? renderNpub(ndkUser, npubAttribute) : ''}
           ${showFollow === true && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${pubkey}"></nostr-follow-button>` : ''}
         </div>
       </div>
@@ -80,14 +91,14 @@ function renderLoading(): string {
     `;
 }
 
-function renderError(): string {
+function renderError(errorMessage: String): string {
   return `
       <div class='nostr-profile-badge-container'>
         <div class='nostr-profile-badge-left-container'>
           <div class="error">&#9888;</div>
         </div>
         <div class='nostr-profile-badge-right-container'>
-          <span class="error-text">Unable to load. Check console logs</span>
+          ${errorMessage}
         </div>
       </div>
     `;

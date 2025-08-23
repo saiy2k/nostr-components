@@ -53,9 +53,11 @@ export class NostrBaseComponent extends HTMLElement {
   }
 
   connectedCallback() {
-    this.getTheme();
-    // Avoid duplicate connects if a subclass handles it
-    if (this.status === NCStatus.Idle) void this.connectToNostr();
+    if (this.validateInputs()) {
+      this.getTheme();
+      // Avoid duplicate connects if a subclass handles it
+      if (this.status === NCStatus.Idle) void this.connectToNostr();
+    }
   }
 
   attributeChangedCallback(
@@ -64,13 +66,17 @@ export class NostrBaseComponent extends HTMLElement {
     newValue: string | null
   ) {
     if (oldValue === newValue) return;
-    if (name === 'relays') {
-      this.resetNostrReadyBarrier();
-      void this.connectToNostr();
-      return;
-    }
 
-    if (name === 'theme') this.getTheme();
+    if (name === 'theme' || name === 'relays') {
+      if (this.validateInputs()) {
+        if (name === 'relays') {
+          this.resetNostrReadyBarrier();
+          void this.connectToNostr();
+        }
+
+        if (name === 'theme') this.getTheme();
+      }
+    }
   }
 
   /** Status management */
@@ -93,13 +99,35 @@ export class NostrBaseComponent extends HTMLElement {
   protected onStatusChange(_status: NCStatus) { }
 
   /** Protected methods */
+  protected validateInputs(): boolean {
+    const theme   = this.getAttribute('theme') || 'light';
+    const relays  = this.getAttribute('relays');
+    const tagName = this.tagName.toLowerCase();
+
+    if (!(theme === 'light' || theme === 'dark')) {
+      this.setStatus(NCStatus.Error, `Invalid theme '${theme}'. Accepted values are 'light', 'dark'`);
+      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+      return false;
+      // TODO: Improve relay validation
+    } else if (relays && typeof relays != 'string') {
+      this.setStatus(NCStatus.Error, `Invalid relays list`);
+      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+      return false;
+    }
+
+    this.errorMessage = "";
+    return true;
+  }
+
   protected async connectToNostr() {
     const seq = ++this.connectSeq;
     this.setStatus(NCStatus.Loading);
     try {
       await this.nostrService.connectToNostr(this.getRelays());
       if (seq !== this.connectSeq) return; // stale attempt
-      this.setStatus(NCStatus.Ready);
+      if (this.validateInputs() == true) {
+        this.setStatus(NCStatus.Ready);
+      }
       this.nostrReadyResolve?.();
     } catch (error) {
       if (seq !== this.connectSeq) return; // stale attempt
@@ -119,6 +147,37 @@ export class NostrBaseComponent extends HTMLElement {
 
   protected getTheme() {
     this.theme = parseTheme(this.getAttribute('theme'));
+  }
+
+  /**
+   * Delegate events within shadow DOM.
+   * Example: this.delegateEvent('click', '#npub-copy', (e) => this.copyNpub(e));
+  */
+  protected delegateEvent<K extends keyof HTMLElementEventMap>(
+    type: K,
+    selector: string,
+    handler: (event: HTMLElementEventMap[K]) => void
+  ) {
+    const root = this.shadowRoot;
+    if (!root) return;
+
+    // Attach once per (event type, selector)
+    const key = `${type}:${selector}`;
+    if ((this as any)._delegated?.has(key)) return;
+
+    if (!(this as any)._delegated) (this as any)._delegated = new Set<string>();
+    (this as any)._delegated.add(key);
+
+    root.addEventListener(type, (e) => {
+      const t = e.target as HTMLElement;
+      if (t.closest(selector)) {
+        handler(e as any);
+      }
+    });
+  }
+
+  protected renderError(errorMessage: String): string {
+    return `<span class="error-text">Error: ${errorMessage}</span>`;
   }
 
   /** Private methods */

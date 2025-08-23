@@ -1,6 +1,7 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from './nostr-base-component';
 import { DEFAULT_PROFILE_IMAGE } from './common/constants';
+import { isValidHex, validateNpub, validateNip05 } from './common/utils';
 
 const EVT_USER = 'nc:user';
 
@@ -24,6 +25,7 @@ export class NostrUserComponent extends NostrBaseComponent {
   protected user: NDKUser | null = null;
   protected profile: NDKUserProfile | null = null;
 
+  // guard to ignore stale user fetches
   private loadSeq = 0;
 
   constructor(shadow: boolean = true) {
@@ -42,9 +44,12 @@ export class NostrUserComponent extends NostrBaseComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
-    this.loadUserAndProfile().catch(e => {
-      console.error('[NostrUserComponent] init failed:', e);
-    });
+
+    if (this.validateInputs() == true) {
+      this.loadUserAndProfile().catch(e => {
+        console.error('[NostrUserComponent] init failed:', e);
+      });
+    }
   }
 
   attributeChangedCallback(
@@ -56,12 +61,48 @@ export class NostrUserComponent extends NostrBaseComponent {
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
     if (name === 'npub' || name === 'nip05' || name === 'pubkey') {
-      // Re-resolve user + profile on identity changes
-      void this.loadUserAndProfile();
+      if (this.validateInputs() == true) {
+        // Re-resolve user + profile on identity changes
+        void this.loadUserAndProfile();
+      }
     }
   }
 
   /** Protected methods */
+  protected validateInputs(): boolean {
+
+    if (!super.validateInputs()) return false;
+
+    const npub        = this.getAttribute("npub");
+    const pubkeyAttr  = this.getAttribute("pubkey");
+    const nip05Attr   = this.getAttribute("nip05");
+    const tagName     = this.tagName.toLowerCase();
+
+    if (npub == null && pubkeyAttr == null && nip05Attr == null) {
+      this.setStatus(NCStatus.Error, "Provide npub, nip05 or pubkey attribute");
+      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+      return false;
+    }
+
+    if (pubkeyAttr && !isValidHex(pubkeyAttr)) {
+      this.setStatus(NCStatus.Error, `Invalid Pubkey: ${pubkeyAttr}`);
+      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+      return false;
+    } else if (nip05Attr && !validateNip05(nip05Attr)) {
+      this.setStatus(NCStatus.Error, `Invalid Nip05: ${nip05Attr}`);
+      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+      return false;
+    } else if (npub && !validateNpub(npub)) {
+      this.setStatus(NCStatus.Error, `Invalid Npub: ${npub}`);
+      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+      return false;
+    }
+
+    this.errorMessage = "";
+    return true;
+
+  }
+
   protected async loadUserAndProfile(): Promise<void> {
     const seq = ++this.loadSeq; // token to prevent stale writes
 
@@ -103,9 +144,9 @@ export class NostrUserComponent extends NostrBaseComponent {
   }
 
   protected async fetchUser(): Promise<NDKUser> {
-    const npub = this.getAttribute('npub');
-    const nip05 = this.getAttribute('nip05');
-    const pubkey = this.getAttribute('pubkey');
+    const npub    = this.getAttribute('npub');
+    const nip05   = this.getAttribute('nip05');
+    const pubkey  = this.getAttribute('pubkey');
 
     if (!npub && !nip05 && !pubkey) {
       throw new Error('Provide one of: npub, nip05, or pubkey');
