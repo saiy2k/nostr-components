@@ -50,7 +50,7 @@ export default class NostrLiveChat extends HTMLElement {
   private recipientPubkey: string | null = null;
   private message: string = "";
   private messages: Message[] = [];
-  
+
   // Current user (signer) info for "Logged in as" UI
   private currentUserPubkey: string | null = null;
   private currentUserNpub: string | null = null;
@@ -117,25 +117,25 @@ export default class NostrLiveChat extends HTMLElement {
       if (typeof window !== 'undefined' && (window as any).nostr) {
         const nostr = (window as any).nostr;
         console.log('Nostr extension found, checking for public key...');
-        
+
         try {
           // Special handling for nos2x extension
           // Check if this is nos2x by looking for specific patterns in the API
-          const isNos2x = !!(nostr.enable && typeof nostr.enable === 'function' && 
-                            nostr.getPublicKey && typeof nostr.getPublicKey === 'function');
-          
+          const isNos2x = !!(nostr.enable && typeof nostr.enable === 'function' &&
+            nostr.getPublicKey && typeof nostr.getPublicKey === 'function');
+
           console.log('Is this nos2x extension?', isNos2x);
-          
+
           if (isNos2x) {
             console.log('Using nos2x specific flow');
             try {
               // First enable the extension
               await nostr.enable();
               console.log('nos2x extension enabled');
-              
+
               // Use a timeout to ensure extension is ready
               await new Promise(resolve => setTimeout(resolve, 100));
-              
+
               // Get public key from nos2x
               const nos2xResult = await nostr.getPublicKey();
               console.log('nos2x returned pubkey:', nos2xResult);
@@ -158,7 +158,7 @@ export default class NostrLiveChat extends HTMLElement {
                 console.warn('Extension enable failed, continuing anyway:', enableError);
               }
             }
-            
+
             // Try to get public key
             if (typeof nostr.getPublicKey === 'function') {
               console.log('Calling getPublicKey()...');
@@ -231,27 +231,27 @@ export default class NostrLiveChat extends HTMLElement {
         this.currentUserPubkey = pubkey;
         this.currentUserNpub = nip19.npubEncode(pubkey);
         console.log('Got pubkey from extension and will use it:', pubkey);
-        
+
         try {
           const user = ndk.getUser({ pubkey });
           console.log('Fetching profile for user:', pubkey);
           await user.fetchProfile();
           console.log('Fetched profile:', user.profile);
-          
+
           this.currentUserName = user.profile?.displayName || user.profile?.name || this.currentUserNpub?.substring(0, 10) || null;
           this.currentUserPicture = user.profile?.image || null;
-          
+
           if (!this.currentUserName) {
             console.warn('No username found in profile');
           }
           if (!this.currentUserPicture) {
             console.warn('No profile picture found');
           }
-          
-          console.log('Profile info set:', { 
-            name: this.currentUserName, 
-            picture: this.currentUserPicture, 
-            npub: this.currentUserNpub 
+
+          console.log('Profile info set:', {
+            name: this.currentUserName,
+            picture: this.currentUserPicture,
+            npub: this.currentUserNpub
           });
         } catch (error) {
           console.error('Error fetching profile:', error);
@@ -261,12 +261,12 @@ export default class NostrLiveChat extends HTMLElement {
         this.render();
       } else {
         console.log('Checking for direct nos2x logs in console...');
-        
+
         // Try to detect the pubkey from window level objects that nos2x might set
         try {
           // Wait a bit for the extension to initialize
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           // Try again once more with direct extension call
           if (typeof window !== 'undefined' && (window as any).nostr) {
             console.log('Trying direct call to extension again...');
@@ -277,17 +277,17 @@ export default class NostrLiveChat extends HTMLElement {
                 // Call ourselves recursively with the pubkey we found
                 this.currentUserPubkey = directPubkey;
                 this.currentUserNpub = nip19.npubEncode(directPubkey);
-                
+
                 // Get user profile
                 try {
                   const user = ndk.getUser({ pubkey: directPubkey });
                   console.log('Fetching profile for user on second try:', directPubkey);
                   await user.fetchProfile();
                   console.log('Fetched profile on second try:', user.profile);
-                  
+
                   this.currentUserName = user.profile?.displayName || user.profile?.name || this.currentUserNpub?.substring(0, 10) || null;
                   this.currentUserPicture = user.profile?.image || null;
-                  
+
                   this.render();
                   return;
                 } catch (profileError) {
@@ -421,7 +421,7 @@ export default class NostrLiveChat extends HTMLElement {
   // Stop any active DM subscription and clear debounce timer
   private unsubscribeFromDms() {
     if (this.dmSubscription) {
-      try { this.dmSubscription.stop(); } catch {}
+      try { this.dmSubscription.stop(); } catch { }
       this.dmSubscription = null;
     }
     if (this.resubscribeTimer) {
@@ -659,12 +659,12 @@ export default class NostrLiveChat extends HTMLElement {
     try {
       const ndk = this.nostrService.getNDK();
       let signer;
-      
+
       // Enhanced check for NIP-07 extension - verify if fully available with required methods
-      if (typeof window !== 'undefined' && 
-          (window as any).nostr && 
-          (window as any).nostr.getPublicKey && 
-          (window as any).nostr.signEvent) {
+      if (typeof window !== 'undefined' &&
+        (window as any).nostr &&
+        (window as any).nostr.getPublicKey &&
+        (window as any).nostr.signEvent) {
         try {
           signer = new NDKNip07Signer();
         } catch (err) {
@@ -703,7 +703,7 @@ export default class NostrLiveChat extends HTMLElement {
       });
 
       let encryptionSucceeded = false;
-      
+
       // Try NIP-07 encryption first if available
       if (typeof (window as any).nostr?.nip04?.encrypt === 'function') {
         try {
@@ -716,7 +716,7 @@ export default class NostrLiveChat extends HTMLElement {
           console.error("NIP-07 encryption failed, falling back to local encryption:", e);
         }
       }
-      
+
       // Fall back to local encryption if NIP-07 failed or unavailable
       if (!encryptionSucceeded) {
         const privateKeyHex = localStorage.getItem("nostr_nsec");
@@ -776,7 +776,7 @@ export default class NostrLiveChat extends HTMLElement {
   private handleTextareaChange(e: Event) {
     const textarea = e.target as HTMLTextAreaElement;
     this.message = textarea.value;
-    
+
     // Update character counter
     const remaining = Math.max(0, this.MESSAGE_MAX_LENGTH - this.message.length);
     const counterEl = this.shadowRoot?.querySelector('.nostr-chat-char-counter');
@@ -797,7 +797,7 @@ export default class NostrLiveChat extends HTMLElement {
       this.dmSubscription.stop();
     }
     if (!this.recipientPubkey) return;
-    
+
     // Determine current user using available signer (extension or local key)
     let currentUser: { pubkey: string } | null = null;
     try {
@@ -882,9 +882,9 @@ export default class NostrLiveChat extends HTMLElement {
     const filter1: NDKFilter = since !== undefined ? { ...baseFilter1, since } : baseFilter1;
     const filter2: NDKFilter = since !== undefined ? { ...baseFilter2, since } : baseFilter2;
 
-    this.dmSubscription = this.nostrService.getNDK().subscribe([filter1, filter2], { 
-      closeOnEose: false, 
-      groupable: false 
+    this.dmSubscription = this.nostrService.getNDK().subscribe([filter1, filter2], {
+      closeOnEose: false,
+      groupable: false
     });
 
     this.dmSubscription.on('event', async (event: NDKEvent) => {
@@ -900,14 +900,14 @@ export default class NostrLiveChat extends HTMLElement {
 
         // Guard: malformed event without a peer (missing 'p' tag or pubkey)
         if (!peer) {
-          try { console.debug('nostr-live-chat: skipping event with missing peer', event.id); } catch {}
+          try { console.debug('nostr-live-chat: skipping event with missing peer', event.id); } catch { }
           return;
         }
 
         // Validate that this message is between the current user and the recipient
         if (peer !== this.recipientPubkey) {
-            // not for me
-            return;
+          // not for me
+          return;
         }
 
         // For messages sent by current user, skip if we already have an optimistic version
@@ -929,42 +929,42 @@ export default class NostrLiveChat extends HTMLElement {
 
         // Guard again before any decryption — never decrypt with a missing peer
         if (!peer) {
-            try { console.debug('nostr-live-chat: missing peer prior to decrypt, skipping', event.id); } catch {}
-            return;
+          try { console.debug('nostr-live-chat: missing peer prior to decrypt, skipping', event.id); } catch { }
+          return;
         }
 
         // Guard against missing or empty content before decryption
         if (!event.content || event.content.trim() === '') {
-            try { console.debug('nostr-live-chat: missing or empty content prior to decrypt, skipping', event.id); } catch {}
-            return;
+          try { console.debug('nostr-live-chat: missing or empty content prior to decrypt, skipping', event.id); } catch { }
+          return;
         }
 
         if ((window as any).nostr && (window as any).nostr.nip04 && typeof (window as any).nostr.nip04.decrypt === "function") {
-            try {
-                decryptedText = await (window as any).nostr.nip04.decrypt(
-                    peer,
-                    event.content
-                );
-            } catch (e: any) {
-                console.error("Failed to decrypt DM content:", e);
-                return;
-            }
-        } else {
-            const privateKeyHex = localStorage.getItem("nostr_nsec");
-            if (!privateKeyHex) throw new Error("No private key available for decryption");
-
-            const { nip19 } = await import("nostr-tools");
-            let privateKey = privateKeyHex;
-            if (privateKeyHex.startsWith("nsec")) {
-                const decoded = nip19.decode(privateKeyHex);
-                privateKey = decoded.data as string;
-            }
-
-            decryptedText = await nip04.decrypt(
-                privateKey,
-                peer,
-                event.content!
+          try {
+            decryptedText = await (window as any).nostr.nip04.decrypt(
+              peer,
+              event.content
             );
+          } catch (e: any) {
+            console.error("Failed to decrypt DM content:", e);
+            return;
+          }
+        } else {
+          const privateKeyHex = localStorage.getItem("nostr_nsec");
+          if (!privateKeyHex) throw new Error("No private key available for decryption");
+
+          const { nip19 } = await import("nostr-tools");
+          let privateKey = privateKeyHex;
+          if (privateKeyHex.startsWith("nsec")) {
+            const decoded = nip19.decode(privateKeyHex);
+            privateKey = decoded.data as string;
+          }
+
+          decryptedText = await nip04.decrypt(
+            privateKey,
+            peer,
+            event.content!
+          );
         }
 
         const message: Message = {
@@ -974,18 +974,18 @@ export default class NostrLiveChat extends HTMLElement {
           timestamp: event.created_at!,
           status: 'sent'
         };
-        
+
         // Check for duplicates by ID, content, and timestamp to handle edge cases
-        const isDuplicate = this.messages.find(m => 
-          m.id === message.id || 
+        const isDuplicate = this.messages.find(m =>
+          m.id === message.id ||
           (m.text === message.text && m.sender === message.sender && Math.abs(m.timestamp - message.timestamp) < 2)
         );
-        
+
         if (!isDuplicate) {
           this.messages.push(message);
           this.messages.sort((a, b) => a.timestamp - b.timestamp);
           this.render();
-        }  
+        }
       } catch (e: any) {
         console.error("Failed to decrypt DM content:", e);
       }
@@ -1001,9 +1001,15 @@ export default class NostrLiveChat extends HTMLElement {
       launcher.addEventListener('click', this.boundHandleLauncherClick);
     }
     const closeBtn = this.shadowRoot!.querySelector('.nostr-chat-close-btn');
-    if (closeBtn && (this.displayType === 'fab' || this.displayType === 'bottom-bar')) {
+    if (closeBtn) {
       if (this.boundHandleCloseClick) closeBtn.removeEventListener('click', this.boundHandleCloseClick);
-      this.boundHandleCloseClick = (e?: Event) => { e?.stopPropagation(); this.isOpen = false; this.render(); };
+      this.boundHandleCloseClick = (e?: Event) => {
+        e?.stopPropagation();
+        if (this.displayType === 'fab' || this.displayType === 'bottom-bar') {
+          this.isOpen = false;
+        }
+        this.render();
+      };
       closeBtn.addEventListener('click', this.boundHandleCloseClick);
     }
 
@@ -1060,7 +1066,7 @@ export default class NostrLiveChat extends HTMLElement {
 
     const sendButton = this.shadowRoot?.querySelector(".nostr-chat-send-btn");
     if (sendButton && this.boundHandleSend) sendButton.removeEventListener("click", this.boundHandleSend);
-    
+
     const startBtn = this.shadowRoot?.querySelector('.nostr-chat-start-btn');
     if (startBtn && this.boundHandleStartChat) startBtn.removeEventListener('click', this.boundHandleStartChat);
 
@@ -1136,7 +1142,6 @@ export default class NostrLiveChat extends HTMLElement {
           </div>
         `}
         <div class="nostr-chat-float-panel ${this.isOpen ? 'open' : ''}">
-          <button class="nostr-chat-close-btn" title="Minimize">×</button>
           ${inner}
         </div>
       `;
@@ -1148,7 +1153,6 @@ export default class NostrLiveChat extends HTMLElement {
           </div>
         `}
         <div class="nostr-chat-float-panel ${this.isOpen ? 'open' : ''}">
-          <button class="nostr-chat-close-btn" title="Minimize">×</button>
           ${inner}
         </div>
       `;
