@@ -107,15 +107,25 @@ class OnboardingService {
   }
 
   async waitForAuthentication(): Promise<boolean> {
-    // Check for browser extension first
-    if (typeof window !== 'undefined' && 'nostr' in window) {
-      return true;
-    }
-
     // Check if we already have a signer
     const ndk = this.nostrService.getNDK();
     if (ndk.signer) {
       return true;
+    }
+
+    // Check for browser extension and test if it's actually working
+    if (typeof window !== 'undefined' && 'nostr' in window) {
+      try {
+        // Test if the extension is actually functional by trying to get the public key
+        const pubkey = await (window as any).nostr.getPublicKey();
+        if (pubkey) {
+          console.log('NIP-07 extension is working, pubkey:', pubkey);
+          return true;
+        }
+      } catch (error) {
+        console.log('NIP-07 extension exists but is not functional:', error);
+        // Extension exists but doesn't work, continue to other auth methods
+      }
     }
 
     // If we have stored credentials, wait for reconnection to complete
@@ -207,7 +217,7 @@ class OnboardingService {
       modal = document.createElement('nostr-onboarding-modal');
       document.body.appendChild(modal);
     }
-    modal.setAttribute('open', 'true');
+    (modal as any).open = true;
   }
 
   // Method to clear authentication and force re-authentication
@@ -668,3 +678,4 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     });
   };
 }
+

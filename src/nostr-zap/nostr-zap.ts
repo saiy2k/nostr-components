@@ -206,7 +206,7 @@ export default class NostrZap extends HTMLElement {
       modal = document.createElement('nostr-onboarding-modal');
       document.body.appendChild(modal);
     }
-    modal.setAttribute('open', 'true');
+    (modal as any).open = true;
   }
 
   private async handleZapClick() {

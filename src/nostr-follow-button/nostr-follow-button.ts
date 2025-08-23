@@ -80,17 +80,22 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   private async handleFollowClick() {
+    console.log('handleFollowClick called');
     // Show loading state immediately
     this.isLoading = true;
     this.render();
 
     try {
+      console.log('Waiting for authentication...');
       // Wait for authentication to be ready (handles async reconnection)
       const hasAuth = await onboardingService.waitForAuthentication();
+      console.log('Authentication result:', hasAuth);
 
       if (hasAuth) {
+        console.log('Authentication successful, executing follow');
         await this._executeFollowWithNip07();
       } else {
+        console.log('No authentication available, showing onboarding modal');
         this.isLoading = false;
         this.render();
         this._showOnboardingModal();
@@ -104,12 +109,18 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   private _showOnboardingModal() {
+    console.log('_showOnboardingModal called');
     let modal = document.body.querySelector('nostr-onboarding-modal');
+    console.log('Existing modal found:', !!modal);
     if (!modal) {
+      console.log('Creating new modal element');
       modal = document.createElement('nostr-onboarding-modal');
       document.body.appendChild(modal);
+      console.log('Modal element created and appended');
     }
-    modal.setAttribute('open', 'true');
+    console.log('Setting modal open property to true');
+    (modal as any).open = true;
+    console.log('Modal open property set, modal should now be visible');
   }
 
   private async _executeFollowWithNip07() {
