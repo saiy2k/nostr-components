@@ -25,8 +25,6 @@ export interface RenderOptions {
   error: string | null;
   showFollow: string | boolean;
   showNpub: boolean;
-  onNpubClick?: () => void;
-  onProfileClick?: () => void;
 }
 
 export function renderProfile(options: RenderOptions): string {
@@ -42,8 +40,6 @@ export function renderProfile(options: RenderOptions): string {
     error,
     showFollow,
     showNpub,
-    onNpubClick,
-    onProfileClick,
   } = options;
 
   // Extract profile data with null checks and default values
@@ -53,11 +49,6 @@ export function renderProfile(options: RenderOptions): string {
   const about = userProfile?.about || '';
   const website = userProfile?.website || '';
 
-  // Data attributes for event delegation
-  const npubDataAttr = onNpubClick ? 'data-nostr-action="npub-click"' : '';
-  const profileDataAttr = onProfileClick
-    ? `data-nostr-action="profile-click" data-npub="${npub}"`
-    : '';
 
   if (error) {
     return `
@@ -78,7 +69,7 @@ export function renderProfile(options: RenderOptions): string {
     
     return `
       <div class="npub-container">
-        <div class="npub" ${npubDataAttr}>
+        <div class="npub">
           <span class="npub-text">${maskedNpub}</span>
           <span class="copy-button" data-npub="${npub}">
             ${copyIcon}
@@ -107,7 +98,7 @@ export function renderProfile(options: RenderOptions): string {
             isLoading
               ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
               : userProfile.banner
-                ? `<a target="_blank" data-cropped="true" class="profile_image" href="#">
+                ? `<a target="_blank" data-cropped="true" class="profile_image">
                   <img src="${userProfile.banner}" width="524px"/>
                 </a>`
                 : '<div class="banner-placeholder"></div>'
@@ -121,7 +112,7 @@ export function renderProfile(options: RenderOptions): string {
                   ${
                     isLoading
                       ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
-                      : `<a target="_blank" data-cropped="true" class="profile_image roundedImage" href="#" ${profileDataAttr}>
+                      : `<a target="_blank" data-cropped="true" class="profile_image roundedImage">
                         <img src="${image}" width="524px" alt="${displayName}" />
                       </a>`
                   }

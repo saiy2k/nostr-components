@@ -19,6 +19,15 @@ const EVT_USER = 'nc:user';
  * - Updates `status` via the base class `setStatus()`:
  *   - Loading → Ready on success; Error on failures or missing identifiers.
  * - Emits `nc:user` event with `{ user, profile }` when ready.
+ * 
+ * TODO:
+ * - Should have separate status vars for loading user and profile fetching
+ * - Right now using same status from BaseComponent.
+ * - Hence status goes like this
+ *  - Loading :: Base.connnectToNostr
+ *  - Ready :: Base.connnectToNostr
+ *  - Loading :: User.loadUserAndProfile
+ *  - Ready :: User.loadUserAndProfile
  */
 export class NostrUserComponent extends NostrBaseComponent {
 

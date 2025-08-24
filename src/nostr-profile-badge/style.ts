@@ -39,6 +39,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
         --nstrc-profile-badge-hover-background-dark: #2a2a2a;
 
         /* Define CSS variables on the host element */
+        --nstrc-profile-badge-padding: 10px 16px;
         --nstrc-profile-badge-background: var(--nstrc-profile-badge-background-${theme});
         --nstrc-profile-badge-name-color: var(--nstrc-profile-badge-name-color-${theme});
         --nstrc-profile-badge-nip05-color: var(--nstrc-profile-badge-nip05-color-${theme});
@@ -53,18 +54,24 @@ export function getProfileBadgeStyles(theme: Theme): string {
 
       .nostr-profile-badge-container {
         display: flex;
+        font-family: Inter, sans-serif;
+
         gap: 12px;
-        padding: 8px;
         border-radius: 8px;
         background-color: var(--nstrc-profile-badge-background);
         border: var(--nstrc-profile-badge-border, none);
-        cursor: pointer;
+        padding: var(--nstrc-profile-badge-padding);
         transition: background-color 0.2s ease;
-        box-sizing: border-box;
+        font-size: 1em;
       }
 
-      .nostr-profile-badge-container:hover {
+      .nostr-profile-badge-container.is-clickable:hover {
+        cursor: pointer;
         background-color: var(--nstrc-profile-badge-hover-background, rgba(0, 0, 0, 0.05));
+      }
+
+      .nostr-profile-badge-container.is-error {
+        color: #d32f2f;
       }
 
       .nostr-profile-badge-left-container {
@@ -90,7 +97,6 @@ export function getProfileBadgeStyles(theme: Theme): string {
 
       .nostr-profile-badge-name {
         font-weight: 600;
-        font-size: 1em;
         color: var(--nstrc-profile-badge-name-color, #444);
         white-space: nowrap;
         overflow: hidden;
@@ -116,6 +122,19 @@ export function getProfileBadgeStyles(theme: Theme): string {
 
       .copy-button:hover {
         opacity: 1;
+      }
+
+      /* Error state */
+      .error-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background-color: #ffebee;
+        color: #d32f2f;
+        font-size: 2em;
       }
 
       /* Skeleton loading styles */
@@ -157,23 +176,6 @@ export function getProfileBadgeStyles(theme: Theme): string {
         }
       }
 
-      /* Error state */
-      .error {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background-color: #ffebee;
-        color: #d32f2f;
-        font-size: 2em;
-      }
-
-      .error-text {
-        color: #d32f2f;
-        font-size: 1em;
-      }
     </style>
   `;
 }

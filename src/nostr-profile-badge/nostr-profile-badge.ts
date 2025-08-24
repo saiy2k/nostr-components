@@ -41,6 +41,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   /** Base class functions */
   protected onStatusChange(_status: NCStatus) {
+    console.log("onStatusChange: ", _status);
     this.render();
   }
 

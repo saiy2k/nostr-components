@@ -1,8 +1,8 @@
 import { Theme } from './types';
 import { checkmarkIcon, nostrLogo } from './icons';
 
-export function getNostrLogo(width: number = 21, height: number = 24) {
-  return nostrLogo(width, height);
+export function getNostrLogo(theme: Theme, width: number = 21, height: number = 24) {
+  return nostrLogo(theme, width, height);
 }
 
 import { loadingNostrich } from './icons';
@@ -497,7 +497,6 @@ export function getProfileStyles(theme: Theme) {
       border: 1px solid #CCC;
       border-radius: 5px;
       background-color: var(--nstrc-profile-background);
-      cursor: pointer;
     }
 
     #profile {
@@ -510,6 +509,7 @@ export function getProfileStyles(theme: Theme) {
       width: 100%;
       height: 214px;
       overflow: hidden;
+      cursor: pointer;
     }
 
     #profile_banner a {

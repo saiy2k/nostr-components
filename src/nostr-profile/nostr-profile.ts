@@ -1,7 +1,10 @@
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { maskNPub } from '../common/utils';
+import { copyToClipboard, maskNPub } from '../common/utils';
+import { NCStatus } from '../nostr-base-component';
 import { NostrUserComponent } from '../nostr-user-component';
 import { renderProfile, renderLoadingState, renderErrorState } from './render';
+
+const EVT_PROFILE = 'nc:profile';
 
 /**
  * 1. Do `CustomEvent for click handler. Refer profile-badge.
@@ -22,275 +25,177 @@ export default class NostrProfile extends NostrUserComponent {
     relays: 0,
   };
 
-  private onClick: ((profile: NDKUserProfile) => void) | null = null;
-
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
       'show-npub',
       'show-follow',
-      'onClick',
     ];
   }
 
   async connectedCallback() {
-    if (!this.rendered) {
-      this.getTheme();
-      this.connectToNostr();
-      this.getUserProfile();
-      this.rendered = true;
-    }
+    super.connectedCallback?.();
+    this.attachDelegatedListeners();
+    this.render();
   }
 
   disconnectedCallback() {
     // TODO: Check for cleanup method
   }
 
-  getUserProfile = async () => {
-    try {
-      this.isLoading = true;
+  /** Base class functions */
+  protected onStatusChange(_status: NCStatus) {
+    console.log("onStatusChange: ", _status);
+    if (this.user) {
       this.render();
+    }
+  }
 
-      await this.fetchUser();
+  protected onUserReady(_user: any, _profile: any) {
+    this.render();
+    this.getUserStats();
+  }
 
-      if (this.user) {
+  getUserStats = async () => {
+    try {
+      // Fetch stats only if profile exists
+      this.isStatsLoading = true;
+      this.isStatsFollowsLoading = true;
+      this.isStatsFollowersLoading = true;
 
-        await this.fetchProfile();
+      // Create a local copy of the current stats
+      const currentStats = { ...this.stats };
 
-        if (this.profile != null) {
+      // Fetch follows
+      this.nostrService
+        .getProfileStats(this.user!, ['follows'])
+        .then(({ follows }) => {
+          currentStats.follows = follows;
+          this.stats = { ...this.stats, follows };
+          this.isStatsFollowsLoading = false;
+          this.render();
+        })
+        .catch(err => {
+          console.error('Error loading follows:', err);
+          this.isStatsFollowsLoading = false;
+          this.render();
+        });
 
-          // Fetch stats only if profile exists
-          this.isStatsLoading = true;
-          this.isStatsFollowsLoading = true;
-          this.isStatsFollowersLoading = true;
+      // Fetch followers
+      this.nostrService
+        .getProfileStats(this.user!, ['followers'])
+        .then(({ followers }) => {
+          currentStats.followers = followers;
+          this.stats = { ...this.stats, followers };
+          this.isStatsFollowersLoading = false;
+          this.render();
+        })
+        .catch(err => {
+          console.error('Error loading followers:', err);
+          this.isStatsFollowersLoading = false;
+          this.render();
+        });
 
-          // Create a local copy of the current stats
-          const currentStats = { ...this.stats };
-
-          // Fetch follows
-          this.nostrService
-            .getProfileStats(this.user, ['follows'])
-            .then(({ follows }) => {
-              currentStats.follows = follows;
-              this.stats = { ...this.stats, follows };
-              this.isStatsFollowsLoading = false;
-              this.render();
-            })
-            .catch(err => {
-              console.error('Error loading follows:', err);
-              this.isStatsFollowsLoading = false;
-              this.render();
-            });
-
-          // Fetch followers
-          this.nostrService
-            .getProfileStats(this.user, ['followers'])
-            .then(({ followers }) => {
-              currentStats.followers = followers;
-              this.stats = { ...this.stats, followers };
-              this.isStatsFollowersLoading = false;
-              this.render();
-            })
-            .catch(err => {
-              console.error('Error loading followers:', err);
-              this.isStatsFollowersLoading = false;
-              this.render();
-            });
-
-          // Fetch other stats
-          this.nostrService
-            .getProfileStats(this.user, ['notes', 'replies', 'zaps'])
-            .then(({ notes, replies, zaps }) => {
-              currentStats.notes = notes;
-              currentStats.replies = replies;
-              currentStats.zaps = zaps;
-              this.stats = { ...this.stats, notes, replies, zaps };
-              this.isStatsLoading = false;
-              this.render();
-            })
-            .catch(err => {
-              console.error('Error loading other stats:', err);
-              this.isStatsLoading = false;
-              this.render();
-            });
-
-          this.isError = false;
-        } else {
-          // Profile not found or fetch failed, use default image and clear stats
-          console.warn(`Could not fetch profile for user ${this.user.npub}`);
-          this.stats = {
-            follows: 0,
-            followers: 0,
-            notes: 0,
-            replies: 0,
-            zaps: 0,
-            relays: 0,
-          };
+      // Fetch other stats
+      this.nostrService
+        .getProfileStats(this.user!, ['notes', 'replies', 'zaps'])
+        .then(({ notes, replies, zaps }) => {
+          currentStats.notes = notes;
+          currentStats.replies = replies;
+          currentStats.zaps = zaps;
+          this.stats = { ...this.stats, notes, replies, zaps };
           this.isStatsLoading = false;
-          this.isError = true;
-        }
-      }
+          this.render();
+        })
+        .catch(err => {
+          console.error('Error loading other stats:', err);
+          this.isStatsLoading = false;
+          this.render();
+        });
+
     } catch (err) {
-      this.isError = true;
+      this.setStatus(NCStatus.Error); //todo
       throw err;
     } finally {
-      this.isLoading = false;
       this.render();
     }
   };
 
 
-  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-    super.attributeChangedCallback(name, _oldValue, newValue);
+  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+    if (oldValue === newValue) return;
+    super.attributeChangedCallback?.(name, oldValue, newValue);
 
-    if (['relays', 'npub', 'pubkey', 'nip05'].includes(name)) {
-      // Possible property changes - relays, npub, nip05
-      // For all these changes, we have to fetch profile anyways
-      // TODO: Validate npub
-      this.getUserProfile();
-    }
-
-    if (name === 'onClick' && newValue) {
-      const potentialHandler = window[newValue as keyof Window];
-
-      if (typeof potentialHandler === 'function') {
-        this.onClick = potentialHandler as (profile: NDKUserProfile) => void;
-      } else if (newValue.trim() !== '') {
-        console.warn(`Handler '${newValue}' is not a valid function`);
-        this.onClick = null;
-      } else {
-        this.onClick = null;
-      }
-    }
-
-    if (name === 'theme') {
-      this.render();
-    }
-
-    if (['show-npub', 'show-follow'].includes(name)) {
+    if (name === 'show-npub' || name === 'show-follow') {
       this.render();
     }
   }
+  /** Private functions */
+  private onProfileClick() {
+    if (this.status === NCStatus.Error) return;
 
-  renderNpub() {
-    const npubAttribute = this.getAttribute('npub');
-    const showNpub = this.getAttribute('show-npub');
+    const event = new CustomEvent(EVT_PROFILE, {
+      detail: this.profile,
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
 
-    if (showNpub === 'false') {
-      return '';
+    const notPrevented = this.dispatchEvent(event);
+
+    if (notPrevented) {
+      // Default behavior: open profile in new tab
+      const key =
+        this.profile?.nip05 ||
+        this.getAttribute('nip05') ||
+        this.user?.npub ||
+        this.getAttribute('npub');
+
+      if (key) window.open(`https://njump.me/${key}`, '_blank');
     }
-
-    if (showNpub === null && this.profile.nip05) {
-      return '';
-    }
-
-    if (this.user == null) {
-      return '';
-    }
-
-    if (!npubAttribute && !this.user.npub) {
-      console.warn('Cannot use showNpub without providing a nPub');
-      return '';
-    }
-
-    let npub = npubAttribute;
-
-    if (!npub && this.user && this.user.npub) {
-      npub = this.user.npub;
-    }
-
-    if (!npub) {
-      console.warn('Cannot use showNPub without providing a nPub');
-      return '';
-    }
-
-    return `
-      <div class="npub-container">
-        ${
-          this.isLoading
-            ? '<div style="width: 100px; height: 8px; border-radius: 5px" class="skeleton"></div>'
-            : `
-                <span class="npub full">${npub}</span>
-                <span class="npub masked">${maskNPub(npub)}</span>
-                <span id="npub-copy" class="copy-button">&#x2398;</span>
-            `
-        }
-      </div>
-    `;
   }
 
-  copy(string: string) {
-    navigator.clipboard.writeText(string);
-  }
 
-  onProfileClick() {
-    if (this.isError) {
-      return;
-    }
+  private attachDelegatedListeners() {
 
-    if (this.onClick !== null && typeof this.onClick === 'function') {
-      this.onClick(this.profile!);
-      return;
-    }
-
-    let key = '';
-
-    const nip05 = this.getAttribute('nip05');
-    const npub = this.getAttribute('npub');
-
-    if (nip05) {
-      key = nip05;
-    } else if (npub) {
-      key = npub;
-    } else {
-      return;
-    }
-
-    window.open(`https://njump.me/${key}`, '_blank');
-  }
-
-  private handleClick = (e: Event) => {
-    const target = e.target as HTMLElement;
-    const actionElement = target.closest('[data-nostr-action]');
-
-    if (!actionElement) return;
-
-    e.stopPropagation();
-    const action = actionElement.getAttribute('data-nostr-action');
-
-    switch (action) {
-      case 'npub-click':
-      case 'profile-click':
+    // Click anywhere on the profile badge (except follow button, copy buttons)
+    this.delegateEvent('click', '.profile-banner', (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.copy-button, .nostr-follow-button-container')) {
         this.onProfileClick();
-        break;
-      case 'copy-npub':
-        this.copy(this.getAttribute('npub') || this.user?.npub || '');
-        break;
-      case 'copy-nip05':
-        this.copy(this.profile!.nip05 || '');
-        break;
-    }
-  };
+      }
+    });
 
-  private attachEventListeners() {
-    // Remove any existing event listeners to prevent duplicates
-    this.shadowRoot?.removeEventListener('click', this.handleClick);
-    // Add event delegation for all clicks
-    this.shadowRoot?.addEventListener('click', this.handleClick);
+    // NPUB copy
+    this.delegateEvent('click', '#npub-copy', (e: Event) => {
+      e.stopPropagation();
+      copyToClipboard(this.getAttribute('npub') || this.user?.npub || '');
+    });
+
+    // NIP-05 copy
+    this.delegateEvent('click', '#nip05-copy', (e: Event) => {
+      e.stopPropagation();
+      copyToClipboard(this.getAttribute('nip05') || this.profile?.nip05 || '');
+    });
+
   }
 
   private render() {
-    if (!this.shadowRoot) return;
+    const root = this.shadowRoot;
+    if (!root) return;
+
+    const isLoading = this.status === NCStatus.Loading;
+    const isError   = this.status === NCStatus.Error;
 
     const showNpub = this.getAttribute('show-npub') !== 'false';
     const showFollow = this.getAttribute('show-follow') !== 'false';
 
-    if (this.isLoading) {
+    if (isLoading) {
       this.shadowRoot.innerHTML = renderLoadingState(this.theme);
       return;
     }
 
-    if (this.isError) {
+    if (isError) {
       this.shadowRoot.innerHTML = renderErrorState(
         'Error fetching profile. Is the npub/nip05 correct?',
         this.theme
@@ -302,7 +207,7 @@ export default class NostrProfile extends NostrUserComponent {
       npub: this.user?.npub || '',
       userProfile: this.profile!,
       theme: this.theme,
-      isLoading: this.isLoading,
+      isLoading: isLoading,
       isStatsLoading: this.isStatsLoading,
       isStatsFollowersLoading: this.isStatsFollowersLoading,
       isStatsFollowsLoading: this.isStatsFollowsLoading,
@@ -314,15 +219,12 @@ export default class NostrProfile extends NostrUserComponent {
         zaps: this.stats.zaps,
         relays: this.stats.relays,
       },
-      error: this.isError ? 'Error loading profile' : null,
-      onNpubClick: this.onProfileClick.bind(this),
-      onProfileClick: this.onProfileClick.bind(this),
+      error: isError ? 'Error loading profile' : null,
       showFollow: showFollow && this.user?.npub ? this.user.npub : '',
       showNpub: showNpub,
     };
 
     this.shadowRoot!.innerHTML = renderProfile(renderOptions);
-    this.attachEventListeners();
   }
 }
 

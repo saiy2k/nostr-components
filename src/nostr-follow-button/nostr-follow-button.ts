@@ -2,6 +2,7 @@ import { NDKNip07Signer } from '@nostr-dev-kit/ndk';
 import { NostrUserComponent } from '../nostr-user-component';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NCStatus } from '../nostr-base-component';
+import { getFollowButtonStyles } from './style';
 
 /**
  * TODO:
@@ -88,7 +89,7 @@ export default class NostrFollowButton extends NostrUserComponent {
   }
 
   private attachDelegatedListeners() {
-    this.delegateEvent('click', '.nostr-follow-button', (e) => {
+    this.delegateEvent('click', '.nostr-follow-button-container', (e) => {
       // If you render a disabled state while loading, guard it:
       if (this.status === NCStatus.Loading) return;
       e.preventDefault?.();
@@ -113,12 +114,16 @@ export default class NostrFollowButton extends NostrUserComponent {
       isLoading: isLoading,
       isError: isError,
       isFollowed: this.isFollowed,
+      isFollowing: false,
       errorMessage: errorMessage,
       iconWidth,
       iconHeight,
     };
 
-    this.shadowRoot!.innerHTML = renderFollowButton(renderOptions);
+    this.shadowRoot!.innerHTML = `
+      ${getFollowButtonStyles(this.theme)}
+      ${renderFollowButton(renderOptions)}
+    `
   }
 }
 

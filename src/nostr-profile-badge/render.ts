@@ -63,7 +63,7 @@ export function renderProfileBadge(
   const pubkey = escapeHtml(ndkUser?.pubkey || '');
 
   return `
-      <div class='nostr-profile-badge-container'>
+      <div class='nostr-profile-badge-container is-clickable'>
         <div class='nostr-profile-badge-left-container'>
           <img src='${profileImage}' alt='Nostr profile image of ${profileName}'/>
         </div>
@@ -79,7 +79,7 @@ export function renderProfileBadge(
 
 function renderLoading(): string {
   return `
-      <div class='nostr-profile-badge-container'>
+      <div class='nostr-profile-badge-container is-disabled'>
         <div class='nostr-profile-badge-left-container'>
           <div class="skeleton img-skeleton"></div>
         </div>
@@ -93,9 +93,9 @@ function renderLoading(): string {
 
 function renderError(errorMessage: String): string {
   return `
-      <div class='nostr-profile-badge-container'>
+      <div class='nostr-profile-badge-container is-error'>
         <div class='nostr-profile-badge-left-container'>
-          <div class="error">&#9888;</div>
+          <div class="error-icon">&#9888;</div>
         </div>
         <div class='nostr-profile-badge-right-container'>
           ${errorMessage}
