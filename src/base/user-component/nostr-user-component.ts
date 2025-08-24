@@ -1,7 +1,7 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
-import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
-import { isValidHex, validateNpub, validateNip05 } from '../common/utils';
+import { DEFAULT_PROFILE_IMAGE } from '../../common/constants';
+import { isValidHex, validateNpub, validateNip05 } from '../../common/utils';
 
 const EVT_USER = 'nc:user';
 

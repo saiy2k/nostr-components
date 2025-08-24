@@ -1,8 +1,9 @@
-import { NCStatus } from '../base-component/nostr-base-component';
-import { NostrUserComponent } from '../user-component/nostr-user-component';
+import { NCStatus } from '../base/base-component/nostr-base-component';
+import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { parseBooleanAttribute, copyToClipboard } from '../common/utils';
 import { renderProfileBadge, RenderProfileBadgeOptions } from './render';
 import { getProfileBadgeStyles } from './style';
+import { attachCopyDelegation } from '../base/copy-delegation';
 
 const EVT_BADGE = 'nc:profile_badge';
 
@@ -37,9 +38,10 @@ export default class NostrProfileBadge extends NostrUserComponent {
     ];
   }
 
-  async connectedCallback() {
+  connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
+    attachCopyDelegation(this);
     this.render();
   }
 

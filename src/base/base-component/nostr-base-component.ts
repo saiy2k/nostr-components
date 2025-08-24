@@ -1,6 +1,6 @@
-import { NostrService } from '../common/nostr-service';
-import { Theme } from '../common/types';
-import { parseRelays, parseTheme } from '../common/utils';
+import { NostrService } from '../../common/nostr-service';
+import { Theme } from '../../common/types';
+import { parseRelays, parseTheme } from '../../common/utils';
 
 export enum NCStatus {
   Idle,      // 0

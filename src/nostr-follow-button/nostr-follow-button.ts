@@ -1,7 +1,7 @@
 import { NDKNip07Signer } from '@nostr-dev-kit/ndk';
-import { NostrUserComponent } from '../user-component/nostr-user-component';
+import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
-import { NCStatus } from '../base-component/nostr-base-component';
+import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
 
 /**

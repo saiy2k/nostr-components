@@ -1,7 +1,8 @@
 import { copyToClipboard } from '../common/utils';
-import { NCStatus } from '../base-component/nostr-base-component';
-import { NostrUserComponent } from '../user-component/nostr-user-component';
-import { renderProfile, renderLoadingState, renderErrorState } from './render';
+import { NCStatus } from '../base/base-component/nostr-base-component';
+import { NostrUserComponent } from '../base/user-component/nostr-user-component';
+import { renderProfile, RenderProfileOptions } from './render';
+import { getProfileStyles } from './style';
 
 const EVT_PROFILE = 'nc:profile';
 
@@ -149,7 +150,6 @@ export default class NostrProfile extends NostrUserComponent {
     }
   }
 
-
   private attachDelegatedListeners() {
 
     // Click anywhere on the profile badge (except follow button, copy buttons)
@@ -175,32 +175,18 @@ export default class NostrProfile extends NostrUserComponent {
   }
 
   private render() {
-    const root = this.shadowRoot;
-    if (!root) return;
-
     const isLoading     = this.computeOverall() == NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
     const showNpub      = this.getAttribute('show-npub') !== 'false';
     const showFollow    = this.getAttribute('show-follow') !== 'false';
 
-    if (isLoading) {
-      this.shadowRoot.innerHTML = renderLoadingState(this.theme);
-      return;
-    }
-
-    if (isError) {
-      this.shadowRoot.innerHTML = renderErrorState(
-        'Error fetching profile. Is the npub/nip05 correct?',
-        this.theme
-      );
-      return;
-    }
-
-    const renderOptions = {
-      npub: this.user?.npub || '',
-      userProfile: this.profile!,
+    const renderOptions: RenderProfileOptions = {
       theme: this.theme,
       isLoading: isLoading,
+      isError: isError,
+      errorMessage: this.errorMessage,
+      npub: this.user?.npub || '',
+      userProfile: this.profile!,
       isStatsLoading: this.isStatsLoading,
       isStatsFollowersLoading: this.isStatsFollowersLoading,
       isStatsFollowsLoading: this.isStatsFollowsLoading,
@@ -212,12 +198,15 @@ export default class NostrProfile extends NostrUserComponent {
         zaps: this.stats.zaps,
         relays: this.stats.relays,
       },
-      error: isError ? 'Error loading profile' : null,
       showFollow: showFollow && this.user?.npub ? this.user.npub : '',
       showNpub: showNpub,
     };
 
-    this.shadowRoot!.innerHTML = renderProfile(renderOptions);
+    this.shadowRoot!.innerHTML = `
+      ${getProfileStyles(this.theme)}
+      ${renderProfile(renderOptions)}
+    `;
+
   }
 }
 
