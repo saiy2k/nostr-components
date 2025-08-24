@@ -28,15 +28,22 @@ const EVT_STATUS = 'nc:status';
  * connection logic, theme management, and shared service access.
  */
 export class NostrBaseComponent extends HTMLElement {
+
+  static readonly KEY_CONNECTION = 'connection' as const;
+
   protected nostrService: NostrService = NostrService.getInstance();
 
   protected theme: Theme = 'light';
-  protected status: NCStatus = NCStatus.Idle;
   protected errorMessage: string = '';
 
   protected nostrReady!: Promise<void>;
   protected nostrReadyResolve?: () => void;
   protected nostrReadyReject?: (e: unknown) => void;
+
+  protected conn = this.channel('connection');
+
+  private _statuses = new Map<string, NCStatus>();
+  private _overall: NCStatus = NCStatus.Idle;
 
   // guard to ignore stale connects
   private connectSeq = 0;
@@ -56,7 +63,9 @@ export class NostrBaseComponent extends HTMLElement {
     if (this.validateInputs()) {
       this.getTheme();
       // Avoid duplicate connects if a subclass handles it
-      if (this.status === NCStatus.Idle) void this.connectToNostr();
+      if (this.conn.get() === NCStatus.Idle) {
+        void this.connectToNostr();
+      }
     }
   }
 
@@ -79,24 +88,79 @@ export class NostrBaseComponent extends HTMLElement {
     }
   }
 
-  /** Status management */
-  protected setStatus(next: NCStatus, errorMessage?: string) {
-    if (this.status === next && (next !== NCStatus.Error || !errorMessage)) return; // dedupe
-    this.status = next;
+  /** Status map API */
 
-    // clear previous error unless we’re explicitly in Error
-    this.errorMessage = next === NCStatus.Error && errorMessage ? errorMessage : '';
+  protected setStatusFor(key: string, next: NCStatus, error?: string) {
+    const prev = this._statuses.get(key);
+    const changed = prev !== next || (next === NCStatus.Error && !!error);
 
-    // reflect for CSS like :host([status="loading"])
-    this.setAttribute('status', NCStatus[next].toLowerCase());
+    if (!changed) return;
 
-    // emit an event for external listeners (optional)
-    this.dispatchEvent(new CustomEvent(EVT_STATUS, { detail: { status: next } }));
-    this.onStatusChange(next);
+    this._statuses.set(key, next);
+
+    if (next === NCStatus.Error && error) {
+      this.errorMessage = error;
+    }
+
+    // Reflect per-key attribute, e.g. user-status="loading"
+    const perKeyAttr = `${key}-status`;
+    const perKeyVal = NCStatus[next].toLowerCase();
+    if (this.getAttribute(perKeyAttr) !== perKeyVal) {
+      this.setAttribute(perKeyAttr, perKeyVal);
+    }
+
+    // Compute & reflect overall for backward-compat CSS
+    const overall = this.computeOverall();
+    const overallVal = NCStatus[overall].toLowerCase();
+    if (this._overall !== overall) {
+      this._overall = overall;
+      this.setAttribute('status', overallVal);
+      this.onStatusChange(overall);
+    } else if (overall === NCStatus.Error && error) {
+      // propagate error updates even if overall state didn't flip
+      this.onStatusChange(overall);
+    }
+
+    // Emit a single event with structured detail
+    this.dispatchEvent(new CustomEvent(EVT_STATUS, {
+      detail: {
+        key,
+        status: next,
+        all: this.snapshotStatuses(),
+        overall: this._overall,
+        errorMessage: this.errorMessage || undefined,
+      },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
+  protected getStatusFor(key: string): NCStatus {
+    return this._statuses.get(key) ?? NCStatus.Idle;
+  }
+
+  protected snapshotStatuses(): Record<string, NCStatus> {
+    return Object.fromEntries(this._statuses.entries());
+  }
+
+  /** Overall status change hook */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected onStatusChange(_status: NCStatus) { }
+  protected onStatusChange(_overall: NCStatus) { }
+
+  protected computeOverall(): NCStatus {
+    const vals = [...this._statuses.values()];
+    if (vals.includes(NCStatus.Error))   return NCStatus.Error;
+    if (vals.includes(NCStatus.Loading)) return NCStatus.Loading;
+    if (vals.includes(NCStatus.Ready))   return NCStatus.Ready;
+    return NCStatus.Idle;
+  }
+
+  protected channel(key: string) {
+    return {
+      set: (s: NCStatus, e?: string) => this.setStatusFor(key, s, e),
+      get: () => this.getStatusFor(key),
+    };
+  }
 
   /** Protected methods */
   protected validateInputs(): boolean {
@@ -105,12 +169,12 @@ export class NostrBaseComponent extends HTMLElement {
     const tagName = this.tagName.toLowerCase();
 
     if (!(theme === 'light' || theme === 'dark')) {
-      this.setStatus(NCStatus.Error, `Invalid theme '${theme}'. Accepted values are 'light', 'dark'`);
+      this.conn.set(NCStatus.Error, `Invalid theme '${theme}'. Accepted values are 'light', 'dark'`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
       // TODO: Improve relay validation
     } else if (relays && typeof relays != 'string') {
-      this.setStatus(NCStatus.Error, `Invalid relays list`);
+      this.conn.set(NCStatus.Error, `Invalid relays list`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
     }
@@ -121,18 +185,18 @@ export class NostrBaseComponent extends HTMLElement {
 
   protected async connectToNostr() {
     const seq = ++this.connectSeq;
-    this.setStatus(NCStatus.Loading);
+    this.conn.set(NCStatus.Loading);
     try {
       await this.nostrService.connectToNostr(this.getRelays());
       if (seq !== this.connectSeq) return; // stale attempt
       if (this.validateInputs() == true) {
-        this.setStatus(NCStatus.Ready);
+        this.conn.set(NCStatus.Ready);
       }
       this.nostrReadyResolve?.();
     } catch (error) {
       if (seq !== this.connectSeq) return; // stale attempt
       console.error('Failed to connect to Nostr relays:', error);
-      this.setStatus(NCStatus.Error, 'Failed to connect to relays');
+      this.conn.set(NCStatus.Error, 'Failed to connect to relays');
       this.nostrReadyReject?.(error);
     }
   }

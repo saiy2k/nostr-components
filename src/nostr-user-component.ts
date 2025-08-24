@@ -34,11 +34,14 @@ export class NostrUserComponent extends NostrBaseComponent {
   protected user: NDKUser | null = null;
   protected profile: NDKUserProfile | null = null;
 
+  protected userStatus = this.channel('user');
+
   // guard to ignore stale user fetches
   private loadSeq = 0;
 
   constructor(shadow: boolean = true) {
     super(shadow);
+    this.userStatus.set(NCStatus.Loading);
   }
 
   /** Lifecycle methods */
@@ -88,21 +91,21 @@ export class NostrUserComponent extends NostrBaseComponent {
     const tagName     = this.tagName.toLowerCase();
 
     if (npub == null && pubkeyAttr == null && nip05Attr == null) {
-      this.setStatus(NCStatus.Error, "Provide npub, nip05 or pubkey attribute");
+      this.userStatus.set(NCStatus.Error, "Provide npub, nip05 or pubkey attribute");
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
     }
 
     if (pubkeyAttr && !isValidHex(pubkeyAttr)) {
-      this.setStatus(NCStatus.Error, `Invalid Pubkey: ${pubkeyAttr}`);
+      this.userStatus.set(NCStatus.Error, `Invalid Pubkey: ${pubkeyAttr}`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
     } else if (nip05Attr && !validateNip05(nip05Attr)) {
-      this.setStatus(NCStatus.Error, `Invalid Nip05: ${nip05Attr}`);
+      this.userStatus.set(NCStatus.Error, `Invalid Nip05: ${nip05Attr}`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
     } else if (npub && !validateNpub(npub)) {
-      this.setStatus(NCStatus.Error, `Invalid Npub: ${npub}`);
+      this.userStatus.set(NCStatus.Error, `Invalid Npub: ${npub}`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
     }
@@ -125,7 +128,7 @@ export class NostrUserComponent extends NostrBaseComponent {
       return;
     }
 
-    this.setStatus(NCStatus.Loading);
+    this.userStatus.set(NCStatus.Loading);
 
     try {
       const user = await this.fetchUser();
@@ -136,7 +139,7 @@ export class NostrUserComponent extends NostrBaseComponent {
 
       this.user = user;
       this.profile = profile;
-      this.setStatus(NCStatus.Ready);
+      this.userStatus.set(NCStatus.Ready);
       // Notify listeners that user + profile are available
       this.dispatchEvent(new CustomEvent(EVT_USER, {
         detail: { user: this.user, profile: this.profile },
@@ -148,7 +151,7 @@ export class NostrUserComponent extends NostrBaseComponent {
       if (seq !== this.loadSeq) return; // stale
       const msg = err instanceof Error ? err.message : 'Failed to load user/profile';
       console.error('[NostrUserComponent] ' + msg, err);
-      this.setStatus(NCStatus.Error, msg);
+      this.userStatus.set(NCStatus.Error, msg);
     }
   }
 

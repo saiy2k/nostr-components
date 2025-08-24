@@ -12,6 +12,7 @@ import { getFollowButtonStyles } from './style';
  */
 export default class NostrFollowButton extends NostrUserComponent {
 
+  protected followStatus = this.channel('follow');
   private isFollowed: boolean = false;
 
   static get observedAttributes() {
@@ -36,10 +37,12 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   /** Base class functions */
   protected onStatusChange(_status: NCStatus) {
-    this.render();
+    console.log('follow button status: ', _status);
+    // this.render();
   }
 
   protected onUserReady(_user: any, _profile: any) {
+    console.log('follow button status: ', _user);
     this.render();
   }
 
@@ -47,7 +50,7 @@ export default class NostrFollowButton extends NostrUserComponent {
   private async handleFollowClick() {
     const nip07signer = new NDKNip07Signer();
 
-    this.setStatus(NCStatus.Loading);
+    this.followStatus.set(NCStatus.Loading);
     this.render();
 
     try {
@@ -55,7 +58,7 @@ export default class NostrFollowButton extends NostrUserComponent {
       ndk.signer = nip07signer;
 
       if (!this.user) {
-        this.setStatus(NCStatus.Error, "Could not resolve user to follow.");
+        this.followStatus.set(NCStatus.Error, "Could not resolve user to follow.");
         this.render();
         return;
 
@@ -71,7 +74,7 @@ export default class NostrFollowButton extends NostrUserComponent {
       }
 
       this.isFollowed = true;
-      this.setStatus(NCStatus.Ready);
+      this.followStatus.set(NCStatus.Ready);
     } catch (err) {
 
       const error = err as Error;
@@ -82,7 +85,7 @@ export default class NostrFollowButton extends NostrUserComponent {
       } else {
         errorMessage = 'Please authorize, click the button to try again!';
       }
-      this.setStatus(NCStatus.Error, errorMessage);
+      this.followStatus.set(NCStatus.Error, errorMessage);
     } finally {
       this.render();
     }
@@ -91,7 +94,7 @@ export default class NostrFollowButton extends NostrUserComponent {
   private attachDelegatedListeners() {
     this.delegateEvent('click', '.nostr-follow-button-container', (e) => {
       // If you render a disabled state while loading, guard it:
-      if (this.status === NCStatus.Loading) return;
+      if (this.followStatus.get() === NCStatus.Loading) return;
       e.preventDefault?.();
       e.stopPropagation?.();
       void this.handleFollowClick();
@@ -99,8 +102,9 @@ export default class NostrFollowButton extends NostrUserComponent {
   }
 
   render() {
-    const isLoading           = this.status === NCStatus.Loading;
-    const isError             = this.status === NCStatus.Error;
+    const isLoading           = this.computeOverall() == NCStatus.Loading;
+    const isFollowing         = this.followStatus.get() == NCStatus.Loading;
+    const isError             = this.computeOverall() === NCStatus.Error;
     const iconWidthAttribute  = this.getAttribute('icon-width');
     const iconHeightAttribute = this.getAttribute('icon-height');
     const errorMessage        = super.renderError(this.errorMessage);
@@ -109,12 +113,14 @@ export default class NostrFollowButton extends NostrUserComponent {
     const iconHeight =
       iconHeightAttribute !== null ? Number(iconHeightAttribute) : 25;
 
+    console.log("Follow button :: Render: ", isLoading, isFollowing);
+
     const renderOptions: RenderFollowButtonOptions = {
       theme: this.theme,
       isLoading: isLoading,
       isError: isError,
       isFollowed: this.isFollowed,
-      isFollowing: false,
+      isFollowing: isFollowing,
       errorMessage: errorMessage,
       iconWidth,
       iconHeight,

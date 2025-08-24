@@ -28,12 +28,12 @@ export function renderFollowButton({
   iconHeight,
 }: RenderFollowButtonOptions): string {
 
-  if (isLoading) {
-    return renderLoading(theme, iconWidth, iconHeight);
-  }
-
   if (isFollowing) {
     return renderFollowing(theme, iconWidth, iconHeight);
+  }
+
+  if (isLoading) {
+    return renderLoading(theme, iconWidth, iconHeight);
   }
 
   if (isError) {
