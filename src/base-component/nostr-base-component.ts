@@ -1,6 +1,6 @@
-import { NostrService } from './common/nostr-service';
-import { Theme } from './common/types';
-import { parseRelays, parseTheme } from './common/utils';
+import { NostrService } from '../common/nostr-service';
+import { Theme } from '../common/types';
+import { parseRelays, parseTheme } from '../common/utils';
 
 export enum NCStatus {
   Idle,      // 0
@@ -12,24 +12,24 @@ export enum NCStatus {
 const EVT_STATUS = 'nc:status';
 
 /**
- * Base class for all Nostr web components in the project.
+ * NostrBaseComponent
+ * ==================
+ * Foundation for all Nostr web components in this library.
+ *
+ * Overview
+ * - Manages relay connectivity via a shared `NostrService`.
+ * - Parses common attributes (`theme`, `relays`) and applies theme.
+ * - Provides a generic status management logic, that is extensible by derived classes.
+ * - Offers small utilities useful to subclasses (event delegation, error snippet).
+ *
+ * Observed attributes
+ * - `theme`  — "light" | "dark"
+ * - `relays` — CSV of relay URLs
  * 
- * - Shared `nostrService` instance for connecting to Nostr relays.
- * - Common attributes:
- *    - `relays` (comma-separated relay URLs) — parsed via `parseRelays`
- *    - `theme`  ("light" | "dark") — parsed via `parseTheme`
- * - Single lifecycle status via `NCStatus` (no `isLoading`/`isError`/`rendered`).
- * - Optional open Shadow DOM.
- * - Reacts to attribute changes:
- *    - `relays` → reconnect
- *    - `theme`  → update theme
- * 
- * Extend this class when building new Nostr components to inherit relay
- * connection logic, theme management, and shared service access.
+ * Events
+ * - `nc:status` — from base, reflects connection and user/profile loading status
  */
 export class NostrBaseComponent extends HTMLElement {
-
-  static readonly KEY_CONNECTION = 'connection' as const;
 
   protected nostrService: NostrService = NostrService.getInstance();
 
@@ -155,10 +155,36 @@ export class NostrBaseComponent extends HTMLElement {
     return NCStatus.Idle;
   }
 
+  /**
+   * Before first channel.set(), the map won't be set and hence get() will return `idle`.
+   * In some cases (or maybe in all cases), this is not ideal.
+   * In UserComponent, 'user' not set and hence returning `idle`, while
+   *  'connect' switched between idle -> loading -> ready
+   * and then
+   *  'user' switches to loading -> ready,
+   * results in loading -> ready -> loading -> ready in profile-badge onStatusChange.
+   * 
+   * To avoid this, this function is called from UserComponent constructor,
+   * to set default value as 'loading' without emitting onStatusChange event.
+   * 
+   * Makes sense?
+   * Try commenting this function call in UserComponent()
+   * and add a log in ProfileBadge :: onStatusChange. You will get it.
+   */
+  protected initChannelStatus(key: string, status: NCStatus, opts = { reflectOverall: false }) {
+    (this as any)._statuses.set(key, status);
+    this.setAttribute(`${key}-status`, NCStatus[status].toLowerCase());
+    if (opts.reflectOverall) {
+      const overall = this.computeOverall();
+      (this as any)._overall = overall;
+      this.setAttribute('status', NCStatus[overall].toLowerCase());
+    }
+  }
+
   protected channel(key: string) {
     return {
       set: (s: NCStatus, e?: string) => this.setStatusFor(key, s, e),
-      get: () => this.getStatusFor(key),
+      get: () => this.getStatusFor(key)
     };
   }
 
@@ -241,7 +267,7 @@ export class NostrBaseComponent extends HTMLElement {
   }
 
   protected renderError(errorMessage: String): string {
-    return `<span class="error-text">Error: ${errorMessage}</span>`;
+    return `Error: ${errorMessage}`;
   }
 
   /** Private methods */

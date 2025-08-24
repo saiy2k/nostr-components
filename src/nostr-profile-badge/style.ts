@@ -18,28 +18,35 @@ export function getProfileBadgeStyles(theme: Theme): string {
   return `
     <style>
       :host {
-        /* Light theme (default) */
-        --nstrc-profile-badge-background-light: #fff;
-        --nstrc-profile-badge-name-color-light: #444;
+        /* ===== Size / Box ===== */
+        --nstrc-profile-badge-padding: 10px 16px;
+
+        /* ===== Color Tokens (raw) ===== */
+        --nstrc-profile-badge-background-light: #ffffff;
+        --nstrc-profile-badge-background-dark: #1a1a1a;
+
+        --nstrc-profile-badge-name-color-light: #444444;
+        --nstrc-profile-badge-name-color-dark: #ffffff;
+
         --nstrc-profile-badge-nip05-color-light: #808080;
+        --nstrc-profile-badge-nip05-color-dark: #a0a0a0;
+
         --nstrc-profile-badge-text-color-light: #666666;
+        --nstrc-profile-badge-text-color-dark: #a0a0a0;
+
         --nstrc-profile-badge-skeleton-min-hsl-light: #f0f0f0;
         --nstrc-profile-badge-skeleton-max-hsl-light: #e0e0e0;
-        --nstrc-profile-badge-border-light: 1px solid #e0e0e0;
-        --nstrc-profile-badge-hover-background-light: #f5f5f5;
-        
-        /* Dark theme */
-        --nstrc-profile-badge-background-dark: #1a1a1a;
-        --nstrc-profile-badge-name-color-dark: #ffffff;
-        --nstrc-profile-badge-nip05-color-dark: #a0a0a0;
-        --nstrc-profile-badge-text-color-dark: #a0a0a0;
         --nstrc-profile-badge-skeleton-min-hsl-dark: rgb(62, 43, 43);
         --nstrc-profile-badge-skeleton-max-hsl-dark: #333333;
-        --nstrc-profile-badge-border-dark: 1px solid #333333;
+
+        --nstrc-profile-badge-hover-background-light: #f5f5f5;
         --nstrc-profile-badge-hover-background-dark: #2a2a2a;
 
-        /* Define CSS variables on the host element */
-        --nstrc-profile-badge-padding: 10px 16px;
+        /* ===== Border ===== */
+        --nstrc-profile-badge-border-light: 1px solid #e0e0e0;
+        --nstrc-profile-badge-border-dark: 1px solid #333333;
+
+        /* ===== Computed (theme-resolved) ===== */
         --nstrc-profile-badge-background: var(--nstrc-profile-badge-background-${theme});
         --nstrc-profile-badge-name-color: var(--nstrc-profile-badge-name-color-${theme});
         --nstrc-profile-badge-nip05-color: var(--nstrc-profile-badge-nip05-color-${theme});
@@ -48,8 +55,11 @@ export function getProfileBadgeStyles(theme: Theme): string {
         --nstrc-profile-badge-skeleton-max-hsl: var(--nstrc-profile-badge-skeleton-max-hsl-${theme});
         --nstrc-profile-badge-border: var(--nstrc-profile-badge-border-${theme});
         --nstrc-profile-badge-hover-background: var(--nstrc-profile-badge-hover-background-${theme});
+
+        /* ===== Host element styles ===== */
         display: block;
         contain: content;
+        box-sizing: border-box;
       }
 
       .nostr-profile-badge-container {

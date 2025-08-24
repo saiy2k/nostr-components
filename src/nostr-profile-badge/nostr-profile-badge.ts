@@ -1,15 +1,32 @@
-import { NCStatus } from '../nostr-base-component';
-import { NostrUserComponent } from '../nostr-user-component';
+import { NCStatus } from '../base-component/nostr-base-component';
+import { NostrUserComponent } from '../user-component/nostr-user-component';
 import { parseBooleanAttribute, copyToClipboard } from '../common/utils';
-import { renderProfileBadge } from './render';
+import { renderProfileBadge, RenderProfileBadgeOptions } from './render';
 import { getProfileBadgeStyles } from './style';
 
 const EVT_BADGE = 'nc:profile_badge';
 
 /**
+ * NostrProfileBadge
+ * =================
+ * UI component (extends `NostrUserComponent`) that renders a compact user badge
+ * with avatar/name/nip05 and optional npub + follow button.
+ *
+ * Observed attributes
+ * - `show-npub`   — boolean-like attribute to display the masked npub + copy
+ * - `show-follow` — boolean-like attribute to display the follow button
+ *
+ * Events
+ * - `nc:status`         — (from base) status changes for connection/user
+ * - `nc:user`           — emitted when user & profile are ready (from parent)
+ * - `nc:profile_badge`  — fired on badge click (detail: `NDKUserProfile | null`);
+ *                         default action opens `https://njump.me/<nip05|npub>`
+ *
  * TODO: Improve Follow button placement
  */
 export default class NostrProfileBadge extends NostrUserComponent {
+
+  protected profileStatus = this.channel('profile-badge');
 
   /** Lifecycle methods */
   static get observedAttributes() {
@@ -41,7 +58,6 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   /** Base class functions */
   protected onStatusChange(_status: NCStatus) {
-    console.log("onStatusChange: ", _status);
     this.render();
   }
 
@@ -51,7 +67,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   /** Private functions */
   private onProfileClick() {
-    if (this.status === NCStatus.Error) return;
+    if (this.profileStatus.get() === NCStatus.Error) return;
 
     const event = new CustomEvent(EVT_BADGE, {
       detail: this.profile,
@@ -99,34 +115,30 @@ export default class NostrProfileBadge extends NostrUserComponent {
   }
 
   render() {
-    const root = this.shadowRoot;
-    if (!root) return;
-
-    const isLoading = this.status === NCStatus.Loading;
-    const isError   = this.status === NCStatus.Error;
+    const isLoading     = this.computeOverall() == NCStatus.Loading;
+    const isError       = this.computeOverall() === NCStatus.Error;
 
     // Get attribute values
     const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
     const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
-    const npubAttribute = this.getAttribute('npub') || '';
+    const npub          = this.getAttribute('npub') || '';
     const errorMessage  = super.renderError(this.errorMessage);
 
-    // Generate the HTML content
-    const contentHTML = renderProfileBadge(
-      isLoading,
-      isError,
-      errorMessage,
-      this.profile,
-      this.user,
-      npubAttribute,
-      showNpub,
-      showFollow
-    );
+    const renderOptions: RenderProfileBadgeOptions = {
+      theme       : this.theme,
+      isLoading   : isLoading,
+      isError     : isError,
+      errorMessage: errorMessage,
+      userProfile : this.profile,
+      ndkUser     : this.user,
+      npub        : npub,
+      showNpub    : showNpub,
+      showFollow  : showFollow
+    };
 
-    // Combine styles and content for shadow DOM
-    root.innerHTML = `
+    this.shadowRoot!.innerHTML = `
       ${getProfileBadgeStyles(this.theme)}
-      ${contentHTML}
+      ${renderProfileBadge(renderOptions)}
     `;
   }
 }

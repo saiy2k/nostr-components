@@ -1,34 +1,31 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { NostrBaseComponent, NCStatus } from './nostr-base-component';
-import { DEFAULT_PROFILE_IMAGE } from './common/constants';
-import { isValidHex, validateNpub, validateNip05 } from './common/utils';
+import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
+import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
+import { isValidHex, validateNpub, validateNip05 } from '../common/utils';
 
 const EVT_USER = 'nc:user';
 
 /**
- * Base class for components that need a resolved Nostr user and profile.
- * 
- * Attributes:
- * - `npub`   — user's Nostr public key in npub format
- * - `nip05`  — user's NIP-05 identifier
+ * NostrUserComponent
+ * ==================
+ * Extension of `NostrBaseComponent` that resolves and manages a Nostr user.
+ *
+ * Overview
+ * - Accepts identity attributes (`npub`, `nip05`, or `pubkey`) and validates them.
+ * - Resolves an `NDKUser` via the shared `nostrService` and fetches its profile.
+ * - Exposes resolved `user` and `profile` to subclasses for rendering or logic.
+ * - Emits lifecycle events for status and user readiness.
+ *
+ * Observed attributes
+ * - `npub`   — user's Nostr public key (bech32 npub)
+ * - `nip05`  — NIP-05 identifier (e.g. `alice@example.com`)
  * - `pubkey` — raw hex-encoded public key
- * 
- * Behavior:
- * - On connect (and whenever any identifier changes), resolves an `NDKUser`
- *   via `nostrService.resolveNDKUser`, then fetches the `NDKUserProfile`.
- * - Updates `status` via the base class `setStatus()`:
- *   - Loading → Ready on success; Error on failures or missing identifiers.
- * - Emits `nc:user` event with `{ user, profile }` when ready.
- * 
- * TODO:
- * - Should have separate status vars for loading user and profile fetching
- * - Right now using same status from BaseComponent.
- * - Hence status goes like this
- *  - Loading :: Base.connnectToNostr
- *  - Ready :: Base.connnectToNostr
- *  - Loading :: User.loadUserAndProfile
- *  - Ready :: User.loadUserAndProfile
+ *
+ * Events
+ * - `nc:status` — from base, reflects connection and user/profile loading status
+ * - `nc:user`   — fired when a user and profile are successfully resolved
  */
+
 export class NostrUserComponent extends NostrBaseComponent {
 
   protected user: NDKUser | null = null;
@@ -41,7 +38,7 @@ export class NostrUserComponent extends NostrBaseComponent {
 
   constructor(shadow: boolean = true) {
     super(shadow);
-    this.userStatus.set(NCStatus.Loading);
+    this.initChannelStatus('user', NCStatus.Loading, { reflectOverall: false });
   }
 
   /** Lifecycle methods */

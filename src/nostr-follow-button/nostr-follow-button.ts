@@ -1,14 +1,13 @@
 import { NDKNip07Signer } from '@nostr-dev-kit/ndk';
-import { NostrUserComponent } from '../nostr-user-component';
+import { NostrUserComponent } from '../user-component/nostr-user-component';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
-import { NCStatus } from '../nostr-base-component';
+import { NCStatus } from '../base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
 
 /**
  * TODO:
  *  * To have a text attribute. Default value being "Follow me on Nostr"
  *  * iconWidth, iconHeight should be customized via CSS4 vars
- *  * Need to have separate loading and following states
  */
 export default class NostrFollowButton extends NostrUserComponent {
 
@@ -37,12 +36,10 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   /** Base class functions */
   protected onStatusChange(_status: NCStatus) {
-    console.log('follow button status: ', _status);
-    // this.render();
+    this.render();
   }
 
   protected onUserReady(_user: any, _profile: any) {
-    console.log('follow button status: ', _user);
     this.render();
   }
 
@@ -113,15 +110,13 @@ export default class NostrFollowButton extends NostrUserComponent {
     const iconHeight =
       iconHeightAttribute !== null ? Number(iconHeightAttribute) : 25;
 
-    console.log("Follow button :: Render: ", isLoading, isFollowing);
-
     const renderOptions: RenderFollowButtonOptions = {
-      theme: this.theme,
-      isLoading: isLoading,
-      isError: isError,
-      isFollowed: this.isFollowed,
-      isFollowing: isFollowing,
+      theme       : this.theme,
+      isLoading   : isLoading,
+      isError     : isError,
       errorMessage: errorMessage,
+      isFollowed  : this.isFollowed,
+      isFollowing : isFollowing,
       iconWidth,
       iconHeight,
     };

@@ -1,15 +1,13 @@
-import { NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { copyToClipboard, maskNPub } from '../common/utils';
-import { NCStatus } from '../nostr-base-component';
-import { NostrUserComponent } from '../nostr-user-component';
+import { copyToClipboard } from '../common/utils';
+import { NCStatus } from '../base-component/nostr-base-component';
+import { NostrUserComponent } from '../user-component/nostr-user-component';
 import { renderProfile, renderLoadingState, renderErrorState } from './render';
 
 const EVT_PROFILE = 'nc:profile';
 
-/**
- * 1. Do `CustomEvent for click handler. Refer profile-badge.
- */
 export default class NostrProfile extends NostrUserComponent {
+
+  protected profileStatus = this.channel('profile');
 
   // Stats loading states
   private isStatsLoading: boolean = true;
@@ -46,19 +44,16 @@ export default class NostrProfile extends NostrUserComponent {
   /** Base class functions */
   protected onStatusChange(_status: NCStatus) {
     console.log("onStatusChange: ", _status);
-    if (this.user) {
-      this.render();
-    }
+    this.render();
   }
 
   protected onUserReady(_user: any, _profile: any) {
-    this.render();
     this.getUserStats();
+    this.render();
   }
 
   getUserStats = async () => {
     try {
-      // Fetch stats only if profile exists
       this.isStatsLoading = true;
       this.isStatsFollowsLoading = true;
       this.isStatsFollowersLoading = true;
@@ -114,13 +109,12 @@ export default class NostrProfile extends NostrUserComponent {
         });
 
     } catch (err) {
-      this.setStatus(NCStatus.Error); //todo
+      this.profileStatus.set(NCStatus.Error);
       throw err;
     } finally {
       this.render();
     }
   };
-
 
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     if (oldValue === newValue) return;
@@ -132,7 +126,7 @@ export default class NostrProfile extends NostrUserComponent {
   }
   /** Private functions */
   private onProfileClick() {
-    if (this.status === NCStatus.Error) return;
+    if (this.profileStatus.get() === NCStatus.Error) return;
 
     const event = new CustomEvent(EVT_PROFILE, {
       detail: this.profile,
@@ -184,11 +178,10 @@ export default class NostrProfile extends NostrUserComponent {
     const root = this.shadowRoot;
     if (!root) return;
 
-    const isLoading = this.status === NCStatus.Loading;
-    const isError   = this.status === NCStatus.Error;
-
-    const showNpub = this.getAttribute('show-npub') !== 'false';
-    const showFollow = this.getAttribute('show-follow') !== 'false';
+    const isLoading     = this.computeOverall() == NCStatus.Loading;
+    const isError       = this.computeOverall() === NCStatus.Error;
+    const showNpub      = this.getAttribute('show-npub') !== 'false';
+    const showFollow    = this.getAttribute('show-follow') !== 'false';
 
     if (isLoading) {
       this.shadowRoot.innerHTML = renderLoadingState(this.theme);

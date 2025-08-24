@@ -3,7 +3,7 @@ import { getPostStats, Stats } from '../common/utils';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
 import { renderContent } from './render-content';
-import { NostrBaseComponent } from '../nostr-base-component';
+import { NostrBaseComponent } from '../base-component/nostr-base-component';
 
 export default class NostrPost extends NostrBaseComponent {
 

@@ -5,14 +5,11 @@ import {
   getSuccessAnimation,
 } from '../common/theme';
 import { escapeHtml } from '../common/utils';
+import { RenderOptions } from '../base/render-options';
 
-export interface RenderFollowButtonOptions {
-  theme: Theme;
-  isLoading: boolean;
-  isError: boolean;
+export interface RenderFollowButtonOptions extends RenderOptions {
   isFollowed: boolean;
   isFollowing: boolean;
-  errorMessage: string;
   iconWidth: number;
   iconHeight: number;
 }
@@ -21,9 +18,9 @@ export function renderFollowButton({
   theme,
   isLoading,
   isError,
+  errorMessage,
   isFollowed,
   isFollowing,
-  errorMessage,
   iconWidth,
   iconHeight,
 }: RenderFollowButtonOptions): string {

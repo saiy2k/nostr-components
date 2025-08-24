@@ -1,6 +1,15 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { escapeHtml, maskNPub } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
+import { RenderOptions } from '../base/render-options';
+
+export interface RenderProfileBadgeOptions extends RenderOptions {
+  userProfile: NDKUserProfile | null;
+  ndkUser: NDKUser | null;
+  npub: string | null;
+  showNpub: boolean;
+  showFollow: boolean;
+}
 
 /**
  * Should this become a component on it's own?
@@ -34,16 +43,17 @@ export function renderNip05(
   `;
 }
 
-export function renderProfileBadge(
-  isLoading: boolean,
-  isError: boolean,
-  errorMessage: String,
-  userProfile: NDKUserProfile | null,
-  ndkUser: NDKUser | null,
-  npubAttribute: string | null,
-  showNpub: boolean,
-  showFollow: boolean
-): string {
+export function renderProfileBadge({
+  theme,
+  isLoading,
+  isError,
+  errorMessage,
+  userProfile,
+  ndkUser,
+  npub,
+  showNpub,
+  showFollow
+}: RenderProfileBadgeOptions): string {
 
   if (isLoading) {
     return renderLoading();
@@ -70,7 +80,7 @@ export function renderProfileBadge(
         <div class='nostr-profile-badge-right-container'>
           <div class='nostr-profile-badge-name' title="${profileName}">${profileName}</div>
           ${userProfile.nip05 ? renderNip05(nip05) : ''}
-          ${showNpub === true ? renderNpub(ndkUser, npubAttribute) : ''}
+          ${showNpub === true ? renderNpub(ndkUser, npub) : ''}
           ${showFollow === true && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${pubkey}"></nostr-follow-button>` : ''}
         </div>
       </div>
