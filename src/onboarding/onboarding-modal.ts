@@ -624,4 +624,6 @@ export default class NostrOnboardingModal extends HTMLElement {
   }
 }
 
-customElements.define('nostr-onboarding-modal', NostrOnboardingModal);
+if (!customElements.get('nostr-onboarding-modal')) {
+  customElements.define('nostr-onboarding-modal', NostrOnboardingModal);
+}

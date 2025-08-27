@@ -5,7 +5,7 @@ import { nip19 } from 'nostr-tools';
 import { toDataURL } from 'qrcode';
 
 // Test QR code generation when the module loads (dev only)
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+if (typeof window !== 'undefined' && typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV === 'development') {
   setTimeout(() => {
     const onboardingService = OnboardingService.getInstance();
     onboardingService.testQrCodeGeneration().catch(console.error);
@@ -126,6 +126,7 @@ class OnboardingService {
     this.removeSecretItem('local-nsec');
     this.removeSecretItem('local-relay');
     this.safeLocalStorageRemove('nostr-has-active-signer');
+    this.safeLocalStorageRemove('nostr-active-pubkey');
   }
 
   private constructor() { }
@@ -304,7 +305,7 @@ class OnboardingService {
 
   // Test function to verify QR code generation (dev only)
   async testQrCodeGeneration(): Promise<void> {
-    if (process.env.NODE_ENV !== 'development') {
+    if (typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV !== 'development') {
       console.warn('testQrCodeGeneration is only available in development mode');
       return;
     }
@@ -722,7 +723,7 @@ class OnboardingService {
 export const onboardingService = OnboardingService.getInstance();
 
 // Global functions for debugging/recovery (dev only)
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+if (typeof window !== 'undefined' && typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).clearNostrAuth = () => {
     console.log('🔄 Clearing Nostr authentication...');
     onboardingService.clearAuthentication();
