@@ -568,7 +568,7 @@ export default class NostrOnboardingModal extends HTMLElement {
     const input = this._shadow.getElementById('nsec-app-url') as HTMLInputElement;
     if (input) {
       input.addEventListener('input', (e) => {
-        this._bunkerUrl = (e.target as HTMLInputElement).value;
+        this.bunkerUrl = (e.target as HTMLInputElement).value;
       });
     }
   }
