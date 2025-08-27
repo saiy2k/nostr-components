@@ -1,20 +1,20 @@
 /**
  * <nostr-live-chat>
  * Attributes:
- *  - recipient-npub     (optional): pre-set npub of recipient
- *  - recipient-pubkey   (optional): hex recipient pubkey (alias: recipientPubkey)
- *  - nip05              (optional): user@domain nip-05 identifier (alternative to recipient-npub)
+ *  - npub               (optional): pre-set npub of recipient
+ *  - pubkey             (optional): hex recipient pubkey
+ *  - nip05              (optional): user@domain nip-05 identifier (alternative to npub)
  *  - relays             (optional): comma-separated relay URLs (defaults to common public set)
  *  - theme              (optional): "light" | "dark" (default "light")
- *  - display-type       (optional): "fab" | "bottom-bar" | "full" | "embed" (default "embed") (alias: displayType)
+ *  - display-type       (optional): "fab" | "bottom-bar" | "full" | "embed" (default "embed")
  *  - welcome-text       (optional): custom text for the welcome screen
  *  - start-chat-text    (optional): label for the Start button on the welcome screen
  *  - history-days       (optional): positive integer N to load last N days; "all" or <=0 or omitted -> full history
  *
  * Behaviour:
- *  • If neither recipient-npub nor nip05 is supplied the component shows an input + Find button.
+ *  • If neither npub nor nip05 is supplied the component shows an input + Find button.
  *  • Entering an npub then clicking Find performs profile lookup; during lookup the Find button shows
- *    spinner/“Finding…”. On success the UI switches to the chat view.
+ *    spinner/"Finding…". On success the UI switches to the chat view.
  *  • If nip05 attribute is provided we first resolve it to a pubkey via nip05 well-known file then look
  *    up the profile as usual.
  *  • The component will subscribe to incoming DMs and display the chat history.
@@ -26,6 +26,8 @@ import { getLiveChatStyles, renderLiveChatInner, RenderLiveChatOptions } from ".
 import { nip19 } from "nostr-tools";
 import { NostrService } from "../common/nostr-service";
 import { resolveNip05 } from "../common/nip05-utils";
+
+type DisplayType = 'fab' | 'bottom-bar' | 'full' | 'embed';
 
 interface Message {
   id: string;
@@ -62,7 +64,7 @@ export default class NostrLiveChat extends HTMLElement {
   private static readonly DEFAULT_START_CHAT_TEXT = "Start chat";
   private static readonly DEFAULT_ONLINE_TEXT = "We're Online!";
   private static readonly DEFAULT_HELP_TEXT = "How may I help you today?";
-  private displayType: 'fab' | 'bottom-bar' | 'full' | 'embed' = 'embed';
+  private displayType: DisplayType = 'embed';
   private isOpen: boolean = false; // For floating modes
   private showWelcome: boolean = false; // Show welcome screen before starting chat
   private welcomeText: string = NostrLiveChat.DEFAULT_WELCOME_TEXT;
@@ -76,10 +78,9 @@ export default class NostrLiveChat extends HTMLElement {
   private isFinding: boolean = false;
   private isError: boolean = false;
   private errorMessage: string = "";
-  private recipientError: string = "";
+
 
   // Key management options
-  private persistKey: boolean = false;
   private keySupplier: (() => string | Promise<string>) | null = null;
 
   // Event handlers
@@ -197,19 +198,6 @@ export default class NostrLiveChat extends HTMLElement {
           }
         }
 
-        // Try sessionStorage next (preferred for security)
-        if (!privateKey && typeof sessionStorage !== 'undefined') {
-          privateKey = sessionStorage.getItem('nostr_nsec');
-        }
-
-        // Fall back to localStorage only if persistence is explicitly enabled
-        if (!privateKey && this.persistKey && typeof localStorage !== 'undefined') {
-          privateKey = localStorage.getItem('nostr_nsec');
-          if (privateKey) {
-            console.warn('nostr-live-chat: Using persistent private key from localStorage. Consider using sessionStorage or in-memory key supplier for better security.');
-          }
-        }
-
         if (privateKey) {
           try {
             const { NDKPrivateKeySigner } = await import('@nostr-dev-kit/ndk');
@@ -226,6 +214,9 @@ export default class NostrLiveChat extends HTMLElement {
           }
         }
       }
+
+      // NOTE: We won't save any sensitive info in local/session storage. 
+      // Signing always happens in nos2x/alby, or bunkers extensions.
 
       if (pubkey) {
         this.currentUserPubkey = pubkey;
@@ -312,13 +303,12 @@ export default class NostrLiveChat extends HTMLElement {
   }
 
   private getDisplayType() {
-    // Support both kebab and camel attributes
-    const attr = this.getAttribute('display-type') || this.getAttribute('displayType');
-    const allowed = ['fab', 'bottom-bar', 'full', 'embed'];
+    const attr = this.getAttribute('display-type');
+    const allowed: DisplayType[] = ['fab', 'bottom-bar', 'full', 'embed'];
     const raw = attr ? String(attr) : '';
     const lower = raw.toLowerCase();
-    const normalized = allowed.includes(lower) ? lower : 'embed';
-    this.displayType = normalized as any;
+    const normalized = allowed.includes(lower as DisplayType) ? lower as DisplayType : 'embed';
+    this.displayType = normalized;
     // Initialize open state
     if (this.displayType === 'full') {
       this.isOpen = true;
@@ -348,7 +338,7 @@ export default class NostrLiveChat extends HTMLElement {
   };
 
   getRecipient = () => {
-    const recipientPub = this.getAttribute("recipient-pubkey") || this.getAttribute("recipientPubkey");
+    const recipientPub = this.getAttribute("pubkey");
     if (recipientPub) {
       try {
         this.recipientPubkey = recipientPub;
@@ -357,7 +347,6 @@ export default class NostrLiveChat extends HTMLElement {
         return;
       } catch (e) {
         const errorMsg = `Invalid recipient pubkey "${recipientPub}": ${e instanceof Error ? e.message : String(e)}`;
-        this.recipientError = errorMsg;
         this.isError = true;
         this.errorMessage = errorMsg;
         console.error('nostr-live-chat:', errorMsg, e);
@@ -372,7 +361,7 @@ export default class NostrLiveChat extends HTMLElement {
       return;
     }
 
-    const recipientNpub = this.getAttribute("recipient-npub");
+    const recipientNpub = this.getAttribute("npub");
     if (recipientNpub) {
       this.recipientNpub = recipientNpub;
       this.lookupRecipient();
@@ -402,14 +391,12 @@ export default class NostrLiveChat extends HTMLElement {
 
   static get observedAttributes() {
     return [
-      "recipient-npub",
-      "recipient-pubkey",
-      "recipientPubkey", // Alias for recipient-pubkey
+      "npub",
+      "pubkey",
       "nip05",
       "relays",
       "theme",
       "display-type",
-      "displayType", // Alias for display-type
       "welcome-text",
       "start-chat-text",
       "online-text",      // New: FAB online text
@@ -453,7 +440,7 @@ export default class NostrLiveChat extends HTMLElement {
   ) {
     if (!this.rendered) return;
 
-    if (name === "recipient-npub") {
+    if (name === "npub") {
       if (newValue === null) {
         // Attribute removed: stop subscription and clear state
         this.unsubscribeFromDms();
@@ -469,7 +456,7 @@ export default class NostrLiveChat extends HTMLElement {
         this.lookupRecipient();
       }
       return;
-    } else if (name === 'recipient-pubkey' || name === 'recipientPubkey') {
+    } else if (name === 'pubkey') {
       if (newValue === null) {
         this.unsubscribeFromDms();
         this.clearRecipientAndChatState();
@@ -523,7 +510,7 @@ export default class NostrLiveChat extends HTMLElement {
     } else if (name === "theme") {
       this.getTheme();
       this.render();
-    } else if (name === 'display-type' || name === 'displayType') {
+    } else if (name === 'display-type') {
       this.getDisplayType();
       this.render();
     } else if (name === 'welcome-text') {
@@ -675,26 +662,12 @@ export default class NostrLiveChat extends HTMLElement {
           this.render();
           return;
         }
-      } else if (typeof localStorage !== 'undefined') {
-        const stored = localStorage.getItem("nostr_nsec");
-        if (stored) {
-          const { NDKPrivateKeySigner } = await import("@nostr-dev-kit/ndk");
-          const { nip19 } = await import("nostr-tools");
-          let sk = stored;
-          if (stored.startsWith("nsec")) {
-            const decoded = nip19.decode(stored);
-            sk = decoded.data as string;
-          }
-          signer = new NDKPrivateKeySigner(sk);
-        }
       }
 
       if (!signer) {
         throw new Error("No signer available. Please install a NIP-07 extension or set a private key.");
       }
       ndk.signer = signer;
-
-      const { nip04 } = await import("nostr-tools");
 
       const event = new NDKEvent(ndk, {
         kind: NDKKind.EncryptedDirectMessage,
@@ -719,21 +692,7 @@ export default class NostrLiveChat extends HTMLElement {
 
       // Fall back to local encryption if NIP-07 failed or unavailable
       if (!encryptionSucceeded) {
-        const privateKeyHex = localStorage.getItem("nostr_nsec");
-        if (!privateKeyHex) throw new Error("No private key available");
-
-        const { nip19 } = await import("nostr-tools");
-        let privateKey = privateKeyHex;
-        if (privateKeyHex.startsWith("nsec")) {
-          const decoded = nip19.decode(privateKeyHex);
-          privateKey = decoded.data as string;
-        }
-
-        event.content = await nip04.encrypt(
-          privateKey,
-          this.recipientPubkey!,
-          this.message.trim()
-        );
+        throw new Error("No private key available for encryption. Please use a NIP-07 extension.");
       }
 
       tempId = `temp_${Date.now()}`;
@@ -749,10 +708,19 @@ export default class NostrLiveChat extends HTMLElement {
 
       await event.publish();
 
+      // Check if the optimistic message still exists (real event might have already arrived)
       const sentMessage = this.messages.find(m => m.id === tempId);
       if (sentMessage) {
-        sentMessage.id = event.id; // Update with real event id
-        sentMessage.status = 'sent';
+        // Check if a real message with this ID already exists (race condition)
+        const realMessage = this.messages.find(m => m.id === event.id && m.id !== tempId);
+        if (realMessage) {
+          // Real event arrived first, remove the optimistic message
+          this.messages = this.messages.filter(m => m.id !== tempId);
+        } else {
+          // Update optimistic message with real event id
+          sentMessage.id = event.id;
+          sentMessage.status = 'sent';
+        }
         this.render();
       }
 
@@ -816,18 +784,7 @@ export default class NostrLiveChat extends HTMLElement {
           }
         }
 
-        // Try sessionStorage next (preferred for security)
-        if (!privateKey && typeof sessionStorage !== 'undefined') {
-          privateKey = sessionStorage.getItem('nostr_nsec');
-        }
 
-        // Fall back to localStorage only if persistence is explicitly enabled
-        if (!privateKey && this.persistKey && typeof localStorage !== 'undefined') {
-          privateKey = localStorage.getItem('nostr_nsec');
-          if (privateKey) {
-            console.warn('nostr-live-chat: Using persistent private key from localStorage for DM subscription. Consider using sessionStorage or in-memory key supplier for better security.');
-          }
-        }
 
         if (privateKey) {
           const { NDKPrivateKeySigner } = await import('@nostr-dev-kit/ndk');
@@ -910,14 +867,14 @@ export default class NostrLiveChat extends HTMLElement {
           return;
         }
 
-        // For messages sent by current user, skip if we already have an optimistic version
-        // This prevents duplicate display of sent messages
+        // For messages sent by current user, check if we have an optimistic version to upgrade
         if (isSender) {
-          const existingMessage = this.messages.find(m => m.id === event.id);
-          if (existingMessage) {
-            // Message already exists (optimistic version), just update status if needed
-            if (existingMessage.status === 'sending') {
-              existingMessage.status = 'sent';
+          // First check if we already have a message with this exact ID (real event arrived first)
+          const existingMessageById = this.messages.find(m => m.id === event.id);
+          if (existingMessageById) {
+            // Real event already exists, just update status if needed
+            if (existingMessageById.status === 'sending') {
+              existingMessageById.status = 'sent';
               this.render();
             }
             return;
@@ -925,7 +882,6 @@ export default class NostrLiveChat extends HTMLElement {
         }
 
         let decryptedText = "";
-        const { nip04 } = await import("nostr-tools");
 
         // Guard again before any decryption — never decrypt with a missing peer
         if (!peer) {
@@ -950,21 +906,26 @@ export default class NostrLiveChat extends HTMLElement {
             return;
           }
         } else {
-          const privateKeyHex = localStorage.getItem("nostr_nsec");
-          if (!privateKeyHex) throw new Error("No private key available for decryption");
+          throw new Error("No private key available for decryption. Please use a NIP-07 extension.");
+        }
 
-          const { nip19 } = await import("nostr-tools");
-          let privateKey = privateKeyHex;
-          if (privateKeyHex.startsWith("nsec")) {
-            const decoded = nip19.decode(privateKeyHex);
-            privateKey = decoded.data as string;
-          }
-
-          decryptedText = await nip04.decrypt(
-            privateKey,
-            peer,
-            event.content!
+        // For sent messages, check if we have an optimistic version to upgrade
+        if (isSender) {
+          // Look for an optimistic message with matching content and timestamp
+          const optimisticMessage = this.messages.find(m =>
+            m.status === 'sending' &&
+            m.sender === 'me' &&
+            m.text === decryptedText &&
+            Math.abs(m.timestamp - event.created_at!) < 2
           );
+
+          if (optimisticMessage) {
+            // Upgrade the optimistic message with the real event data
+            optimisticMessage.id = event.id;
+            optimisticMessage.status = 'sent';
+            this.render();
+            return;
+          }
         }
 
         const message: Message = {
@@ -975,11 +936,8 @@ export default class NostrLiveChat extends HTMLElement {
           status: 'sent'
         };
 
-        // Check for duplicates by ID, content, and timestamp to handle edge cases
-        const isDuplicate = this.messages.find(m =>
-          m.id === message.id ||
-          (m.text === message.text && m.sender === message.sender && Math.abs(m.timestamp - message.timestamp) < 2)
-        );
+        // Check for duplicates by ID to handle edge cases
+        const isDuplicate = this.messages.find(m => m.id === message.id);
 
         if (!isDuplicate) {
           this.messages.push(message);
@@ -1081,10 +1039,6 @@ export default class NostrLiveChat extends HTMLElement {
   }
 
   // Public methods for key management configuration
-  public setPersistKey(persist: boolean): void {
-    this.persistKey = persist;
-  }
-
   public setKeySupplier(supplier: (() => string | Promise<string>) | null): void {
     this.keySupplier = supplier;
   }
@@ -1121,7 +1075,8 @@ export default class NostrLiveChat extends HTMLElement {
     };
 
     const styles = getLiveChatStyles(this.theme);
-    const inner = renderLiveChatInner(renderOptions);
+    const { onlineText, helpText, ...innerOptions } = renderOptions;
+    const inner = renderLiveChatInner(innerOptions);
 
     let html = styles;
     if (this.displayType === 'embed') {

@@ -133,7 +133,7 @@ export function renderLiveChat({
   maxMessageLength,
 }: RenderLiveChatOptions): string {
   // Build inner chat UI only
-  const inner = renderLiveChatInner({
+  const { onlineText: _, helpText: __, ...innerOptions } = {
     theme,
     recipientNpub,
     recipientName,
@@ -152,7 +152,8 @@ export function renderLiveChat({
     onlineText,
     helpText,
     maxMessageLength,
-  });
+  };
+  const inner = renderLiveChatInner(innerOptions);
 
   // Include styles + inner UI (legacy behavior)
   return `
@@ -178,10 +179,8 @@ export function renderLiveChatInner({
   showWelcome,
   welcomeText,
   startChatText,
-  onlineText,
-  helpText,
   maxMessageLength,
-}: RenderLiveChatOptions): string {
+}: Omit<RenderLiveChatOptions, 'onlineText' | 'helpText'>): string {
   const iconSize = 24;
   const maxLen = typeof maxMessageLength === 'number' ? maxMessageLength : 1000;
   const typed = (message || '').length;
