@@ -340,10 +340,9 @@ export default class NostrOnboardingModal extends HTMLElement {
           id="nsec-app-url" 
           type="text" 
           placeholder="user@provider.com or bunker://..."
-          value="${this._bunkerUrl}"
         >
-        <button id="connect-btn" ${!this._bunkerUrl || this._isConnectingBunker ? 'disabled' : ''}>
-          ${this._isConnectingBunker ? 'Connecting...' : 'Connect'}
+        <button id="connect-btn">
+          Connect
         </button>
       </div>
       <hr style="margin: 1.5rem 0;">
@@ -351,54 +350,105 @@ export default class NostrOnboardingModal extends HTMLElement {
         <p>Or generate a Nostr connection QR code:</p>
         <button 
           id="generate-qr-btn"
-          ${this._isLoading ? 'disabled' : ''}
           class="generate-button"
         >
-          ${this._isLoading && !this._qrCodeDataUrl ? 'Generating QR Code...' :
-        this._qrCodeDataUrl ? 'Regenerate QR Code' : 'Generate QR Code'}
+          Generate QR Code
         </button>
-        ${this._qrCodeDataUrl
-        ? `
-              <div style="text-align: center; margin: 1.5rem 0;">
-                <img 
-                  src="${this._qrCodeDataUrl}" 
-                  alt="Nostr Connect QR Code"
-                  style="max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; cursor: pointer;"
-                  title="Click to copy connection URL"
-                >
-                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
-                  Scan this QR code with your Nostr signer app (e.g., nsec.app)<br>
-                  <em>Click the QR code to copy the connection URL</em>
-                </p>
-                ${this._nostrConnectUri ? `
-                  <details style="margin-top: 1rem; text-align: left;">
-                    <summary style="cursor: pointer; font-size: 0.8rem; color: #888;">Show connection URL</summary>
-                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; font-family: monospace; font-size: 0.7rem; word-break: break-all; max-height: 100px; overflow-y: auto;">
-                      ${this._nostrConnectUri}
-                    </div>
-                    <button 
-                      id="copy-url-btn"
-                      style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer;"
-                    >
-                      Copy URL
-                    </button>
-                  </details>
-                ` : ''}
-                ${this._isLoading ? `
-                  <div style="margin-top: 1rem; padding: 0.75rem; background: #f8f9fa; border-radius: 4px;">
-                    <p style="margin: 0; color: #0c5460;">
-                      ⏳ Waiting for approval from your signer app...
-                    </p>
-                  </div>
-                ` : ''}
-              </div>
-            `
-        : ''}
+        <div id="qr-code-container" style="display: none; text-align: center; margin: 1.5rem 0;">
+          <img 
+            id="qr-code-image"
+            alt="Nostr Connect QR Code"
+            style="max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; cursor: pointer;"
+            title="Click to copy connection URL"
+          >
+          <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+            Scan this QR code with your Nostr signer app (e.g., nsec.app)<br>
+            <em>Click the QR code to copy the connection URL</em>
+          </p>
+          <details id="connection-url-details" style="margin-top: 1rem; text-align: left; display: none;">
+            <summary style="cursor: pointer; font-size: 0.8rem; color: #888;">Show connection URL</summary>
+            <div id="connection-url-text" style="margin-top: 0.5rem; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; font-family: monospace; font-size: 0.7rem; word-break: break-all; max-height: 100px; overflow-y: auto;">
+            </div>
+            <button 
+              id="copy-url-btn"
+              style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer;"
+            >
+              Copy URL
+            </button>
+          </details>
+          <div id="loading-message" style="margin-top: 1rem; padding: 0.75rem; background: #f8f9fa; border-radius: 4px; display: none;">
+            <p style="margin: 0; color: #0c5460;">
+              ⏳ Waiting for approval from your signer app...
+            </p>
+          </div>
+        </div>
       </div>
       <div class="button-group">
         <button id="back-to-welcome-btn">Back</button>
       </div>
     `;
+  }
+
+  private _updateExistingUserElements(): void {
+    if (this._view !== 'existingUser' || this._connected) {
+      return;
+    }
+
+    // Update bunker URL input
+    const bunkerUrlInput = this._shadow.getElementById('nsec-app-url') as HTMLInputElement;
+    if (bunkerUrlInput) {
+      bunkerUrlInput.value = this._bunkerUrl;
+    }
+
+    // Update connect button
+    const connectBtn = this._shadow.getElementById('connect-btn') as HTMLButtonElement;
+    if (connectBtn) {
+      connectBtn.disabled = !this._bunkerUrl || this._isConnectingBunker;
+      connectBtn.textContent = this._isConnectingBunker ? 'Connecting...' : 'Connect';
+    }
+
+    // Update generate QR button
+    const generateQrBtn = this._shadow.getElementById('generate-qr-btn') as HTMLButtonElement;
+    if (generateQrBtn) {
+      generateQrBtn.disabled = this._isLoading;
+      if (this._isLoading && !this._qrCodeDataUrl) {
+        generateQrBtn.textContent = 'Generating QR Code...';
+      } else if (this._qrCodeDataUrl) {
+        generateQrBtn.textContent = 'Regenerate QR Code';
+      } else {
+        generateQrBtn.textContent = 'Generate QR Code';
+      }
+    }
+
+    // Update QR code container
+    const qrCodeContainer = this._shadow.getElementById('qr-code-container') as HTMLElement;
+    if (qrCodeContainer) {
+      qrCodeContainer.style.display = this._qrCodeDataUrl ? 'block' : 'none';
+    }
+
+    // Update QR code image
+    const qrCodeImage = this._shadow.getElementById('qr-code-image') as HTMLImageElement;
+    if (qrCodeImage && this._qrCodeDataUrl) {
+      qrCodeImage.src = this._qrCodeDataUrl;
+    }
+
+    // Update connection URL details
+    const connectionUrlDetails = this._shadow.getElementById('connection-url-details') as HTMLElement;
+    if (connectionUrlDetails) {
+      connectionUrlDetails.style.display = this._nostrConnectUri ? 'block' : 'none';
+    }
+
+    // Update connection URL text
+    const connectionUrlText = this._shadow.getElementById('connection-url-text') as HTMLElement;
+    if (connectionUrlText && this._nostrConnectUri) {
+      connectionUrlText.textContent = this._nostrConnectUri;
+    }
+
+    // Update loading message
+    const loadingMessage = this._shadow.getElementById('loading-message') as HTMLElement;
+    if (loadingMessage) {
+      loadingMessage.style.display = this._isLoading ? 'block' : 'none';
+    }
   }
 
   private _renderContent(): string {
@@ -430,6 +480,7 @@ export default class NostrOnboardingModal extends HTMLElement {
     `;
 
     this._attachEventListeners();
+    this._updateExistingUserElements();
   }
 
   private _attachEventListeners(): void {

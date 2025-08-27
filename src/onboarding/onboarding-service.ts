@@ -53,32 +53,79 @@ class OnboardingService {
     return typeof pubkey === 'string' && pubkey.length === 64 && /^[0-9a-f]+$/i.test(pubkey);
   }
 
+  // In-memory fallback storage for when sessionStorage is unavailable
+  private _memoryStorage: Record<string, string> = {};
+
   // Use sessionStorage for sensitive data, localStorage for non-sensitive preferences
   public setSecretItem(key: string, value: string): void {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(key, value);
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(key, value);
+      }
+    } catch (error) {
+      console.warn('sessionStorage.setItem failed, using in-memory fallback:', error);
+      this._memoryStorage[key] = value;
     }
   }
 
   public getSecretItem(key: string): string | null {
-    if (typeof sessionStorage !== 'undefined') {
-      return sessionStorage.getItem(key);
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        return sessionStorage.getItem(key);
+      }
+    } catch (error) {
+      console.warn('sessionStorage.getItem failed, using in-memory fallback:', error);
+    }
+    return this._memoryStorage[key] || null;
+  }
+
+  private removeSecretItem(key: string): void {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('sessionStorage.removeItem failed, using in-memory fallback:', error);
+    }
+    delete this._memoryStorage[key];
+  }
+
+  // Safe localStorage helper methods
+  private safeLocalStorageGet(key: string): string | null {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+    } catch (error) {
+      console.warn(`localStorage.getItem('${key}') failed:`, error);
     }
     return null;
   }
 
-  private removeSecretItem(key: string): void {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem(key);
+  private safeLocalStorageSet(key: string, value: string): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+    } catch (error) {
+      console.warn(`localStorage.setItem('${key}') failed:`, error);
+    }
+  }
+
+  private safeLocalStorageRemove(key: string): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn(`localStorage.removeItem('${key}') failed:`, error);
     }
   }
 
   private clearAllSecrets(): void {
     this.removeSecretItem('local-nsec');
     this.removeSecretItem('local-relay');
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('nostr-has-active-signer');
-    }
+    this.safeLocalStorageRemove('nostr-has-active-signer');
   }
 
   private constructor() { }
@@ -97,7 +144,7 @@ class OnboardingService {
     }
 
     // Check for stored remote signer and try to reconnect
-    if (localStorage.getItem('nostr-has-active-signer') === 'true') {
+    if (this.safeLocalStorageGet('nostr-has-active-signer') === 'true') {
       console.log('Found stored signer, attempting to reconnect...');
       this.tryAutoReconnect();
       return true;
@@ -129,7 +176,7 @@ class OnboardingService {
     }
 
     // If we have stored credentials, wait for reconnection to complete
-    if (localStorage.getItem('nostr-has-active-signer') === 'true') {
+    if (this.safeLocalStorageGet('nostr-has-active-signer') === 'true') {
       console.log('Waiting for auto-reconnect to complete...');
 
       try {
@@ -148,13 +195,13 @@ class OnboardingService {
         } else {
           console.log('Auto-reconnect completed but no signer available');
           // Clear the stored flag since reconnection failed
-          localStorage.removeItem('nostr-has-active-signer');
+          this.safeLocalStorageRemove('nostr-has-active-signer');
           return false;
         }
       } catch (error) {
         console.error('Auto-reconnect failed or timed out:', error);
         // Clear the stored flag since reconnection failed
-        localStorage.removeItem('nostr-has-active-signer');
+        this.safeLocalStorageRemove('nostr-has-active-signer');
         return false;
       }
     }
@@ -178,7 +225,7 @@ class OnboardingService {
 
         if (!localNsec || !localRelay) {
           console.log('Missing stored credentials, cannot auto-reconnect');
-          localStorage.removeItem('nostr-has-active-signer');
+          this.safeLocalStorageRemove('nostr-has-active-signer');
           return;
         }
 
@@ -235,6 +282,21 @@ class OnboardingService {
 
     // Clear reconnection promise
     this.reconnectPromise = null;
+
+    // Clear nostr-active-pubkey to avoid stale state
+    this.safeLocalStorageRemove('nostr-active-pubkey');
+
+    // Notify listeners of signed-out state
+    if (typeof window !== 'undefined') {
+      try {
+        const evt = new CustomEvent('nostr-signer-changed', {
+          detail: { signerReady: false, pubkey: null }
+        });
+        window.dispatchEvent(evt);
+      } catch (error) {
+        console.warn('Failed to dispatch nostr-signer-changed event:', error);
+      }
+    }
 
     console.log('Authentication cleared, showing modal');
     this.showModal();
@@ -669,7 +731,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).checkNostrAuth = () => {
     const ndk = onboardingService['nostrService'].getNDK();
     console.log('🔍 Authentication status:', {
-      hasStoredSigner: localStorage.getItem('nostr-has-active-signer'),
+      hasStoredSigner: onboardingService['safeLocalStorageGet']('nostr-has-active-signer'),
       hasLocalNsec: !!onboardingService.getSecretItem('local-nsec'),
       hasLocalRelay: onboardingService.getSecretItem('local-relay'),
       hasNdkSigner: !!ndk.signer,

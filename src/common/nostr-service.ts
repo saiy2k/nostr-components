@@ -312,10 +312,14 @@ export class NostrService {
       this.ndk.signer = signer;
       console.log('Signer set successfully in NostrService');
 
-      // Guard localStorage usage with environment checks
+      // Guard localStorage usage with environment checks and error handling
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        localStorage.setItem('nostr-has-active-signer', 'true');
-        localStorage.setItem('nostr-active-pubkey', user.pubkey);
+        try {
+          localStorage.setItem('nostr-has-active-signer', 'true');
+          localStorage.setItem('nostr-active-pubkey', user.pubkey);
+        } catch (error) {
+          console.warn('Failed to set localStorage items:', error);
+        }
       }
 
       // Dispatch success event
