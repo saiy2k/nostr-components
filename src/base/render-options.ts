@@ -1,6 +1,6 @@
 import { Theme } from "../common/types";
 
-export interface RenderOptions {
+export interface IRenderOptions {
   theme: Theme;
   isLoading: boolean;
   isError: boolean;

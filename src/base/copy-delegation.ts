@@ -1,11 +1,10 @@
 import { copyToClipboard } from '../common/utils';
 
-export function attachCopyDelegation(host: { delegateEvent: any; shadowRoot: ShadowRoot | null }) {
-  // No-op if already attached by your delegateEvent guard
-  host.delegateEvent('click', '.nc-copy-btn', async (e: Event) => {
+export function attachCopyDelegation(host: { addDelegatedListener: any }) {
+  host.addDelegatedListener('click', '.nc-copy-btn', async (e: Event) => {
     e.stopPropagation();
-    const btn = e.currentTarget as HTMLElement;
-    const row = (btn as HTMLElement).closest('.nc-copy') as HTMLElement | null;
+    const btn = (e.target as HTMLElement)?.closest('.nc-copy-btn') as HTMLElement;
+    const row = btn?.closest('.nc-copy') as HTMLElement | null;
     const value = row?.dataset.copy ?? '';
     if (!value) return;
 

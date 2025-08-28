@@ -28,7 +28,8 @@ export function renderCopyRow(opts: CopyRowOptions): string {
   return `
     <div class="${rowClass}" data-copy="${safeValue}" title="${safeTitle}">
       <span class="nc-copy-text">${safeDisplay}</span>
-      <span class="copy-button nc-copy-btn"
+      <button type="button" 
+            class="copy-button nc-copy-btn"
             aria-label="Copy"
             title="Copy">${iconHtml}</button>
     </div>

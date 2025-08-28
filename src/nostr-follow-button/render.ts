@@ -5,9 +5,9 @@ import {
   getSuccessAnimation,
 } from '../common/theme';
 import { escapeHtml } from '../common/utils';
-import { RenderOptions } from '../base/render-options';
+import { IRenderOptions } from '../base/render-options';
 
-export interface RenderFollowButtonOptions extends RenderOptions {
+export interface RenderFollowButtonOptions extends IRenderOptions {
   isFollowed: boolean;
   isFollowing: boolean;
   iconWidth: number;

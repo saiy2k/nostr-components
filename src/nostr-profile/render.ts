@@ -1,5 +1,5 @@
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { RenderOptions } from '../base/render-options';
+import { IRenderOptions } from '../base/render-options';
 import { renderNpub } from '../base/render-npub';
 import { renderNip05 } from '../base/render-nip05';
 import { renderStats } from './render-stats';
@@ -13,7 +13,7 @@ export interface Stats {
   relays: number;
 }
 
-export interface RenderProfileOptions extends RenderOptions {
+export interface RenderProfileOptions extends IRenderOptions {
   npub: string;
   userProfile: NDKUserProfile;
   isStatsLoading: boolean;

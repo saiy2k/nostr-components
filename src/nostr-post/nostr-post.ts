@@ -1,23 +1,27 @@
-import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { getPostStats, Stats } from '../common/utils';
+import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { getPostStats, Stats, copyToClipboard } from '../common/utils';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
 import { renderContent } from './render-content';
-import { NostrBaseComponent } from '../base/base-component/nostr-base-component';
+import { NostrEventComponent } from '../base/event-component/nostr-event-component';
+import { UserResolver } from '../base/resolvers/user-resolver';
+import { attachCopyDelegation } from '../base/copy-delegation';
+import { NCStatus } from '../base/base-component/nostr-base-component';
 
-export default class NostrPost extends NostrBaseComponent {
+/**
+ * TODO:
+ *  - Click handlers to use BaseComponent::delegateEvent
+ *  - Review entire code to upgrade it to the same standards as other components.
+ */
+export default class NostrPost extends NostrEventComponent {
 
-  private post: NDKEvent | null = null;
-  private stats: Stats | null = null;
-  private embeddedPosts: Map<string, NDKEvent> = new Map();
+  protected stats: Stats | null = null;
+  protected embeddedPosts: Map<string, NDKEvent> = new Map();
 
-  private receivedData: boolean = false;
+  protected author: NDKUser | null = null;
+  protected authorProfile: NDKUserProfile | null = null;
 
-  private author: NDKUserProfile | null | undefined = {
-    name: '',
-    image: '',
-    nip05: '',
-  };
+  private userResolver = new UserResolver(this.nostrService);
 
   private onClick: ((post: NDKEvent | null) => void) | null = null;
   private onAuthorClick:
@@ -29,6 +33,7 @@ export default class NostrPost extends NostrBaseComponent {
   }
 
   async connectedCallback() {
+
     const onClick = this.getAttribute('onClick');
     if (onClick !== null && (window as any)[onClick]) {
       this.onClick = (window as any)[onClick] as (
@@ -44,37 +49,36 @@ export default class NostrPost extends NostrBaseComponent {
       ) => void;
     }
 
+    super.connectedCallback?.();
+    attachCopyDelegation(this);
     this.render();
-
-    if (!this.rendered) {
-      await this.nostrService.connectToNostr(this.getRelays());
-      this.getPost();
-
-      this.rendered = true;
-    }
   }
 
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
-      'id',
       'show-stats',
       'onClick',
-      'onAuthorClick',
-      'onMentionClick',
+-     'onAuthorClick',
+-     'onMentionClick',
     ];
   }
 
   attributeChangedCallback(
     name: string,
-    _oldValue: string | null,
+    oldValue: string | null,
     newValue: string | null
   ) {
-    super.attributeChangedCallback(name, _oldValue, newValue);
+    if (oldValue === newValue) return;
+    super.attributeChangedCallback?.(name, oldValue, newValue);
 
-    if (['relays', 'id'].includes(name)) {
-      this.getPost();
+    if (name === 'show-stats') {
+      this.render();
     }
+
+    /*
+    super.attributeChangedCallback(name, _oldValue, newValue);
+    */
 
     if (name === 'onClick' && newValue) {
       const handler = (window as any)[newValue];
@@ -93,67 +97,51 @@ export default class NostrPost extends NostrBaseComponent {
       }
     }
 
-    if (name === 'theme') {
-      this.render();
-    }
+  }
 
-    if (name === 'show-stats') {
+  protected async onEventReady(event: any) {
+    try {
+      const { user, profile } = await this.userResolver.resolveUser({ pubkey: event.pubkey });
+      this.author = user;
+      this.authorProfile = profile;
+      this.getPostStats();
       this.render();
+    } catch (err) {
+      console.error('[NostrPostComponent] Failed to resolve author:', err);
     }
   }
 
-  async getPost() {
+  async getPostStats() {
     try {
-      this.isLoading = true;
-      this.render();
+      const shouldShowStats = this.getAttribute('show-stats');
 
-      const noteId = this.getAttribute('id') || '';
-      const post = await this.nostrService.getPost(noteId);
-
-      if (!this.receivedData) {
-        if (!post) {
-          this.isError = true;
-        } else {
-          this.receivedData = true;
-          this.post = post;
-
-          const author = await this.post?.author.fetchProfile();
-          if (author) {
-            this.author = author;
-          }
-
-          const shouldShowStats = this.getAttribute('show-stats');
-
-          if (this.post && shouldShowStats) {
-            const stats = await getPostStats(
-              this.nostrService.getNDK(),
-              this.post.id
-            );
-            if (stats) {
-              this.stats = stats;
-            }
-          }
-
-          this.isError = false;
+      if (this.event && shouldShowStats) {
+        const stats = await getPostStats(
+          this.nostrService.getNDK(),
+          this.event.id
+        );
+        if (stats) {
+          this.stats = stats;
         }
       }
     } catch (err) {
-      console.error('Failed to fetch post:', err);
-      this.isError = true;
-      throw err;
+      const msg = err instanceof Error ? err.message : 'Failed to load post stats';
+      console.error('[NostrPostComponent] ' + msg, err);
+      this.eventStatus.set(NCStatus.Error, msg);
     } finally {
-      this.isLoading = false;
       this.render();
     }
   }
 
   #_onPostClick() {
-    if (this.isError || !this.post) {
+    /*
+    if (this.isError || !this.event) {
       return;
     }
+    */
 
     if (this.onClick) {
-      this.onClick(this.post);
+      this.onClick(this.event);
       return;
     }
 
@@ -163,16 +151,18 @@ export default class NostrPost extends NostrBaseComponent {
   }
 
   #_onAuthorClick() {
-    if (this.isError || !this.post?.author.npub) {
+    /*
+    if (this.isError || !this.event?.author.npub) {
       return;
     }
+    */
 
     if (this.onAuthorClick) {
-      this.onAuthorClick(this.post.author.npub, this.author);
+      this.onAuthorClick(this.event!.author.npub, this.authorProfile);
       return;
     }
 
-    window.open(`https://njump.me/${this.post?.author.npub}`, '_blank');
+    window.open(`https://njump.me/${this.event?.author.npub}`, '_blank');
   }
 
   #_onMentionClick(username: string, event: Event) {
@@ -198,14 +188,14 @@ export default class NostrPost extends NostrBaseComponent {
 
     const date = post.created_at
       ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
       : '';
 
     // Process the post content
-    const content = await parseText(post.content, this.post, this.embeddedPosts, this.nostrService);
+    const content = await parseText(post.content, this.event, this.embeddedPosts, this.nostrService);
     const renderedContent = await renderContent(content);
 
     // Use the renderEmbeddedPost function from the render module
@@ -213,10 +203,10 @@ export default class NostrPost extends NostrBaseComponent {
       noteId,
       authorProfile
         ? {
-            displayName: authorProfile.displayName || '',
-            image: authorProfile.image || '',
-            nip05: authorProfile.nip05 || '',
-          }
+          displayName: authorProfile.displayName || '',
+          image: authorProfile.image || '',
+          nip05: authorProfile.nip05 || '',
+        }
         : undefined,
       date,
       renderedContent
@@ -331,13 +321,21 @@ export default class NostrPost extends NostrBaseComponent {
   }
 
   async render() {
-    const content = this.post?.content || '';
-    const parsedContent = await parseText(content, this.post, this.embeddedPosts, this.nostrService);
+    const isLoading = this.computeOverall() == NCStatus.Loading;
+    const isError = this.computeOverall() === NCStatus.Error;
+
+    const content = this.event?.content || '';
+    const parsedContent = await parseText(content, this.event, this.embeddedPosts, this.nostrService);
     const htmlToRender = await renderContent(parsedContent);
+    const errorMessage = super.renderError(this.errorMessage);
+
+    console.log(this.event);
+    console.log(parsedContent);
+    console.log(htmlToRender);
 
     let date = '';
-    if (this.post?.created_at) {
-      date = new Date(this.post.created_at * 1000).toLocaleDateString('en-US', {
+    if (this.event?.created_at) {
+      date = new Date(this.event.created_at * 1000).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -349,9 +347,10 @@ export default class NostrPost extends NostrBaseComponent {
     // Prepare the options for the render function
     const renderOptions: RenderPostOptions = {
       theme: this.theme,
-      isLoading: this.isLoading,
-      isError: this.isError,
-      author: this.author,
+      isLoading: isLoading,
+      isError: isError,
+      errorMessage: errorMessage,
+      author: this.authorProfile,
       date,
       shouldShowStats,
       stats: this.stats,

@@ -396,10 +396,11 @@ export function getProfileStyles(theme: Theme) {
         min-height: 15px;
         align-items: center;
         justify-content: center;
-        border-radius: 5px;
         cursor: pointer;
         font-weight: bold;
         color: var(--nstrc-profile-copy-foreground-color);
+        border: none;
+        background: var(--nstrc-profile-badge-background);
       }
 
       @media only screen and (max-width: 600px) {

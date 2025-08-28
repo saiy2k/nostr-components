@@ -266,6 +266,15 @@ export class NostrBaseComponent extends HTMLElement {
     });
   }
 
+  public addDelegatedListener<K extends keyof HTMLElementEventMap>(
+    type: K,
+    selector: string,
+    handler: (event: HTMLElementEventMap[K]) => void
+  ) {
+    this.delegateEvent(type, selector, handler);
+  }
+
+
   protected renderError(errorMessage: String): string {
     return `Error: ${errorMessage}`;
   }

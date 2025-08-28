@@ -1,11 +1,11 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { escapeHtml, maskNPub } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
-import { RenderOptions } from '../base/render-options';
+import { IRenderOptions } from '../base/render-options';
 import { renderNpub } from '../base/render-npub';
 import { renderNip05 } from '../base/render-nip05';
 
-export interface RenderProfileBadgeOptions extends RenderOptions {
+export interface RenderProfileBadgeOptions extends IRenderOptions {
   userProfile: NDKUserProfile | null;
   ndkUser: NDKUser | null;
   npub: string | null;

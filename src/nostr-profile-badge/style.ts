@@ -128,6 +128,8 @@ export function getProfileBadgeStyles(theme: Theme): string {
         opacity: 0.7;
         transition: opacity 0.2s;
         font-size: 1.5em;
+        border: none;
+        background: var(--nstrc-profile-badge-background);
       }
 
       .copy-button:hover {

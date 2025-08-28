@@ -61,17 +61,19 @@
         //'npub1dergggklka99wwrs92yz8wdjs952h2ux2ha2ed598ngwu9w7a6fsh9xzpc', dergigi
       ];
       const relays = ['', '', '', 'ws://nas.yunierrodriguez.com:4848'];
+      /*
       var badgeIndex = 0;
       var timerId = setInterval(() => {
           console.log('Setting npub as ', npub[badgeIndex]);
           document.getElementById("nbadge").setAttribute("npub", npub[badgeIndex]);
-          document.getElementById("nfollow").setAttribute("npub", npub[badgeIndex]);
+          // document.getElementById("nfollow").setAttribute("npub", npub[badgeIndex]);
           // document.getElementById("nbadge").setAttribute("relays", relays[badgeIndex]);
           badgeIndex++;
           if (badgeIndex == npub.length) {
             clearInterval(timerId);
           }
-      }, 5 * 1000);
+      }, 10 * 1000);
+      */
     </script>
   </head>
   <body>
@@ -82,6 +84,7 @@
       <nostr-profile-badge
         id="nbadge"
         npub='npub1dergggklka99wwrs92yz8wdjs952h2ux2ha2ed598ngwu9w7a6fsh9xzpc'
+        show-follow="false"
       ></nostr-profile-badge>
 
       <br/>
@@ -90,6 +93,11 @@
         <nostr-follow-button id="nfollow" npub="npub1dergggklka99wwrs92yz8wdjs952h2ux2ha2ed598ngwu9w7a6fsh9xzpc"></nostr-follow-button>
       </div>
 
+      <br/>
+      <br/>
+
     </div>
+
+      <nostr-post id="b6d279c7074993b8815a2434c40d117e9cfa106d6ae2b336b25fe75f2f93bc30"></nostr-post>
   </body>
 </html>
