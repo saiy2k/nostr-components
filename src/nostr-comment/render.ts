@@ -153,8 +153,8 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUs
             <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
             <div class="identity-toggle">
               <label class="toggle-label">Identity:</label>
-              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
-              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
+              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''} title="${!hasNip07 ? 'NIP-07 extension not detected' : 'Use your Nostr extension'}">User ${!hasNip07 ? '🔌' : '✅'}</button>
+              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" title="Comment anonymously">Anonymous</button>
             </div>
           </div>
           <textarea 
@@ -224,8 +224,8 @@ function renderCommentForm(
             <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
             <div class="identity-toggle">
               <label class="toggle-label">Identity:</label>
-              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''}>User</button>
-              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}">Anonymous</button>
+              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''} title="${!hasNip07 ? 'NIP-07 extension not detected' : 'Use your Nostr extension'}">User ${!hasNip07 ? '🔌' : '✅'}</button>
+              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" title="Comment anonymously">Anonymous</button>
             </div>
           </div>
           <div class="comment-form-body">
