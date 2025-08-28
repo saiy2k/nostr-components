@@ -36,10 +36,11 @@ export default class NostrComment extends HTMLElement {
 
     private isSubmitting: boolean = false;
     private replyingToComment: string | null = null; // ID of comment being replied to
-    private commentAs: 'user' | 'anon' = 'anon';
+    private commentAs: 'user' | 'anon' = 'user'; // Default to user mode when logged in
     private hasNip07: boolean = false;
     private anonPrivateKeyHex: string | null = null;
     private eventListeners: Array<{ element: Element; type: string; handler: EventListener }> = [];
+    private nip07MonitoringInterval: ReturnType<typeof setInterval> | null = null;
 
     constructor() {
         super();
@@ -77,6 +78,61 @@ export default class NostrComment extends HTMLElement {
             return normalizeURL(urlAttr);
         }
         return normalizeURL(window.location.href);
+    };
+
+    // Helper method to detect and validate NIP-07 extension
+    private detectNip07Extension = (): boolean => {
+        const nostr = (window as any).nostr;
+        if (!nostr) {
+            return false;
+        }
+
+        // Check if the extension has the required methods
+        const hasRequiredMethods = typeof nostr.getPublicKey === 'function' &&
+            typeof nostr.signEvent === 'function';
+
+        if (!hasRequiredMethods) {
+            console.warn('NIP-07 extension detected but missing required methods');
+            return false;
+        }
+
+        return true;
+    };
+
+    // Method to handle NIP-07 extension state changes
+    private handleNip07StateChange = async (): Promise<void> => {
+        const wasNip07Available = this.hasNip07;
+        const isNip07Available = this.detectNip07Extension();
+
+        if (wasNip07Available !== isNip07Available) {
+            console.log('NIP-07 extension state changed:', isNip07Available);
+            this.hasNip07 = isNip07Available;
+
+            // If NIP-07 became available and we're in user mode, try to reconnect
+            if (isNip07Available && this.commentAs === 'user') {
+                try {
+                    await this.initializeUser();
+                    this.render();
+                } catch (error) {
+                    console.warn('Failed to reconnect to NIP-07 extension:', error);
+                }
+            }
+        }
+    };
+
+    // Set up periodic monitoring of NIP-07 extension state
+    private setupNip07StateMonitoring = (): void => {
+        // Check for NIP-07 state changes every 2 seconds
+        const intervalId = setInterval(async () => {
+            if (this.isConnected) {
+                await this.handleNip07StateChange();
+            } else {
+                clearInterval(intervalId);
+            }
+        }, 2000);
+
+        // Store the interval ID for cleanup
+        this.nip07MonitoringInterval = intervalId;
     };
 
     loadComments = async (): Promise<void> => {
@@ -241,16 +297,23 @@ export default class NostrComment extends HTMLElement {
     };
 
     initializeUser = async (): Promise<void> => {
-        // Detect nip07
-        this.hasNip07 = !!(window as any).nostr;
+        // Detect NIP-07 extension (nos2x, Alby, etc.)
+        this.hasNip07 = this.detectNip07Extension();
+        console.log('NIP-07 extension detected:', this.hasNip07);
 
+        // If NIP-07 is available and we're in user mode, try to connect
         if (this.hasNip07 && this.commentAs === 'user') {
             try {
+                // Test the extension by getting the public key
                 this.userPublicKey = await (window as any).nostr.getPublicKey();
-                console.log('Connected to NIP-07 extension');
+                console.log('Successfully connected to NIP-07 extension, public key:', this.userPublicKey);
+
+                // Clear any stored private keys when using NIP-07
+                this.userPrivateKey = null;
+                this.anonPrivateKeyHex = null;
             } catch (error) {
-                console.warn('NIP-07 extension available but failed to get public key');
-                // Explicitly fall back to anon identity
+                console.warn('NIP-07 extension available but failed to get public key:', error);
+                // Fall back to anon identity if NIP-07 fails
                 this.commentAs = 'anon';
                 this.userPublicKey = null;
                 this.userPrivateKey = null;
@@ -264,7 +327,7 @@ export default class NostrComment extends HTMLElement {
             this.userPrivateKey = anonKey;
             const { getPublicKey } = await import('nostr-tools/pure');
             this.userPublicKey = getPublicKey(new Uint8Array(anonKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
-            console.log('Using anonymous key');
+            console.log('Using anonymous key for user:', this.userPublicKey);
         }
 
         // Ensure anonymous key is available when in anonymous mode
@@ -344,10 +407,16 @@ export default class NostrComment extends HTMLElement {
             let signedEvent;
             console.log(`[nostr-comment] Signing attempt - commentAs: ${this.commentAs}, hasNip07: ${!!(window as any).nostr}, anonKey: ${!!this.anonPrivateKeyHex}, userKey: ${!!this.userPrivateKey}`);
 
-            if (this.commentAs === 'user' && (window as any).nostr && !this.userPrivateKey) {
+            if (this.commentAs === 'user' && this.hasNip07 && (window as any).nostr) {
                 // Use NIP-07 extension to sign
                 console.log('[nostr-comment] Using NIP-07 extension to sign');
-                signedEvent = await (window as any).nostr.signEvent(event);
+                try {
+                    signedEvent = await (window as any).nostr.signEvent(event);
+                    console.log('[nostr-comment] Successfully signed with NIP-07 extension');
+                } catch (error) {
+                    console.error('[nostr-comment] Failed to sign with NIP-07 extension:', error);
+                    throw new Error('Failed to sign with NIP-07 extension. Please check if your extension is unlocked.');
+                }
             } else if (this.commentAs === 'anon' && this.anonPrivateKeyHex) {
                 // Sign with anonymous private key
                 console.log('[nostr-comment] Using anonymous private key to sign');
@@ -361,8 +430,8 @@ export default class NostrComment extends HTMLElement {
                 const privateKeyBytes = new Uint8Array(this.userPrivateKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
                 signedEvent = finalizeEvent(event, privateKeyBytes);
             } else {
-                console.error('[nostr-comment] No signing method available - commentAs:', this.commentAs, 'hasNip07:', !!(window as any).nostr, 'anonKey:', !!this.anonPrivateKeyHex, 'userKey:', !!this.userPrivateKey);
-                throw new Error('No signing method available');
+                console.error('[nostr-comment] No signing method available - commentAs:', this.commentAs, 'hasNip07:', this.hasNip07, 'anonKey:', !!this.anonPrivateKeyHex, 'userKey:', !!this.userPrivateKey);
+                throw new Error('No signing method available. Please check your NIP-07 extension or switch to anonymous mode.');
             }
 
             // Publish to relays
@@ -430,7 +499,22 @@ export default class NostrComment extends HTMLElement {
 
         } catch (error) {
             console.error('Failed to submit comment:', error);
-            this.showError('Failed to submit comment: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            let errorMessage = 'Failed to submit comment: ' + (error instanceof Error ? error.message : 'Unknown error');
+
+            // Provide more helpful error messages for NIP-07 issues
+            if (error instanceof Error) {
+                if (error.message.includes('NIP-07')) {
+                    if (error.message.includes('extension is unlocked')) {
+                        errorMessage = 'Please unlock your Nostr extension (nos2x/Alby) and try again.';
+                    } else if (error.message.includes('getPublicKey')) {
+                        errorMessage = 'Please authorize this website in your Nostr extension.';
+                    } else {
+                        errorMessage = 'Nostr extension error. Please check if your extension is working properly.';
+                    }
+                }
+            }
+
+            this.showError(errorMessage);
         } finally {
             this.isSubmitting = false;
             this.render();
@@ -512,10 +596,16 @@ export default class NostrComment extends HTMLElement {
         if (!this.rendered) {
             this.getTheme();
             this.baseUrl = this.getBaseUrl();
-            // Load comments first (don't require user initialization)
-            this.loadComments();
-            // Initialize user separately for commenting functionality
+
+            // Initialize user first to set up identity properly
             await this.initializeUser();
+
+            // Load comments after user initialization
+            this.loadComments();
+
+            // Set up periodic check for NIP-07 extension state changes
+            this.setupNip07StateMonitoring();
+
             this.rendered = true;
         }
     }
@@ -554,6 +644,12 @@ export default class NostrComment extends HTMLElement {
     disconnectedCallback() {
         // Clean up event listeners to prevent memory leaks
         this.removeEventListeners();
+
+        // Clean up NIP-07 monitoring interval
+        if (this.nip07MonitoringInterval) {
+            clearInterval(this.nip07MonitoringInterval);
+            this.nip07MonitoringInterval = null;
+        }
     }
 
     attachEventListeners() {
@@ -615,12 +711,14 @@ export default class NostrComment extends HTMLElement {
         this.shadow.querySelectorAll('[data-role="toggle-as-user"]').forEach(btnUser => {
             if (!this.hasNip07) {
                 (btnUser as HTMLButtonElement).disabled = true;
+                (btnUser as HTMLButtonElement).title = 'NIP-07 extension not detected';
             } else {
                 const handler = async (e: Event) => {
                     e.preventDefault();
                     if (this.commentAs !== 'user') {
                         this.commentAs = 'user';
                         this.userPrivateKey = null; // ensure nip07 signing path
+                        this.anonPrivateKeyHex = null; // clear anon key when switching to user
                         await this.initializeUser();
                     }
                 };
@@ -681,17 +779,20 @@ export default class NostrComment extends HTMLElement {
             z-index: 10000;
             max-width: 300px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
         `;
         errorDiv.textContent = message;
 
         document.body.appendChild(errorDiv);
 
-        // Auto-remove after 5 seconds
+        // Auto-remove after 8 seconds for NIP-07 errors
+        const timeout = message.includes('NIP-07') ? 8000 : 5000;
         setTimeout(() => {
             if (errorDiv.parentNode) {
                 errorDiv.parentNode.removeChild(errorDiv);
             }
-        }, 5000);
+        }, timeout);
     }
 
     private async ensureAnonKey(): Promise<string> {
