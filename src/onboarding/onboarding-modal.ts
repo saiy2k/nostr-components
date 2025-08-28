@@ -48,7 +48,23 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   set bunkerUrl(value: string) {
     this._bunkerUrl = value;
-    this._render();
+
+    // Update only the specific DOM element instead of re-rendering
+    if (this._shadow && this._view === 'existingUser') {
+      const bunkerUrlInput = this._shadow.getElementById('nsec-app-url') as HTMLInputElement;
+      if (bunkerUrlInput) {
+        bunkerUrlInput.value = this._bunkerUrl;
+      }
+
+      // Also update connect button state
+      const connectBtn = this._shadow.getElementById('connect-btn') as HTMLButtonElement;
+      if (connectBtn) {
+        connectBtn.disabled = !this._bunkerUrl || this._isConnectingBunker;
+      }
+    } else if (!this._shadow) {
+      // Fall back to _render() when component is not yet initialized
+      this._render();
+    }
   }
 
   get connected(): boolean {
@@ -447,7 +463,9 @@ export default class NostrOnboardingModal extends HTMLElement {
     // Update loading message
     const loadingMessage = this._shadow.getElementById('loading-message') as HTMLElement;
     if (loadingMessage) {
-      loadingMessage.style.display = this._isLoading ? 'block' : 'none';
+      // Show message when QR is rendered but not yet connected
+      const showWaiting = this._qrCodeDataUrl && !this._connected;
+      loadingMessage.style.display = showWaiting ? 'block' : 'none';
     }
   }
 
