@@ -1,9 +1,18 @@
 import { copyToClipboard } from '../common/utils';
 
-export function attachCopyDelegation(host: { addDelegatedListener: any }) {
+interface DelegatedHost {
+    addDelegatedListener(
+      type: string,
+      selector: string,
+      handler: (e: Event) => void
+    ): void;
+  }
+
+export function attachCopyDelegation(host: DelegatedHost) {
   host.addDelegatedListener('click', '.nc-copy-btn', async (e: Event) => {
     e.stopPropagation();
     const btn = (e.target as HTMLElement)?.closest('.nc-copy-btn') as HTMLElement;
+    if (!btn) return;
     const row = btn?.closest('.nc-copy') as HTMLElement | null;
     const value = row?.dataset.copy ?? '';
     if (!value) return;

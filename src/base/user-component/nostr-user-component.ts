@@ -96,7 +96,7 @@ export class NostrUserComponent extends NostrBaseComponent {
 
     if (err) {
       this.userStatus.set(NCStatus.Error, err);
-      console.error(`Nostr-Components: ${tagName.toLowerCase()}: ${err}`);
+      console.error(`Nostr-Components: ${tagName}: ${err}`);
       return false;
     }
 

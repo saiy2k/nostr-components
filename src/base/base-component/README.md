@@ -3,7 +3,7 @@
 Foundation class for all Nostr web components. This README focuses on two core facilities the base provides:
 
 1. **Status key management** (a generic, extensible status map with attribute reflection and events)
-2. **Event delegation** (single-listener pattern for Shadow DOM)
+2. **Event delegation** (a single-listener pattern for Shadow DOM)
 
 ---
 
@@ -64,7 +64,7 @@ The base keeps a **status map** and reflects it:
 ### Reserved key
 
 * `connection` — managed by the base when connecting to Nostr relays.
-  You can access a preset channel as `this.conn`.
+  Access the preset channel via `this.conn`.
 
 ### API surface
 
@@ -112,7 +112,7 @@ element.addEventListener('nc:status', (e: CustomEvent) => {
 });
 ```
 
-**Error messaging**
+### Error messaging
 
 * If you pass a non-empty `errorMessage` when setting `Error`, it’s stored on the component and included in the `nc:status` payload (`detail.errorMessage`).
 * `renderError(message)` returns a simple HTML snippet if you want to inline errors.
@@ -158,7 +158,7 @@ connectedCallback() {
 
 If multiple selectors could match, check the **more specific** ones first in a single delegated listener (or add early-return guards in broader handlers). Remember:
 
-* `stopPropagation()` doesn’t prevent other listeners on the **same target**; prefer single-listener or explicit guards.
+* `stopPropagation()` doesn’t prevent other listeners on the **same target**; prefer a single-listener or explicit guards.
 * Use `closest(selector)` to match clicks on child nodes.
 * For tricky Shadow DOM cases, `e.composedPath()` can help disambiguate origins.
 

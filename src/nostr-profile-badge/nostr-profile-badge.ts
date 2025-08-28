@@ -27,8 +27,6 @@ const EVT_BADGE = 'nc:profile_badge';
  */
 export default class NostrProfileBadge extends NostrUserComponent {
 
-  protected profileStatus = this.channel('profile-badge');
-
   /** Lifecycle methods */
   static get observedAttributes() {
     return [
@@ -45,9 +43,9 @@ export default class NostrProfileBadge extends NostrUserComponent {
     this.render();
   }
 
-  disconnectedCallback() {
-    // TODO: Check for cleanup method
-  }
+  // No cleanup needed: shadowRoot listeners die with the component.
+  // Only global targets (window, document, timers) require removal.
+  disconnectedCallback() {}
 
   attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
     if (oldValue === newValue) return;
@@ -69,7 +67,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   /** Private functions */
   private onProfileClick() {
-    if (this.profileStatus.get() === NCStatus.Error) return;
+    if (this.computeOverall() === NCStatus.Error) return;
 
     const event = new CustomEvent(EVT_BADGE, {
       detail: this.profile,
@@ -102,17 +100,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
       }
     });
 
-    // NPUB copy
-    this.delegateEvent('click', '#npub-copy', (e: Event) => {
-      e.stopPropagation();
-      copyToClipboard(this.getAttribute('npub') || this.user?.npub || '');
-    });
-
-    // NIP-05 copy
-    this.delegateEvent('click', '#nip05-copy', (e: Event) => {
-      e.stopPropagation();
-      copyToClipboard(this.getAttribute('nip05') || this.profile?.nip05 || '');
-    });
+    // Copy is handled via attachCopyDelegation() using `.nc-copy-btn`
 
   }
 

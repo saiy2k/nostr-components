@@ -15,15 +15,17 @@ export function renderCopyRow(opts: CopyRowOptions): string {
     display = value,
     className = '',
     monospace = false,
-    iconHtml = '&#x2398;', // ⎘
     title = display,
   } = opts;
 
+  // Allow only class token chars to avoid breaking out of class attr
+  const safeClassName = className.replace(/[^\w\- ]/g, '');
   const safeValue   = escapeHtml(value);
   const safeDisplay = escapeHtml(display);
   const safeTitle   = escapeHtml(title);
+  const iconHtml    = '&#x2398;'; // ⎘
 
-  const rowClass = `badge-row nc-copy ${monospace ? 'mono' : ''} ${className}`.trim();
+  const rowClass = `badge-row nc-copy ${monospace ? 'mono' : ''} ${safeClassName}`.trim();
 
   return `
     <div class="${rowClass}" data-copy="${safeValue}" title="${safeTitle}">

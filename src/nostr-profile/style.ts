@@ -36,8 +36,8 @@ export function getProfileStyles(theme: Theme) {
         --nstrc-profile-background: var(--nstrc-profile-background-${theme});
         --nstrc-profile-text-primary: var(--nstrc-profile-text-primary-${theme});
         --nstrc-profile-text-grey: var(--nstrc-profile-text-grey-${theme});
-        --nstrc-profile-banner-placeholder: var(--nstrc-profile-banner-placeholder-${theme});
-        --nstrc-profile-copy-foreground: var(--nstrc-copy-foreground-${theme});
+        --nstrc-profile-banner-placeholder: var(--nstrc-profile-banner-placeholder-color-${theme});
+        --nstrc-profile-copy-foreground: var(--nstrc-copy-foreground-color-${theme});
         --nstrc-profile-skeleton-min-hsl: var(--nstrc-profile-skeleton-min-hsl-${theme});
         --nstrc-profile-skeleton-max-hsl: var(--nstrc-profile-skeleton-max-hsl-${theme});
 
@@ -162,7 +162,7 @@ export function getProfileStyles(theme: Theme) {
 
       .profile_actions {
         height: 56px;
-        align-self: end;
+        align-self: flex-end;
         padding: 0 18px;
       }
 
@@ -389,20 +389,6 @@ export function getProfileStyles(theme: Theme) {
         display: none !important;
       }
 
-      .copy-button {
-        display: flex;
-        font-size: 16px;
-        min-width: 15px;
-        min-height: 15px;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-weight: bold;
-        color: var(--nstrc-profile-copy-foreground-color);
-        border: none;
-        background: var(--nstrc-profile-badge-background);
-      }
-
       @media only screen and (max-width: 600px) {
         .stat .stat-value {
           font-size: 18px !important;
@@ -450,10 +436,17 @@ export function getProfileStyles(theme: Theme) {
       }
 
       .copy-button {
+        display: flex;
+        font-size: 16px;
+        min-width: 15px;
+        min-height: 15px;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
-        opacity: 0.7;
-        transition: opacity 0.2s;
-        font-size: 1.5em;
+        font-weight: bold;
+        color: var(--nstrc-profile-copy-foreground-color);
+        border: none;
+        background: var(--nstrc-profile-badge-background);
       }
 
       .copy-button:hover {

@@ -71,7 +71,7 @@ function renderLoading(): string {
     `;
 }
 
-function renderError(errorMessage: String): string {
+function renderError(errorMessage: string): string {
   return `
       <div class='nostr-profile-badge-container is-error'>
         <div class='nostr-profile-badge-left-container'>

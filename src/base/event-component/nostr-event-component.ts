@@ -10,17 +10,19 @@ const EVT_EVENT = 'nc:event';
  * Extension of `NostrBaseComponent` that resolves and manages a Nostr Event.
  *
  * Overview
- * - Accepts identity attribute (`id`, `nip05`, or `pubkey`) and validates.
+ * - Accepts identity attribute (`id`) and validates.
  * - Fetches an `NDKEvent` via the shared `nostrService`.
  * - Exposes resolved `event` to subclasses for rendering or logic.
  * - Emits lifecycle events for status and event readiness.
  *
  * Observed attributes
- * - `id`     — Nostr event id (raw hex-encoded public key)
+ * - `id`     — Nostr event id (64-char hex)
  *
  * Events
  * - `nc:status` — from base, reflects connection and event loading status
  * - `nc:event`  — fired when a event is successfully resolved
+ * 
+ * - Todo: Support note1, nevent formats
  */
 
 export class NostrEventComponent extends NostrBaseComponent {
@@ -112,7 +114,21 @@ export class NostrEventComponent extends NostrBaseComponent {
 
     try {
       const id    = this.getAttribute("id")!;
+
+      if (!id) {
+        if (seq !== this.loadSeq) return;
+        this.eventStatus.set(NCStatus.Error, 'Missing id');
+        return;
+      }
+
       const event = await this.nostrService.getPost(id);
+
+      if (!event) {
+        if (seq !== this.loadSeq) return;
+        this.event = null;
+        this.eventStatus.set(NCStatus.Error, `Event not found: ${id}`);
+        return;
+      }
 
       // stale call check
       if (seq !== this.loadSeq) return;
@@ -120,7 +136,6 @@ export class NostrEventComponent extends NostrBaseComponent {
       this.event = event;
       this.eventStatus.set(NCStatus.Ready);
 
-      console.log('Event comp: ', this.event);
       // Notify listeners that event is available
       this.dispatchEvent(new CustomEvent(EVT_EVENT, {
         detail: { event: this.event },

@@ -69,6 +69,13 @@ export class NostrBaseComponent extends HTMLElement {
     }
   }
 
+  disconnectedCallback() {
+    // Clean up delegated event listeners if shadow root exists
+    if (this.shadowRoot && (this as any)._delegated) {
+      (this as any)._delegated.clear();
+    }
+  }
+
   attributeChangedCallback(
     name: string,
     oldValue: string | null,
@@ -215,9 +222,7 @@ export class NostrBaseComponent extends HTMLElement {
     try {
       await this.nostrService.connectToNostr(this.getRelays());
       if (seq !== this.connectSeq) return; // stale attempt
-      if (this.validateInputs() == true) {
-        this.conn.set(NCStatus.Ready);
-      }
+      this.conn.set(NCStatus.Ready);
       this.nostrReadyResolve?.();
     } catch (error) {
       if (seq !== this.connectSeq) return; // stale attempt
@@ -266,7 +271,7 @@ export class NostrBaseComponent extends HTMLElement {
     });
   }
 
-  public addDelegatedListener<K extends keyof HTMLElementEventMap>(
+  protected addDelegatedListener<K extends keyof HTMLElementEventMap>(
     type: K,
     selector: string,
     handler: (event: HTMLElementEventMap[K]) => void

@@ -68,14 +68,14 @@ export function renderFollowButton({
 
 function renderLoading(theme: Theme, iconWidth: number, iconHeight: number): string {
   return `
-      <button class='nostr-follow-button-container is-disabled'>
+      <div class='nostr-follow-button-container is-disabled'>
         <div class='nostr-follow-button-left-container'>
           ${getLoadingNostrich(theme, iconWidth, iconHeight)}
         </div>
         <div class='nostr-follow-button-right-container'>
           <span>Loading...</span>
         </div>
-      </button>
+      </div>
     `;
 }
 

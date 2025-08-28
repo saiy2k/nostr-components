@@ -44,7 +44,6 @@ export function renderProfile(options: RenderProfileOptions): string {
     return renderError(errorMessage);
   }
 
-
   // Extract profile data with null checks and default values
   const displayName = userProfile?.displayName || userProfile?.name || '';
   const nip05 = userProfile?.nip05 || '';
@@ -69,9 +68,9 @@ export function renderProfile(options: RenderProfileOptions): string {
             isLoading
               ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
               : userProfile.banner
-                ? `<a class="profile_image">
+                ? `<div class="profile_image">
                   <img src="${userProfile.banner}" width="524px"/>
-                </a>`
+                </div>`
                 : '<div class="banner-placeholder"></div>'
           }
         </div>
@@ -102,7 +101,6 @@ export function renderProfile(options: RenderProfileOptions): string {
         <div class="profile_data">
           <div class="basic_info">
             <div class="name">
-              <NCTextCopy></NCTextCopy>
               ${
                 isLoading
                   ? '<div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>'
@@ -148,7 +146,7 @@ export function renderProfile(options: RenderProfileOptions): string {
         
         ${renderStats('Following', stats.follows, isStatsLoading || isStatsFollowsLoading)}
         
-        ${renderStats('Followers', stats.followers, isStatsLoading || isStatsFollowsLoading)}
+        ${renderStats('Followers', stats.followers, isStatsLoading || isStatsFollowersLoading)}
 
         ${renderStats('Notes', stats.notes, isStatsLoading)}
         
@@ -161,7 +159,7 @@ export function renderProfile(options: RenderProfileOptions): string {
   `;
 }
 
-function renderError(errorMessage: String): string {
+function renderError(errorMessage: string): string {
   return `
     <div class='nostr-profile-container is-error'>
       <div class='nostr-profile-top-container'>

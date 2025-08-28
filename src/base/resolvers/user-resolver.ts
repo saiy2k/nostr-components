@@ -21,9 +21,6 @@ export class UserResolver {
     if (!user) throw new Error("Unable to resolve user from provided identifier");
 
     const profile = await this.nostrService.getProfile(user);
-    if (profile && (profile.picture === undefined || profile.picture === null)) {
-      profile.picture = DEFAULT_PROFILE_IMAGE;
-    }
 
     return { user, profile: profile ?? null };
   }

@@ -44,7 +44,7 @@ export default class NostrProfile extends NostrUserComponent {
 
   /** Base class functions */
   protected onStatusChange(_status: NCStatus) {
-    console.log("onStatusChange: ", _status);
+    // console.log("onStatusChange: ", _status);
     this.render();
   }
 

@@ -7,8 +7,12 @@ import { DEFAULT_RELAYS, MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';
 export function maskNPub(npubString: string = '', length = 3) {
   const npubLength = npubString.length;
 
-  if (npubLength !== NPUB_LENGTH) {
-    return `Invalid nPub: expected ${NPUB_LENGTH} characters, got ${npubLength}`;
+  if (!npubString.startsWith('npub1')) {
+    return 'Invalid nPub: expected npub1...';
+  }
+
+  if (!validateNpub(npubString)) {
+    return 'Invalid nPub';
   }
 
   let result = 'npub1';
@@ -116,7 +120,13 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
 
 export function parseRelays(relaysAttr: string | null): string[] {
   if (relaysAttr) {
-    return relaysAttr.split(',').map(r => r.trim());
+    const list = relaysAttr
+      .split(',')
+      .map(r => r.trim())
+      .filter(Boolean)
+      .filter(isValidRelayUrl);
+    // fall back to defaults if user provided no valid entries
+    return list.length ? Array.from(new Set(list)) : [...DEFAULT_RELAYS];
   }
   return [...DEFAULT_RELAYS];
 }
@@ -154,14 +164,23 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
+export function isValidRelayUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'wss:' || u.protocol === 'ws:';
+  } catch {
+    return false;
+  }
+}
+
 export function isValidHex(hex: string): boolean {
   return /^[0-9a-fA-F]+$/.test(hex) && hex.length === 64;
 }
 
 export function validateNpub(npub: string): boolean {
   try {
-    nip19.decode(npub);
-    return true;
+    const { type } = nip19.decode(npub);
+    return type === 'npub';
   } catch (e) {
     return false;
   }
@@ -172,7 +191,6 @@ export function validateNip05(nip05: string): boolean {
   return nip05Regex.test(nip05);
 }
 
-export function copyToClipboard(text: string) {
-  // ignore promise – we don’t need to block UI
-  navigator.clipboard.writeText(text).catch(() => {/* no-op */ });
+export function copyToClipboard(text: string): Promise<void> {
+  return navigator.clipboard.writeText(text)
 }

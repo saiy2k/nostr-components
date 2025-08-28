@@ -1,10 +1,13 @@
+import { escapeHtml } from "../common/utils";
+
 export function renderStats(
   label: string,
   value: number,
   isLoading: boolean
 ): string {
+  const safeLabel = escapeHtml(label)
   return `
-    <div class="stat" data-orientation="horizontal">
+    <div class="stat" data-orientation="horizontal" aria-busy="${isLoading}" aria-live="polite">
       <div class="stat-inner">
         <div class="stat-value">
           ${
@@ -13,7 +16,7 @@ export function renderStats(
               : value.toLocaleString()
           }
         </div>
-        <div class="stat-name">${label}</div>
+        <div class="stat-name">${safeLabel}</div>
       </div>
     </div>
   `;

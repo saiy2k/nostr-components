@@ -9,7 +9,7 @@ export type ContentItem = {
   noteId?: string;
 };
  
-export async function parseText(text: string, post: NDKEvent | null, embeddedPosts: Map<String, NDKEvent>, nostrService: NostrService): Promise<ContentItem[]> {
+export async function parseText(text: string, post: NDKEvent | null, embeddedPosts: Map<string, NDKEvent>, nostrService: NostrService): Promise<ContentItem[]> {
     let textContent = text;
     let embeddedNotes: { id: string; position: number }[] = [];
 

@@ -5,6 +5,7 @@ import NDK, {
   NDKEvent,
 } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from './constants';
+import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 
 export class NostrService {
   /**
@@ -93,7 +94,14 @@ export class NostrService {
     if (!user) return null;
   
     await user.fetchProfile();
-    return user.profile as NDKUserProfile;
+
+    const profile = user.profile;
+
+    if (profile && (profile.picture === undefined || profile.picture === null)) {
+      profile.picture = DEFAULT_PROFILE_IMAGE;
+    }
+
+    return profile as NDKUserProfile;
   }
 
   public async getPost(eventId: string): Promise<NDKEvent | null> {
