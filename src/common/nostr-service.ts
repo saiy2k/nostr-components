@@ -1,8 +1,9 @@
 import NDK, {
-  NDKKind,
-  NDKUser,
-  NDKUserProfile,
   NDKEvent,
+  NDKKind,
+  NDKUserProfile,
+  NDKUser,
+  NDKSigner,
 } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from './constants';
 
@@ -293,5 +294,58 @@ export class NostrService {
 
   public getNDK(): NDK {
     return this.ndk;
+  }
+
+  async setSigner(signer: NDKSigner): Promise<boolean> {
+    try {
+      console.log('Testing signer before setting...');
+
+      // Test the signer first
+      const user = await signer.user();
+      if (!user?.pubkey) {
+        throw new Error('Signer test failed: no user pubkey returned');
+      }
+
+      console.log('Signer test successful, pubkey:', user.pubkey);
+
+      // Only set signer after successful verification
+      this.ndk.signer = signer;
+      console.log('Signer set successfully in NostrService');
+
+      // Guard localStorage usage with environment checks and error handling
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('nostr-has-active-signer', 'true');
+          localStorage.setItem('nostr-active-pubkey', user.pubkey);
+        } catch (error) {
+          console.warn('Failed to set localStorage items:', error);
+        }
+      }
+
+      // Dispatch success event
+      if (typeof window !== 'undefined') {
+        const signerEvent = new CustomEvent('nostr-signer-changed', {
+          detail: { signerReady: true, pubkey: user.pubkey }
+        });
+        window.dispatchEvent(signerEvent);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Failed to set signer:', error);
+
+      // Dispatch failure event
+      if (typeof window !== 'undefined') {
+        const errorEvent = new CustomEvent('nostr-signer-error', {
+          detail: {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            signerReady: false
+          }
+        });
+        window.dispatchEvent(errorEvent);
+      }
+
+      return false;
+    }
   }
 }

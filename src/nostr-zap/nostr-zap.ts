@@ -5,6 +5,8 @@ import { renderZapButton, RenderZapButtonOptions } from "./render";
 import { nip19 } from "nostr-tools";
 import { resolveNip05, decodeNpub } from "./zap-utils";
 import { NostrService } from "../common/nostr-service";
+import { onboardingService } from '../onboarding/onboarding-service';
+import '../onboarding/onboarding-modal';
 
 /**
  * <nostr-zap>
@@ -147,31 +149,31 @@ export default class NostrZap extends HTMLElement {
       this.errorMessage = "ERR: Text length too long";
       return false;
     } else if (amtAttr) {
-        const num = Number(amtAttr);
-        if (isNaN(num) || num <= 0) {
-          console.error("Nostr-Components: Zap button: Zap amount: Invalid amount");
-          this.isError = true;
-          this.errorMessage = "ERR: Invalid Amount";
-          return false;
-        } else if (num > 210000) {
-          console.error("Nostr-Components: Zap button: Zap amount: 210 000 sats");
-          this.isError = true;
-          this.errorMessage = "ERR: Amount too high";
-          return false;
-        }
+      const num = Number(amtAttr);
+      if (isNaN(num) || num <= 0) {
+        console.error("Nostr-Components: Zap button: Zap amount: Invalid amount");
+        this.isError = true;
+        this.errorMessage = "ERR: Invalid Amount";
+        return false;
+      } else if (num > 210000) {
+        console.error("Nostr-Components: Zap button: Zap amount: 210 000 sats");
+        this.isError = true;
+        this.errorMessage = "ERR: Amount too high";
+        return false;
+      }
     } else if (defaultAmtAttr) {
-        const num = Number(defaultAmtAttr);
-        if (isNaN(num) || num <= 0) {
-          console.error("Nostr-Components: Zap button: Default zap amount: Invalid amount");
-          this.isError = true;
-          this.errorMessage = "ERR: Invalid default-amount";
-          return false;
-        } else if (num > 210000) {
-          console.error("Nostr-Components: Zap button: Default zap amount: 210 000 sats");
-          this.isError = true;
-          this.errorMessage = "ERR: default-amount too high";
-          return false;
-        }
+      const num = Number(defaultAmtAttr);
+      if (isNaN(num) || num <= 0) {
+        console.error("Nostr-Components: Zap button: Default zap amount: Invalid amount");
+        this.isError = true;
+        this.errorMessage = "ERR: Invalid default-amount";
+        return false;
+      } else if (num > 210000) {
+        console.error("Nostr-Components: Zap button: Default zap amount: 210 000 sats");
+        this.isError = true;
+        this.errorMessage = "ERR: default-amount too high";
+        return false;
+      }
     }
 
     this.isError = false;
@@ -198,10 +200,39 @@ export default class NostrZap extends HTMLElement {
     return nip05Regex.test(nip05);
   }
 
+  private _showOnboardingModal() {
+    let modal = document.body.querySelector('nostr-onboarding-modal');
+    if (!modal) {
+      modal = document.createElement('nostr-onboarding-modal');
+      document.body.appendChild(modal);
+    }
+    (modal as any).open = true;
+  }
+
   private async handleZapClick() {
-    // show loader and disable the button immediately
+    // Show loading state immediately
     this.isLoading = true;
     this.render();
+
+    try {
+      // Wait for authentication to be ready (handles async reconnection)
+      const hasAuth = await onboardingService.waitForAuthentication();
+
+      if (!hasAuth) {
+        this.isLoading = false;
+        this.render();
+        this._showOnboardingModal();
+        return;
+      }
+    } catch (error) {
+      console.error('Authentication check failed:', error);
+      this.isLoading = false;
+      this.render();
+      this._showOnboardingModal();
+      return;
+    }
+
+    // Authentication successful, continue with zap (loading state already set above)
 
     const relays = this.getRelays().join(",");
     let npub = this.getAttribute("npub");
@@ -367,7 +398,7 @@ export default class NostrZap extends HTMLElement {
       iconWidth: iconWidthAttr ? Number(iconWidthAttr) : 25,
       iconHeight: iconHeightAttr ? Number(iconHeightAttr) : 25,
       totalZapAmount: this.totalZapAmount,
-    isAmountLoading: this.isAmountLoading,
+      isAmountLoading: this.isAmountLoading,
     };
 
     if (this.shadowRoot) {
