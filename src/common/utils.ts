@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import NDK, { NDKKind, NDKTag } from '@nostr-dev-kit/ndk';
 
 import { MILLISATS_PER_SAT } from './constants';

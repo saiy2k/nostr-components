@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Modal dialog helper for <nostr-zap> component.
  *

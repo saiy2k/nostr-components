@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { maskNPub } from '../common/utils';

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { Theme } from '../common/types';
 import { maskNPub } from '../common/utils';

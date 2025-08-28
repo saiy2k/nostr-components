@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { DEFAULT_RELAYS } from "../common/constants";
 import { Theme } from "../common/types";
 import { injectCSS, init as openZapModal } from "./dialog";

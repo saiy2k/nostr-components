@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKEvent, NDKUserProfile, ProfilePointer } from '@nostr-dev-kit/ndk';
 import { nip21 } from 'nostr-tools';
 import { DEFAULT_RELAYS } from '../common/constants';
