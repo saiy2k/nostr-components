@@ -78,29 +78,30 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
   const isReplying = replyingToComment === comment.id;
 
   return `
-    <div class="comment reddit-comment" data-comment-id="${escapeHtml(comment.id)}" data-depth="${depth}" style="--depth: ${depth};">
-      ${depth > 0 ? `<div class="comment-thread-line" style="left: ${depth * 60 + 10}px;"></div>` : ''}
-      <div class="comment-container">
-        <div class="comment-sidebar">
+    <div class="modern-comment" data-comment-id="${escapeHtml(comment.id)}" data-depth="${depth}">
+      <div class="comment-content-wrapper">
+        <div class="comment-avatar-section">
           <img src="${avatar}" alt="Avatar" class="comment-avatar" />
-          ${depth < maxDepth && comment.replies.length > 0 ? '<div class="comment-collapse-line"></div>' : ''}
         </div>
-        <div class="comment-main">
+        <div class="comment-body">
           <div class="comment-header">
             <span class="comment-author">${escapeHtml(displayName)}</span>
-            <span class="comment-time">• ${escapeHtml(timeAgo)}</span>
+            <span class="comment-time">${escapeHtml(timeAgo)}</span>
           </div>
-          <div class="comment-content">
-            ${escapeHtml(comment.content)}
+          <div class="comment-text">
+            ${escapeHtml(comment.content.trim())}
           </div>
           <div class="comment-actions">
-            ${!readonly ? `<button class="reply-button" data-comment-id="${escapeHtml(comment.id)}" aria-label="Reply to comment">↩ Reply</button>` : ''}
+            ${!readonly ? `<button class="reply-btn" data-comment-id="${escapeHtml(comment.id)}" aria-label="Reply to comment">
+              <span class="reply-icon">💬</span>
+              <span class="reply-text">Reply</span>
+            </button>` : ''}
           </div>
           ${isReplying ? renderInlineReplyForm(comment, currentUserProfile, identityMode, hasNip07) : ''}
         </div>
       </div>
       ${comment.replies.length > 0 ? `
-        <div class="comment-replies">
+        <div class="comment-replies" style="margin-left: ${Math.min(depth + 1, maxDepth) * 24}px;">
           ${comment.replies.map(reply => renderComment(reply, readonly, replyingToComment, currentUserProfile, identityMode, hasNip07)).join('')}
         </div>
       ` : ''}
@@ -144,27 +145,35 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUs
         <span class="reply-context-text">💬 Replying to <strong>${escapeHtml(parentName)}</strong></span>
         <button data-role="cancel-reply" class="cancel-reply-btn" aria-label="Cancel reply">✕</button>
       </div>
-      <div class="reply-form-container">
-        <div class="reply-form-sidebar">
-          <img src="${userAvatar}" alt="Your avatar" class="reply-user-avatar" />
+      <div class="reply-input-container">
+        <div class="reply-input-avatar">
+          <img src="${userAvatar}" alt="Your avatar" class="user-avatar" />
         </div>
-        <div class="reply-form-main">
-          <div class="reply-form-header">
-            <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
-            <div class="identity-toggle">
-              <label class="toggle-label">Identity:</label>
-              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''} title="${!hasNip07 ? 'NIP-07 extension not detected' : 'Use your Nostr extension'}">User ${!hasNip07 ? '🔌' : '✅'}</button>
-              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" title="Comment anonymously">Anonymous</button>
-            </div>
-          </div>
+        <div class="reply-input-main">
           <textarea 
             data-role="comment-input" 
             placeholder="Write your reply..."
-            rows="3"
-            class="inline-reply-textarea"
+            rows="2"
+            class="modern-comment-textarea"
           ></textarea>
-          <div class="reply-form-actions">
-            <button data-role="submit-comment" class="inline-reply-submit" aria-label="Submit reply">💬 Reply</button>
+          <div class="reply-input-footer">
+            <div class="identity-toggle">
+              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''} title="${!hasNip07 ? 'NIP-07 extension not detected' : 'Use your Nostr extension'}">
+                <span class="identity-icon">${!hasNip07 ? '🔌' : '✅'}</span>
+                <span class="identity-text">User</span>
+              </button>
+              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" title="Comment anonymously">
+                <span class="identity-icon">👤</span>
+                <span class="identity-text">Anonymous</span>
+              </button>
+            </div>
+            <div class="reply-actions">
+              <button data-role="cancel-reply" class="cancel-reply-btn" aria-label="Cancel reply">Cancel</button>
+              <button data-role="submit-comment" class="submit-reply-btn" aria-label="Submit reply">
+                <span class="submit-icon">💬</span>
+                <span class="submit-text">Reply</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -214,45 +223,44 @@ function renderCommentForm(
   const userName = currentUserProfile?.displayName || currentUserProfile?.name || 'Anonymous';
 
   return `
-    <div class="comment-form reddit-comment-form">
-      <div class="comment-form-container">
-        <div class="comment-form-sidebar">
-          <img src="${userAvatar}" alt="Your avatar" class="current-user-avatar" />
+    <div class="modern-comment-form">
+      <div class="comment-input-container">
+        <div class="comment-input-avatar">
+          <img src="${userAvatar}" alt="Your avatar" class="user-avatar" />
         </div>
-        <div class="comment-form-main">
-          <div class="comment-form-header">
-            <span class="current-user-name">Commenting as ${escapeHtml(userName)}</span>
+        <div class="comment-input-main">
+          <textarea 
+            data-role="comment-input" 
+            placeholder="${escapeHtml(placeholder)}"
+            rows="3"
+            ${isSubmitting ? 'disabled' : ''}
+            class="modern-comment-textarea"
+          ></textarea>
+          <div class="comment-input-footer">
             <div class="identity-toggle">
-              <label class="toggle-label">Identity:</label>
-              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''} title="${!hasNip07 ? 'NIP-07 extension not detected' : 'Use your Nostr extension'}">User ${!hasNip07 ? '🔌' : '✅'}</button>
-              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" title="Comment anonymously">Anonymous</button>
+              <button data-role="toggle-as-user" class="identity-btn ${identityMode === 'user' ? 'active' : ''}" ${!hasNip07 ? 'disabled' : ''} title="${!hasNip07 ? 'NIP-07 extension not detected' : 'Use your Nostr extension'}">
+                <span class="identity-icon">${!hasNip07 ? '🔌' : '✅'}</span>
+                <span class="identity-text">User</span>
+              </button>
+              <button data-role="toggle-as-anon" class="identity-btn ${identityMode === 'anon' ? 'active' : ''}" title="Comment anonymously">
+                <span class="identity-icon">👤</span>
+                <span class="identity-text">Anonymous</span>
+              </button>
             </div>
-          </div>
-          <div class="comment-form-body">
-            <textarea 
-              data-role="comment-input" 
-              placeholder="${escapeHtml(placeholder)}"
-              rows="4"
+            <button 
+              data-role="submit-comment" 
+              class="submit-comment-btn"
               ${isSubmitting ? 'disabled' : ''}
-              class="reddit-textarea"
-            ></textarea>
-            <div class="comment-form-toolbar">
-              <div class="formatting-help">
-                <small>💡 Ctrl+Enter to submit</small>
-              </div>
-              <div class="comment-form-actions">
-                <button 
-                  data-role="submit-comment" 
-                  class="reddit-submit-btn"
-                  ${isSubmitting ? 'disabled' : ''}
-                  aria-label="${isSubmitting ? 'Submitting comment' : 'Submit comment'}"
-                >
-                  ${isSubmitting ? '⏳ Submitting...' : '📝 Comment'}
-                </button>
-              </div>
-            </div>
+              aria-label="${isSubmitting ? 'Submitting comment' : 'Submit comment'}"
+            >
+              ${isSubmitting ? '⏳' : '💬'}
+              <span class="submit-text">${isSubmitting ? 'Submitting...' : 'Comment'}</span>
+            </button>
           </div>
         </div>
+      </div>
+      <div class="comment-form-hint">
+        <small>💡 Press Ctrl+Enter to submit quickly</small>
       </div>
     </div>
   `;
@@ -273,7 +281,10 @@ function renderCommentsList(comments: Comment[], readonly: boolean = false, repl
   return `
     <div class="comments-list">
       <div class="comments-header">
-        <h3>${totalCount} Comment${totalCount !== 1 ? 's' : ''}</h3>
+        <div class="comments-title">
+          <span class="comments-label">Comments</span>
+          <span class="comments-count-badge">${totalCount}</span>
+        </div>
       </div>
       <div class="comments-container">
         ${comments.map(comment => renderComment(comment, readonly, replyingToComment, currentUserProfile, identityMode, hasNip07)).join('')}
@@ -349,6 +360,7 @@ export function getCommentStyles(theme: Theme): string {
         --nstrc-comment-button-text: var(--nstrc-comment-button-text-${theme});
         --nstrc-comment-hover-background: var(--nstrc-comment-hover-background-${theme});
         --nstrc-comment-meta-color: var(--nstrc-comment-meta-color-${theme});
+        --nstrc-comment-shadow: var(--nstrc-comment-shadow-${theme});
         display: block;
         contain: content;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -363,6 +375,7 @@ export function getCommentStyles(theme: Theme): string {
         --nstrc-comment-button-text: var(--nstrc-comment-button-text-dark);
         --nstrc-comment-meta-color: var(--nstrc-comment-meta-color-dark);
         --nstrc-comment-hover-background: var(--nstrc-comment-hover-background-dark);
+        --nstrc-comment-shadow: var(--nstrc-comment-shadow-dark);
       }
 
       /* CSS Variables with defaults */
@@ -383,6 +396,8 @@ export function getCommentStyles(theme: Theme): string {
         --nstrc-comment-meta-color-dark: #adb5bd;
         --nstrc-comment-hover-background-light: #f8f9fa;
         --nstrc-comment-hover-background-dark: #2d2d30;
+        --nstrc-comment-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+        --nstrc-comment-shadow-dark: 0 2px 8px rgba(0, 0, 0, 0.3);
       }
 
       .nostr-comment-wrapper {
@@ -430,49 +445,74 @@ export function getCommentStyles(theme: Theme): string {
         color: #dc3545;
       }
 
-      /* Reddit-style Comment Form */
-      .reddit-comment-form {
-        margin-bottom: 24px;
-        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
-        border-radius: 8px;
+      /* Ultra-Compact Comment Form */
+      .modern-comment-form {
+        margin-bottom: 16px;
         background: var(--nstrc-comment-background, #ffffff);
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        border-radius: 6px;
+        overflow: hidden;
       }
 
-      .comment-form-container {
+      .comment-input-container {
         display: flex;
         padding: 12px;
-        gap: 12px;
+        gap: 8px;
+        align-items: flex-start;
       }
 
-      .comment-form-sidebar {
+      .comment-input-avatar {
         flex-shrink: 0;
       }
 
-      .current-user-avatar {
-        width: 32px;
-        height: 32px;
+      .user-avatar {
+        width: 26px;
+        height: 26px;
         border-radius: 50%;
         object-fit: cover;
         background: var(--nstrc-comment-border-color, #e1e5e9);
-        border: 2px solid var(--nstrc-comment-border-color, #e1e5e9);
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
       }
 
-      .comment-form-main {
+      .comment-input-main {
         flex: 1;
         min-width: 0;
       }
 
-      .comment-form-header {
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+      .comment-input-main textarea {
+        width: 100%;
+        min-height: 50px;
+        padding: 8px;
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        border-radius: 4px;
+        background: var(--nstrc-comment-input-background, #ffffff);
+        color: var(--nstrc-comment-text-color, #333333);
+        font-family: inherit;
+        font-size: 13px;
+        resize: vertical;
+        box-sizing: border-box;
+        transition: all 0.2s ease;
       }
 
-      .current-user-name {
-        font-weight: 500;
-        font-size: 13px;
-        color: var(--nstrc-comment-meta-color, #6c757d);
+      .comment-input-main textarea:focus {
+        outline: none;
+        border-color: var(--nstrc-comment-button-background, #007bff);
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+      }
+
+      .comment-input-main textarea:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: var(--nstrc-comment-hover-background, #f8f9fa);
+      }
+
+      .comment-input-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
       }
 
       .identity-toggle {
@@ -480,26 +520,44 @@ export function getCommentStyles(theme: Theme): string {
         align-items: center;
         gap: 8px;
       }
-      .toggle-label {
-        font-size: 12px;
-        color: var(--nstrc-comment-meta-color, #6c757d);
-      }
+
       .identity-btn {
+        display: flex;
+        align-items: center;
+        gap: 3px;
         padding: 4px 8px;
-        font-size: 12px;
+        font-size: 11px;
         border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
         background: var(--nstrc-comment-input-background, #ffffff);
         color: var(--nstrc-comment-text-color, #333333);
         border-radius: 4px;
         cursor: pointer;
+        transition: all 0.2s ease;
       }
+
       .identity-btn:hover {
         background: var(--nstrc-comment-hover-background);
+        transform: translateY(-1px);
       }
+
       .identity-btn.active {
         background: var(--nstrc-comment-button-background);
         color: var(--nstrc-comment-button-text, #ffffff);
         border-color: var(--nstrc-comment-button-background);
+      }
+
+      .identity-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .identity-icon {
+        font-size: 14px;
+      }
+
+      .identity-text {
+        font-weight: 500;
       }
 
       .reply-indicator {
@@ -576,40 +634,83 @@ export function getCommentStyles(theme: Theme): string {
         font-size: 12px;
       }
 
-      .reddit-submit-btn {
-        background: var(--nstrc-comment-button-background, #ff4500);
+      .submit-comment-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--nstrc-comment-button-background, #007bff);
         color: white;
         border: none;
-        border-radius: 20px;
-        padding: 8px 16px;
-        font-size: 13px;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-size: 12px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
       }
 
-      .reddit-submit-btn:hover:not(:disabled) {
-        background: #e03e00;
+      .submit-comment-btn:hover:not(:disabled) {
+        background: #0056b3;
         transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
       }
 
-      .reddit-submit-btn:disabled {
+      .submit-comment-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
+        box-shadow: none;
+      }
+
+      .submit-icon {
+        font-size: 16px;
+      }
+
+      .submit-text {
+        font-weight: 600;
+      }
+
+      .comment-form-hint {
+        padding: 6px 12px;
+        background: var(--nstrc-comment-hover-background, #f8f9fa);
+        border-top: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        text-align: center;
+      }
+
+      .comment-form-hint small {
+        color: var(--nstrc-comment-meta-color, #6c757d);
+        font-size: 12px;
       }
 
       .comments-list {
         margin-bottom: 16px;
       }
 
-      .comments-header h3 {
-        margin: 0 0 16px 0;
-        font-size: 16px;
+      .comments-header {
+        margin-bottom: 12px;
+      }
+
+      .comments-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .comments-label {
+        font-size: 18px;
         font-weight: 600;
         color: var(--nstrc-comment-text-color, #333333);
+      }
+
+      .comments-count-badge {
+        background: var(--nstrc-comment-button-background, #007bff);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        min-width: 20px;
+        text-align: center;
       }
 
       .no-comments {
@@ -628,173 +729,170 @@ export function getCommentStyles(theme: Theme): string {
         flex-direction: column;
       }
 
-      /* Reddit-style Comments */
-      .reddit-comment {
-        position: relative;
-        background: var(--nstrc-comment-input-background, #ffffff);
-        margin-bottom: 2px;
+      /* Ultra-Compact Modern Comments */
+      .modern-comment {
+        background: var(--nstrc-comment-background, #ffffff);
+        border-bottom: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        margin-bottom: 0;
+        transition: background-color 0.2s ease;
       }
 
-      .comment-thread-line {
-        position: absolute;
-        width: 2px;
-        top: 48px;
-        bottom: 0;
-        background: var(--nstrc-comment-border-color, #e1e5e9);
-        z-index: 1;
+      .modern-comment:hover {
+        background: var(--nstrc-comment-hover-background, #f8f9fa);
       }
 
-      .comment-container {
+      .modern-comment:last-child {
+        border-bottom: none;
+      }
+
+      .comment-content-wrapper {
         display: flex;
         padding: 8px 12px;
-        margin-left: calc(var(--depth, 0) * 60px);
-        border-left: 2px solid transparent;
-        transition: all 0.2s ease;
+        gap: 8px;
+        align-items: flex-start;
       }
 
-      .comment-container:hover {
-        background: var(--nstrc-comment-hover-background, #f8f9fa);
-        border-left-color: var(--nstrc-comment-button-background, #007bff);
-      }
-
-      .comment-sidebar {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 32px;
-        margin-right: 12px;
-        position: relative;
-        z-index: 2;
+      .comment-avatar-section {
+        flex-shrink: 0;
       }
 
       .comment-avatar {
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
         border-radius: 50%;
         object-fit: cover;
         background: var(--nstrc-comment-border-color, #e1e5e9);
-        border: 2px solid var(--nstrc-comment-background, #ffffff);
-        margin-bottom: 4px;
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
       }
 
-      .comment-collapse-line {
-        width: 2px;
-        flex: 1;
-        background: var(--nstrc-comment-border-color, #e1e5e9);
-        min-height: 12px;
-      }
-
-      .comment-main {
+      .comment-body {
         flex: 1;
         min-width: 0;
+        margin: 0;
+        padding: 0;
       }
 
       .comment-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: 6px;
+        margin-bottom: 2px;
         flex-wrap: wrap;
       }
 
       .comment-author {
         font-weight: 600;
         font-size: 12px;
-        color: var(--nstrc-comment-button-background, #007bff);
+        color: var(--nstrc-comment-text-color, #333333);
         text-decoration: none;
       }
 
       .comment-author:hover {
-        text-decoration: underline;
-      }
-
-      .comment-score {
-        font-size: 12px;
-        color: var(--nstrc-comment-meta-color, #6c757d);
-        font-weight: 500;
+        color: var(--nstrc-comment-button-background, #007bff);
       }
 
       .comment-time {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--nstrc-comment-meta-color, #6c757d);
+        font-weight: 400;
       }
 
-      .comment-content {
-        font-size: 14px;
-        line-height: 1.4;
+      .comment-text {
+        font-size: 13px;
+        line-height: 1.35;
         color: var(--nstrc-comment-text-color, #333333);
-        margin-bottom: 8px;
-        white-space: pre-wrap;
+        margin-bottom: 3px;
+        white-space: pre-line;
         word-wrap: break-word;
+        margin-top: 0;
       }
 
       .comment-actions {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-top: 4px;
+        gap: 8px;
+        margin-top: 0;
       }
 
-      .reply-button {
+      .reply-btn {
+        display: flex;
+        align-items: center;
+        gap: 3px;
         background: none;
         border: none;
         color: var(--nstrc-comment-meta-color, #6c757d);
         cursor: pointer;
-        font-size: 12px;
-        padding: 4px 8px;
+        font-size: 11px;
+        padding: 2px 6px;
         border-radius: 3px;
         transition: all 0.2s ease;
-        font-weight: 600;
+        font-weight: 500;
       }
 
-      .reply-button:hover {
+      .reply-btn:hover {
         background: var(--nstrc-comment-hover-background);
         color: var(--nstrc-comment-text-color);
       }
 
-      .comment-replies {
-        margin-top: 24px; /* Double the spacing between parent and child */
+      .reply-icon {
+        font-size: 10px;
       }
 
-      /* Inline Reply Form Styles */
+      .reply-text {
+        font-weight: 500;
+      }
+
+      .comment-replies {
+        margin-top: 0;
+        border-left: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        padding-left: 12px;
+        margin-left: 34px; /* 26px avatar + 8px gap */
+      }
+
+      /* Ultra-Compact Inline Reply Form */
       .inline-reply-form {
-        margin-top: 16px;
-        padding: 16px;
+        margin-top: 8px;
+        padding: 8px;
         background: var(--nstrc-comment-hover-background);
         border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
-        border-radius: 8px;
+        border-radius: 4px;
+        margin-left: 34px; /* Align with comment text */
       }
 
       .reply-context {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        background: var(--nstrc-comment-button-background, #007bff);
+        color: white;
+        padding: 6px 10px;
+        border-radius: 3px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 500;
       }
 
       .reply-context-text {
-        font-size: 13px;
-        color: var(--nstrc-comment-button-background, #007bff);
+        color: white;
       }
 
-      .reply-form-container {
+      .reply-input-container {
         display: flex;
-        gap: 12px;
+        gap: 8px;
+        align-items: flex-start;
       }
 
-      .reply-form-sidebar {
+      .reply-input-avatar {
         flex-shrink: 0;
       }
 
-      .reply-user-avatar {
-        width: 32px;
-        height: 32px;
+      .reply-input-avatar .user-avatar {
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         object-fit: cover;
         background: var(--nstrc-comment-border-color, #e1e5e9);
-        border: 2px solid var(--nstrc-comment-border-color, #e1e5e9);
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
       }
 
       .reply-form-main {
@@ -852,52 +950,93 @@ export function getCommentStyles(theme: Theme): string {
         cursor: not-allowed;
       }
 
-      .inline-reply-textarea {
+      .reply-input-main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .reply-input-main textarea {
         width: 100%;
         min-height: 60px;
         padding: 12px;
-        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
-        border-radius: 4px;
+        border: 2px solid var(--nstrc-comment-border-color, #e1e5e9);
+        border-radius: 8px;
         background: var(--nstrc-comment-input-background, #ffffff);
         color: var(--nstrc-comment-text-color, #333333);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: inherit;
         font-size: 14px;
         resize: vertical;
         box-sizing: border-box;
-        transition: border-color 0.2s ease;
+        transition: all 0.2s ease;
       }
 
-      .inline-reply-textarea:focus {
+      .reply-input-main textarea:focus {
         outline: none;
         border-color: var(--nstrc-comment-button-background, #007bff);
-        box-shadow: 0 0 0 1px var(--nstrc-comment-button-background, #007bff);
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
       }
 
-      .reply-form-actions {
-        margin-top: 8px;
+      .reply-input-footer {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
       }
 
-      .inline-reply-submit {
-        background: var(--nstrc-comment-button-background, #ff4500);
+      .reply-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .cancel-reply-btn {
+        background: none;
+        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
+        color: var(--nstrc-comment-meta-color, #6c757d);
+        cursor: pointer;
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 3px;
+        transition: all 0.2s ease;
+        font-weight: 500;
+      }
+
+      .cancel-reply-btn:hover {
+        background: var(--nstrc-comment-hover-background);
+        color: var(--nstrc-comment-text-color);
+        border-color: var(--nstrc-comment-border-color, #e1e5e9);
+      }
+
+      .submit-reply-btn {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        background: var(--nstrc-comment-button-background, #007bff);
         color: white;
         border: none;
-        border-radius: 4px;
-        padding: 8px 16px;
-        font-size: 13px;
+        border-radius: 3px;
+        padding: 4px 8px;
+        font-size: 11px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
       }
 
-      .inline-reply-submit:hover:not(:disabled) {
-        background: #e03e00;
+      .submit-reply-btn:hover:not(:disabled) {
+        background: #0056b3;
+        transform: translateY(-1px);
       }
 
-      .inline-reply-submit:disabled {
+      .submit-reply-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+        transform: none;
+      }
+
+      .submit-icon {
+        font-size: 14px;
       }
 
       .powered-by {
@@ -920,19 +1059,72 @@ export function getCommentStyles(theme: Theme): string {
         text-decoration: underline;
       }
 
-      @media (max-width: 480px) {
-        .comment-widget {
-          padding: 16px;
-        }
-        
-        .comment-form-actions {
-          flex-direction: column;
-          align-items: stretch;
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .comment-input-container,
+        .comment-content-wrapper,
+        .reply-input-container {
+          padding: 10px;
           gap: 8px;
         }
-        
-        .comment-hint {
-          text-align: center;
+
+        .comment-avatar,
+        .user-avatar {
+          width: 24px;
+          height: 24px;
+        }
+
+        .comment-input-footer {
+          flex-direction: column;
+          gap: 8px;
+          align-items: stretch;
+        }
+
+        .identity-toggle {
+          justify-content: center;
+        }
+
+        .submit-comment-btn {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .comment-input-container,
+        .comment-content-wrapper,
+        .reply-input-container {
+          padding: 8px;
+          gap: 6px;
+        }
+
+        .comment-avatar,
+        .user-avatar {
+          width: 22px;
+          height: 22px;
+        }
+
+        .comment-text {
+          font-size: 12px;
+        }
+
+        .comment-author {
+          font-size: 11px;
+        }
+
+        .comment-time {
+          font-size: 10px;
+        }
+
+        .comments-title {
+          flex-direction: column;
+          gap: 4px;
+          align-items: flex-start;
+        }
+
+        .comment-replies {
+          margin-left: 30px; /* 22px avatar + 8px gap */
+          padding-left: 10px;
         }
       }
     </style>

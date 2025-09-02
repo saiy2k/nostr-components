@@ -488,7 +488,7 @@ export default class NostrComment extends HTMLElement {
                 }
             } else {
                 // Clear main form textarea
-                const mainForm = this.shadow.querySelector('.comment-form');
+                const mainForm = this.shadow.querySelector('.modern-comment-form');
                 const mainTextarea = mainForm?.querySelector('[data-role="comment-input"]') as HTMLTextAreaElement;
                 if (mainTextarea) {
                     mainTextarea.value = '';
@@ -666,7 +666,7 @@ export default class NostrComment extends HTMLElement {
         this.shadow.querySelectorAll('[data-role="submit-comment"]').forEach(submitButton => {
             const handler = (e: Event) => {
                 e.preventDefault();
-                const form = (e.target as HTMLElement).closest('.comment-form, .inline-reply-form');
+                const form = (e.target as HTMLElement).closest('.modern-comment-form, .inline-reply-form');
                 const textarea = form?.querySelector('[data-role="comment-input"]') as HTMLTextAreaElement;
                 if (textarea) {
                     this.submitComment(textarea.value);
@@ -701,7 +701,7 @@ export default class NostrComment extends HTMLElement {
         });
 
         // Reply buttons for each comment
-        this.shadow.querySelectorAll('.reply-button').forEach(button => {
+        this.shadow.querySelectorAll('.reply-btn').forEach(button => {
             const handler = (e: Event) => {
                 e.preventDefault();
                 const commentId = (e.currentTarget as HTMLElement).getAttribute('data-comment-id');
