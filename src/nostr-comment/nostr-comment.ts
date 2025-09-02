@@ -124,10 +124,9 @@ export default class NostrComment extends HTMLElement {
     private setupNip07StateMonitoring = (): void => {
         // Check for NIP-07 state changes every 2 seconds
         const intervalId = setInterval(async () => {
-            if (this.isConnected) {
+            // Use document.contains(this) as a guard to check if component is still in DOM
+            if (document.contains(this)) {
                 await this.handleNip07StateChange();
-            } else {
-                clearInterval(intervalId);
             }
         }, 2000);
 
@@ -594,19 +593,26 @@ export default class NostrComment extends HTMLElement {
 
     async connectedCallback() {
         if (!this.rendered) {
-            this.getTheme();
-            this.baseUrl = this.getBaseUrl();
+            try {
+                this.getTheme();
+                this.baseUrl = this.getBaseUrl();
 
-            // Initialize user first to set up identity properly
-            await this.initializeUser();
+                // Initialize user first to set up identity properly
+                await this.initializeUser();
 
-            // Load comments after user initialization
-            this.loadComments();
+                // Load comments after user initialization
+                await this.loadComments();
 
-            // Set up periodic check for NIP-07 extension state changes
-            this.setupNip07StateMonitoring();
+                // Set up periodic check for NIP-07 extension state changes
+                this.setupNip07StateMonitoring();
 
-            this.rendered = true;
+                this.rendered = true;
+            } catch (error) {
+                console.error('Error in connectedCallback:', error);
+                this.isError = true;
+                this.errorMessage = 'Failed to initialize comment component';
+                this.render();
+            }
         }
     }
 
@@ -850,8 +856,8 @@ export default class NostrComment extends HTMLElement {
         // Sanitize only the dynamic content to prevent XSS attacks
         const sanitizedContent = DOMPurify.sanitize(contentHTML, {
             ALLOWED_TAGS: ['div', 'span', 'button', 'textarea', 'img', 'a', 'h3', 'h4', 'p', 'ul', 'li', 'small', 'strong', 'em'],
-            ALLOWED_ATTR: ['class', 'id', 'data-role', 'data-comment-id', 'data-depth', 'style', 'src', 'alt', 'href', 'target', 'rel', 'placeholder', 'rows', 'disabled'],
-            ALLOW_DATA_ATTR: true
+            ALLOWED_ATTR: ['class', 'data-role', 'data-comment-id', 'data-depth', 'src', 'alt', 'href', 'target', 'rel', 'placeholder', 'rows', 'disabled'],
+            ALLOW_DATA_ATTR: false
         });
 
         // Combine styles and sanitized content for shadow DOM
