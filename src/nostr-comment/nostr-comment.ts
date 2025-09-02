@@ -41,6 +41,7 @@ export default class NostrComment extends HTMLElement {
     private anonPrivateKeyHex: string | null = null;
     private eventListeners: Array<{ element: Element; type: string; handler: EventListener }> = [];
     private nip07MonitoringInterval: ReturnType<typeof setInterval> | null = null;
+    private loadVersion: number = 0; // Prevent race conditions in loadComments
 
     constructor() {
         super();
@@ -135,6 +136,10 @@ export default class NostrComment extends HTMLElement {
     };
 
     loadComments = async (): Promise<void> => {
+        // Increment load version to prevent race conditions
+        this.loadVersion++;
+        const currentVersion = this.loadVersion;
+
         try {
             this.isLoading = true;
             this.isError = false;
@@ -228,6 +233,12 @@ export default class NostrComment extends HTMLElement {
                 console.log('Attached profile to comment:', comment.pubkey, 'Profile:', comment.userProfile);
             });
 
+            // Check if this load operation is still current
+            if (currentVersion !== this.loadVersion) {
+                console.log('Load operation superseded by newer request, aborting');
+                return;
+            }
+
             // Build threaded comment structure
             this.comments = this.buildCommentTree(allComments);
 
@@ -249,10 +260,22 @@ export default class NostrComment extends HTMLElement {
             });
 
         } catch (error) {
+            // Check if this load operation is still current before updating error state
+            if (currentVersion !== this.loadVersion) {
+                console.log('Load operation superseded by newer request, aborting error handling');
+                return;
+            }
+
             this.isError = true;
             this.errorMessage = error instanceof Error ? error.message : 'Failed to load comments';
             console.error('Error loading comments:', error);
         } finally {
+            // Check if this load operation is still current before final state update
+            if (currentVersion !== this.loadVersion) {
+                console.log('Load operation superseded by newer request, aborting final state update');
+                return;
+            }
+
             this.isLoading = false;
             this.render();
         }
@@ -462,6 +485,15 @@ export default class NostrComment extends HTMLElement {
                 } catch (error) {
                     console.warn('Could not fetch profile for new comment');
                 }
+
+                // Ensure new comment has a profile (even if just fallback)
+                if (!newComment.userProfile) {
+                    newComment.userProfile = {
+                        name: this.commentAs === 'anon' ? 'Anonymous' : `User ${signedEvent.pubkey.slice(0, 8)}`,
+                        displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${signedEvent.pubkey.slice(0, 8)}`,
+                        image: './assets/default_dp.png'
+                    };
+                }
             }
 
             // Add to appropriate location in comment tree
@@ -626,10 +658,10 @@ export default class NostrComment extends HTMLElement {
         ];
     }
 
-    attributeChangedCallback(name: string, _oldValue: string, _newValue: string) {
+    async attributeChangedCallback(name: string, _oldValue: string, _newValue: string) {
         if (name === 'relays') {
             this.nostrService.connectToNostr(this.getRelays());
-            this.loadComments();
+            await this.loadComments();
         }
 
         if (name === 'theme') {
@@ -639,7 +671,7 @@ export default class NostrComment extends HTMLElement {
 
         if (name === 'url') {
             this.baseUrl = this.getBaseUrl();
-            this.loadComments();
+            await this.loadComments();
         }
 
         if (['readonly', 'placeholder'].includes(name)) {
@@ -755,7 +787,15 @@ export default class NostrComment extends HTMLElement {
         this.shadow.querySelectorAll('img[src]').forEach(img => {
             const handler = (e: Event) => {
                 const target = e.target as HTMLImageElement;
-                target.src = './assets/default_dp.png';
+
+                // Prevent infinite error loops by checking if we're already using the fallback
+                if (target.src === this.getDefaultAvatarUrl()) {
+                    console.warn('Avatar fallback also failed, preventing infinite loop');
+                    return;
+                }
+
+                // Set fallback avatar URL
+                target.src = this.getDefaultAvatarUrl();
             };
             img.addEventListener('error', handler);
             this.eventListeners.push({ element: img, type: 'error', handler });
@@ -801,6 +841,17 @@ export default class NostrComment extends HTMLElement {
         }, timeout);
     }
 
+    private getDefaultAvatarUrl(): string {
+        try {
+            // Try to use import.meta.url for proper bundler compatibility
+            return new URL('./assets/default_dp.png', import.meta.url).toString();
+        } catch (error) {
+            // Fallback to relative path if import.meta.url is not available
+            console.warn('Failed to resolve default avatar URL with import.meta.url, using relative path:', error);
+            return './assets/default_dp.png';
+        }
+    }
+
     private async ensureAnonKey(): Promise<string> {
         const storageKey = 'nostr-comment-anon-private-key';
 
@@ -835,7 +886,7 @@ export default class NostrComment extends HTMLElement {
         this.classList.toggle('error-container', this.isError);
 
         // Get attribute values
-        const readonly = this.getAttribute('readonly') === 'true';
+        const readonly = this.hasAttribute('readonly');
         const placeholder = this.getAttribute('placeholder') || 'Write a comment...';
 
         // Generate the HTML content
