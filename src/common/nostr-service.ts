@@ -98,7 +98,17 @@ export class NostrService {
 
     if (user) {
       await user.fetchProfile();
-      return user.profile as NDKUserProfile;
+      console.log('Fetched profile for user:', user.npub, 'Profile:', user.profile);
+      
+      // Ensure we have a complete profile object
+      const profile = user.profile as NDKUserProfile;
+      if (profile) {
+        // Log the image URL specifically
+        console.log('Profile image URL:', profile.image);
+        return profile;
+      }
+      
+      return null;
     }
 
     return null;

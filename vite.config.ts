@@ -29,8 +29,9 @@ export default defineConfig({
           __dirname,
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
+        'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
       },
-      external: ['lit', 'dayjs'],
+      external: [],
       output: [
         {
           // ESM output for all entries
