@@ -1,64 +1,39 @@
-import { NDKEvent, NDKUserProfile, ProfilePointer } from '@nostr-dev-kit/ndk';
-import { nip21 } from 'nostr-tools';
-import { DEFAULT_RELAYS } from '../common/constants';
-import { getPostStats, Stats } from '../common/utils';
-import { Theme } from '../common/types';
+import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { getPostStats, Stats, copyToClipboard } from '../common/utils';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
-import { NostrService } from '../common/nostr-service';
+import { parseText } from './parse-text';
+import { renderContent } from './render-content';
+import { NostrEventComponent } from '../base/event-component/nostr-event-component';
+import { UserResolver } from '../base/resolvers/user-resolver';
+import { attachCopyDelegation } from '../base/copy-delegation';
+import { NCStatus } from '../base/base-component/nostr-base-component';
 
-export default class NostrPost extends HTMLElement {
-  private rendered: boolean = false;
-  private nostrService: NostrService = NostrService.getInstance();
+/**
+ * TODO:
+ *  - Click handlers to use BaseComponent::delegateEvent
+ *  - Review entire code to upgrade it to the same standards as other components.
+ */
+export default class NostrPost extends NostrEventComponent {
 
-  private isLoading: boolean = true;
-  private isError: boolean = false;
+  protected stats: Stats | null = null;
+  protected embeddedPosts: Map<string, NDKEvent> = new Map();
 
-  private theme: Theme = 'light';
+  protected author: NDKUser | null = null;
+  protected authorProfile: NDKUserProfile | null = null;
 
-  private post: NDKEvent | null = null;
-  private stats: Stats | null = null;
-  private embeddedPosts: Map<string, NDKEvent> = new Map();
-
-  private receivedData: boolean = false;
-
-  private author: NDKUserProfile | null | undefined = {
-    name: '',
-    image: '',
-    nip05: '',
-  };
+  private userResolver = new UserResolver(this.nostrService);
 
   private onClick: ((post: NDKEvent | null) => void) | null = null;
   private onAuthorClick:
     | ((npub: string, author: NDKUserProfile | null | undefined) => void)
     | null = null;
 
-  getRelays = () => {
-    const userRelays = this.getAttribute('relays');
-    if (userRelays) {
-      return userRelays.split(',');
-    }
-    return DEFAULT_RELAYS;
-  };
-
-  getTheme = async () => {
-    this.theme = 'light';
-
-    const userTheme = this.getAttribute('theme');
-
-    if (userTheme) {
-      const isValidTheme = ['light', 'dark'].includes(userTheme);
-
-      if (!isValidTheme) {
-        throw new Error(
-          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
-        );
-      }
-
-      this.theme = userTheme as Theme;
-    }
-  };
+  constructor() {
+    super(false);
+  }
 
   async connectedCallback() {
+
     const onClick = this.getAttribute('onClick');
     if (onClick !== null && (window as any)[onClick]) {
       this.onClick = (window as any)[onClick] as (
@@ -74,40 +49,36 @@ export default class NostrPost extends HTMLElement {
       ) => void;
     }
 
+    super.connectedCallback?.();
+    attachCopyDelegation(this);
     this.render();
-
-    if (!this.rendered) {
-      await this.nostrService.connectToNostr(this.getRelays());
-      this.getPost();
-
-      this.rendered = true;
-    }
   }
 
   static get observedAttributes() {
     return [
-      'relays',
-      'id',
-      'theme',
+      ...super.observedAttributes,
       'show-stats',
       'onClick',
-      'onAuthorClick',
-      'onMentionClick',
+-     'onAuthorClick',
+-     'onMentionClick',
     ];
   }
 
   attributeChangedCallback(
     name: string,
-    _oldValue: string | null,
+    oldValue: string | null,
     newValue: string | null
   ) {
-    if (name === 'relays') {
-      this.nostrService.connectToNostr(this.getRelays());
+    if (oldValue === newValue) return;
+    super.attributeChangedCallback?.(name, oldValue, newValue);
+
+    if (name === 'show-stats') {
+      this.render();
     }
 
-    if (['relays', 'id'].includes(name)) {
-      this.getPost();
-    }
+    /*
+    super.attributeChangedCallback(name, _oldValue, newValue);
+    */
 
     if (name === 'onClick' && newValue) {
       const handler = (window as any)[newValue];
@@ -126,68 +97,51 @@ export default class NostrPost extends HTMLElement {
       }
     }
 
-    if (name === 'theme') {
-      this.getTheme();
-      this.render();
-    }
+  }
 
-    if (name === 'show-stats') {
+  protected async onEventReady(event: any) {
+    try {
+      const { user, profile } = await this.userResolver.resolveUser({ pubkey: event.pubkey });
+      this.author = user;
+      this.authorProfile = profile;
+      this.getPostStats();
       this.render();
+    } catch (err) {
+      console.error('[NostrPostComponent] Failed to resolve author:', err);
     }
   }
 
-  async getPost() {
+  async getPostStats() {
     try {
-      this.isLoading = true;
-      this.render();
+      const shouldShowStats = this.getAttribute('show-stats');
 
-      const noteId = this.getAttribute('id') || '';
-      const post = await this.nostrService.getPost(noteId);
-
-      if (!this.receivedData) {
-        if (!post) {
-          this.isError = true;
-        } else {
-          this.receivedData = true;
-          this.post = post;
-
-          const author = await this.post?.author.fetchProfile();
-          if (author) {
-            this.author = author;
-          }
-
-          const shouldShowStats = this.getAttribute('show-stats');
-
-          if (this.post && shouldShowStats) {
-            const stats = await getPostStats(
-              this.nostrService.getNDK(),
-              this.post.id
-            );
-            if (stats) {
-              this.stats = stats;
-            }
-          }
-
-          this.isError = false;
+      if (this.event && shouldShowStats) {
+        const stats = await getPostStats(
+          this.nostrService.getNDK(),
+          this.event.id
+        );
+        if (stats) {
+          this.stats = stats;
         }
       }
     } catch (err) {
-      console.log(err);
-      this.isError = true;
-      throw err;
+      const msg = err instanceof Error ? err.message : 'Failed to load post stats';
+      console.error('[NostrPostComponent] ' + msg, err);
+      this.eventStatus.set(NCStatus.Error, msg);
     } finally {
-      this.isLoading = false;
       this.render();
     }
   }
 
   #_onPostClick() {
-    if (this.isError || !this.post) {
+    /*
+    if (this.isError || !this.event) {
       return;
     }
+    */
 
     if (this.onClick) {
-      this.onClick(this.post);
+      this.onClick(this.event);
       return;
     }
 
@@ -197,16 +151,18 @@ export default class NostrPost extends HTMLElement {
   }
 
   #_onAuthorClick() {
-    if (this.isError || !this.post?.author.npub) {
+    /*
+    if (this.isError || !this.event?.author.npub) {
       return;
     }
+    */
 
     if (this.onAuthorClick) {
-      this.onAuthorClick(this.post.author.npub, this.author);
+      this.onAuthorClick(this.event!.author.npub, this.authorProfile);
       return;
     }
 
-    window.open(`https://njump.me/${this.post?.author.npub}`, '_blank');
+    window.open(`https://njump.me/${this.event?.author.npub}`, '_blank');
   }
 
   #_onMentionClick(username: string, event: Event) {
@@ -214,169 +170,6 @@ export default class NostrPost extends HTMLElement {
     event.stopPropagation();
 
     window.open(`https://njump.me/p/${username}`, '_blank');
-  }
-
-  async parseText(text: string) {
-    let textContent = text;
-    let embeddedNotes: { id: string; position: number }[] = [];
-
-    // First capture embedded note references before other processing
-    // Example note1abcdef... or nostr:note1abcdef...
-    const noteRegex = /(nostr:)?(note[a-zA-Z0-9]{59,60})/g;
-    const noteMatches = [...textContent.matchAll(noteRegex)];
-
-    for (const match of noteMatches) {
-      const fullMatch = match[0];
-      const noteId = match[2];
-      const position = match.index || 0;
-
-      // Store the note ID and its position for later processing
-      embeddedNotes.push({
-        id: noteId,
-        position: position,
-      });
-
-      // Fetch the embedded post
-      try {
-        if (!this.embeddedPosts.has(noteId)) {
-          const embeddedPost = await this.nostrService.getPost(noteId);
-          if (embeddedPost) {
-            this.embeddedPosts.set(noteId, embeddedPost);
-          }
-        }
-      } catch (error) {
-        console.error(`Failed to fetch embedded post ${noteId}:`, error);
-      }
-
-      // Remove the note reference from the text to prevent @ symbols being added
-      textContent = textContent.replace(fullMatch, '');
-    }
-
-    // Handle Nostr URI schema for mentions
-    const nostrURISchemaMatches = textContent.matchAll(
-      new RegExp(nip21.NOSTR_URI_REGEX, 'g')
-    );
-    for (let match of nostrURISchemaMatches) {
-      const parsedNostrURI = nip21.parse(match[0]);
-      const decordedData = parsedNostrURI.decoded.data;
-
-      let pubkey = '';
-      if (typeof decordedData === 'string') {
-        pubkey = decordedData;
-      } else {
-        pubkey = (decordedData as ProfilePointer).pubkey;
-      }
-
-      const user = this.nostrService.getNDK().getUser({ pubkey });
-      const profile = await user.fetchProfile();
-      const name = profile?.displayName || '';
-
-      textContent = textContent.replace(
-        match[0],
-        `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
-      );
-    }
-
-    // Handle Twitter-like mentions (@username)
-    const mentionRegex = /(\s|^)@(\w+)/g;
-    const mentionMatches = [...textContent.matchAll(mentionRegex)];
-
-    for (const match of mentionMatches) {
-      const fullMatch = match[0];
-      const username = match[2];
-
-      // Replace with styled mention
-      textContent = textContent.replace(
-        fullMatch,
-        `${match[1]}<span class="nostr-mention" data-username="${username}">@${username}</span>`
-      );
-    }
-
-    // Handle URLs and Nostr attachments
-    type ContentItem = {
-      type: 'text' | 'image' | 'gif' | 'video' | 'link' | 'embedded-note';
-      value?: string;
-      noteId?: string;
-    };
-    const result: ContentItem[] = [];
-
-    // First, check for Nostr attachments in the post
-    if (this.post) {
-      const videoTags = this.post.getMatchingTags('a');
-      for (const tag of videoTags) {
-        const mimeType = tag[1] as string;
-        const url = tag[2] as string;
-        if (mimeType?.startsWith('video/') && url) {
-          result.push({ type: 'video', value: url });
-        }
-      }
-    }
-
-    // Then handle URLs in the text
-    const regex =
-      /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
-    const matches = textContent.match(regex);
-
-    if (matches) {
-      let lastIndex = 0;
-      for (const match of matches) {
-        const startIndex = textContent.indexOf(match, lastIndex);
-        const endIndex = startIndex + match.length;
-
-        if (startIndex > lastIndex) {
-          result.push({
-            type: 'text',
-            value: textContent.substring(lastIndex, startIndex),
-          });
-        }
-
-        const url = new URL(match);
-        let type: 'image' | 'gif' | 'video' | 'link';
-
-        if (
-          url.pathname.endsWith('.jpg') ||
-          url.pathname.endsWith('.jpeg') ||
-          url.pathname.endsWith('.png')
-        ) {
-          type = 'image';
-        } else if (url.pathname.endsWith('.gif')) {
-          type = 'gif';
-        } else if (
-          url.pathname.endsWith('.mp4') ||
-          url.pathname.endsWith('.webm') ||
-          url.pathname.endsWith('.mov')
-        ) {
-          type = 'video';
-        } else {
-          type = 'link';
-        }
-
-        result.push({ type, value: match });
-
-        lastIndex = endIndex;
-      }
-
-      if (lastIndex < textContent.length) {
-        result.push({ type: 'text', value: textContent.substring(lastIndex) });
-      }
-    } else {
-      result.push({ type: 'text', value: textContent });
-    }
-
-    // Add embedded notes to the result
-    if (embeddedNotes.length > 0) {
-      // Sort by position in descending order to avoid affecting earlier positions
-      embeddedNotes.sort((a, b) => b.position - a.position);
-
-      for (const note of embeddedNotes) {
-        result.push({
-          type: 'embedded-note',
-          noteId: note.id,
-        });
-      }
-    }
-
-    return result;
   }
 
   async renderEmbeddedPost(noteId: string): Promise<string> {
@@ -395,25 +188,25 @@ export default class NostrPost extends HTMLElement {
 
     const date = post.created_at
       ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
       : '';
 
     // Process the post content
-    const content = await this.parseText(post.content);
-    const renderedContent = this.renderContent(content);
+    const content = await parseText(post.content, this.event, this.embeddedPosts, this.nostrService);
+    const renderedContent = await renderContent(content);
 
     // Use the renderEmbeddedPost function from the render module
     return renderEmbeddedPost(
       noteId,
       authorProfile
         ? {
-            displayName: authorProfile.displayName || '',
-            image: authorProfile.image || '',
-            nip05: authorProfile.nip05 || '',
-          }
+          displayName: authorProfile.displayName || '',
+          image: authorProfile.image || '',
+          nip05: authorProfile.nip05 || '',
+        }
         : undefined,
       date,
       renderedContent
@@ -466,70 +259,6 @@ export default class NostrPost extends HTMLElement {
       }
     }
   }
-
-  // TODO: Fix types
-  renderContent = (content: any[]) => {
-    const html: string[] = [];
-    let mediaCount = 0;
-    let textBuffer = '';
-
-    for (const item of content) {
-      if (item.type === 'text') {
-        textBuffer += item.value;
-      } else if (item.type === 'embedded-note') {
-        // Handle embedded note placeholder
-        if (textBuffer) {
-          html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
-          );
-          textBuffer = '';
-        }
-
-        html.push(
-          `<div class="embedded-post-placeholder" data-note-id="${item.noteId}"></div>`
-        );
-      } else {
-        if (textBuffer) {
-          html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
-          );
-          textBuffer = '';
-        }
-
-        switch (item.type) {
-          case 'image':
-            html.push(
-              `<div class="post-media-item"><img src="${item.value}" alt="Image"></div>`
-            );
-            mediaCount++;
-            break;
-          case 'gif':
-            html.push(
-              `<div class="post-media-item"><img src="${item.value}" alt="GIF"></div>`
-            );
-            mediaCount++;
-            break;
-          case 'video':
-            html.push(
-              `<div class="post-media-item"><video src="${item.value}" controls></video></div>`
-            );
-            mediaCount++;
-            break;
-          case 'link':
-            html.push(`<a href="${item.value}">${item.value}</a>`);
-            break;
-        }
-      }
-    }
-
-    if (textBuffer) {
-      html.push(
-        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
-      );
-    }
-
-    return html.join('');
-  };
 
   setupMentionClickHandlers() {
     // Add direct click handlers to each mention element
@@ -592,13 +321,21 @@ export default class NostrPost extends HTMLElement {
   }
 
   async render() {
-    const content = this.post?.content || '';
-    const parsedContent = await this.parseText(content);
-    const htmlToRender = this.renderContent(parsedContent);
+    const isLoading = this.computeOverall() == NCStatus.Loading;
+    const isError = this.computeOverall() === NCStatus.Error;
+
+    const content = this.event?.content || '';
+    const parsedContent = await parseText(content, this.event, this.embeddedPosts, this.nostrService);
+    const htmlToRender = await renderContent(parsedContent);
+    const errorMessage = super.renderError(this.errorMessage);
+
+    console.log(this.event);
+    console.log(parsedContent);
+    console.log(htmlToRender);
 
     let date = '';
-    if (this.post?.created_at) {
-      date = new Date(this.post.created_at * 1000).toLocaleDateString('en-US', {
+    if (this.event?.created_at) {
+      date = new Date(this.event.created_at * 1000).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -610,9 +347,10 @@ export default class NostrPost extends HTMLElement {
     // Prepare the options for the render function
     const renderOptions: RenderPostOptions = {
       theme: this.theme,
-      isLoading: this.isLoading,
-      isError: this.isError,
-      author: this.author,
+      isLoading: isLoading,
+      isError: isError,
+      errorMessage: errorMessage,
+      author: this.authorProfile,
       date,
       shouldShowStats,
       stats: this.stats,

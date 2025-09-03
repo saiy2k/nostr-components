@@ -9,7 +9,7 @@ import {
   Primary,
   Controls,
 } from '@storybook/addon-docs';
-import { DEFAULT_RELAYS } from '../src/common/constants.ts';
+import { DEFAULT_RELAYS } from '../src/common/constants';
 
 const PARAMETERS = [
   {
@@ -121,15 +121,13 @@ const CSS_VARIABLES = [
   },
   {
     variable: '--nstrc-profile-banner-placeholder-color-light',
-    description:
-      'Color of the banner if there is no banner image specified in light mode',
+    description: 'Banner placeholder color when no image is specified (light mode)',
     defaultValue: '#E5E5E5',
     control: 'color',
   },
   {
     variable: '--nstrc-profile-banner-placeholder-color-dark',
-    description:
-      'Color of the banner if there is no banner image specified in dark mode',
+    description: 'Banner placeholder color when no image is specified (dark mode)',
     defaultValue: '#222222',
     control: 'color',
   },

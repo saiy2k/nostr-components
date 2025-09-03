@@ -162,7 +162,7 @@ const generateCode = (args, forCodeGen = false) => {
     .join('\n  ');
 
   const cssVariables = CSS_VARIABLES.map(cssVariable => {
-    console.log(args[cssVariable.variable]);
+    // console.log(args[cssVariable.variable]);
     return args[cssVariable.variable]
       ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`
       : '';

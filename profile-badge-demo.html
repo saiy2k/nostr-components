@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile badge - Demo</title>
+
+  <!-- Include all per-component ESM bundles for demo -->
+  <script type="module" src="./dist/components/nostr-profile-badge.es.js"></script>
+  <script type="module" src="./dist/components/nostr-follow-button.es.js"></script>
+
+  <style>
+    body {
+      margin: 10px !important;
+    }
+  </style>
+
+  <script>
+
+    /*
+    const npub = [
+      'npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs', // HODL - 0d13...c9d8
+      'npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a',
+      'npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2',
+      'npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2',
+    ];
+    const relays = ['', '', '', 'ws://nas.yunierrodriguez.com:4848'];
+    var badgeIndex = 0;
+    */
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+      const badge = document.getElementById('nbadge');
+      badge.addEventListener('profileClick', (e) => {
+        e.preventDefault(); // Prevent default window.open
+        console.log('CustomEvent profileClick:', e.detail);
+      });
+      const lynProfile = document.getElementById('lynProfile');
+      lynProfile.addEventListener('profileClick', (e) => {
+        // e.preventDefault();
+        console.log('CustomEvent profileClick (lynProfile):', e.detail);
+      });
+      const TestNos2 = document.getElementById('TestNos2');
+      TestNos2.addEventListener('profileClick', (e) => {
+        e.preventDefault();
+        console.log('CustomEvent profileClick (TestNos2):', e.detail);
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <div style="width: 500px">
+    <!-- nip05="lyn@primal.net" -->
+    <!-- npub="npub1p5f3ma0gyvv347lv2jsg66gpd6yy5672f0llhz4hrs2psywte8vqh78xm2" -->
+    <nostr-profile-badge id="nbadge" npub="npub1rtlqca8r6auyaw5n5h3l5422dm4sry5dzfee4696fqe8s6qgudks7djtfs"
+      show-npub="true"
+    ></nostr-profile-badge>
+    <!-- npub="npub1a2cww4kn9wqte4ry70vyfwqyqvpswksna27rtxd8vty6c74era8sdcw83a" -->
+    <!-- nip05="lyn@primal.net" -->
+     <br />
+     <br />
+    <nostr-profile-badge id="lynProfile" nip05="lyn@primal.net" show-follow="true"></nostr-profile-badge>
+
+     <!--
+     <br />
+     <br />
+
+    <nostr-profile-badge id="TestNos2" pubkey="0d131df5e823191afbec54a08d69016e884a6bca4bfffb8ab71c141811cbc9d8"
+      show-follow="true" relays="wss://relay.nostrasia.net"></nostr-profile-badge>
+  -->
+  </div>
+</body>
+
+</html>

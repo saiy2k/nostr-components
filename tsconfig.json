@@ -9,12 +9,14 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["node"]
+    "types": ["node"],
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist/types",
   },
   "include": [
     "src",

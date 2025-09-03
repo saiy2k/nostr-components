@@ -1,11 +1,17 @@
-import NDK, { NDKKind, NDKTag } from '@nostr-dev-kit/ndk';
+import NDK, { NDKKind, NDKEvent } from '@nostr-dev-kit/ndk';
+import { nip19 } from "nostr-tools";
 
-import { MILLISATS_PER_SAT } from './constants';
+import { Theme } from './types';
+import { DEFAULT_RELAYS, MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';
 
 export function maskNPub(npubString: string = '', length = 3) {
   const npubLength = npubString.length;
 
-  if (npubLength !== 63) {
+  if (!npubString.startsWith('npub1')) {
+    return 'Invalid nPub: expected npub1...';
+  }
+
+  if (!validateNpub(npubString)) {
     return 'Invalid nPub';
   }
 
@@ -40,14 +46,18 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
     '#e': [postId || ''],
   });
 
-  // Only take the count of direct reposts
-  const repostsCount = Array.from(reposts).filter(repost => {
-    const pTagCounts = repost.tags.filter(
-      (tag: NDKTag) => tag[0] === 'p'
-    ).length;
-
+  const isDirectRepost = (repost: NDKEvent): boolean => {
+    const pTagCounts = repost.tags.filter(tag => tag[0] === 'p').length;
     return pTagCounts === 1;
-  }).length;
+  };
+
+  const isDirectReply = (reply: NDKEvent): boolean => {
+    const eTagsCount = reply.tags.filter(tag => tag[0] === 'e').length;
+    return eTagsCount === 1;
+  };
+
+  // Only take the count of direct reposts
+  const repostsCount = Array.from(reposts).filter(isDirectRepost).length;
 
   const likes = await ndk.fetchEvents({
     kinds: [NDKKind.Reaction],
@@ -98,13 +108,7 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
 
   // Only take the direct replies
   // https://github.com/nostr-protocol/nips/blob/master/10.md#positional-e-tags-deprecated
-  const replyCount = Array.from(replies).filter(reply => {
-    const eTagsCount = reply.tags.filter(
-      (tag: NDKTag) => tag[0] === 'e'
-    ).length;
-
-    return eTagsCount === 1;
-  }).length;
+  const replyCount = Array.from(replies).filter(isDirectReply).length;
 
   return {
     likes: likes.size,
@@ -112,4 +116,81 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
     zaps: zapAmount / MILLISATS_PER_SAT,
     replies: replyCount,
   };
+}
+
+export function parseRelays(relaysAttr: string | null): string[] {
+  if (relaysAttr) {
+    const list = relaysAttr
+      .split(',')
+      .map(r => r.trim())
+      .filter(Boolean)
+      .filter(isValidRelayUrl);
+    // fall back to defaults if user provided no valid entries
+    return list.length ? Array.from(new Set(list)) : [...DEFAULT_RELAYS];
+  }
+  return [...DEFAULT_RELAYS];
+}
+
+export function parseTheme(themeAttr: string | null): Theme {
+
+  const theme = themeAttr?.trim().toLowerCase();
+
+  if (theme === 'light' || theme === 'dark') {
+    return theme;
+  }
+
+  return 'light';
+}
+
+export function parseBooleanAttribute(attr: string | null): boolean {
+  // Handles: "true", "", null, "false"
+  if (attr === null) return false;
+  if (attr === '' || attr.toLowerCase() === 'true') return true;
+  return false;
+}
+
+export function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+export function isValidUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+export function isValidRelayUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'wss:' || u.protocol === 'ws:';
+  } catch {
+    return false;
+  }
+}
+
+export function isValidHex(hex: string): boolean {
+  return /^[0-9a-fA-F]+$/.test(hex) && hex.length === 64;
+}
+
+export function validateNpub(npub: string): boolean {
+  try {
+    const { type } = nip19.decode(npub);
+    return type === 'npub';
+  } catch (e) {
+    return false;
+  }
+}
+
+export function validateNip05(nip05: string): boolean {
+  const nip05Regex = /^[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+\.[a-zA-Z]{2,}$/;
+  return nip05Regex.test(nip05);
+}
+
+export function copyToClipboard(text: string): Promise<void> {
+  return navigator.clipboard.writeText(text)
 }

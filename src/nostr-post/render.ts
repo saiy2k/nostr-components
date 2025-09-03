@@ -4,19 +4,11 @@ import { Parser } from 'htmlparser2';
 import { DomHandler } from 'domhandler';
 import * as DomUtils from 'domutils';
 import { replyIcon, heartIcon } from '../common/icons';
+import { IRenderOptions } from '../base/render-options';
+import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 
-export interface RenderPostOptions {
-  theme: Theme;
-  isLoading: boolean;
-  isError: boolean;
-  author:
-    | {
-        image?: string;
-        displayName?: string;
-        nip05?: string;
-      }
-    | null
-    | undefined;
+export interface RenderPostOptions extends IRenderOptions {
+  author: NDKUserProfile | null| undefined;
   date: string;
   shouldShowStats: boolean;
   stats: {

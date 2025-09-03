@@ -1,14 +1,14 @@
 import { defineConfig } from 'vite';
-// import dts from 'vite-plugin-dts';
+import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [
-    // dts({
-    //   insertTypesEntry: true, // Creates a single index.d.ts entry file
-    //   // Optional: Specify the tsconfig file if it's not standard
-    //   // tsConfigFilePath: './tsconfig.build.json'
-    // })
+    dts({
+      insertTypesEntry: true, // Creates a single index.d.ts entry file
+      //   // Optional: Specify the tsconfig file if it's not standard
+      //   // tsConfigFilePath: './tsconfig.build.json'
+    })
   ],
   build: {
     sourcemap: true,
@@ -30,7 +30,6 @@ export default defineConfig({
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
       },
-      external: ['lit', 'dayjs'],
       output: [
         {
           // ESM output for all entries
@@ -40,10 +39,6 @@ export default defineConfig({
           },
           format: 'es',
           inlineDynamicImports: false,
-          globals: {
-            lit: 'Lit',
-            dayjs: 'dayjs',
-          },
         },
         {
           // UMD output ONLY for the main entry
@@ -51,10 +46,6 @@ export default defineConfig({
           format: 'umd',
           inlineDynamicImports: false,
           name: 'NostrComponents',
-          globals: {
-            lit: 'Lit',
-            dayjs: 'dayjs',
-          },
         },
       ],
     },

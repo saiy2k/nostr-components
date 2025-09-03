@@ -22,19 +22,14 @@ export default defineConfig({
         ),
         'nostr-zap': resolve(__dirname, 'src/nostr-zap/nostr-zap.ts'),
       },
-      external: ['lit', 'dayjs'],
       output: [
         {
-          entryFileNames: chunkInfo => {
-            if (chunkInfo.name === 'index') return 'nostr-components.es.js';
-            return `components/[name].es.js`;
-          },
+          entryFileNames: (chunkInfo) => 
+            chunkInfo.name === 'index'
+            ? 'nostr-components.es.js'
+            : `components/[name].es.js`,
           format: 'es',
           inlineDynamicImports: false,
-          globals: {
-            lit: 'Lit',
-            dayjs: 'dayjs',
-          },
         },
       ],
     },
