@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKEvent, ProfilePointer } from "@nostr-dev-kit/ndk";
 import { NostrService } from "../common/nostr-service";
 import { nip21 } from 'nostr-tools';

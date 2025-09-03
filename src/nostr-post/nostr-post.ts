@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { getPostStats, Stats, copyToClipboard } from '../common/utils';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
@@ -59,8 +61,8 @@ export default class NostrPost extends NostrEventComponent {
       ...super.observedAttributes,
       'show-stats',
       'onClick',
--     'onAuthorClick',
--     'onMentionClick',
+      'onAuthorClick',
+      'onMentionClick',
     ];
   }
 

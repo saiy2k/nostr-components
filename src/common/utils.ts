@@ -1,5 +1,8 @@
+// SPDX-License-Identifier: MIT
+
 import NDK, { NDKKind, NDKEvent } from '@nostr-dev-kit/ndk';
 import { nip19 } from "nostr-tools";
+
 
 import { Theme } from './types';
 import { DEFAULT_RELAYS, MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';

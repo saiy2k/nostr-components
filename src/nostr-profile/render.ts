@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { IRenderOptions } from '../base/render-options';
 import { renderNpub } from '../base/render-npub';

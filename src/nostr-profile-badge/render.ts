@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { escapeHtml, maskNPub } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';

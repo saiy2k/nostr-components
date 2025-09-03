@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { copyToClipboard } from '../common/utils';
 
 interface DelegatedHost {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { escapeHtml } from '../common/utils';
 
 export interface CopyRowOptions {
