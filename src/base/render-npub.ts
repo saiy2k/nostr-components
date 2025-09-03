@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { renderCopyRow } from "./render-copy";
 import { maskNPub } from "../common/utils";
 

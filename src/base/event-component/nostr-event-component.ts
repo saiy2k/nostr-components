@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
 import { isValidHex } from '../../common/utils';

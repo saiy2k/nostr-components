@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { Theme } from '../common/types';
 
 export function getFollowButtonStyles(

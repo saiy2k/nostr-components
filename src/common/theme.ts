@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { Theme } from './types';
 import { checkmarkIcon, nostrLogo } from './icons';
 

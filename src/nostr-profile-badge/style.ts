@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Nostr Profile Badge CSS Variables:
  *

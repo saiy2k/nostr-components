@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
   import { ContentItem } from './parse-text';
   import { escapeHtml, isValidUrl } from '../common/utils';
 

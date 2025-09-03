@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NostrService } from '../../common/nostr-service';
 import { Theme } from '../../common/types';
 import { parseRelays, parseTheme } from '../../common/utils';

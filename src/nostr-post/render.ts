@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { Theme } from '../common/types';
 import { getPostStylesLegacy } from '../common/theme';
 import { Parser } from 'htmlparser2';

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { parseBooleanAttribute, copyToClipboard } from '../common/utils';

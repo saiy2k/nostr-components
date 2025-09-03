@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKNip07Signer } from '@nostr-dev-kit/ndk';
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { renderFollowButton, RenderFollowButtonOptions } from './render';

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrService } from '../../common/nostr-service';
 import { DEFAULT_PROFILE_IMAGE } from '../../common/constants';

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
 import { UserResolver } from '../resolvers/user-resolver';

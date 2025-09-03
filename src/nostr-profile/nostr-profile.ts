@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { copyToClipboard } from '../common/utils';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
