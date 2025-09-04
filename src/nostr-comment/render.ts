@@ -137,7 +137,6 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUs
   }
 
   const parentName = getUserDisplayName(parentComment);
-  const userName = currentUserProfile?.displayName || currentUserProfile?.name || 'Anonymous';
 
   return `
     <div class="inline-reply-form">
@@ -196,38 +195,9 @@ function renderCommentForm(
 
   console.log('renderCommentForm - currentUserProfile:', currentUserProfile);
 
-  // Use the same avatar processing as getUserAvatar
-  let userAvatar = './assets/default_dp.png';
-  if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {
-    let imageUrl = currentUserProfile.image.trim();
-    console.log('Comment form - Processing image URL:', imageUrl);
-
-    // Convert IPFS hash to gateway URL if needed
-    if (imageUrl.startsWith('Qm') || imageUrl.startsWith('bafy')) {
-      imageUrl = `https://ipfs.io/ipfs/${imageUrl}`;
-      console.log('Comment form - Converted IPFS to gateway URL:', imageUrl);
-    }
-
-    // Ensure protocol is included
-    if (imageUrl.startsWith('//')) {
-      imageUrl = 'https:' + imageUrl;
-      console.log('Comment form - Added protocol to URL:', imageUrl);
-    }
-
-    console.log('Comment form - Final image URL:', imageUrl);
-    userAvatar = imageUrl;
-  } else {
-    console.log('Comment form - No image found, using default');
-  }
-
-  const userName = currentUserProfile?.displayName || currentUserProfile?.name || 'Anonymous';
-
   return `
     <div class="modern-comment-form">
       <div class="comment-input-container">
-        <div class="comment-input-avatar">
-          <img src="${userAvatar}" alt="Your avatar" class="user-avatar" />
-        </div>
         <div class="comment-input-main">
           <textarea 
             data-role="comment-input" 
@@ -258,9 +228,6 @@ function renderCommentForm(
             </button>
           </div>
         </div>
-      </div>
-      <div class="comment-form-hint">
-        <small>💡 Press Ctrl+Enter to submit quickly</small>
       </div>
     </div>
   `;
@@ -380,21 +347,21 @@ export function getCommentStyles(theme: Theme): string {
 
       /* CSS Variables with defaults */
       :host {
-        --nstrc-comment-background-light: #ffffff;
+        --nstrc-comment-background-light: #f8f9fa;
         --nstrc-comment-background-dark: #1a1a1a;
         --nstrc-comment-text-color-light: #333333;
         --nstrc-comment-text-color-dark: #ffffff;
         --nstrc-comment-border-color-light: #e1e5e9;
         --nstrc-comment-border-color-dark: #404040;
-        --nstrc-comment-input-background-light: #ffffff;
+        --nstrc-comment-input-background-light: #f5f5f5;
         --nstrc-comment-input-background-dark: #2a2a2a;
-        --nstrc-comment-button-background-light: #007bff;
-        --nstrc-comment-button-background-dark: #0d6efd;
+        --nstrc-comment-button-background-light: #ff6b35;
+        --nstrc-comment-button-background-dark: #ff6b35;
         --nstrc-comment-button-text-light: #ffffff;
         --nstrc-comment-button-text-dark: #ffffff;
         --nstrc-comment-meta-color-light: #6c757d;
         --nstrc-comment-meta-color-dark: #adb5bd;
-        --nstrc-comment-hover-background-light: #f8f9fa;
+        --nstrc-comment-hover-background-light: #e9ecef;
         --nstrc-comment-hover-background-dark: #2d2d30;
         --nstrc-comment-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
         --nstrc-comment-shadow-dark: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -445,33 +412,21 @@ export function getCommentStyles(theme: Theme): string {
         color: #dc3545;
       }
 
-      /* Ultra-Compact Comment Form */
+      /* Modern Comment Form */
       .modern-comment-form {
         margin-bottom: 16px;
-        background: var(--nstrc-comment-background, #ffffff);
+        background: var(--nstrc-comment-input-background, #f5f5f5);
         border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
-        border-radius: 6px;
+        border-radius: 12px;
         overflow: hidden;
+        box-shadow: var(--nstrc-comment-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
       }
 
       .comment-input-container {
         display: flex;
-        padding: 12px;
-        gap: 8px;
+        padding: 16px;
+        gap: 12px;
         align-items: flex-start;
-      }
-
-      .comment-input-avatar {
-        flex-shrink: 0;
-      }
-
-      .user-avatar {
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        object-fit: cover;
-        background: var(--nstrc-comment-border-color, #e1e5e9);
-        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
       }
 
       .comment-input-main {
@@ -481,58 +436,60 @@ export function getCommentStyles(theme: Theme): string {
 
       .comment-input-main textarea {
         width: 100%;
-        min-height: 50px;
-        padding: 8px;
-        border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
-        border-radius: 4px;
-        background: var(--nstrc-comment-input-background, #ffffff);
+        min-height: 60px;
+        padding: 12px 16px;
+        border: none;
+        border-radius: 8px;
+        background: var(--nstrc-comment-background, #f8f9fa);
         color: var(--nstrc-comment-text-color, #333333);
         font-family: inherit;
-        font-size: 13px;
+        font-size: 14px;
         resize: vertical;
         box-sizing: border-box;
         transition: all 0.2s ease;
+        line-height: 1.4;
       }
 
       .comment-input-main textarea:focus {
         outline: none;
-        border-color: var(--nstrc-comment-button-background, #007bff);
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        background: var(--nstrc-comment-background, #f8f9fa);
+        box-shadow: 0 0 0 2px var(--nstrc-comment-button-background, #ff6b35);
       }
 
       .comment-input-main textarea:disabled {
         opacity: 0.6;
         cursor: not-allowed;
-        background: var(--nstrc-comment-hover-background, #f8f9fa);
+        background: var(--nstrc-comment-hover-background, #e9ecef);
       }
 
       .comment-input-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 8px;
-        padding-top: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
         border-top: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
       }
 
       .identity-toggle {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
       }
 
       .identity-btn {
         display: flex;
         align-items: center;
-        gap: 3px;
-        padding: 4px 8px;
-        font-size: 11px;
+        gap: 4px;
+        padding: 6px 12px;
+        font-size: 12px;
         border: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
-        background: var(--nstrc-comment-input-background, #ffffff);
+        background: var(--nstrc-comment-background, #f8f9fa);
         color: var(--nstrc-comment-text-color, #333333);
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-weight: 500;
       }
 
       .identity-btn:hover {
@@ -637,22 +594,23 @@ export function getCommentStyles(theme: Theme): string {
       .submit-comment-btn {
         display: flex;
         align-items: center;
-        gap: 4px;
-        background: var(--nstrc-comment-button-background, #007bff);
+        gap: 6px;
+        background: var(--nstrc-comment-button-background, #ff6b35);
         color: white;
         border: none;
-        border-radius: 4px;
-        padding: 6px 12px;
-        font-size: 12px;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(255, 107, 53, 0.2);
       }
 
       .submit-comment-btn:hover:not(:disabled) {
-        background: #0056b3;
+        background: #e55a2b;
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
       }
 
       .submit-comment-btn:disabled {
@@ -670,17 +628,6 @@ export function getCommentStyles(theme: Theme): string {
         font-weight: 600;
       }
 
-      .comment-form-hint {
-        padding: 6px 12px;
-        background: var(--nstrc-comment-hover-background, #f8f9fa);
-        border-top: 1px solid var(--nstrc-comment-border-color, #e1e5e9);
-        text-align: center;
-      }
-
-      .comment-form-hint small {
-        color: var(--nstrc-comment-meta-color, #6c757d);
-        font-size: 12px;
-      }
 
       .comments-list {
         margin-bottom: 16px;
@@ -799,7 +746,7 @@ export function getCommentStyles(theme: Theme): string {
 
       .comment-text {
         font-size: 13px;
-        line-height: 1.35;
+        line-height: 0.45;
         color: var(--nstrc-comment-text-color, #333333);
         margin-bottom: 3px;
         white-space: pre-line;
