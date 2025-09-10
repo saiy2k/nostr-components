@@ -113,7 +113,7 @@ export const defaultDesignTokens: DesignTokens = {
     },
     text: {
       primary: {
-        light: '#111111',
+        light: '#444444',
         dark: '#ffffff',
       },
       secondary: {
@@ -324,7 +324,7 @@ export const styleUtils = {
       transition: opacity var(--nostrc-transition-duration) var(--nostrc-transition-timing);
       font-size: 1.5em;
       border: none;
-      background: var(--nostrc-color-background);
+      background: transparent;
       color: var(--nostrc-color-text-muted);
     }
     
@@ -334,6 +334,20 @@ export const styleUtils = {
     
     .copy-button.copied {
       color: var(--nostrc-color-accent);
+    }
+  `,
+  
+  /**
+   * Generates profile name styles
+   */
+  profileName: () => `
+    .nostr-profile-name {
+      font-weight: var(--nostrc-font-weight-bold);
+      color: var(--nostrc-color-text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-bottom: var(--nostrc-spacing-xs);
     }
   `,
   

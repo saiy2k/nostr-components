@@ -6,6 +6,7 @@ import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 import { Theme } from '../common/types';
 import { renderNpub } from '../base/render-npub';
 import { renderNip05 } from '../base/render-nip05';
+import { renderName } from '../base/render-name';
 
 export interface RenderProfileBadgeOptions {
   theme: Theme;
@@ -53,7 +54,7 @@ export function renderProfileBadge({
           <img src='${profileImage}' alt='Nostr profile image of ${profileName}'/>
         </div>
         <div class='nostr-profile-badge-right-container'>
-          <div class='nostr-profile-badge-name' title="${profileName}">${profileName}</div>
+          ${renderName({ name: profileName })}
           ${userProfile.nip05 ? renderNip05(nip05) : ''}
           ${showNpub === true ? renderNpub(npub || '') : ''}
           ${showFollow === true && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${pubkey}"></nostr-follow-button>` : ''}
