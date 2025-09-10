@@ -9,20 +9,12 @@ export function getNostrLogo(theme: Theme, width: number = 21, height: number = 
 
 import { loadingNostrich } from './icons';
 
-export function getLoadingNostrich(
-  theme: Theme = 'dark',
-  width: number = 25,
-  height: number = 25
-) {
-  return loadingNostrich(width, height, theme);
+export function getLoadingNostrich(theme: Theme = 'dark'){
+  return loadingNostrich(theme);
 }
 
-export function getSuccessAnimation(
-  theme: Theme = 'dark',
-  width: number = 25,
-  height: number = 25
-) {
-  return checkmarkIcon(theme, width, height);
+export function getSuccessAnimation(theme: Theme = 'dark') {
+  return checkmarkIcon(theme);
 }
 
 

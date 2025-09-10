@@ -109,7 +109,6 @@ export default class NostrProfileBadge extends NostrUserComponent {
     // Copy is handled via attachCopyDelegation() using `.nc-copy-btn`
   }
 
-
   protected renderContent() {
     const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;

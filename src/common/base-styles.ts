@@ -30,7 +30,7 @@ export function getBaseStyles(theme: Theme): string {
         background-color: var(--nostrc-color-background);
         border-radius: var(--nostrc-border-radius-md);
         border: var(--nostrc-border-width) solid var(--nostrc-color-border);
-        padding: var(--nostrc-spacing-lg);
+        padding: var(--nostrc-spacing-md);
         transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
       }
       
@@ -48,7 +48,7 @@ export function getBaseStyles(theme: Theme): string {
         cursor: not-allowed;
       }
       
-      :host(.is-error) {
+      :host(.is-error) .nostrc-container {
         border-color: var(--nostrc-color-error-text);
         cursor: not-allowed;
       }
