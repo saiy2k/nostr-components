@@ -49,6 +49,7 @@ export function getBaseStyles(theme: Theme): string {
       }
       
       :host(.is-error) .nostrc-container {
+        color: var(--nostrc-color-error-text);
         border-color: var(--nostrc-color-error-text);
         cursor: not-allowed;
       }

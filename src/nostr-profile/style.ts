@@ -7,11 +7,6 @@ export function getProfileStyles(theme: Theme): string {
   const customStyles = `
     /* === PROFILE CONTAINER PATTERN === */
     :host {
-      width: 100%;
-      max-width: 100%;
-      box-sizing: border-box;
-      display: inline-block;
-
       /* Override follow button styles for profile context */
       --nstrc-follow-btn-padding: 5px 8px !important;
       --nstrc-follow-btn-font-size: 14px !important;
@@ -29,26 +24,19 @@ export function getProfileStyles(theme: Theme): string {
       align-items: stretch;
       gap: var(--nostrc-spacing-md);
 
-      width: 100%;
       min-height: 500px;
-      box-sizing: border-box;
-      border: var(--nostrc-border-width) solid var(--nostrc-color-border);
-      border-radius: var(--nostrc-border-radius-md);
-      background-repeat: no-repeat;
-      background-color: var(--nostrc-color-background);
-      font-family: var(--nostrc-font-family-primary);
-      font-size: var(--nostrc-font-size-base);
-      overflow-wrap: break-word;
       padding: 0px;
     }
-
-    .nostr-profile-container.is-clickable:hover {
-      cursor: pointer;
-      background-color: var(--nostrc-color-hover-background);
+    
+    :host(.is-clickable) .nostrc-container {
+      cursor: auto;
+    }
+    
+    :host(.is-clickable) .nostrc-container:hover {
+      background-color: var(--nostrc-color-background);
     }
 
-    .nostr-profile-container.is-error {
-      color: var(--nostrc-color-error-text);
+    :host(.is-error) .nostrc-container {
       justify-content: center;
       align-items: center;
     }
@@ -70,17 +58,14 @@ export function getProfileStyles(theme: Theme): string {
       width: 100%;
       height: 214px;
       cursor: pointer;
+      border-radius: var(--nostrc-border-radius-md) var(--nostrc-border-radius-md) 0px 0px;
     }
 
-    .profile-image {
-      overflow: hidden;
-      height: 214px;
-    }
-
-    #profile_banner .banner-placeholder {
+    .profile-banner img {
       width: 100%;
       height: 214px;
-      background-color: var(--nostrc-color-background-secondary);
+      overflow: hidden;
+      object-fit: cover;
     }
 
     .dp-container {
@@ -173,8 +158,7 @@ export function getProfileStyles(theme: Theme): string {
 
     .stat-inner .stat-value {
       font-weight: 100;
-      font-size: 2em;
-      line-height: 24px;
+      font-size: 1.5em;
       color: var(--nostrc-color-text-primary);
     }
 

@@ -30,14 +30,14 @@ export function renderTextRow(opts: TextRowOptions): string {
   const iconHtml    = '&#x2398;'; // ⎘
 
   if (showCopyButton) {
-    const rowClass = `text-row ${monospace ? 'mono' : ''} ${safeClassName}`.trim();
+    const rowClass = `text-row nc-copy ${monospace ? 'mono' : ''} ${safeClassName}`.trim();
     return `
       <div class="${rowClass}" data-copy="${safeValue}" title="${safeTitle}">
         <span class="nc-copy-text">${safeDisplay}</span>
         <button type="button" 
               class="nc-copy-btn"
               aria-label="Copy"
-              title="Copy">${iconHtml}</button>
+              >${iconHtml}</button>
       </div>
     `;
   }

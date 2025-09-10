@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-import { copyToClipboard } from '../common/utils';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { renderProfile, RenderProfileOptions } from './render';
 import { getProfileStyles } from './style';
+import { attachCopyDelegation } from '../base/copy-delegation';
 
 const EVT_PROFILE = 'nc:profile';
 
@@ -16,6 +16,7 @@ export default class NostrProfile extends NostrUserComponent {
   private isStatsLoading: boolean = true;
   private isStatsFollowsLoading: boolean = true;
   private isStatsFollowersLoading: boolean = true;
+  private isZapsLoading: boolean = true;
 
   private stats = {
     follows: 0,
@@ -37,6 +38,9 @@ export default class NostrProfile extends NostrUserComponent {
   async connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
+    attachCopyDelegation({
+      addDelegatedListener: this.addDelegatedListener.bind(this),
+    });
     this.render();
   }
 
@@ -60,6 +64,7 @@ export default class NostrProfile extends NostrUserComponent {
       this.isStatsLoading = true;
       this.isStatsFollowsLoading = true;
       this.isStatsFollowersLoading = true;
+      this.isZapsLoading = true;
 
       // Create a local copy of the current stats
       const currentStats = { ...this.stats };
@@ -94,14 +99,13 @@ export default class NostrProfile extends NostrUserComponent {
           this.render();
         });
 
-      // Fetch other stats
+      // Fetch notes and replies
       this.nostrService
-        .getProfileStats(this.user!, ['notes', 'replies', 'zaps'])
-        .then(({ notes, replies, zaps }) => {
+        .getProfileStats(this.user!, ['notes', 'replies'])
+        .then(({ notes, replies }) => {
           currentStats.notes = notes;
           currentStats.replies = replies;
-          currentStats.zaps = zaps;
-          this.stats = { ...this.stats, notes, replies, zaps };
+          this.stats = { ...this.stats, notes, replies };
           this.isStatsLoading = false;
           this.render();
         })
@@ -110,6 +114,22 @@ export default class NostrProfile extends NostrUserComponent {
           this.isStatsLoading = false;
           this.render();
         });
+
+      // Fetch zaps
+      this.nostrService
+        .getProfileStats(this.user!, ['zaps'])
+        .then(({ zaps }) => {
+          currentStats.zaps = zaps;
+          this.stats = { ...this.stats, zaps };
+          this.isZapsLoading = false;
+          this.render();
+        })
+        .catch(err => {
+          console.error('Error loading Zaps:', err);
+          this.isZapsLoading = false;
+          this.render();
+        });
+
 
     } catch (err) {
       this.profileStatus.set(NCStatus.Error);
@@ -162,21 +182,9 @@ export default class NostrProfile extends NostrUserComponent {
       }
     });
 
-    // NPUB copy
-    this.delegateEvent('click', '#npub-copy', (e: Event) => {
-      e.stopPropagation();
-      copyToClipboard(this.getAttribute('npub') || this.user?.npub || '');
-    });
-
-    // NIP-05 copy
-    this.delegateEvent('click', '#nip05-copy', (e: Event) => {
-      e.stopPropagation();
-      copyToClipboard(this.getAttribute('nip05') || this.profile?.nip05 || '');
-    });
-
   }
 
-  private render() {
+  protected renderContent() {
     const isLoading     = this.computeOverall() == NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
     const showNpub      = this.getAttribute('show-npub') !== 'false';
@@ -192,6 +200,7 @@ export default class NostrProfile extends NostrUserComponent {
       isStatsLoading: this.isStatsLoading,
       isStatsFollowersLoading: this.isStatsFollowersLoading,
       isStatsFollowsLoading: this.isStatsFollowsLoading,
+      isZapsLoading: this.isZapsLoading,
       stats: {
         notes: this.stats.notes,
         replies: this.stats.replies,
