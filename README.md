@@ -14,7 +14,9 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
 🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
 🔹 **[Nostr Comment](#6-nostr-comment-)** - Decentralized comment system for any website  
-🔹 **[WordPress Integration](#7-wordpress-integration)** - WordPress Integration
+🔹 **[Nostr DM](#5-nostr-dm-)** - Send a direct message on Nostr
+🔹 **[Nostr Live Chat](#6-nostr-live-chat-)** - Real-time chat with message history  
+🔹 **[Wordpress Integration](#7-wordpress-integration)** - Wordpress Integration
 
 ### Future roadmap:
 
@@ -160,7 +162,129 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
+<<<<<<< HEAD
 ## 5. Nostr Zap ⚡
+=======
+---
+
+## 5. Nostr DM 💬
+
+A simple direct message composer for sending one-time messages to any Nostr user.
+
+**Features:**
+- 📝 Clean message composition interface
+- 🎯 Send to any user via npub or NIP-05 identifier  
+- ✅ Success confirmation with visual feedback
+- 🔄 Ready for immediate next message after sending
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="./dist/components/nostr-dm.es.js"></script>
+</head>
+<body>
+  <!-- Basic DM, user will be prompted to enter a recipient -->
+  <nostr-dm theme="light"></nostr-dm>
+
+  <!-- Pre-configured recipient with npub -->
+  <nostr-dm 
+    recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
+    theme="light"
+    relays="wss://relay.damus.io,wss://relay.primal.net"
+  ></nostr-dm>
+
+  <!-- Using NIP-05 identifier -->
+  <nostr-dm 
+    nip05="user@domain.com"
+    theme="dark"
+  ></nostr-dm>
+</body>
+```
+
+<<<<<<< HEAD
+## 6. Wordpress Integration
+>>>>>>> f9ce3c3 (feat: Add Nostr DM component)
+=======
+**Attributes:**
+- `recipient-npub` (optional): Pre-fill recipient's npub
+- `nip05` (optional): Use NIP-05 identifier instead of npub
+- `theme` (optional): "light" or "dark" (default: "light")
+- `relays` (optional): Comma-separated relay URLs
+
+---
+
+## 6. Nostr Live Chat 💬
+
+Real-time chat component with persistent message history and live updates.
+
+**Features:**
+- 💬 Full conversation history display
+- ⚡ Real-time message updates via Nostr relays
+- 🔄 Optimistic message rendering with relay confirmation
+- 👥 Shows messages from both participants with proper attribution
+- 🕐 Chronological message ordering by timestamp
+- 📱 Responsive design for all screen sizes
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="./dist/components/nostr-live-chat.es.js"></script>
+</head>
+<body>
+  <!-- Basic live chat, user will be prompted to enter a recipient -->
+  <nostr-live-chat theme="light"></nostr-live-chat>
+
+  <!-- Pre-configured recipient with npub -->
+  <nostr-live-chat 
+    recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
+    theme="light"
+    relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
+  ></nostr-live-chat>
+
+  <!-- Using NIP-05 identifier -->
+  <nostr-live-chat 
+    nip05="user@domain.com"
+    theme="dark"
+  ></nostr-live-chat>
+</body>
+```
+
+**Attributes:**
+- `recipient-npub` (optional): Pre-fill recipient's npub
+- `recipient-pubkey` (optional): Hex recipient pubkey. Alias: `recipientPubkey`
+- `nip05` (optional): Use NIP-05 identifier instead of npub
+- `relays` (optional): Comma-separated relay URLs
+- `theme` (optional): "light" or "dark" (default: "light")
+- `display-type` (optional): "fab" | "bottom-bar" | "full" | "embed" (default: "embed"). Alias: `displayType`
+- `welcome-text` (optional): Custom text for the welcome screen
+- `start-chat-text` (optional): Label for the Start button on the welcome screen
+- `history-days` (optional): Positive integer N to load the last N days. Set to "all" or any value <= 0, or omit the attribute, to load full history (omits `since` in filters).
+
+History window examples:
+
+```html
+<!-- Load last 7 days -->
+<nostr-live-chat history-days="7" ...></nostr-live-chat>
+
+<!-- Load full history -->
+<nostr-live-chat history-days="all" ...></nostr-live-chat>
+
+<!-- Also full history when attribute is omitted -->
+<nostr-live-chat ...></nostr-live-chat>
+```
+
+**Use Cases:**
+- Customer support chat widgets
+- Real-time discussions on websites
+- Community chat integration
+- Direct communication between users
+
+---
+
+## 7. Wordpress Integration
+>>>>>>> 79d2d9d (Updated redme)
 
 A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
 
