@@ -21,7 +21,9 @@ export default defineConfig({
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
         'nostr-zap': resolve(__dirname, 'src/nostr-zap/nostr-zap.ts'),
+        'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
       },
+      external: [],
       output: [
         {
           entryFileNames: (chunkInfo) => 

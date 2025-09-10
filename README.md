@@ -13,11 +13,12 @@ Nostr Components makes it easy to embed **Nostr profiles, posts, and follow butt
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
 🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
-🔹 **[Wordpress Integration](#6-wordpress-integration)** - Wordpress Integration
+🔹 **[Nostr Comment](#6-nostr-comment-)** - Decentralized comment system for any website  
+🔹 **[WordPress Integration](#7-wordpress-integration)** - WordPress Integration
 
 ### Future roadmap:
 
-🔹 Wordpress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.
+🔹 WordPress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.
 
 ## 📌 Why Use Nostr Components?
 
@@ -198,9 +199,70 @@ A Lightning Network zap button that allows users to send sats to any Nostr user 
 
 ---
 
-## 6. Wordpress Integration
+## 6. Nostr Comment 💬
 
-![Integrating with Wordpress](images/wordpress_help.png)
+A complete decentralized comment system that stores comments on the Nostr network instead of a traditional database.
+
+**Usage:**
+
+```html
+<head>
+  <script type="importmap">
+  {
+    "imports": {
+      "lit": "https://unpkg.com/lit@3.1.0/index.js?module",
+      "dayjs": "https://unpkg.com/dayjs@1.11.10/dayjs.min.js?module"
+    }
+  }
+  </script>
+  <script type="module" src="./dist/components/nostr-comment.es.js"></script>
+</head>
+<body>
+  <nostr-comment 
+    theme="light"
+    placeholder="Write a comment..."
+    relays="wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net"
+  ></nostr-comment>
+</body>
+```
+
+**Attributes:**
+- `url` (optional) - URL for comment grouping (default: current page URL)
+- `theme` (optional) - "light" or "dark" theme (default: "light")
+- `relays` (optional) - Comma-separated list of relay URLs (default: common Nostr relays)
+- `placeholder` (optional) - Placeholder text for comment input (default: "Write a comment...")
+- `readonly` (optional) - "true" to disable commenting (default: "false")
+
+**Features:**
+- **Decentralized Storage**: Comments stored on Nostr network across multiple relays
+- **No Backend Required**: No database or server infrastructure needed
+- **Identity Management**: Automatic key generation or NIP-07 extension support
+- **Real-time Updates**: Comments appear instantly for all users
+- **Censorship Resistant**: Distributed across multiple relays
+- **Responsive Design**: Works perfectly on desktop and mobile
+- **Themeable**: Full light/dark theme support with CSS customization
+
+**Authentication:**
+- **NIP-07 Extensions**: Automatically detects browser extensions (nos2x, Alby, etc.)
+- **Local Keys**: Generates and stores keys in localStorage as fallback
+- **User Ownership**: Users control their identity and data
+
+**CSS Customization:**
+```css
+:root {
+  --nstrc-comment-background-light: #ffffff;
+  --nstrc-comment-text-color-light: #333333;
+  --nstrc-comment-button-background-light: #007bff;
+  --nstrc-comment-border-color-light: #e1e5e9;
+  /* Dark theme variables also available */
+}
+```
+
+---
+
+## 7. WordPress Integration
+
+![Integrating with WordPress](images/wordpress_help.png)
 
 1. In your WP dashboard, navigate to `Appearance -> Theme file editor`
 2. Select your current theme
@@ -233,7 +295,7 @@ add_action( 'wp_head', 'my_custom_js' );
 
 5. (Optional) Rather than hotlinking from `nostr-components.web.app`, you can download the `dist/nostr-components.umd.js` (or `.es.js`) file, upload it to your own server/WordPress media library, and update the `src` path in the code above.
 6. Now you can use the components anywhere in your post or sidebar by adding the HTML tags (e.g., `<nostr-profile-badge pubkey="..."></nostr-profile-badge>`).
-   ![Integrating in wordpress post](images/wordpress_post.png)
+   ![Integrating in WordPress post](images/wordpress_post.png)
 
 ---
 
