@@ -157,7 +157,7 @@ export default class NostrProfile extends NostrUserComponent {
     // Click anywhere on the profile badge (except follow button, copy buttons)
     this.delegateEvent('click', '.profile-banner', (e: Event) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.copy-button, .nostr-follow-button-container')) {
+      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container')) {
         this.onProfileClick();
       }
     });

@@ -30,8 +30,10 @@ const EVT_STATUS = 'nc:status';
  * 
  * Events
  * - `nc:status` — from base, reflects connection and user/profile loading status
+ * 
+ * TODO: Is this class too much of work?
  */
-export class NostrBaseComponent extends HTMLElement {
+export abstract class NostrBaseComponent extends HTMLElement {
 
   protected nostrService: NostrService = NostrService.getInstance();
 
@@ -222,6 +224,7 @@ export class NostrBaseComponent extends HTMLElement {
     const seq = ++this.connectSeq;
     this.conn.set(NCStatus.Loading);
     try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await this.nostrService.connectToNostr(this.getRelays());
       if (seq !== this.connectSeq) return; // stale attempt
       this.conn.set(NCStatus.Ready);
@@ -285,6 +288,43 @@ export class NostrBaseComponent extends HTMLElement {
   protected renderError(errorMessage: string): string {
     return `Error: ${errorMessage}`;
   }
+
+  /**
+   * Updates host element classes based on component status
+   * This is a common pattern used by all components
+   */
+  protected updateHostClasses() {
+    const isLoading = this.computeOverall() === NCStatus.Loading;
+    const isError = this.computeOverall() === NCStatus.Error;
+    const isReady = this.computeOverall() === NCStatus.Ready;
+    
+    // Remove all state classes
+    this.classList.remove('is-clickable', 'is-disabled', 'is-error');
+    
+    // Add appropriate state class
+    if (isLoading) {
+      this.classList.add('is-disabled');
+    } else if (isError) {
+      this.classList.add('is-error');
+    } else if (isReady) {
+      this.classList.add('is-clickable');
+    }
+  }
+
+  /**
+   * Base render method that handles common render logic
+   * Subclasses should override renderContent() instead of render()
+   */
+  protected render() {
+    this.updateHostClasses();
+    this.renderContent();
+  }
+
+  /**
+   * Abstract method for component-specific rendering
+   * Must be implemented by subclasses
+   */
+  protected abstract renderContent(): void;
 
   /** Private methods */
   private resetNostrReadyBarrier() {

@@ -24,6 +24,11 @@ export interface DesignTokens {
       light: string;
       dark: string;
     };
+    // Hover background colors
+    hoverBackground: {
+      light: string;
+      dark: string;
+    };
     // Text colors
     text: {
       primary: { light: string; dark: string };
@@ -111,13 +116,17 @@ export const defaultDesignTokens: DesignTokens = {
       light: '#ffffff',
       dark: '#1a1a1a',
     },
+    hoverBackground: {
+      light: 'rgba(0, 0, 0, 0.05)',
+      dark: 'rgba(255, 255, 255, 0.05)',
+    },
     text: {
       primary: {
         light: '#444444',
         dark: '#ffffff',
       },
       secondary: {
-        light: '#444444',
+        light: '#666666',
         dark: '#ffffff',
       },
       muted: {
@@ -207,6 +216,10 @@ export function generateDesignTokenCSS(theme: Theme, tokens: DesignTokens = defa
     --nostrc-color-background-light: ${colors.background.light};
     --nostrc-color-background-dark: ${colors.background.dark};
     --nostrc-color-background: var(--nostrc-color-background-${theme});
+    
+    --nostrc-color-hover-background-light: ${colors.hoverBackground.light};
+    --nostrc-color-hover-background-dark: ${colors.hoverBackground.dark};
+    --nostrc-color-hover-background: var(--nostrc-color-hover-background-${theme});
     
     --nostrc-color-text-primary-light: ${colors.text.primary.light};
     --nostrc-color-text-primary-dark: ${colors.text.primary.dark};
@@ -306,6 +319,12 @@ export const styleUtils = {
       background-size: 200% 100%;
       animation: skeleton-loading var(--nostrc-skeleton-duration) var(--nostrc-skeleton-timing);
       border-radius: var(--nostrc-border-radius-sm);
+      height: 16px;
+      margin-bottom: var(--nostrc-spacing-xs);
+    }
+    
+    .skeleton:last-child {
+      margin-bottom: 0;
     }
     
     @keyframes skeleton-loading {
@@ -318,7 +337,7 @@ export const styleUtils = {
    * Generates copy button styles
    */
   copyButton: () => `
-    .copy-button {
+    .nc-copy-btn {
       cursor: pointer;
       opacity: 0.7;
       transition: opacity var(--nostrc-transition-duration) var(--nostrc-transition-timing);
@@ -328,11 +347,11 @@ export const styleUtils = {
       color: var(--nostrc-color-text-muted);
     }
     
-    .copy-button:hover {
+    .nc-copy-btn:hover {
       opacity: 1;
     }
     
-    .copy-button.copied {
+    .nc-copy-btn.copied {
       color: var(--nostrc-color-accent);
     }
   `,
@@ -342,12 +361,28 @@ export const styleUtils = {
    */
   profileName: () => `
     .nostr-profile-name {
+      color: var(--nostrc-color-text-primary);
       font-weight: var(--nostrc-font-weight-bold);
-      color: var(--nostrc-color-text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       padding-bottom: var(--nostrc-spacing-xs);
+    }
+  `,
+  
+  /**
+   * Generates text row styles
+   */
+  textRow: () => `
+    .text-row {
+      display: flex;
+      align-items: center;
+      gap: var(--nostrc-spacing-sm);
+      font-family: var(--nostrc-font-family-primary);
+      font-size: var(--nostrc-font-size-base);
+      color: var(--nostrc-color-text-secondary);
+    }
+    
+    .text-row.mono {
+      font-family: var(--nostrc-font-family-mono);
+      font-size: var(--nostrc-font-size-small);
     }
   `,
   
@@ -367,4 +402,5 @@ export const styleUtils = {
       font-size: 2em;
     }
   `,
+  
 };

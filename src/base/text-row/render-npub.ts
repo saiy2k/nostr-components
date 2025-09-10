@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { renderTextRow } from "./render-text-row";
-import { maskNPub } from "../common/utils";
+import { maskNPub } from "../../common/utils";
 
 export function renderNpub(
   npub: string,

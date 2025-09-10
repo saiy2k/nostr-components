@@ -19,20 +19,44 @@ export function getBaseStyles(theme: Theme): string {
   return `
     <style>
       :host {
-        /* === DESIGN TOKENS === */
         ${generateDesignTokenCSS(theme, defaultDesignTokens)}
-        
-        /* === BASE COMPONENT STYLES === */
+      }
+      
+      /* === GENERIC CONTAINER STYLES === */
+      .nostrc-container {
         display: block;
-        contain: content;
-        box-sizing: border-box;
         font-family: var(--nostrc-font-family-primary);
         font-size: var(--nostrc-font-size-base);
+        background-color: var(--nostrc-color-background);
+        border-radius: var(--nostrc-border-radius-md);
+        border: var(--nostrc-border-width) solid var(--nostrc-color-border);
+        padding: var(--nostrc-spacing-lg);
+        transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
+      }
+      
+      :host(.is-clickable) .nostrc-container {
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      :host(.is-clickable) .nostrc-container:hover {
+        background-color: var(--nostrc-color-hover-background);
+      }
+      
+      :host(.is-disabled) {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+      
+      :host(.is-error) {
+        border-color: var(--nostrc-color-error-text);
+        cursor: not-allowed;
       }
       
       /* === ESSENTIAL UTILITY STYLES === */
       ${styleUtils.skeleton()}
       ${styleUtils.copyButton()}
+      ${styleUtils.textRow()}
       ${styleUtils.profileName()}
       ${styleUtils.errorIcon()}
     </style>
@@ -51,39 +75,3 @@ export function getComponentStyles(theme: Theme, customStyles: string): string {
     </style>
   `;
 }
-
-/**
- * Generates optimized component styles with custom patterns
- * Use this for components that need specific patterns without bloat
- */
-export function getOptimizedComponentStyles(theme: Theme, patterns: string[], customStyles: string): string {
-  const selectedPatterns = patterns.join('\n');
-  
-  return `
-    <style>
-      :host {
-        /* === DESIGN TOKENS === */
-        ${generateDesignTokenCSS(theme, defaultDesignTokens)}
-        
-        /* === BASE COMPONENT STYLES === */
-        display: block;
-        contain: content;
-        box-sizing: border-box;
-        font-family: var(--nostrc-font-family-primary);
-        font-size: var(--nostrc-font-size-base);
-      }
-      
-      /* === ESSENTIAL UTILITIES === */
-      ${styleUtils.skeleton()}
-      ${styleUtils.copyButton()}
-      ${styleUtils.errorIcon()}
-      
-      /* === SELECTED PATTERNS === */
-      ${selectedPatterns}
-      
-      /* === COMPONENT-SPECIFIC STYLES === */
-      ${customStyles}
-    </style>
-  `;
-}
-

@@ -428,16 +428,7 @@ export function getProfileStyles(theme: Theme) {
           }
       }
 
-      .badge-row {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-family: monospace;
-        font-size: 0.8em;
-        color: var(--nstrc-profile-text-grey-light, #666666);
-      }
-
-      .copy-button {
+      .nc-copy-btn {
         display: flex;
         font-size: 16px;
         min-width: 15px;
@@ -451,7 +442,7 @@ export function getProfileStyles(theme: Theme) {
         background: var(--nstrc-profile-badge-background);
       }
 
-      .copy-button:hover {
+      .nc-copy-btn:hover {
         opacity: 1;
       }
     </style>

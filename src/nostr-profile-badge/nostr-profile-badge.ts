@@ -41,6 +41,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
+    
     this.attachDelegatedListeners();
     attachCopyDelegation({
       addDelegatedListener: this.addDelegatedListener.bind(this),
@@ -72,7 +73,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   /** Private functions */
   private onProfileClick() {
-    if (this.computeOverall() === NCStatus.Error) return;
+    if (this.computeOverall() !== NCStatus.Ready) return;
 
     const event = new CustomEvent(EVT_BADGE, {
       detail: this.profile,
@@ -100,23 +101,22 @@ export default class NostrProfileBadge extends NostrUserComponent {
     // Click anywhere on the profile badge (except follow button, copy buttons)
     this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.copy-button, .nostr-follow-button-container')) {
+      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container')) {
         this.onProfileClick();
       }
     });
 
     // Copy is handled via attachCopyDelegation() using `.nc-copy-btn`
-
   }
 
-  render() {
+
+  protected renderContent() {
     const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
 
     // Get attribute values
     const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
     const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
-    const npub          = this.getAttribute('npub') || '';
     const errorMessage  = super.renderError(this.errorMessage);
 
     const renderOptions: RenderProfileBadgeOptions = {
@@ -126,7 +126,6 @@ export default class NostrProfileBadge extends NostrUserComponent {
       errorMessage: errorMessage,
       userProfile : this.profile,
       ndkUser     : this.user,
-      npub        : npub,
       showNpub    : showNpub,
       showFollow  : showFollow
     };

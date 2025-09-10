@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { escapeHtml } from '../common/utils';
+import { escapeHtml } from '../../common/utils';
 
 export interface TextRowOptions {
   value: string;             // the raw text to copy
@@ -30,19 +30,19 @@ export function renderTextRow(opts: TextRowOptions): string {
   const iconHtml    = '&#x2398;'; // ⎘
 
   if (showCopyButton) {
-    const rowClass = `badge-row nc-copy ${monospace ? 'mono' : ''} ${safeClassName}`.trim();
+    const rowClass = `text-row ${monospace ? 'mono' : ''} ${safeClassName}`.trim();
     return `
       <div class="${rowClass}" data-copy="${safeValue}" title="${safeTitle}">
         <span class="nc-copy-text">${safeDisplay}</span>
         <button type="button" 
-              class="copy-button nc-copy-btn"
+              class="nc-copy-btn"
               aria-label="Copy"
               title="Copy">${iconHtml}</button>
       </div>
     `;
   }
 
-  const rowClass = `badge-row ${monospace ? 'mono' : ''} ${safeClassName}`.trim();
+  const rowClass = `text-row ${monospace ? 'mono' : ''} ${safeClassName}`.trim();
   return `
     <div class="${rowClass}" title="${safeTitle}">
       ${safeDisplay}

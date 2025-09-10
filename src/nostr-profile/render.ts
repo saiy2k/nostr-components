@@ -2,8 +2,8 @@
 
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { IRenderOptions } from '../base/render-options';
-import { renderNpub } from '../base/render-npub';
-import { renderNip05 } from '../base/render-nip05';
+import { renderNpub } from '../base/text-row/render-npub';
+import { renderNip05 } from '../base/text-row/render-nip05';
 import { renderStats } from './render-stats';
 
 export interface Stats {
