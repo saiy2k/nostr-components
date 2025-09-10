@@ -5,6 +5,8 @@ import { IRenderOptions } from '../base/render-options';
 import { renderNpub } from '../base/text-row/render-npub';
 import { renderNip05 } from '../base/text-row/render-nip05';
 import { renderStats } from './render-stats';
+import { renderName } from '../base/text-row/render-name';
+import { renderTextRow } from '../base/text-row/render-text-row';
 
 export interface Stats {
   notes: number;
@@ -43,7 +45,7 @@ export function renderProfile(options: RenderProfileOptions): string {
   } = options;
 
   if (isError) {
-    return renderError(errorMessage);
+    return renderError(errorMessage || '');
   }
 
   // Extract profile data with null checks and default values
@@ -64,87 +66,77 @@ export function renderProfile(options: RenderProfileOptions): string {
   };
 
   return `
-    <div class="nostr-profile-container">
-        <div id="profile_banner">
-          ${
-            isLoading
-              ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
-              : userProfile.banner
-                ? `<div class="profile_image">
-                  <img src="${userProfile.banner}" width="524px"/>
-                </div>`
-                : '<div class="banner-placeholder"></div>'
+    <div class="nostrc-container nostr-profile-container">
+        <div class="profile-banner">
+          ${isLoading
+            ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
+            : userProfile.banner
+              ? `<div class="profile-image">
+                        <img src="${userProfile.banner}" width="524px"/>
+                      </div>`
+              : '<div class="banner-placeholder"></div>'
           }
-        </div>
 
-        <div class="dp_container">
+       <div class="dp-container">
           <div class="avatar" role="img" aria-label="${displayName}">
-            ${
-              isLoading
-                ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
-                : `<img
-                    src="${image}"
-                    alt="${displayName}"
-                    width="142" height="142"
-                    loading="lazy" decoding="async"
-                  />`
+            ${isLoading
+              ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
+              : `<img
+                            src="${image}"
+                            alt="${displayName}"
+                            width="142" height="142"
+                            loading="lazy" decoding="async"
+                          />`
             }
           </div>
         </div>
+      </div>
+
+ 
 
 
         <div class="profile_actions">
-            ${
-              isLoading ? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
+            ${isLoading ? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
               : renderFollowButton()
             }
         </div>
         
         <div class="profile_data">
-          <div class="basic_info">
-            <div class="name">
-              ${
-                isLoading
-                  ? '<div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>'
-                  : `<div class="name-text">${displayName}</div>`
-              }
-            </div>
-          </div>
+              ${isLoading
+              ? '<div style="width: 100px" class="skeleton"></div>'
+              : renderName({ name: displayName })
+            }
           
-          ${
-            isLoading
-              ? '<div style="width: 75px; height: 12px; border-radius: 20px" class="skeleton"></div>'
+          ${isLoading
+              ? '<div style="width: 75px" class="skeleton"></div>'
               : renderNip05(nip05)
-          }
-          ${
+            }
+          ${showNpub ?
             isLoading
-              ? '<div style="width: 75px; height: 12px; border-radius: 20px" class="skeleton"></div>'
-              : renderNpub(npub)
-          }
-        </div>
+              ? '<div style="width: 75px" class="skeleton"></div>'
+                : renderNpub(npub)
+              : null
+            }
+
+          <div style="margin-bottom: 12px"> </div>
         
-        <div class="about">
-          ${
-            isLoading
-              ? `<div style="width: 100%; height: 12px; border-radius: 20px; margin-bottom: 12px" class="skeleton"></div>
-               <div style="width: 40%; height: 12px; border-radius: 20px" class="skeleton"></div>`
-              : about || ''
-          }
-        </div>
+          ${isLoading
+              ? `<div style="width: 100%; margin-bottom: 12px; height: 18px" class="skeleton"></div>`
+              : renderTextRow({ display: about, value: about })
+            }
+
+          <div style="margin-bottom: 12px"> </div>
         
-        <div class="links">
-          ${
-            isLoading
-              ? '<div style="width: 150px; height: 12px; border-radius: 20px" class="skeleton"></div>'
+          ${isLoading
+              ? '<div style="width: 150px" class="skeleton"></div>'
               : website
                 ? `<div class="website">
-                  <a target="_blank" href="${website}">${website}</a>
-                </div>`
+                          <a target="_blank" href="${website}">${website}</a>
+                        </div>`
                 : ''
-          }
-        </div>
+            }
       
-      <div class="stats" data-orientation="horizontal">
+      <div class="stats">
         
         ${renderStats('Following', stats.follows, isStatsLoading || isStatsFollowsLoading)}
         
@@ -157,13 +149,14 @@ export function renderProfile(options: RenderProfileOptions): string {
         ${renderStats('Zaps', stats.zaps, isStatsLoading)}
         
       </div>
+      </div>
     </div>
   `;
 }
 
 function renderError(errorMessage: string): string {
   return `
-    <div class='nostr-profile-container is-error'>
+    <div class='profile-container nostr-profile-container is-error'>
       <div class='nostr-profile-top-container'>
         <div class="error-icon">&#9888;</div>
       </div>
