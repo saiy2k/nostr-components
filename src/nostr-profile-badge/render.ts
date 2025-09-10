@@ -3,11 +3,15 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { escapeHtml, maskNPub } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
-import { IRenderOptions } from '../base/render-options';
+import { Theme } from '../common/types';
 import { renderNpub } from '../base/render-npub';
 import { renderNip05 } from '../base/render-nip05';
 
-export interface RenderProfileBadgeOptions extends IRenderOptions {
+export interface RenderProfileBadgeOptions {
+  theme: Theme;
+  isLoading: boolean;
+  isError: boolean;
+  errorMessage?: string;
   userProfile: NDKUserProfile | null;
   ndkUser: NDKUser | null;
   npub: string | null;
@@ -16,7 +20,6 @@ export interface RenderProfileBadgeOptions extends IRenderOptions {
 }
 
 export function renderProfileBadge({
-  theme,
   isLoading,
   isError,
   errorMessage,
@@ -32,7 +35,7 @@ export function renderProfileBadge({
   }
 
   if (isError || userProfile == null) {
-    return renderError(errorMessage);
+    return renderError(errorMessage || '');
   }
 
   const profileName = escapeHtml(

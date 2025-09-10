@@ -282,7 +282,7 @@ export class NostrBaseComponent extends HTMLElement {
   }
 
 
-  protected renderError(errorMessage: String): string {
+  protected renderError(errorMessage: string): string {
     return `Error: ${errorMessage}`;
   }
 

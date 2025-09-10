@@ -57,8 +57,8 @@ export class NostrUserComponent extends NostrBaseComponent {
   connectedCallback() {
     super.connectedCallback?.();
 
-    if (this.validateInputs() == true) {
-      this.loadUserAndProfile().catch(e => {
+    if (this.validateInputs()) {
+      this.resolveUserAndProfile().catch(e => {
         console.error('[NostrUserComponent] init failed:', e);
       });
     }
@@ -75,7 +75,7 @@ export class NostrUserComponent extends NostrBaseComponent {
     if (name === 'npub' || name === 'nip05' || name === 'pubkey') {
       if (this.validateInputs() == true) {
         // Re-resolve user + profile on identity changes
-        void this.loadUserAndProfile();
+        void this.resolveUserAndProfile();
       }
     }
   }
@@ -107,7 +107,7 @@ export class NostrUserComponent extends NostrBaseComponent {
 
   }
 
-  protected async loadUserAndProfile(): Promise<void> {
+  protected async resolveUserAndProfile(): Promise<void> {
     const seq = ++this.loadSeq; // token to prevent stale writes
 
     // Ensure relays are connected; handle failure inside to avoid unhandled rejection

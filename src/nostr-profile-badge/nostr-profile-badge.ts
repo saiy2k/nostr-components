@@ -2,10 +2,11 @@
 
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
-import { parseBooleanAttribute, copyToClipboard } from '../common/utils';
+import { parseBooleanAttribute } from '../common/utils';
 import { renderProfileBadge, RenderProfileBadgeOptions } from './render';
 import { getProfileBadgeStyles } from './style';
 import { attachCopyDelegation } from '../base/copy-delegation';
+import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 
 const EVT_BADGE = 'nc:profile_badge';
 
@@ -41,7 +42,9 @@ export default class NostrProfileBadge extends NostrUserComponent {
   connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
-    attachCopyDelegation(this);
+    attachCopyDelegation({
+      addDelegatedListener: this.addDelegatedListener.bind(this),
+    });
     this.render();
   }
 
@@ -63,7 +66,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
     this.render();
   }
 
-  protected onUserReady(_user: any, _profile: any) {
+  protected onUserReady(_user: NDKUser, _profile: NDKUserProfile | null) {
     this.render();
   }
 
@@ -107,7 +110,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
   }
 
   render() {
-    const isLoading     = this.computeOverall() == NCStatus.Loading;
+    const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
 
     // Get attribute values
