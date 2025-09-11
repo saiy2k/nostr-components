@@ -71,8 +71,8 @@ export default class NostrProfile extends NostrUserComponent {
 
       // Fetch follows
       this.nostrService
-        .getProfileStats(this.user!, ['follows'])
-        .then(({ follows }) => {
+        .fetchFollows(this.user!)
+        .then((follows) => {
           currentStats.follows = follows;
           this.stats = { ...this.stats, follows };
           this.isStatsFollowsLoading = false;
@@ -86,8 +86,8 @@ export default class NostrProfile extends NostrUserComponent {
 
       // Fetch followers
       this.nostrService
-        .getProfileStats(this.user!, ['followers'])
-        .then(({ followers }) => {
+        .fetchFollowers(this.user!)
+        .then((followers) => {
           currentStats.followers = followers;
           this.stats = { ...this.stats, followers };
           this.isStatsFollowersLoading = false;
@@ -101,8 +101,8 @@ export default class NostrProfile extends NostrUserComponent {
 
       // Fetch notes and replies
       this.nostrService
-        .getProfileStats(this.user!, ['notes', 'replies'])
-        .then(({ notes, replies }) => {
+        .fetchNotesAndReplies(this.user!)
+        .then(([ notes, replies ]) => {
           currentStats.notes = notes;
           currentStats.replies = replies;
           this.stats = { ...this.stats, notes, replies };
@@ -117,8 +117,8 @@ export default class NostrProfile extends NostrUserComponent {
 
       // Fetch zaps
       this.nostrService
-        .getProfileStats(this.user!, ['zaps'])
-        .then(({ zaps }) => {
+        .fetchZaps(this.user!)
+        .then((zaps) => {
           currentStats.zaps = zaps;
           this.stats = { ...this.stats, zaps };
           this.isZapsLoading = false;

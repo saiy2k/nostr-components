@@ -133,63 +133,10 @@ export class NostrService {
     return event;
   }
 
-  public async getProfileStats(
-    user: NDKUser,
-    statsToFetch?: Array<
-      'follows' | 'followers' | 'notes' | 'replies' | 'zaps' | 'relays'
-    >
-  ): Promise<{
-    follows: number;
-    followers: number;
-    notes: number;
-    replies: number;
-    zaps: number;
-    relays: number;
-  }> {
-
-    // If no specific stats are requested, fetch all
-    const fetchAll = !statsToFetch || statsToFetch.length === 0;
-    const shouldFetch = (stat: string) =>
-      fetchAll || statsToFetch?.includes(stat as any);
-
-    try {
-      // Ensure we're connected to relays
-      if (!this.isConnected) await this.connectToNostr();
-
-
-      let notesRepliesCount = [0, 0];
-      if (shouldFetch('notes') || shouldFetch('replies')) {
-        notesRepliesCount = await this.fetchNotesAndReplies(user);
-      }
-
-      // Ensure all requested stats are in the result, even if they're 0
-      return {
-        follows: shouldFetch('follows') ? await this.fetchFollows(user) : 0,
-        followers: shouldFetch('followers') ? await this.fetchFollowers(user) : 0,
-        notes: notesRepliesCount[0],
-        replies: notesRepliesCount[1],
-        zaps: shouldFetch('zaps') ? await this.fetchZaps(user) : 0,
-        relays: 0, // TODO:
-      };
-    } catch (error) {
-      console.error('Error in getProfileStats:', error);
-
-      // Return a properly structured stats object with zeros for all fields
-      return {
-        follows: 0,
-        followers: 0,
-        notes: 0,
-        replies: 0,
-        zaps: 0,
-        relays: 0,
-      };
-    }
-  }
-
   public async fetchFollows(user: NDKUser): Promise<number> {
     try {
       console.log('Fetching follows for user:', user.npub);
-      const follows = await user.follows();
+      const follows = await user.followSet();
       // Force a fetch of all follows to ensure we have the latest count
       const followsArray = Array.from(follows.values());
       const count = followsArray.length;
