@@ -12,7 +12,7 @@ const EVT_EVENT = 'nc:event';
  * Extension of `NostrBaseComponent` that resolves and manages a Nostr Event.
  *
  * Overview
- * - Accepts identity attribute (`noteId`) and validates.
+ * - Accepts identity attribute (`eventId`) and validates.
  * - Fetches an `NDKEvent` via the shared `nostrService`.
  * - Exposes resolved `event` to subclasses for rendering or logic.
  * - Emits lifecycle events for status and event readiness.
@@ -45,7 +45,7 @@ export class NostrEventComponent extends NostrBaseComponent {
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
-      'noteId',
+      'eventId',
     ];
   }
 
@@ -67,7 +67,7 @@ export class NostrEventComponent extends NostrBaseComponent {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
-    if (name === 'noteId') {
+    if (name === 'eventId') {
       if (this.validateInputs() == true) {
         void this.loadEvent();
       }
@@ -79,7 +79,7 @@ export class NostrEventComponent extends NostrBaseComponent {
 
     if (!super.validateInputs()) return false;
 
-    const id        = this.getAttribute("noteId");
+    const id        = this.getAttribute("eventId");
     const tagName   = this.tagName.toLowerCase();
 
     if (id == null) {
@@ -115,7 +115,7 @@ export class NostrEventComponent extends NostrBaseComponent {
     this.eventStatus.set(NCStatus.Loading);
 
     try {
-      const id    = this.getAttribute("noteId")!;
+      const id    = this.getAttribute("eventId")!;
 
       if (!id) {
         if (seq !== this.loadSeq) return;

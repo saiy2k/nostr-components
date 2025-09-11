@@ -26,7 +26,7 @@ const EVT_BADGE = 'nc:profile_badge';
  * - `nc:profile_badge`  — fired on badge click (detail: `NDKUserProfile | null`);
  *                         default action opens `https://njump.me/<nip05|npub>`
  *
- * TODO: Improve Follow button placement
+ * Note: Follow button placement could be improved in future versions
  */
 export default class NostrProfileBadge extends NostrUserComponent {
 
@@ -51,7 +51,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   // No cleanup needed: shadowRoot listeners die with the component.
   // Only global targets (window, document, timers) require removal.
-  disconnectedCallback() {}
+  // disconnectedCallback() intentionally empty - no cleanup required
 
   attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
     if (oldValue === newValue) return;
@@ -92,7 +92,9 @@ export default class NostrProfileBadge extends NostrUserComponent {
         this.user?.npub ||
         this.getAttribute('npub');
 
-      if (key) window.open(`https://njump.me/${key}`, '_blank');
+      if (key) {
+        window.open(`https://njump.me/${key}`, '_blank');
+      }
     }
   }
 
