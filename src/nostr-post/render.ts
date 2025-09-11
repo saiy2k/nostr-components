@@ -35,7 +35,7 @@ export function renderPost(options: RenderPostOptions): string {
   return `
     ${getPostStylesLegacy(theme)}
     ${getPostStyles(theme)}
-    <div class="post-container">
+    <div class="nostrc-container nostr-post-container">
       ${renderPostHeader(isLoading, isError, author, date)}
       ${renderPostBody(isLoading, isError, htmlToRender)}
       ${shouldShowStats ? renderPostFooter(isLoading, isError, stats) : ''}

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { getPostStats, Stats, copyToClipboard } from '../common/utils';
+import { getPostStats, Stats } from '../common/utils';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
 import { renderContent } from './render-content';
@@ -52,7 +52,9 @@ export default class NostrPost extends NostrEventComponent {
     }
 
     super.connectedCallback?.();
-    attachCopyDelegation(this);
+    attachCopyDelegation({
+      addDelegatedListener: this.addDelegatedListener.bind(this),
+    });
     this.render();
   }
 
@@ -297,7 +299,7 @@ export default class NostrPost extends NostrEventComponent {
     }
 
     // Add click handler for the entire post
-    const postContainer = this.querySelector('.post-container');
+    const postContainer = this.querySelector('.nostr-post-container');
     if (postContainer) {
       postContainer.addEventListener('click', event => {
         // Only trigger post click if the click wasn't on a child with its own handler
@@ -322,13 +324,13 @@ export default class NostrPost extends NostrEventComponent {
     });
   }
 
-  async render() {
+  protected async renderContent() {
     const isLoading = this.computeOverall() == NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
 
     const content = this.event?.content || '';
     const parsedContent = await parseText(content, this.event, this.embeddedPosts, this.nostrService);
-    const htmlToRender = await renderContent(parsedContent);
+    const htmlToRender = renderContent(parsedContent);
     const errorMessage = super.renderError(this.errorMessage);
 
     console.log(this.event);

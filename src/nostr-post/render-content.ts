@@ -3,7 +3,7 @@
   import { ContentItem } from './parse-text';
   import { escapeHtml, isValidUrl } from '../common/utils';
 
-  export async function renderContent(content: ContentItem[]): Promise<string> {
+  export function renderContent(content: ContentItem[]): string {
     const html: string[] = [];
     let mediaCount = 0;
     let textBuffer = '';

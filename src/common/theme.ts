@@ -75,7 +75,7 @@ export function getPostStylesLegacy(theme: Theme): string {
             }
 
             /* Keep other styles targeting elements within nostr-post */
-            nostr-post .post-container {
+            nostr-post .nostr-post-container {
                 font-family: sans-serif;
                 padding: 20px;
 
@@ -93,7 +93,7 @@ export function getPostStylesLegacy(theme: Theme): string {
                 cursor: pointer;
             }
 
-            nostr-post .post-container .post-header {
+            nostr-post .nostr-post-container .post-header {
                 display: flex;
                 gap: 10px;
             }
@@ -155,7 +155,7 @@ export function getPostStylesLegacy(theme: Theme): string {
                 border: 1px solid #000; /* Example, adjust as needed */
             }
 
-            nostr-post .post-container .skeleton {
+            nostr-post .nostr-post-container .skeleton {
               animation: post-skeleton-loading 0.5s linear infinite alternate;
             }
 

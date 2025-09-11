@@ -110,7 +110,7 @@ export default class NostrProfile extends NostrUserComponent {
           this.render();
         })
         .catch(err => {
-          console.error('Error loading other stats:', err);
+          console.error('Error loading notes and replies', err);
           this.isStatsLoading = false;
           this.render();
         });

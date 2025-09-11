@@ -150,6 +150,8 @@ export class NostrUserComponent extends NostrBaseComponent {
     }
   }
 
+  protected renderContent() { }
+
   /** Hook for subclasses to react when user/profile are ready (e.g., render). */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected onUserReady(_user: NDKUser, _profile: NDKUserProfile | null) { }
