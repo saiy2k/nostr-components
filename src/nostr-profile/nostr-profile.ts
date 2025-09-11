@@ -66,14 +66,10 @@ export default class NostrProfile extends NostrUserComponent {
       this.isStatsFollowersLoading = true;
       this.isZapsLoading = true;
 
-      // Create a local copy of the current stats
-      const currentStats = { ...this.stats };
-
       // Fetch follows
       this.nostrService
         .fetchFollows(this.user!)
         .then((follows) => {
-          currentStats.follows = follows;
           this.stats = { ...this.stats, follows };
           this.isStatsFollowsLoading = false;
           this.render();
@@ -88,7 +84,6 @@ export default class NostrProfile extends NostrUserComponent {
       this.nostrService
         .fetchFollowers(this.user!)
         .then((followers) => {
-          currentStats.followers = followers;
           this.stats = { ...this.stats, followers };
           this.isStatsFollowersLoading = false;
           this.render();
@@ -103,8 +98,6 @@ export default class NostrProfile extends NostrUserComponent {
       this.nostrService
         .fetchNotesAndReplies(this.user!)
         .then(([ notes, replies ]) => {
-          currentStats.notes = notes;
-          currentStats.replies = replies;
           this.stats = { ...this.stats, notes, replies };
           this.isStatsLoading = false;
           this.render();
@@ -119,7 +112,6 @@ export default class NostrProfile extends NostrUserComponent {
       this.nostrService
         .fetchZaps(this.user!)
         .then((zaps) => {
-          currentStats.zaps = zaps;
           this.stats = { ...this.stats, zaps };
           this.isZapsLoading = false;
           this.render();
@@ -133,13 +125,17 @@ export default class NostrProfile extends NostrUserComponent {
 
     } catch (err) {
       this.profileStatus.set(NCStatus.Error);
-      throw err;
+      console.error('getUserStats failed:', err);
     } finally {
       this.render();
     }
   };
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+  attributeChangedCallback(
+    name: string,
+    oldValue: string | null,
+    newValue: string | null
+  ) {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
@@ -147,6 +143,7 @@ export default class NostrProfile extends NostrUserComponent {
       this.render();
     }
   }
+
   /** Private functions */
   private onProfileClick() {
     if (this.profileStatus.get() === NCStatus.Error) return;
@@ -168,7 +165,7 @@ export default class NostrProfile extends NostrUserComponent {
         this.user?.npub ||
         this.getAttribute('npub');
 
-      if (key) window.open(`https://njump.me/${key}`, '_blank');
+      if (key) window.open(`https://njump.me/${encodeURIComponent(key)}`, '_blank');
     }
   }
 
@@ -177,7 +174,7 @@ export default class NostrProfile extends NostrUserComponent {
     // Click anywhere on the profile badge (except follow button, copy buttons)
     this.delegateEvent('click', '.profile-banner', (e: Event) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container')) {
+      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button')) {
         this.onProfileClick();
       }
     });
@@ -185,7 +182,7 @@ export default class NostrProfile extends NostrUserComponent {
   }
 
   protected renderContent() {
-    const isLoading     = this.computeOverall() == NCStatus.Loading;
+    const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
     const showNpub      = this.getAttribute('show-npub') !== 'false';
     const showFollow    = this.getAttribute('show-follow') !== 'false';

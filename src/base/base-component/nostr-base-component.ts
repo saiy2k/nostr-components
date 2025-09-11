@@ -31,7 +31,7 @@ const EVT_STATUS = 'nc:status';
  * Events
  * - `nc:status` — from base, reflects connection and user/profile loading status
  * 
- * TODO: Is this class too much of work?
+ * TODO: Is this class doing too much work? Time to split into smaller components?
  */
 export abstract class NostrBaseComponent extends HTMLElement {
 
@@ -94,7 +94,10 @@ export abstract class NostrBaseComponent extends HTMLElement {
           void this.connectToNostr();
         }
 
-        if (name === 'theme') this.getTheme();
+        if (name === 'theme') {
+          this.getTheme();
+          this.render();
+        }
       }
     }
   }
@@ -111,6 +114,8 @@ export abstract class NostrBaseComponent extends HTMLElement {
 
     if (next === NCStatus.Error && error) {
       this.errorMessage = error;
+    } else if (prev === NCStatus.Error && next !== NCStatus.Error) {
+      this.errorMessage = '';
     }
 
     // Reflect per-key attribute, e.g. user-status="loading"
@@ -183,11 +188,11 @@ export abstract class NostrBaseComponent extends HTMLElement {
    * and add a log in ProfileBadge :: onStatusChange. You will get it.
    */
   protected initChannelStatus(key: string, status: NCStatus, opts = { reflectOverall: false }) {
-    (this as any)._statuses.set(key, status);
+    this._statuses.set(key, status);
     this.setAttribute(`${key}-status`, NCStatus[status].toLowerCase());
     if (opts.reflectOverall) {
       const overall = this.computeOverall();
-      (this as any)._overall = overall;
+      this._overall = overall;
       this.setAttribute('status', NCStatus[overall].toLowerCase());
     }
   }
@@ -224,7 +229,6 @@ export abstract class NostrBaseComponent extends HTMLElement {
     const seq = ++this.connectSeq;
     this.conn.set(NCStatus.Loading);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
       await this.nostrService.connectToNostr(this.getRelays());
       if (seq !== this.connectSeq) return; // stale attempt
       this.conn.set(NCStatus.Ready);

@@ -96,7 +96,8 @@ export interface DesignTokens {
     };
     animation: {
       duration: string;
-      timing: string;
+      timingFunction: string;
+      iterationCount: string;
     };
   };
   
@@ -194,7 +195,8 @@ export const defaultDesignTokens: DesignTokens = {
     },
     animation: {
       duration: '1.5s',
-      timing: 'infinite',
+      timingFunction: 'linear',
+      iterationCount: 'infinite',
     },
   },
   
@@ -275,11 +277,16 @@ export function generateDesignTokenCSS(theme: Theme, tokens: DesignTokens = defa
     --nostrc-skeleton-color-min: var(--nostrc-skeleton-color-min-${theme});
     --nostrc-skeleton-color-max: var(--nostrc-skeleton-color-max-${theme});
     --nostrc-skeleton-duration: ${skeleton.animation.duration};
-    --nostrc-skeleton-timing: ${skeleton.animation.timing};
+    --nostrc-skeleton-timing-function: ${skeleton.animation.timingFunction};
+    --nostrc-skeleton-iteration-count: ${skeleton.animation.iterationCount};
     
     /* === TRANSITIONS === */
     --nostrc-transition-duration: ${transitions.duration};
     --nostrc-transition-timing: ${transitions.timing};
+
+    .margin-bottom-md {
+      margin-bottom: var(--nostrc-spacing-md);
+    }
   `;
 }
 
@@ -288,19 +295,10 @@ export function generateDesignTokenCSS(theme: Theme, tokens: DesignTokens = defa
  */
 export const styleUtils = {
   /**
-   * Generates hover state styles
-   */
-  hover: (property: string, lightValue: string) => `
-    &:hover {
-      ${property}: var(--nostrc-color-hover-${property}, ${lightValue});
-    }
-  `,
-  
-  /**
    * Generates error state styles
    */
   error: () => `
-    &.is-error {
+    :host(.is-error) {
       color: var(--nostrc-color-error-text);
     }
   `,
@@ -317,7 +315,7 @@ export const styleUtils = {
         var(--nostrc-skeleton-color-min) 100%
       );
       background-size: 200% 100%;
-      animation: skeleton-loading var(--nostrc-skeleton-duration) var(--nostrc-skeleton-timing);
+      animation: skeleton-loading var(--nostrc-skeleton-duration) var(--nostrc-skeleton-timing-function) var(--nostrc-skeleton-iteration-count);
       border-radius: var(--nostrc-border-radius-sm);
       height: 16px;
       margin-bottom: var(--nostrc-spacing-xs);
@@ -330,6 +328,10 @@ export const styleUtils = {
     @keyframes skeleton-loading {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton { animation: none; }
     }
   `,
   

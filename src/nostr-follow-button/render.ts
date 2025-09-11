@@ -35,12 +35,11 @@ export function renderFollowButton({
     return renderError(errorMessage || '');
   }
 
-  const buttonText = isFollowed ? 'Followed' : 'Follow';
   const iconContent = isFollowed
-    ? getSuccessAnimation(theme) // Use default values
-    : getNostrLogo(theme); // Use default values
+    ? getSuccessAnimation(theme)
+    : getNostrLogo(theme);
   const textContent = isFollowed
-    ? buttonText
+    ? 'Followed'
     : `<span>Follow me on Nostr</span>`;
 
   return renderContainer(iconContent, textContent);

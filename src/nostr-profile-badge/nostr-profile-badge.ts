@@ -75,7 +75,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
   private onProfileClick() {
     if (this.computeOverall() !== NCStatus.Ready) return;
 
-    const event = new CustomEvent(EVT_BADGE, {
+    const event = new CustomEvent<NDKUserProfile | null>(EVT_BADGE, {
       detail: this.profile,
       bubbles: true,
       composed: true,
@@ -93,7 +93,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
         this.getAttribute('npub');
 
       if (key) {
-        window.open(`https://njump.me/${key}`, '_blank');
+        window.open(`https://njump.me/${key}`, '_blank', 'noopener,noreferrer');
       }
     }
   }
@@ -103,7 +103,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
     // Click anywhere on the profile badge (except follow button, copy buttons)
     this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container')) {
+      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button')) {
         this.onProfileClick();
       }
     });
@@ -112,13 +112,14 @@ export default class NostrProfileBadge extends NostrUserComponent {
   }
 
   protected renderContent() {
-    const isLoading     = this.computeOverall() === NCStatus.Loading;
-    const isError       = this.computeOverall() === NCStatus.Error;
+    const overall       = this.computeOverall();
+    const isLoading     = overall === NCStatus.Loading;
+    const isError       = overall === NCStatus.Error;
 
     // Get attribute values
     const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
     const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
-    const errorMessage  = super.renderError(this.errorMessage);
+    const errorMessage  = isError ? super.renderError(this.errorMessage) : '';
 
     const renderOptions: RenderProfileBadgeOptions = {
       theme       : this.theme,

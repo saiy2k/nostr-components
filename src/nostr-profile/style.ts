@@ -8,14 +8,14 @@ export function getProfileStyles(theme: Theme): string {
     /* === PROFILE CONTAINER PATTERN === */
     :host {
       /* Override follow button styles for profile context */
-      --nstrc-follow-btn-padding: 5px 8px !important;
-      --nstrc-follow-btn-font-size: 14px !important;
-      --nstrc-follow-btn-border-radius: 12px !important;
-      --nstrc-follow-btn-border-dark: 1px solid #DDDDDD !important;
-      --nstrc-follow-btn-border-light: 1px solid #DDDDDD !important;
-      --nstrc-follow-btn-horizontal-alignment: end !important;
-      --nstrc-follow-btn-min-height: auto !important;
-      --nstrc-follow-btn-width: 280px;
+      --nostrc-follow-btn-padding: 5px 8px !important;
+      --nostrc-follow-btn-font-size: 14px !important;
+      --nostrc-follow-btn-border-radius: 12px !important;
+      --nostrc-follow-btn-border-dark: 1px solid #DDDDDD !important;
+      --nostrc-follow-btn-border-light: 1px solid #DDDDDD !important;
+      --nostrc-follow-btn-horizontal-alignment: end !important;
+      --nostrc-follow-btn-min-height: auto !important;
+      --nostrc-follow-btn-width: 280px;
     }
 
     .nostr-profile-container {
@@ -64,7 +64,6 @@ export function getProfileStyles(theme: Theme): string {
     .profile-banner img {
       width: 100%;
       height: 214px;
-      overflow: hidden;
       object-fit: cover;
     }
 
@@ -197,15 +196,12 @@ export function getProfileStyles(theme: Theme): string {
       .stat .stat-value {
         font-size: 18px !important;
       }
-    }
-
-    @media only screen and (max-width: 600px) {
       :host {
-        --nstrc-follow-btn-padding: 5px 8px !important;
-        --nstrc-follow-btn-font-size: 12px !important;
-        --nstrc-follow-btn-min-height: auto !important;
-        --nstrc-follow-btn-border-radius: 8px !important;
-        --nstrc-follow-btn-error-max-width: 150px !important;
+        --nostrc-follow-btn-padding: 5px 8px !important;
+        --nostrc-follow-btn-font-size: 12px !important;
+        --nostrc-follow-btn-min-height: auto !important;
+        --nostrc-follow-btn-border-radius: 8px !important;
+        --nostrc-follow-btn-error-max-width: 150px !important;
       }
     }
 

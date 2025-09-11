@@ -37,19 +37,18 @@ export function renderProfileBadge({
     return renderError(errorMessage || '');
   }
 
-  const profileName = escapeHtml(
-    userProfile.displayName ||
+  const rawName = userProfile.displayName ||
     userProfile.name ||
     maskNPub(ndkUser?.npub || '')
-  );
+  const escapedName = escapeHtml(rawName);
   const profileImage = escapeHtml(userProfile.picture || DEFAULT_PROFILE_IMAGE);
   const npub = ndkUser?.npub || '';
-  const nip05 = escapeHtml(userProfile?.nip05 || '');
+  const nip05 = userProfile?.nip05 || '';
   const pubkey = escapeHtml(ndkUser?.pubkey || '');
 
   return renderContainer(
-    `<img src='${profileImage}' alt='Nostr profile image of ${profileName}'/>`,
-    `${renderName({ name: profileName })}
+    `<img src='${profileImage}' alt='Nostr profile image of ${escapedName}' loading="lazy" decoding="async"/>`,
+    `${renderName({ name: rawName })}
      ${userProfile.nip05 ? renderNip05(nip05) : ''}
      ${showNpub === true ? renderNpub(npub || '') : ''}
      ${showFollow === true && ndkUser?.pubkey ? `<nostr-follow-button pubkey="${pubkey}"></nostr-follow-button>` : ''}`
@@ -67,7 +66,7 @@ function renderLoading(): string {
 function renderError(errorMessage: string): string {
   return renderContainer(
     '<div class="error-icon">&#9888;</div>',
-    errorMessage
+    escapeHtml(errorMessage)
   );
 }
 
