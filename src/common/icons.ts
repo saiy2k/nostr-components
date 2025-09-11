@@ -22,15 +22,11 @@ export const copyIcon = `
 
 export const checkmarkIcon = (
   theme: 'light' | 'dark' = 'dark',
-  width: number = 25,
-  height: number = 25
 ) => `
   <svg 
     class="checkmark" 
     xmlns="http://www.w3.org/2000/svg" 
     viewBox="0 0 52 52"
-    width="${width}"
-    height="${height}"
     role="img"
     aria-label="Success checkmark"
   >
@@ -105,11 +101,9 @@ export const nostrLogo = (theme: string, width: number = 21, height: number = 24
 `;
 
 export const loadingNostrich = (
-  width: number = 25,
-  height: number = 25,
   theme: 'light' | 'dark' = 'dark'
 ) => `
-  <svg width="${width}" height="${height}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <style>
       @keyframes nostrich-run {
         0% { transform: translateX(0) rotate(0deg); }

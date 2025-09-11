@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { Theme } from '../common/types';
-import { getPostStylesLegacy } from '../common/theme';
+import { getPostStyles } from './style';
 import { Parser } from 'htmlparser2';
 import { DomHandler } from 'domhandler';
 import * as DomUtils from 'domutils';
@@ -33,9 +32,8 @@ export function renderPost(options: RenderPostOptions): string {
   } = options;
 
   return `
-    ${getPostStylesLegacy(theme)}
     ${getPostStyles(theme)}
-    <div class="post-container">
+    <div class="nostrc-container nostr-post-container">
       ${renderPostHeader(isLoading, isError, author, date)}
       ${renderPostBody(isLoading, isError, htmlToRender)}
       ${shouldShowStats ? renderPostFooter(isLoading, isError, stats) : ''}
@@ -176,108 +174,6 @@ function renderPostFooter(
   `;
 }
 
-function getPostStyles(theme: Theme): string {
-  return `
-    <style>
-      .nostr-mention {
-        color: #1DA1F2;
-        font-weight: 500;
-        cursor: pointer;
-      }
-      
-      /* Embedded post styles */
-      .embedded-post {
-        margin: 10px 0;
-        padding: 12px;
-        border: 1px solid ${theme === 'light' ? '#e1e8ed' : '#38444d'};
-        border-radius: 12px;
-        background: ${theme === 'light' ? '#f8f9fa' : '#192734'};
-      }
-      
-      .embedded-post-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-      
-      .embedded-author-avatar {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        overflow: hidden;
-        margin-right: 8px;
-      }
-      
-      .embedded-author-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      
-      .embedded-author-info {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-      }
-      
-      .embedded-author-name {
-        font-weight: bold;
-        font-size: 14px;
-        color: ${theme === 'light' ? '#14171a' : '#ffffff'};
-      }
-      
-      .embedded-author-username {
-        font-size: 12px;
-        color: ${theme === 'light' ? '#657786' : '#8899a6'};
-      }
-      
-      .embedded-post-date {
-        font-size: 12px;
-        color: ${theme === 'light' ? '#657786' : '#8899a6'};
-      }
-      
-      .embedded-post-content {
-        font-size: 14px;
-        color: ${theme === 'light' ? '#14171a' : '#ffffff'};
-        line-height: 1.4;
-        white-space: pre-line;
-      }
-      
-      .embedded-post-media {
-        margin-top: 10px;
-      }
-      
-      .embedded-media-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      
-      .embedded-media-item {
-        width: 100%;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      
-      .embedded-media-item img,
-      .embedded-media-item video {
-        width: 100%;
-        max-height: 300px;
-        object-fit: contain;
-        display: block;
-      }
-      
-      .embedded-post-error {
-        padding: 10px;
-        color: #721c24;
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        border-radius: 4px;
-        font-size: 14px;
-      }
-    </style>
-  `;
-}
 
 export function renderEmbeddedPost(
   noteId: string,
