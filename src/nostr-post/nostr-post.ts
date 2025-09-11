@@ -30,10 +30,6 @@ export default class NostrPost extends NostrEventComponent {
     | ((npub: string, author: NDKUserProfile | null | undefined) => void)
     | null = null;
 
-  constructor() {
-    super(false);
-  }
-
   async connectedCallback() {
 
     const onClick = this.getAttribute('onClick');
@@ -325,6 +321,8 @@ export default class NostrPost extends NostrEventComponent {
   }
 
   protected async renderContent() {
+
+
     const isLoading = this.computeOverall() == NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
 
@@ -362,7 +360,7 @@ export default class NostrPost extends NostrEventComponent {
     };
 
     // Render the post using the new render function
-    this.innerHTML = renderPost(renderOptions);
+    this.shadowRoot!.innerHTML = renderPost(renderOptions);
 
     // Process embedded posts after rendering the main content
     await this.replaceEmbeddedPostPlaceholders();

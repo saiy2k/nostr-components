@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { getPostStylesLegacy, getPostStyles } from './style';
+import { getPostStyles } from './style';
 import { Parser } from 'htmlparser2';
 import { DomHandler } from 'domhandler';
 import * as DomUtils from 'domutils';
@@ -32,7 +32,6 @@ export function renderPost(options: RenderPostOptions): string {
   } = options;
 
   return `
-    ${getPostStylesLegacy(theme)}
     ${getPostStyles(theme)}
     <div class="nostrc-container nostr-post-container">
       ${renderPostHeader(isLoading, isError, author, date)}
