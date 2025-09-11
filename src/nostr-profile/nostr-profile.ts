@@ -66,14 +66,10 @@ export default class NostrProfile extends NostrUserComponent {
       this.isStatsFollowersLoading = true;
       this.isZapsLoading = true;
 
-      // Create a local copy of the current stats
-      const currentStats = { ...this.stats };
-
       // Fetch follows
       this.nostrService
         .fetchFollows(this.user!)
         .then((follows) => {
-          currentStats.follows = follows;
           this.stats = { ...this.stats, follows };
           this.isStatsFollowsLoading = false;
           this.render();
@@ -88,7 +84,6 @@ export default class NostrProfile extends NostrUserComponent {
       this.nostrService
         .fetchFollowers(this.user!)
         .then((followers) => {
-          currentStats.followers = followers;
           this.stats = { ...this.stats, followers };
           this.isStatsFollowersLoading = false;
           this.render();
@@ -103,8 +98,6 @@ export default class NostrProfile extends NostrUserComponent {
       this.nostrService
         .fetchNotesAndReplies(this.user!)
         .then(([ notes, replies ]) => {
-          currentStats.notes = notes;
-          currentStats.replies = replies;
           this.stats = { ...this.stats, notes, replies };
           this.isStatsLoading = false;
           this.render();
@@ -119,7 +112,6 @@ export default class NostrProfile extends NostrUserComponent {
       this.nostrService
         .fetchZaps(this.user!)
         .then((zaps) => {
-          currentStats.zaps = zaps;
           this.stats = { ...this.stats, zaps };
           this.isZapsLoading = false;
           this.render();
@@ -139,7 +131,11 @@ export default class NostrProfile extends NostrUserComponent {
     }
   };
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+  attributeChangedCallback(
+    name: string,
+    oldValue: string | null,
+    newValue: string | null
+  ) {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
@@ -147,6 +143,7 @@ export default class NostrProfile extends NostrUserComponent {
       this.render();
     }
   }
+
   /** Private functions */
   private onProfileClick() {
     if (this.profileStatus.get() === NCStatus.Error) return;

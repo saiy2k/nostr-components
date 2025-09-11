@@ -10,7 +10,7 @@
 
     for (const item of content) {
       if (item.type === 'text') {
-        textBuffer += item.value;
+        textBuffer += (item.value ?? '');
       } else if (item.type === 'embedded-note') {
         // Handle embedded note placeholder
         if (textBuffer) {
@@ -32,7 +32,7 @@
         }
 
         const url = item.value ?? "";
-        if (!isValidUrl(url)) break;
+        if (!isValidUrl(url)) continue;
         switch (item.type) {
           case 'image':
             html.push(
@@ -53,7 +53,7 @@
             mediaCount++;
             break;
           case 'link':
-            html.push(`<a href="${url}">${url}</a>`);
+            html.push(`<a href="${url}">${escapeHtml(url)}</a>`);
             break;
         }
       }

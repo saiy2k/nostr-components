@@ -73,7 +73,7 @@ export class NostrUserComponent extends NostrBaseComponent {
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
     if (name === 'npub' || name === 'nip05' || name === 'pubkey') {
-      if (this.validateInputs() == true) {
+      if (this.validateInputs()) {
         // Re-resolve user + profile on identity changes
         void this.resolveUserAndProfile();
       }

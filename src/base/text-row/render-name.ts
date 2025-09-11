@@ -16,7 +16,7 @@ export function renderName(options: RenderNameOptions): string {
     value: name,
     display: name,
     className: `nostr-profile-name ${className}`.trim(),
-    title: title || name,
+    title: title ?? name,
     showCopyButton: showCopyButton,
   });
 }

@@ -18,7 +18,7 @@ const EVT_EVENT = 'nc:event';
  * - Emits lifecycle events for status and event readiness.
  *
  * Observed attributes
- * - `id`     — Nostr event id (64-char hex)
+ * - `eventId`   — Nostr event id (64-char hex)
  *
  * Events
  * - `nc:status` — from base, reflects connection and event loading status
@@ -79,17 +79,17 @@ export class NostrEventComponent extends NostrBaseComponent {
 
     if (!super.validateInputs()) return false;
 
-    const id        = this.getAttribute("eventId");
+    const eventId   = this.getAttribute("eventId");
     const tagName   = this.tagName.toLowerCase();
 
-    if (id == null) {
-      this.eventStatus.set(NCStatus.Error, "Please provide id");
+    if (eventId == null) {
+      this.eventStatus.set(NCStatus.Error, "Please provide eventId");
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
     }
 
-    if (id && !isValidHex(id)) {
-      this.eventStatus.set(NCStatus.Error, `Invalid id: ${id}`);
+    if (eventId && !isValidHex(eventId)) {
+      this.eventStatus.set(NCStatus.Error, `Invalid eventId: ${eventId}`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
     }
@@ -115,20 +115,20 @@ export class NostrEventComponent extends NostrBaseComponent {
     this.eventStatus.set(NCStatus.Loading);
 
     try {
-      const id    = this.getAttribute("eventId")!;
+      const eventId = this.getAttribute("eventId")!;
 
-      if (!id) {
+      if (!eventId) {
         if (seq !== this.loadSeq) return;
-        this.eventStatus.set(NCStatus.Error, 'Missing id');
+        this.eventStatus.set(NCStatus.Error, 'Missing eventId');
         return;
       }
 
-      const event = await this.nostrService.getPost(id);
+      const event = await this.nostrService.getPost(eventId);
 
       if (!event) {
         if (seq !== this.loadSeq) return;
         this.event = null;
-        this.eventStatus.set(NCStatus.Error, `Event not found: ${id}`);
+        this.eventStatus.set(NCStatus.Error, `Event not found: ${eventId}`);
         return;
       }
 

@@ -96,7 +96,8 @@ export interface DesignTokens {
     };
     animation: {
       duration: string;
-      timing: string;
+      timingFunction: string;
+      iterationCount: string;
     };
   };
   
@@ -194,7 +195,8 @@ export const defaultDesignTokens: DesignTokens = {
     },
     animation: {
       duration: '1.5s',
-      timing: 'infinite',
+      timingFunction: 'linear',
+      iterationCount: 'infinite',
     },
   },
   
@@ -280,6 +282,10 @@ export function generateDesignTokenCSS(theme: Theme, tokens: DesignTokens = defa
     /* === TRANSITIONS === */
     --nostrc-transition-duration: ${transitions.duration};
     --nostrc-transition-timing: ${transitions.timing};
+
+    .margin-bottom-md {
+      margin-bottom: var(--nostrc-spacing-md);
+    }
   `;
 }
 
@@ -287,15 +293,6 @@ export function generateDesignTokenCSS(theme: Theme, tokens: DesignTokens = defa
  * Common utility functions for generating component-specific styles
  */
 export const styleUtils = {
-  /**
-   * Generates hover state styles
-   */
-  hover: (property: string, lightValue: string) => `
-    &:hover {
-      ${property}: var(--nostrc-color-hover-${property}, ${lightValue});
-    }
-  `,
-  
   /**
    * Generates error state styles
    */
@@ -317,7 +314,7 @@ export const styleUtils = {
         var(--nostrc-skeleton-color-min) 100%
       );
       background-size: 200% 100%;
-      animation: skeleton-loading var(--nostrc-skeleton-duration) var(--nostrc-skeleton-timing);
+      animation: skeleton-loading var(--nostrc-skeleton-duration) var(--nostrc-skeleton-timing-function) var(--nostrc-skeleton-iteration-count);
       border-radius: var(--nostrc-border-radius-sm);
       height: 16px;
       margin-bottom: var(--nostrc-spacing-xs);

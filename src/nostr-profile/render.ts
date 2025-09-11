@@ -86,6 +86,7 @@ export function renderProfile(options: RenderProfileOptions): string {
                   alt="${displayName}"
                   width="142" height="142"
                   loading="lazy" decoding="async"
+                  onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 142 142%22%3E%3Crect width=%22142%22 height=%22142%22 fill=%22%23ccc%22/%3E%3C/svg%3E'"
                 />`
             }
           </div>
@@ -113,17 +114,17 @@ export function renderProfile(options: RenderProfileOptions): string {
           isLoading
             ? '<div style="width: 75px; height: 20px;" class="skeleton"></div>'
             : renderNpub(npub)
-          : null
+          : ''
         }
 
-        <div style="margin-bottom: 12px"> </div>
+        <div class="margin-bottom-md"> </div>
         
         ${isLoading
           ? `<div style="width: 100%; margin-bottom: 12px; height: 18px" class="skeleton"></div>`
           : renderTextRow({ display: about, value: about })
         }
 
-        <div style="margin-bottom: 12px"> </div>
+        <div class="margin-bottom-md"> </div>
         
         ${isLoading
           ? '<div style="width: 150px" class="skeleton"></div>'

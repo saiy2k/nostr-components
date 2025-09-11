@@ -12,5 +12,6 @@ export function renderNpub(
     display: maskNPub(npub),
     monospace: true,
     showCopyButton: true,
+    title: npub,
   });
 }

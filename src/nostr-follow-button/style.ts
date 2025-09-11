@@ -26,8 +26,8 @@ export function getFollowButtonStyles(theme: Theme): string {
       fill: currentColor;
       display: inline-block;
       vertical-align: middle;
-      width: var(--nostrc-icon-width, 25px);
-      height: var(--nostrc-icon-height, 25px);
+      width: var(--nostrc-icon-width);
+      height: var(--nostrc-icon-height);
     }
   `;
   

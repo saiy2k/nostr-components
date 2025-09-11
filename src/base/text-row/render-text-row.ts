@@ -7,9 +7,8 @@ export interface TextRowOptions {
   display?: string;          // what to show (defaults to value)
   className?: string;        // extra classes to add to the row
   monospace?: boolean;       // show in mono font
-  iconHtml?: string;         // override icon (default ⎘)
   title?: string;            // title/tooltip for the text
-  showCopyButton?: boolean;  // show copy button (default true)
+  showCopyButton?: boolean;  // show copy button (default false)
 }
 
 export function renderTextRow(opts: TextRowOptions): string {

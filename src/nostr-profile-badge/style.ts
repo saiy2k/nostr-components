@@ -35,7 +35,7 @@ export function getProfileBadgeStyles(theme: Theme): string {
     .img-skeleton {
       width: 48px;
       height: 48px;
-      border-radius: var(--nostrc-border-radius-full) !important;
+      border-radius: var(--nostrc-border-radius-full);
     }
     
   `;

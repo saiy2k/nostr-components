@@ -93,7 +93,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
         this.getAttribute('npub');
 
       if (key) {
-        window.open(`https://njump.me/${key}`, '_blank');
+        window.open(`https://njump.me/${key}`, '_blank', 'noopener');
       }
     }
   }
@@ -118,7 +118,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
     // Get attribute values
     const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
     const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
-    const errorMessage  = super.renderError(this.errorMessage);
+    const errorMessage  = isError ? super.renderError(this.errorMessage) : '';
 
     const renderOptions: RenderProfileBadgeOptions = {
       theme       : this.theme,
