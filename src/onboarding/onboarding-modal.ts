@@ -1,5 +1,30 @@
 import { onboardingService } from './onboarding-service';
 
+// Debug configuration
+const DEBUG = (() => {
+  try {
+    // Check for debug flag in window object or environment variables
+    return (
+      (typeof window !== 'undefined' && (window as any).NOSTR_COMPONENTS_DEBUG) ||
+      (typeof process !== 'undefined' && process.env.NOSTR_COMPONENTS_DEBUG === 'true')
+    );
+  } catch (e) {
+    return false;
+  }
+})();
+
+// Simple logger that can be overridden by the host
+const logger = {
+  debug: (...args: any[]) => {
+    if (!DEBUG) return;
+    // Use console.debug if available, otherwise fall back to console.log
+    (console.debug || console.log)('[nostr-components:debug]', ...args);
+  },
+  error: (message: string, error?: any) => {
+    console.error('[nostr-components:error]', message, error || '');
+  }
+};
+
 type OnboardingView = 'welcome' | 'newUser' | 'existingUser';
 
 export default class NostrOnboardingModal extends HTMLElement {
@@ -14,7 +39,7 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   private _currentSignerChangedHandler: ((e: Event) => void) | null = null;
   private _currentSignerCleanup: { off: () => void } | null = null;
-
+  private _keyDownHandler: ((e: KeyboardEvent) => void) | null = null;
   private _shadow: ShadowRoot;
 
   constructor() {
@@ -72,8 +97,13 @@ export default class NostrOnboardingModal extends HTMLElement {
   }
 
   set connected(value: boolean) {
+    const wasConnected = this._connected;
     this._connected = value;
-    this._render();
+    if (value && !wasConnected) {
+      this._render(); // Full render when transitioning to connected state
+    } else if (this._view === 'existingUser') {
+      this._updateExistingUserElements();
+    }
   }
 
   get qrCodeDataUrl(): string {
@@ -82,7 +112,9 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   set qrCodeDataUrl(value: string) {
     this._qrCodeDataUrl = value;
-    this._render();
+    if (this._view === 'existingUser' && !this._connected) {
+      this._updateExistingUserElements();
+    }
   }
 
   get isLoading(): boolean {
@@ -91,7 +123,9 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   set isLoading(value: boolean) {
     this._isLoading = value;
-    this._render();
+    if (this._view === 'existingUser' && !this._connected) {
+      this._updateExistingUserElements();
+    }
   }
 
   get isConnectingBunker(): boolean {
@@ -100,7 +134,9 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   set isConnectingBunker(value: boolean) {
     this._isConnectingBunker = value;
-    this._render();
+    if (this._view === 'existingUser' && !this._connected) {
+      this._updateExistingUserElements();
+    }
   }
 
   get nostrConnectUri(): string {
@@ -109,7 +145,9 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   set nostrConnectUri(value: string) {
     this._nostrConnectUri = value;
-    this._render();
+    if (this._view === 'existingUser' && !this._connected) {
+      this._updateExistingUserElements();
+    }
   }
 
   private _getStyles(): string {
@@ -272,16 +310,25 @@ export default class NostrOnboardingModal extends HTMLElement {
     this._currentSignerChangedHandler = handleSignerChanged;
     window.addEventListener('nostr-signer-changed', handleSignerChanged);
 
-    const signer = onboardingService.connectWithQr();
+    try {
+      const signer = onboardingService.connectWithQr();
 
-    // Store the cleanup function
-    this._currentSignerCleanup = signer.on('authUrl', async (data: { qrCodeUrl?: string; connected?: boolean; nostrConnectUri?: string }) => {
+      // Only assign cleanup after successful connection
+      this._currentSignerCleanup = signer.on('authUrl', async (data: { qrCodeUrl?: string; connected?: boolean; nostrConnectUri?: string }) => {
       try {
-        console.log('authUrl event received in modal:', data);
+        // Log debug info with sensitive data redacted
+        if (DEBUG) {
+          const { qrCodeUrl, nostrConnectUri, ...rest } = data;
+          logger.debug('authUrl event received in modal', {
+            ...rest,
+            qrCodeUrl: qrCodeUrl ? '[REDACTED]' : undefined,
+            nostrConnectUri: nostrConnectUri ? '[REDACTED]' : undefined
+          });
+        }
 
         // Check if component is still connected to the DOM
         if (!this.isConnected) {
-          console.log('Component no longer connected, skipping UI update');
+          logger.debug('Component no longer connected, skipping UI update');
           return;
         }
 
@@ -298,11 +345,16 @@ export default class NostrOnboardingModal extends HTMLElement {
           this.isLoading = false;
         }
 
-        console.log('QR code generated:', this.qrCodeDataUrl ? 'Success' : 'Failed');
-      } catch (error) {
-        console.error('Error in authUrl handler:', error);
+        logger.debug('QR code generation', { success: !!this._qrCodeDataUrl });
+        } catch (error) {
+        logger.error('Error in authUrl handler', error);
       }
     });
+    } catch (error) {
+      logger.error('Error connecting with QR', error);
+      this.isLoading = false;
+      this._cleanupEventListeners();
+    }
 
     // Note: cleanup will be handled by _cleanupEventListeners and disconnectedCallback
   }
@@ -436,26 +488,39 @@ export default class NostrOnboardingModal extends HTMLElement {
       }
     }
 
-    // Update QR code container
+    // Update QR code container and clear sensitive data
     const qrCodeContainer = this._shadow.getElementById('qr-code-container') as HTMLElement;
-    if (qrCodeContainer) {
-      qrCodeContainer.style.display = this._qrCodeDataUrl ? 'block' : 'none';
-    }
-
-    // Update QR code image
     const qrCodeImage = this._shadow.getElementById('qr-code-image') as HTMLImageElement;
-    if (qrCodeImage && this._qrCodeDataUrl) {
-      qrCodeImage.src = this._qrCodeDataUrl;
-    }
-
-    // Update connection URL details
-    const connectionUrlDetails = this._shadow.getElementById('connection-url-details') as HTMLElement;
-    if (connectionUrlDetails) {
-      connectionUrlDetails.style.display = this._nostrConnectUri ? 'block' : 'none';
-    }
-
-    // Update connection URL text
     const connectionUrlText = this._shadow.getElementById('connection-url-text') as HTMLElement;
+    const connectionUrlDetails = this._shadow.getElementById('connection-url-details') as HTMLElement;
+    
+    if (this._qrCodeDataUrl) {
+      // Show and update QR code elements
+      if (qrCodeContainer) {
+        qrCodeContainer.style.display = 'block';
+      }
+      if (qrCodeImage) {
+        qrCodeImage.src = this._qrCodeDataUrl;
+      }
+      if (connectionUrlDetails) {
+        connectionUrlDetails.style.display = this._nostrConnectUri ? 'block' : 'none';
+      }
+    } else {
+      // Clear sensitive data
+      if (qrCodeImage) {
+        qrCodeImage.removeAttribute('src');
+      }
+      if (connectionUrlText) {
+        connectionUrlText.textContent = '';
+      }
+      if (qrCodeContainer) {
+        qrCodeContainer.style.display = 'none';
+      }
+      if (connectionUrlDetails) {
+        connectionUrlDetails.style.display = 'none';
+      }
+      this._qrCodeDataUrl = ''; // Clear instance state
+    }
     if (connectionUrlText && this._nostrConnectUri) {
       connectionUrlText.textContent = this._nostrConnectUri;
     }
@@ -501,11 +566,24 @@ export default class NostrOnboardingModal extends HTMLElement {
     this._updateExistingUserElements();
   }
 
+  private _handleKeyDown = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape' && this._open) {
+      e.preventDefault();
+      this._handleClose();
+    }
+  };
+
   private _attachEventListeners(): void {
     // Close button
     const closeBtn = this._shadow.getElementById('close-btn');
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this._handleClose());
+    }
+
+    // Escape key handler
+    if (!this._keyDownHandler) {
+      this._keyDownHandler = this._handleKeyDown.bind(this);
+      document.addEventListener('keydown', this._keyDownHandler);
     }
 
     // Backdrop click
@@ -597,6 +675,12 @@ export default class NostrOnboardingModal extends HTMLElement {
   }
 
   private _cleanupEventListeners() {
+    // Remove keydown handler
+    if (this._keyDownHandler) {
+      document.removeEventListener('keydown', this._keyDownHandler);
+      this._keyDownHandler = null;
+    }
+
     if (this._currentSignerChangedHandler) {
       window.removeEventListener('nostr-signer-changed', this._currentSignerChangedHandler);
       this._currentSignerChangedHandler = null;
