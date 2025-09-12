@@ -247,7 +247,7 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   private _renderWelcome(): string {
     return `
-      <h2>Welcome to Nostr!</h2>
+      <h2 id="modal-title">Welcome to Nostr!</h2>
       <p>A decentralized, open, and censorship-resistant social network.</p>
       <div class="button-group">
         <button id="new-user-btn">I'm new to Nostr</button>
@@ -258,7 +258,7 @@ export default class NostrOnboardingModal extends HTMLElement {
 
   private _renderNewUser(): string {
     return `
-      <h2>New to Nostr?</h2>
+      <h2 id="modal-title">New to Nostr?</h2>
       <p>Here's a quick guide to get you started:</p>
       <ol>
         <li>
@@ -393,6 +393,7 @@ export default class NostrOnboardingModal extends HTMLElement {
     if (this._connected) {
       return `
         <div class="success-message">
+          <h2 id="modal-title">Successfully Connected!</h2>
           <svg width="48" height="48" viewBox="0 0 24 24"><path fill="green" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>
           <h3>Successfully Connected!</h3>
         </div>
@@ -400,7 +401,7 @@ export default class NostrOnboardingModal extends HTMLElement {
     }
 
     return `
-      <h2>Sign In</h2>
+      <h2 id="modal-title">Sign In</h2>
       <p>Connect your Nostr account using a secure signer.</p>
       <div>
         <label for="nsec-app-url">Username/Provider or bunker:// URL</label>
@@ -555,8 +556,8 @@ export default class NostrOnboardingModal extends HTMLElement {
     this._shadow.innerHTML = `
       <style>${this._getStyles()}</style>
       <div class="modal-backdrop" id="modal-backdrop">
-        <div class="modal-content" id="modal-content">
-          <button class="close-button" id="close-btn">&times;</button>
+        <div class="modal-content" id="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <button class="close-button" id="close-btn" aria-label="Close">&times;</button>
           ${this._renderContent()}
         </div>
       </div>
@@ -564,6 +565,13 @@ export default class NostrOnboardingModal extends HTMLElement {
 
     this._attachEventListeners();
     this._updateExistingUserElements();
+    
+    // Set focus to the modal content for keyboard navigation
+    const modalEl = this._shadow.getElementById('modal-content') as HTMLElement | null;
+    if (modalEl) {
+      modalEl.tabIndex = -1;
+      modalEl.focus();
+    }
   }
 
   private _handleKeyDown = (e: KeyboardEvent): void => {
