@@ -701,19 +701,36 @@ export default class NostrOnboardingModal extends HTMLElement {
   }
 
   private async _copyToClipboard(text: string) {
+    // Early return if text is falsy or only whitespace
+    if (!text || !text.trim()) {
+      return;
+    }
+
+    let textArea: HTMLTextAreaElement | null = null;
+    
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
-      console.log('Copied to clipboard:', text);
+      logger.debug('Copied to clipboard');
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      logger.error('Failed to copy to clipboard', err);
+      
       // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
+      try {
+        textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        logger.debug('Used fallback method to copy to clipboard');
+      } catch (fallbackError) {
+        logger.error('Fallback copy method failed', fallbackError);
+        throw fallbackError; // Re-throw to allow caller to handle the error if needed
+      } finally {
+        // Clean up the textarea if it was created
+        if (textArea && textArea.parentNode) {
+          textArea.parentNode.removeChild(textArea);
+        }
+      }
     }
   }
 
