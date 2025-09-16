@@ -7,37 +7,10 @@ import NDK, {
   NDKEvent,
 } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from './constants';
-import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
+import { DEFAULT_PROFILE_IMAGE } from './constants';
 
 export class NostrService {
-  /**
-   * Convenience helper to fetch zap count for a profile.
-   * It determines the user based on the provided identifier and
-   * returns the number of zap receipts found (count, **not** total sats).
-   */
-  public async getZapCount(identifier: {
-    npub?: string;
-    nip05?: string;
-    pubkey?: string;
-  }): Promise<number> {
-    let user: NDKUser | null = null;
 
-    if (identifier.npub) {
-      user = this.ndk.getUser({ npub: identifier.npub });
-    } else if (identifier.nip05) {
-      const nip05User = await this.ndk.getUserFromNip05(identifier.nip05);
-      if (nip05User) {
-        user = nip05User;
-      }
-    } else if (identifier.pubkey) {
-      user = this.ndk.getUser({ pubkey: identifier.pubkey });
-    }
-
-    if (!user) return 0;
-
-    const { zaps } = await this.getProfileStats(user, ['zaps']);
-    return zaps;
-  }
   private static instance: NostrService;
   private ndk: NDK;
   private isConnected: boolean = false;
@@ -92,6 +65,20 @@ export class NostrService {
     return null;
   }
 
+  /**
+   * Convenience helper to fetch zap count for a profile.
+   * It determines the user based on the provided identifier and
+   * returns the number of zap receipts found (count, **not** total sats).
+   */
+  public async getZapCount(identifier: {
+    npub?: string;
+    nip05?: string;
+    pubkey?: string;
+  }): Promise<number> {
+    const user = await this.resolveNDKUser(identifier);
+    return user ? this.fetchZaps(user) : 0;
+  }
+
   public async getProfile(user: NDKUser | null): Promise<NDKUserProfile | null> {
     if (!user) return null;
   
@@ -133,96 +120,41 @@ export class NostrService {
     return event;
   }
 
-  public async getProfileStats(
-    user: NDKUser,
-    statsToFetch?: Array<
-      'follows' | 'followers' | 'notes' | 'replies' | 'zaps' | 'relays'
-    >
-  ): Promise<{
-    follows: number;
-    followers: number;
-    notes: number;
-    replies: number;
-    zaps: number;
-    relays: number;
-  }> {
-
-    // If no specific stats are requested, fetch all
-    const fetchAll = !statsToFetch || statsToFetch.length === 0;
-    const shouldFetch = (stat: string) =>
-      fetchAll || statsToFetch?.includes(stat as any);
-
-    try {
-      // Ensure we're connected to relays
-      if (!this.isConnected) await this.connectToNostr();
-
-
-      let notesRepliesCount = [0, 0];
-      if (shouldFetch('notes') || shouldFetch('replies')) {
-        notesRepliesCount = await this.fetchNotesAndReplies(user);
-      }
-
-      // Ensure all requested stats are in the result, even if they're 0
-      return {
-        follows: shouldFetch('follows') ? await this.fetchFollows(user) : 0,
-        followers: shouldFetch('followers') ? await this.fetchFollowers(user) : 0,
-        notes: notesRepliesCount[0],
-        replies: notesRepliesCount[1],
-        zaps: shouldFetch('zaps') ? await this.fetchZaps(user) : 0,
-        relays: 0, // TODO:
-      };
-    } catch (error) {
-      console.error('Error in getProfileStats:', error);
-
-      // Return a properly structured stats object with zeros for all fields
-      return {
-        follows: 0,
-        followers: 0,
-        notes: 0,
-        replies: 0,
-        zaps: 0,
-        relays: 0,
-      };
-    }
-  }
-
   public async fetchFollows(user: NDKUser): Promise<number> {
     try {
-      console.log('Fetching follows for user:', user.npub);
-      const follows = await user.follows();
-      // Force a fetch of all follows to ensure we have the latest count
-      const followsArray = Array.from(follows.values());
-      const count = followsArray.length;
-      console.log('Follows count:', count);
+      // console.log('Fetching follows for user:', user.npub);
+      const follows = await user.followSet();
+      const count = follows.size;
+      // console.log('Follows count:', count);
       return count;
     } catch (error) {
-      console.warn('Error fetching follows:', error);
+      // console.warn('Error fetching follows:', error);
       return 0;
     }
   }
 
   public async fetchFollowers(user: NDKUser): Promise<number> {
     try {
-      console.log('Fetching followers for user:', user.npub);
+      // console.log('Fetching followers for user:', user.npub);
       const events = await this.ndk.fetchEvents({
         kinds: [NDKKind.Contacts],
         '#p': [user.pubkey],
       });
 
-      // Convert Set to array and filter out any undefined values
-      const eventsArray = Array.from(events).filter(Boolean);
-      const count = eventsArray.length;
-      console.log('Followers count:', count);
+      const authors = new Set<string>();
+      events.forEach((e) => authors.add(e.pubkey));
+      const count = authors.size;
+      // console.log('Followers count:', count);
       return count;
     } catch (error) {
-      console.warn('Error fetching followers:', error);
+      // console.warn('Error fetching followers:', error);
       return 0;
     }
   }
 
   public async fetchNotesAndReplies(user: NDKUser): Promise<[number, number]> {
     try {
-      console.log('Fetching notes and replies for user:', user.npub);
+      // console.log('Fetching notes and replies for user:', user.npub);
       const events = await this.ndk.fetchEvents({
         kinds: [NDKKind.Text],
         authors: [user.pubkey],
@@ -247,11 +179,11 @@ export class NostrService {
 
       const repliesFinal = replies;
       const notesFinal = Math.max(0, notesCount - replies);
-      console.log('Notes:', notesFinal, 'Replies:', repliesFinal);
+      // console.log('Notes:', notesFinal, 'Replies:', repliesFinal);
 
       return [notesFinal, repliesFinal];
     } catch (error) {
-      console.warn('Error fetching notes and replies:', error);
+      // console.warn('Error fetching notes and replies:', error);
       return [0, 0];
     }
 
@@ -259,17 +191,17 @@ export class NostrService {
 
   public async fetchZaps(user: NDKUser): Promise<number> {
     try {
-      console.log('Fetching zaps for user:', user.npub);
+      // console.log('Fetching zaps for user:', user.npub);
       const events = await this.ndk.fetchEvents({
         kinds: [9735], // Zap receipt
         '#p': [user.pubkey],
         limit: 1000,
       });
-      const count = Array.from(events).filter(Boolean).length;
-      console.log('Zaps count:', count);
+      const count = events.size;
+      // console.log('Zaps count:', count);
       return count;
     } catch (error) {
-      console.warn('Error fetching zaps:', error);
+      // console.warn('Error fetching zaps:', error);
       return 0;
     }
   }

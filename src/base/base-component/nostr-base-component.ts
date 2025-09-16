@@ -30,8 +30,10 @@ const EVT_STATUS = 'nc:status';
  * 
  * Events
  * - `nc:status` — from base, reflects connection and user/profile loading status
+ * 
+ * TODO: Is this class doing too much work? Time to split into smaller components?
  */
-export class NostrBaseComponent extends HTMLElement {
+export abstract class NostrBaseComponent extends HTMLElement {
 
   protected nostrService: NostrService = NostrService.getInstance();
 
@@ -92,7 +94,10 @@ export class NostrBaseComponent extends HTMLElement {
           void this.connectToNostr();
         }
 
-        if (name === 'theme') this.getTheme();
+        if (name === 'theme') {
+          this.getTheme();
+          this.render();
+        }
       }
     }
   }
@@ -109,6 +114,8 @@ export class NostrBaseComponent extends HTMLElement {
 
     if (next === NCStatus.Error && error) {
       this.errorMessage = error;
+    } else if (prev === NCStatus.Error && next !== NCStatus.Error) {
+      this.errorMessage = '';
     }
 
     // Reflect per-key attribute, e.g. user-status="loading"
@@ -181,11 +188,11 @@ export class NostrBaseComponent extends HTMLElement {
    * and add a log in ProfileBadge :: onStatusChange. You will get it.
    */
   protected initChannelStatus(key: string, status: NCStatus, opts = { reflectOverall: false }) {
-    (this as any)._statuses.set(key, status);
+    this._statuses.set(key, status);
     this.setAttribute(`${key}-status`, NCStatus[status].toLowerCase());
     if (opts.reflectOverall) {
       const overall = this.computeOverall();
-      (this as any)._overall = overall;
+      this._overall = overall;
       this.setAttribute('status', NCStatus[overall].toLowerCase());
     }
   }
@@ -282,9 +289,46 @@ export class NostrBaseComponent extends HTMLElement {
   }
 
 
-  protected renderError(errorMessage: String): string {
+  protected renderError(errorMessage: string): string {
     return `Error: ${errorMessage}`;
   }
+
+  /**
+   * Updates host element classes based on component status
+   * This is a common pattern used by all components
+   */
+  protected updateHostClasses() {
+    const isLoading = this.computeOverall() === NCStatus.Loading;
+    const isError = this.computeOverall() === NCStatus.Error;
+    const isReady = this.computeOverall() === NCStatus.Ready;
+    
+    // Remove all state classes
+    this.classList.remove('is-clickable', 'is-disabled', 'is-error');
+    
+    // Add appropriate state class
+    if (isLoading) {
+      this.classList.add('is-disabled');
+    } else if (isError) {
+      this.classList.add('is-error');
+    } else if (isReady) {
+      this.classList.add('is-clickable');
+    }
+  }
+
+  /**
+   * Base render method that handles common render logic
+   * Subclasses should override renderContent() instead of render()
+   */
+  protected render() {
+    this.updateHostClasses();
+    this.renderContent();
+  }
+
+  /**
+   * Abstract method for component-specific rendering
+   * Must be implemented by subclasses
+   */
+  protected abstract renderContent(): void;
 
   /** Private methods */
   private resetNostrReadyBarrier() {

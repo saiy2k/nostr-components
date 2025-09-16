@@ -2,10 +2,11 @@
 
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
-import { parseBooleanAttribute, copyToClipboard } from '../common/utils';
+import { parseBooleanAttribute } from '../common/utils';
 import { renderProfileBadge, RenderProfileBadgeOptions } from './render';
 import { getProfileBadgeStyles } from './style';
 import { attachCopyDelegation } from '../base/copy-delegation';
+import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 
 const EVT_BADGE = 'nc:profile_badge';
 
@@ -25,7 +26,7 @@ const EVT_BADGE = 'nc:profile_badge';
  * - `nc:profile_badge`  — fired on badge click (detail: `NDKUserProfile | null`);
  *                         default action opens `https://njump.me/<nip05|npub>`
  *
- * TODO: Improve Follow button placement
+ * Note: Follow button placement could be improved in future versions
  */
 export default class NostrProfileBadge extends NostrUserComponent {
 
@@ -40,14 +41,17 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
+    
     this.attachDelegatedListeners();
-    attachCopyDelegation(this);
+    attachCopyDelegation({
+      addDelegatedListener: this.addDelegatedListener.bind(this),
+    });
     this.render();
   }
 
   // No cleanup needed: shadowRoot listeners die with the component.
   // Only global targets (window, document, timers) require removal.
-  disconnectedCallback() {}
+  // disconnectedCallback() intentionally empty - no cleanup required
 
   attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
     if (oldValue === newValue) return;
@@ -63,15 +67,15 @@ export default class NostrProfileBadge extends NostrUserComponent {
     this.render();
   }
 
-  protected onUserReady(_user: any, _profile: any) {
+  protected onUserReady(_user: NDKUser, _profile: NDKUserProfile | null) {
     this.render();
   }
 
   /** Private functions */
   private onProfileClick() {
-    if (this.computeOverall() === NCStatus.Error) return;
+    if (this.computeOverall() !== NCStatus.Ready) return;
 
-    const event = new CustomEvent(EVT_BADGE, {
+    const event = new CustomEvent<NDKUserProfile | null>(EVT_BADGE, {
       detail: this.profile,
       bubbles: true,
       composed: true,
@@ -88,7 +92,9 @@ export default class NostrProfileBadge extends NostrUserComponent {
         this.user?.npub ||
         this.getAttribute('npub');
 
-      if (key) window.open(`https://njump.me/${key}`, '_blank');
+      if (key) {
+        window.open(`https://njump.me/${key}`, '_blank', 'noopener,noreferrer');
+      }
     }
   }
 
@@ -97,24 +103,23 @@ export default class NostrProfileBadge extends NostrUserComponent {
     // Click anywhere on the profile badge (except follow button, copy buttons)
     this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.copy-button, .nostr-follow-button-container')) {
+      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button')) {
         this.onProfileClick();
       }
     });
 
     // Copy is handled via attachCopyDelegation() using `.nc-copy-btn`
-
   }
 
-  render() {
-    const isLoading     = this.computeOverall() == NCStatus.Loading;
-    const isError       = this.computeOverall() === NCStatus.Error;
+  protected renderContent() {
+    const overall       = this.computeOverall();
+    const isLoading     = overall === NCStatus.Loading;
+    const isError       = overall === NCStatus.Error;
 
     // Get attribute values
     const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
     const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
-    const npub          = this.getAttribute('npub') || '';
-    const errorMessage  = super.renderError(this.errorMessage);
+    const errorMessage  = isError ? super.renderError(this.errorMessage) : '';
 
     const renderOptions: RenderProfileBadgeOptions = {
       theme       : this.theme,
@@ -123,7 +128,6 @@ export default class NostrProfileBadge extends NostrUserComponent {
       errorMessage: errorMessage,
       userProfile : this.profile,
       ndkUser     : this.user,
-      npub        : npub,
       showNpub    : showNpub,
       showFollow  : showFollow
     };

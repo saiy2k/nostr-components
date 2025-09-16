@@ -47,6 +47,7 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   /** Private functions */
   private async handleFollowClick() {
+    if (this.computeOverall() !== NCStatus.Ready) return;
     const nip07signer = new NDKNip07Signer();
 
     this.followStatus.set(NCStatus.Loading);
@@ -92,25 +93,17 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   private attachDelegatedListeners() {
     this.delegateEvent('click', '.nostr-follow-button-container', (e) => {
-      // If you render a disabled state while loading, guard it:
-      if (this.followStatus.get() === NCStatus.Loading) return;
       e.preventDefault?.();
       e.stopPropagation?.();
       void this.handleFollowClick();
     });
   }
 
-  render() {
+  protected renderContent() {
     const isLoading           = this.computeOverall() == NCStatus.Loading;
     const isFollowing         = this.followStatus.get() == NCStatus.Loading;
     const isError             = this.computeOverall() === NCStatus.Error;
-    const iconWidthAttribute  = this.getAttribute('icon-width');
-    const iconHeightAttribute = this.getAttribute('icon-height');
     const errorMessage        = super.renderError(this.errorMessage);
-    const iconWidth =
-      iconWidthAttribute !== null ? Number(iconWidthAttribute) : 25;
-    const iconHeight =
-      iconHeightAttribute !== null ? Number(iconHeightAttribute) : 25;
 
     const renderOptions: RenderFollowButtonOptions = {
       theme       : this.theme,
@@ -119,8 +112,6 @@ export default class NostrFollowButton extends NostrUserComponent {
       errorMessage: errorMessage,
       isFollowed  : this.isFollowed,
       isFollowing : isFollowing,
-      iconWidth,
-      iconHeight,
     };
 
     this.shadowRoot!.innerHTML = `

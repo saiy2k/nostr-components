@@ -12,8 +12,6 @@ import { IRenderOptions } from '../base/render-options';
 export interface RenderFollowButtonOptions extends IRenderOptions {
   isFollowed: boolean;
   isFollowing: boolean;
-  iconWidth: number;
-  iconHeight: number;
 }
 
 export function renderFollowButton({
@@ -23,86 +21,60 @@ export function renderFollowButton({
   errorMessage,
   isFollowed,
   isFollowing,
-  iconWidth,
-  iconHeight,
 }: RenderFollowButtonOptions): string {
 
   if (isFollowing) {
-    return renderFollowing(theme, iconWidth, iconHeight);
+    return renderFollowing(theme);
   }
 
   if (isLoading) {
-    return renderLoading(theme, iconWidth, iconHeight);
+    return renderLoading(theme);
   }
 
   if (isError) {
-    return renderError(errorMessage);
+    return renderError(errorMessage || '');
   }
 
-  const buttonText = isFollowed ? 'Followed' : 'Follow';
+  const iconContent = isFollowed
+    ? getSuccessAnimation(theme)
+    : getNostrLogo(theme);
+  const textContent = isFollowed
+    ? 'Followed'
+    : `<span>Follow me on Nostr</span>`;
 
-  return `
-    <style>
-      .nostr-follow-button svg {
-        fill: currentColor;
-        width: ${iconWidth}px;
-        height: ${iconHeight}px;
-        display: inline-block;
-        vertical-align: middle;
-      }
-    </style>
-    <div class="nostr-follow-button-container is-clickable">
-        <div class='nostr-follow-button-left-container'>
-          ${isFollowed
-            ? getSuccessAnimation(theme, iconWidth, iconHeight)
-            : getNostrLogo(theme, iconWidth, iconHeight)
-          }
-        </div>
-        <div class='nostr-follow-button-right-container'>
-          ${isFollowed
-            ? buttonText
-            : `<span>Follow me on Nostr</span>`
-          }
-        </div>
-    </div>
-  `;
+  return renderContainer(iconContent, textContent);
 }
 
-function renderLoading(theme: Theme, iconWidth: number, iconHeight: number): string {
-  return `
-      <div class='nostr-follow-button-container is-disabled'>
-        <div class='nostr-follow-button-left-container'>
-          ${getLoadingNostrich(theme, iconWidth, iconHeight)}
-        </div>
-        <div class='nostr-follow-button-right-container'>
-          <span>Loading...</span>
-        </div>
-      </div>
-    `;
+function renderLoading(theme: Theme): string {
+  return renderContainer(
+    getLoadingNostrich(theme), // Use default values
+    '<span>Loading...</span>'
+  );
 }
 
-function renderFollowing(theme: Theme, iconWidth: number, iconHeight: number): string {
-  return `
-      <div class='nostr-follow-button-container is-disabled'>
-        <div class='nostr-follow-button-left-container'>
-          ${getLoadingNostrich(theme, iconWidth, iconHeight)}
-        </div>
-        <div class='nostr-follow-button-right-container'>
-          <span>Following...</span>
-        </div>
-      </div>
-    `;
+function renderFollowing(theme: Theme): string {
+  return renderContainer(
+    getLoadingNostrich(theme), // Use default values
+    '<span>Following...</span>'
+  );
 }
 
 function renderError(errorMessage: string): string {
+  return renderContainer(
+    '<div class="error-icon">&#9888;</div>',
+    escapeHtml(errorMessage)
+  );
+}
+
+function renderContainer(leftContent: string, rightContent: string): string {
   return `
-      <div class='nostr-follow-button-container is-error'>
-        <div class='nostr-follow-button-left-container'>
-          <div class="error-icon">&#9888;</div>
-        </div>
-        <div class='nostr-follow-button-right-container'>
-          ${escapeHtml(errorMessage)}
-        </div>
+    <div class='nostrc-container nostr-follow-button-container'>
+      <div class='nostr-follow-button-left-container'>
+        ${leftContent}
       </div>
-    `;
+      <div class='nostr-follow-button-right-container'>
+        ${rightContent}
+      </div>
+    </div>
+  `;
 }

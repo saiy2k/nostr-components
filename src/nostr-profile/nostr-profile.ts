@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-import { copyToClipboard } from '../common/utils';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { renderProfile, RenderProfileOptions } from './render';
 import { getProfileStyles } from './style';
+import { attachCopyDelegation } from '../base/copy-delegation';
 
 const EVT_PROFILE = 'nc:profile';
 
@@ -16,6 +16,7 @@ export default class NostrProfile extends NostrUserComponent {
   private isStatsLoading: boolean = true;
   private isStatsFollowsLoading: boolean = true;
   private isStatsFollowersLoading: boolean = true;
+  private isZapsLoading: boolean = true;
 
   private stats = {
     follows: 0,
@@ -37,6 +38,9 @@ export default class NostrProfile extends NostrUserComponent {
   async connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
+    attachCopyDelegation({
+      addDelegatedListener: this.addDelegatedListener.bind(this),
+    });
     this.render();
   }
 
@@ -60,15 +64,12 @@ export default class NostrProfile extends NostrUserComponent {
       this.isStatsLoading = true;
       this.isStatsFollowsLoading = true;
       this.isStatsFollowersLoading = true;
-
-      // Create a local copy of the current stats
-      const currentStats = { ...this.stats };
+      this.isZapsLoading = true;
 
       // Fetch follows
       this.nostrService
-        .getProfileStats(this.user!, ['follows'])
-        .then(({ follows }) => {
-          currentStats.follows = follows;
+        .fetchFollows(this.user!)
+        .then((follows) => {
           this.stats = { ...this.stats, follows };
           this.isStatsFollowsLoading = false;
           this.render();
@@ -81,9 +82,8 @@ export default class NostrProfile extends NostrUserComponent {
 
       // Fetch followers
       this.nostrService
-        .getProfileStats(this.user!, ['followers'])
-        .then(({ followers }) => {
-          currentStats.followers = followers;
+        .fetchFollowers(this.user!)
+        .then((followers) => {
           this.stats = { ...this.stats, followers };
           this.isStatsFollowersLoading = false;
           this.render();
@@ -94,32 +94,48 @@ export default class NostrProfile extends NostrUserComponent {
           this.render();
         });
 
-      // Fetch other stats
+      // Fetch notes and replies
       this.nostrService
-        .getProfileStats(this.user!, ['notes', 'replies', 'zaps'])
-        .then(({ notes, replies, zaps }) => {
-          currentStats.notes = notes;
-          currentStats.replies = replies;
-          currentStats.zaps = zaps;
-          this.stats = { ...this.stats, notes, replies, zaps };
+        .fetchNotesAndReplies(this.user!)
+        .then(([ notes, replies ]) => {
+          this.stats = { ...this.stats, notes, replies };
           this.isStatsLoading = false;
           this.render();
         })
         .catch(err => {
-          console.error('Error loading other stats:', err);
+          console.error('Error loading notes and replies', err);
           this.isStatsLoading = false;
           this.render();
         });
 
+      // Fetch zaps
+      this.nostrService
+        .fetchZaps(this.user!)
+        .then((zaps) => {
+          this.stats = { ...this.stats, zaps };
+          this.isZapsLoading = false;
+          this.render();
+        })
+        .catch(err => {
+          console.error('Error loading Zaps:', err);
+          this.isZapsLoading = false;
+          this.render();
+        });
+
+
     } catch (err) {
       this.profileStatus.set(NCStatus.Error);
-      throw err;
+      console.error('getUserStats failed:', err);
     } finally {
       this.render();
     }
   };
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+  attributeChangedCallback(
+    name: string,
+    oldValue: string | null,
+    newValue: string | null
+  ) {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
@@ -127,6 +143,7 @@ export default class NostrProfile extends NostrUserComponent {
       this.render();
     }
   }
+
   /** Private functions */
   private onProfileClick() {
     if (this.profileStatus.get() === NCStatus.Error) return;
@@ -148,7 +165,7 @@ export default class NostrProfile extends NostrUserComponent {
         this.user?.npub ||
         this.getAttribute('npub');
 
-      if (key) window.open(`https://njump.me/${key}`, '_blank');
+      if (key) window.open(`https://njump.me/${encodeURIComponent(key)}`, '_blank');
     }
   }
 
@@ -157,27 +174,15 @@ export default class NostrProfile extends NostrUserComponent {
     // Click anywhere on the profile badge (except follow button, copy buttons)
     this.delegateEvent('click', '.profile-banner', (e: Event) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.copy-button, .nostr-follow-button-container')) {
+      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button')) {
         this.onProfileClick();
       }
     });
 
-    // NPUB copy
-    this.delegateEvent('click', '#npub-copy', (e: Event) => {
-      e.stopPropagation();
-      copyToClipboard(this.getAttribute('npub') || this.user?.npub || '');
-    });
-
-    // NIP-05 copy
-    this.delegateEvent('click', '#nip05-copy', (e: Event) => {
-      e.stopPropagation();
-      copyToClipboard(this.getAttribute('nip05') || this.profile?.nip05 || '');
-    });
-
   }
 
-  private render() {
-    const isLoading     = this.computeOverall() == NCStatus.Loading;
+  protected renderContent() {
+    const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
     const showNpub      = this.getAttribute('show-npub') !== 'false';
     const showFollow    = this.getAttribute('show-follow') !== 'false';
@@ -192,6 +197,7 @@ export default class NostrProfile extends NostrUserComponent {
       isStatsLoading: this.isStatsLoading,
       isStatsFollowersLoading: this.isStatsFollowersLoading,
       isStatsFollowsLoading: this.isStatsFollowsLoading,
+      isZapsLoading: this.isZapsLoading,
       stats: {
         notes: this.stats.notes,
         replies: this.stats.replies,

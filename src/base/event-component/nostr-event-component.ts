@@ -12,13 +12,13 @@ const EVT_EVENT = 'nc:event';
  * Extension of `NostrBaseComponent` that resolves and manages a Nostr Event.
  *
  * Overview
- * - Accepts identity attribute (`id`) and validates.
+ * - Accepts identity attribute (`eventid`) and validates.
  * - Fetches an `NDKEvent` via the shared `nostrService`.
  * - Exposes resolved `event` to subclasses for rendering or logic.
  * - Emits lifecycle events for status and event readiness.
  *
  * Observed attributes
- * - `id`     — Nostr event id (64-char hex)
+ * - `eventid`   — Nostr event id (64-char hex)
  *
  * Events
  * - `nc:status` — from base, reflects connection and event loading status
@@ -45,7 +45,7 @@ export class NostrEventComponent extends NostrBaseComponent {
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
-      'id',
+      'eventid',
     ];
   }
 
@@ -67,7 +67,7 @@ export class NostrEventComponent extends NostrBaseComponent {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
-    if (name === 'id') {
+    if (name.toLowerCase() === 'eventid') {
       if (this.validateInputs() == true) {
         void this.loadEvent();
       }
@@ -79,18 +79,20 @@ export class NostrEventComponent extends NostrBaseComponent {
 
     if (!super.validateInputs()) return false;
 
-    const id        = this.getAttribute("id");
+    const eventId   = this.getAttribute("eventid");
     const tagName   = this.tagName.toLowerCase();
 
-    if (id == null) {
-      this.eventStatus.set(NCStatus.Error, "Please provide id");
-      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+    if (!eventId) {
+      const msg = 'Please provide eventId';
+      this.eventStatus.set(NCStatus.Error, msg);
+      console.error(`Nostr-Components: ${tagName}: ${msg}`);
       return false;
     }
 
-    if (id && !isValidHex(id)) {
-      this.eventStatus.set(NCStatus.Error, `Invalid id: ${id}`);
-      console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+    if (!isValidHex(eventId)) {
+      const msg = `Invalid eventId: ${eventId}`;
+      this.eventStatus.set(NCStatus.Error, msg);
+      console.error(`Nostr-Components: ${tagName}: ${msg}`);
       return false;
     }
 
@@ -115,20 +117,22 @@ export class NostrEventComponent extends NostrBaseComponent {
     this.eventStatus.set(NCStatus.Loading);
 
     try {
-      const id    = this.getAttribute("id")!;
+      const eventId = this.getAttribute("eventid")!;
 
-      if (!id) {
+      if (!eventId) {
         if (seq !== this.loadSeq) return;
-        this.eventStatus.set(NCStatus.Error, 'Missing id');
+        const msg = 'Missing eventId';
+        this.eventStatus.set(NCStatus.Error, msg);
+        console.error('[NostrEventComponent] ' + msg);
         return;
       }
 
-      const event = await this.nostrService.getPost(id);
+      const event = await this.nostrService.getPost(eventId);
 
       if (!event) {
         if (seq !== this.loadSeq) return;
         this.event = null;
-        this.eventStatus.set(NCStatus.Error, `Event not found: ${id}`);
+        this.eventStatus.set(NCStatus.Error, `Event not found: ${eventId}`);
         return;
       }
 
@@ -152,6 +156,8 @@ export class NostrEventComponent extends NostrBaseComponent {
       this.eventStatus.set(NCStatus.Error, msg);
     }
   }
+
+  protected renderContent() { }
 
   /** Hook for subclasses to react when event is ready (e.g., render). */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
