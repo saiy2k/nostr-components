@@ -1,0 +1,1 @@
+(()=>{let e=!1;if(!e){const t=document.createElement("script");t.type="module",t.src="https://nostr-components.web.app/dist/nostr-profile-badge.js",document.head.appendChild(t),e=!0}})();
