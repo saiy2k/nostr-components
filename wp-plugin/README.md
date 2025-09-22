@@ -1,0 +1,54 @@
+# Nostr Components WordPress Plugin
+
+This WordPress plugin provides Gutenberg blocks and shortcodes for Nostr web components, with the ability to enable only the components you need.
+
+## Directory Structure
+
+```
+wp-plugin/
+├── nostr-components-wp.php    # Main plugin file
+├── inc/                       # Core plugin classes
+│   ├── Registry.php          # Component registry & metadata
+│   ├── Settings.php          # Admin settings page
+│   ├── Assets.php            # Script/style management
+│   ├── Shortcodes.php        # Shortcode registration
+│   ├── Blocks.php            # Block registration
+│   └── Kses.php              # Security (custom elements)
+├── blocks/                   # Gutenberg block definitions
+│   ├── nostr-post/
+│   ├── nostr-profile/
+│   ├── nostr-profile-badge/
+│   ├── nostr-follow-button/
+│   ├── nostr-zap/
+│   ├── nostr-comment/
+│   ├── nostr-dm/
+│   └── nostr-live-chat/
+├── build/                    # Component bundles (copied from dist/)
+│   ├── manifest.json         # Asset manifest
+│   ├── nostr-post.esm.js
+│   ├── nostr-post.umd.js
+│   └── ... (other components)
+├── assets/                   # Plugin assets
+│   ├── admin.css
+│   └── settings.js
+└── languages/               # Internationalization files
+```
+
+## Features
+
+- **Selective Loading**: Only enabled components are loaded
+- **Dependency Resolution**: Automatic dependency loading
+- **Gutenberg Blocks**: Modern block editor integration
+- **Shortcodes**: Classic editor support
+- **Security**: Custom element allowlist via KSES
+- **Performance**: Conditional asset loading
+
+## Installation
+
+1. Copy the `wp-plugin` directory to your WordPress plugins folder
+2. Activate the plugin in WordPress admin
+3. Go to Settings → Nostr Components to configure
+
+## Development
+
+Use `npm run wp-build` to build and copy component bundles to the plugin.
