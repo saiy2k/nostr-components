@@ -1,1 +1,0 @@
-(()=>{let t=!1;if(!t){const e=document.createElement("script");e.type="module",e.src="https://nostr-components.web.app/dist/nostr-post.js",document.head.appendChild(e),t=!0}})();
