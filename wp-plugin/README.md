@@ -18,20 +18,16 @@ wp-plugin/
 │   ├── nostr-post/
 │   ├── nostr-profile/
 │   ├── nostr-profile-badge/
-│   ├── nostr-follow-button/
-│   ├── nostr-zap/
-│   ├── nostr-comment/
-│   ├── nostr-dm/
-│   └── nostr-live-chat/
+│   └── nostr-follow-button/
 ├── build/                    # Component bundles (copied from dist/)
 │   ├── manifest.json         # Asset manifest
 │   ├── nostr-post.esm.js
-│   ├── nostr-post.umd.js
-│   └── ... (other components)
+│   ├── nostr-profile.esm.js
+│   ├── nostr-profile-badge.esm.js
+│   └── nostr-follow-button.esm.js
 ├── assets/                   # Plugin assets
 │   ├── admin.css
 │   └── settings.js
-└── languages/               # Internationalization files
 ```
 
 ## Features

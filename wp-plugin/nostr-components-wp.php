@@ -41,17 +41,17 @@ require_once NOSTR_WP_DIR . 'inc/Kses.php';
 
 // Initialize plugin classes
 add_action('plugins_loaded', function() {
-    NostrWP\Settings::boot();
-    NostrWP\Assets::boot();
-    NostrWP\Shortcodes::boot();
-    NostrWP\Blocks::boot();
-    NostrWP\Kses::boot();
+    NostrComponentsWP\Settings::boot();
+    NostrComponentsWP\Assets::boot();
+    NostrComponentsWP\Shortcodes::boot();
+    NostrComponentsWP\Blocks::boot();
+    NostrComponentsWP\Kses::boot();
 });
 
 // Plugin activation hook
 register_activation_hook(__FILE__, function() {
-    // Set default enabled components (just nostr-post to start)
-    update_option('nostr_wp_enabled_components', ['nostr-post']);
+    // Set default enabled components (core components)
+    update_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile']);
     
     // Set default shared settings
     update_option('nostr_wp_shared_config', [
