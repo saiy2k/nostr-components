@@ -8,19 +8,45 @@ class Shortcodes {
 
     public static function register() {
         $enabled = Registry::enabled_slugs();
+        
+        // Debug: Log enabled components
+        error_log('Nostr Components - Enabled components: ' . print_r($enabled, true));
+        
         foreach ($enabled as $slug) {
             $meta = Registry::get($slug);
             if (!$meta) continue;
 
+            // Debug: Log shortcode registration
+            error_log("Nostr Components - Registering shortcode: {$meta['shortcode']} for component: $slug");
+
             add_shortcode($meta['shortcode'], function($atts = [], $content = '', $tag = '') use ($slug, $meta) {
+                // Debug: Log shortcode execution
+                error_log("Nostr Components - Shortcode executed: $tag for component: $slug with atts: " . print_r($atts, true));
+                
                 // Ensure component script is loaded
                 Assets::ensure_component_loaded($slug);
 
-                // Get component defaults
+                // Get component defaults and attributes
                 $defaults = Registry::get_component_defaults($slug);
+                $component_attrs = Registry::get_component_attributes($slug);
+                
+                // Store original attributes before shortcode_atts filtering
+                $original_atts = $atts;
                 
                 // Merge with defaults and sanitize
                 $atts = shortcode_atts($defaults, $atts, $tag);
+                
+                // Add any additional attributes that don't have defaults but were provided
+                // Also handle underscore to hyphen conversion for attribute names
+                foreach ($original_atts as $key => $value) {
+                    if ($value !== '' && $value !== null) {
+                        // Convert underscore to hyphen for attribute names
+                        $kebab_key = str_replace('_', '-', $key);
+                        if (isset($component_attrs[$kebab_key])) {
+                            $atts[$kebab_key] = $value;
+                        }
+                    }
+                }
 
                 // Convert attribute names from underscore to kebab-case
                 $kebab_attrs = [];

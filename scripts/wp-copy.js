@@ -7,7 +7,7 @@ import crypto from 'crypto';
 const sourceDir = './dist/components';
 const assetsDir = './dist/assets';
 const targetDir = './wp-plugin/build';
-const targetAssetsDir = './wp-plugin/build/assets';
+const targetAssetsDir = './wp-plugin/assets';
 
 // Component files to copy (only the ones we support)
 const components = [

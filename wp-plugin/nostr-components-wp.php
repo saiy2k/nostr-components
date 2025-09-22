@@ -36,22 +36,22 @@ require_once NOSTR_WP_DIR . 'inc/Registry.php';
 require_once NOSTR_WP_DIR . 'inc/Settings.php';
 require_once NOSTR_WP_DIR . 'inc/Assets.php';
 require_once NOSTR_WP_DIR . 'inc/Shortcodes.php';
-require_once NOSTR_WP_DIR . 'inc/Blocks.php';
-require_once NOSTR_WP_DIR . 'inc/Kses.php';
+// require_once NOSTR_WP_DIR . 'inc/Blocks.php';
+// require_once NOSTR_WP_DIR . 'inc/Kses.php';
 
 // Initialize plugin classes
 add_action('plugins_loaded', function() {
     NostrComponentsWP\Settings::boot();
     NostrComponentsWP\Assets::boot();
     NostrComponentsWP\Shortcodes::boot();
-    NostrComponentsWP\Blocks::boot();
-    NostrComponentsWP\Kses::boot();
+    // NostrComponentsWP\Blocks::boot();
+    // NostrComponentsWP\Kses::boot();
 });
 
 // Plugin activation hook
 register_activation_hook(__FILE__, function() {
     // Set default enabled components (core components)
-    update_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile']);
+    update_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button']);
     
     // Set default shared settings
     update_option('nostr_wp_shared_config', [

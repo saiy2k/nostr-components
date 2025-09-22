@@ -30,3 +30,4 @@ dist
 
 # WordPress plugin build output
 wp-plugin/build/
+wp-plugin/assets/
