@@ -27,3 +27,6 @@ dist-ssr
 *storybook.log
 dist
 .prettierrc
+
+# WordPress plugin build output
+wp-plugin/build/

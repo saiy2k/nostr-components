@@ -15,7 +15,11 @@
     "build": "npm run build:esm && npm run build:umd",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "wp-build": "npm run build:esm && npm run wp-copy",
+    "wp-copy": "node scripts/wp-copy.js",
+    "wp-dev": "npm run build:esm && npm run wp-copy && npm run wp-watch",
+    "wp-watch": "echo 'Watching for changes...' && npm run build:esm && npm run wp-copy"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.3",
