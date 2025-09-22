@@ -21,10 +21,10 @@ wp-plugin/
 │   └── nostr-follow-button/
 ├── build/                    # Component bundles (copied from dist/)
 │   ├── manifest.json         # Asset manifest
-│   ├── nostr-post.esm.js
-│   ├── nostr-profile.esm.js
-│   ├── nostr-profile-badge.esm.js
-│   └── nostr-follow-button.esm.js
+│   ├── nostr-post.es.js
+│   ├── nostr-profile.es.js
+│   ├── nostr-profile-badge.es.js
+│   └── nostr-follow-button.es.js
 ├── assets/                   # Plugin assets
 │   ├── admin.css
 │   └── settings.js

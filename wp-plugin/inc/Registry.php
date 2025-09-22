@@ -14,7 +14,7 @@ class Registry {
                 'description' => 'Display Nostr posts by note ID',
                 'shortcode'   => 'nostr_post',
                 'block'       => 'nostr/nostr-post',
-                'esm'         => 'build/nostr-post.esm.js',
+                'esm'         => 'build/nostr-post.es.js',
                 'dependencies' => [], // No dependencies
                 'attributes'  => [
                     // From NostrEventComponent (base)
@@ -31,7 +31,7 @@ class Registry {
                 'description' => 'Display Nostr user profiles',
                 'shortcode'   => 'nostr_profile',
                 'block'       => 'nostr/nostr-profile',
-                'esm'         => 'build/nostr-profile.esm.js',
+                'esm'         => 'build/nostr-profile.es.js',
                 'dependencies' => ['nostr-follow-button'], // Uses follow-button when show-follow is true
                 'attributes'  => [
                     // From NostrUserComponent (base)
@@ -51,7 +51,7 @@ class Registry {
                 'description' => 'Compact Nostr profile display',
                 'shortcode'   => 'nostr_profile_badge',
                 'block'       => 'nostr/nostr-profile-badge',
-                'esm'         => 'build/nostr-profile-badge.esm.js',
+                'esm'         => 'build/nostr-profile-badge.es.js',
                 'dependencies' => ['nostr-follow-button'], // Uses follow-button when show-follow is true
                 'attributes'  => [
                     // From NostrUserComponent (base)
@@ -71,7 +71,7 @@ class Registry {
                 'description' => 'Follow/unfollow Nostr users',
                 'shortcode'   => 'nostr_follow_button',
                 'block'       => 'nostr/nostr-follow-button',
-                'esm'         => 'build/nostr-follow-button.esm.js',
+                'esm'         => 'build/nostr-follow-button.es.js',
                 'dependencies' => [], // No dependencies - standalone component
                 'attributes'  => [
                     // From NostrUserComponent (base)
