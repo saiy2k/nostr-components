@@ -54,7 +54,6 @@
 							borderRadius: '8px',
 							padding: '16px',
 							backgroundColor: '#f8f9fa',
-							textAlign: 'center',
 							fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 						} 
 					},
@@ -62,8 +61,8 @@
 							style: { 
 								display: 'flex',
 								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '12px'
+								gap: '12px',
+								marginBottom: '8px'
 							} 
 						},
 							wp.element.createElement('div', { 
@@ -86,8 +85,15 @@
 									fontSize: '14px',
 									color: '#1e1e1e'
 								} 
-							}, attributes.nip05 || attributes.npub || attributes.pubkey || 'Nostr Follow Button')
-						)
+							}, attributes.nip05 || attributes.npub || attributes.pubkey || 'No profile specified')
+						),
+						wp.element.createElement('div', { 
+							style: { 
+								fontSize: '12px',
+								color: '#666',
+								fontStyle: 'italic'
+							} 
+						}, 'Nostr Follow Button')
 					)
 				)
 			);
