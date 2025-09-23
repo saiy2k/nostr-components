@@ -102,10 +102,20 @@ class Blocks {
             return '';
         }
 
+        // Get component defaults and merge with attributes
+        $defaults = Registry::get_component_defaults($component);
+        $merged_attributes = array_merge($defaults, $attributes);
+
+        // Get shared config and merge relays if not already set
+        $shared_config = get_option('nostr_wp_shared_config', []);
+        if (empty($merged_attributes['relays']) && !empty($shared_config['relays'])) {
+            $merged_attributes['relays'] = $shared_config['relays'];
+        }
+
         $tag_name = $component;
         $attrs = [];
 
-        foreach ($attributes as $key => $value) {
+        foreach ($merged_attributes as $key => $value) {
             if ($value !== '' && $value !== null && $value !== false) {
                 if (is_bool($value)) {
                     $attrs[] = $key . '="' . ($value ? 'true' : 'false') . '"';

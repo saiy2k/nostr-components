@@ -1,13 +1,21 @@
 <?php
 /**
- * Plugin Name: Nostr Components for WordPress
- * Description: Gutenberg blocks + shortcodes for Nostr web components (enable only what you need).
- * Version:     0.1.0
- * Author:      Akap Azmon (github.com/akapazmon), saiy2k (x.com/saiy2k)
- * Requires PHP: 7.4
- * Requires at least: 6.0
+ * Plugin Name: Nostr Components
+ * Plugin URI:  https://github.com/saiy2k/nostr-components
+ * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr posts, profiles, and follow buttons with selective component loading for optimal performance.
+ * Version:     0.2.0
+ * Author:      Akap Azmon, saiy2k
+ * Author URI:  https://github.com/casyazmon, https://github.com/saiy2k
  * License:     MIT
+ * License URI: https://opensource.org/licenses/MIT
  * Text Domain: nostr-components-wp
+ * Domain Path: /languages
+ * Requires at least: 6.0
+ * Tested up to: 6.4
+ * Requires PHP: 7.4
+ * Network:     false
+ * 
+ * @package NostrComponentsWP
  */
 
 // Prevent direct access
@@ -17,7 +25,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 define('NOSTR_WP_FILE', __FILE__);
-define('NOSTR_WP_VERSION', '0.1.0');
+define('NOSTR_WP_VERSION', '0.2.0');
 define('NOSTR_WP_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_WP_URL', plugin_dir_url(__FILE__));
 
@@ -58,7 +66,7 @@ register_activation_hook(__FILE__, function() {
     // Set default shared settings only if option doesn't exist
     if (get_option('nostr_wp_shared_config') === false) {
         add_option('nostr_wp_shared_config', [
-            'relays' => 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://relay.nostr.band,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.getalby.com,wss://relay.primal.net,wss://purplepag.es',
+            'relays' => 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://relay.nostr.band,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://relay.getalby.com,wss://relay.primal.net',
             'theme' => 'light'
         ]);
     }

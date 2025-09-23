@@ -28,6 +28,12 @@ class Shortcodes {
                 // Merge with defaults and sanitize
                 $atts = shortcode_atts($defaults, $atts, $tag);
                 
+                // Get shared config and merge relays if not already set
+                $shared_config = get_option('nostr_wp_shared_config', []);
+                if (empty($atts['relays']) && !empty($shared_config['relays'])) {
+                    $atts['relays'] = $shared_config['relays'];
+                }
+                
                 // Add any additional attributes that don't have defaults but were provided
                 // Also handle underscore to hyphen conversion for attribute names
                 foreach ($original_atts as $key => $value) {

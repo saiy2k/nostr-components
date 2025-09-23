@@ -164,7 +164,6 @@ export function getProfileStyles(theme: Theme): string {
     .stat-inner .stat-name {
       font-weight: 400;
       line-height: 16px;
-      color: var(--nostrc-color-text-secondary);
       text-transform: lowercase;
     }
 

@@ -27,6 +27,13 @@
 							help: 'The Nostr note ID to display',
 							placeholder: 'note1...'
 						}),
+						wp.element.createElement(TextControl, {
+							label: 'Relays',
+							value: attributes.relays,
+							onChange: (value) => setAttributes({ relays: value }),
+							placeholder: 'wss://relay.example.com,wss://relay2.example.com',
+							help: 'Comma-separated list of Nostr relay URLs'
+						}),
 						wp.element.createElement(SelectControl, {
 							label: 'Theme',
 							value: attributes.theme,

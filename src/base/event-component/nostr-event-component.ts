@@ -2,7 +2,7 @@
 
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
-import { isValidHex } from '../../common/utils';
+import { EventResolver } from '../resolvers/event-resolver';
 
 const EVT_EVENT = 'nc:event';
 
@@ -12,19 +12,19 @@ const EVT_EVENT = 'nc:event';
  * Extension of `NostrBaseComponent` that resolves and manages a Nostr Event.
  *
  * Overview
- * - Accepts identity attribute (`eventid`) and validates.
- * - Fetches an `NDKEvent` via the shared `nostrService`.
+ * - Accepts identity attributes (`hex`, `noteid`, or `eventid`) and validates them.
+ * - Resolves an `NDKEvent` via the shared `nostrService` and fetches the event.
  * - Exposes resolved `event` to subclasses for rendering or logic.
  * - Emits lifecycle events for status and event readiness.
  *
  * Observed attributes
- * - `eventid`   — Nostr event id (64-char hex)
+ * - `hex`     — raw hex-encoded event ID
+ * - `noteid`  — bech32-encoded event ID starting with 'note1...'
+ * - `eventid` — bech32-encoded event pointer starting with 'nevent1...' (encodes extra metadata)
  *
  * Events
  * - `nc:status` — from base, reflects connection and event loading status
- * - `nc:event`  — fired when a event is successfully resolved
- * 
- * - Todo: Support note1, nevent formats
+ * - `nc:event`  — fired when an event is successfully resolved
  */
 
 export class NostrEventComponent extends NostrBaseComponent {
@@ -36,15 +36,20 @@ export class NostrEventComponent extends NostrBaseComponent {
   // guard to ignore stale event fetches
   private loadSeq = 0;
 
+  private resolver!: EventResolver;
+
   constructor(shadow: boolean = true) {
     super(shadow);
     this.initChannelStatus('event', NCStatus.Loading, { reflectOverall: false });
+    this.resolver = new EventResolver(this.nostrService);
   }
 
   /** Lifecycle methods */
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
+      'hex',
+      'noteid',
       'eventid',
     ];
   }
@@ -52,8 +57,8 @@ export class NostrEventComponent extends NostrBaseComponent {
   connectedCallback() {
     super.connectedCallback?.();
 
-    if (this.validateInputs() == true) {
-      this.loadEvent().catch(e => {
+    if (this.validateInputs()) {
+      this.resolveEventAndLoad().catch(e => {
         console.error('[NostrEventComponent] init failed:', e);
       });
     }
@@ -67,9 +72,9 @@ export class NostrEventComponent extends NostrBaseComponent {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
-    if (name.toLowerCase() === 'eventid') {
-      if (this.validateInputs() == true) {
-        void this.loadEvent();
+    if (name === 'hex' || name === 'noteid' || name === 'eventid') {
+      if (this.validateInputs()) {
+        void this.resolveEventAndLoad();
       }
     }
   }
@@ -79,20 +84,21 @@ export class NostrEventComponent extends NostrBaseComponent {
 
     if (!super.validateInputs()) return false;
 
-    const eventId   = this.getAttribute("eventid");
-    const tagName   = this.tagName.toLowerCase();
+    const hex     = this.getAttribute("hex");
+    const noteid  = this.getAttribute("noteid");
+    const eventid = this.getAttribute("eventid");
+    const tagName = this.tagName.toLowerCase();
 
-    if (!eventId) {
-      const msg = 'Please provide eventId';
-      this.eventStatus.set(NCStatus.Error, msg);
-      console.error(`Nostr-Components: ${tagName}: ${msg}`);
-      return false;
-    }
+    const err = this.resolver.validateInputs({
+      hex: hex,
+      noteid: noteid,
+      eventid: eventid,
+    });
 
-    if (!isValidHex(eventId)) {
-      const msg = `Invalid eventId: ${eventId}`;
-      this.eventStatus.set(NCStatus.Error, msg);
-      console.error(`Nostr-Components: ${tagName}: ${msg}`);
+    if (err) {
+      this.eventStatus.set(NCStatus.Error, err);
+      console.error(`Nostr-Components: ${tagName}: ${err}`);
+      this.errorMessage = err;
       return false;
     }
 
@@ -101,7 +107,7 @@ export class NostrEventComponent extends NostrBaseComponent {
 
   }
 
-  protected async loadEvent(): Promise<void> {
+  protected async resolveEventAndLoad(): Promise<void> {
     const seq = ++this.loadSeq; // token to prevent stale writes
 
     // Ensure relays are connected; handle failure inside to avoid unhandled rejection
@@ -115,26 +121,18 @@ export class NostrEventComponent extends NostrBaseComponent {
     }
 
     this.eventStatus.set(NCStatus.Loading);
+    this.event = null;
 
     try {
-      const eventId = this.getAttribute("eventid")!;
+      const hex     = this.getAttribute('hex');
+      const noteid  = this.getAttribute('noteid');
+      const eventid = this.getAttribute('eventid');
 
-      if (!eventId) {
-        if (seq !== this.loadSeq) return;
-        const msg = 'Missing eventId';
-        this.eventStatus.set(NCStatus.Error, msg);
-        console.error('[NostrEventComponent] ' + msg);
-        return;
-      }
-
-      const event = await this.nostrService.getPost(eventId);
-
-      if (!event) {
-        if (seq !== this.loadSeq) return;
-        this.event = null;
-        this.eventStatus.set(NCStatus.Error, `Event not found: ${eventId}`);
-        return;
-      }
+      const event = await this.resolver.resolveEvent({
+        hex: hex,
+        noteid: noteid,
+        eventid: eventid,
+      });
 
       // stale call check
       if (seq !== this.loadSeq) return;
