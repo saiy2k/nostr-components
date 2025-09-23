@@ -33,7 +33,7 @@ class Kses {
                 continue;
             }
 
-            $tag_name = str_replace('nostr-', '', $component);
+            $tag_name = $component;
             $attributes = Registry::get_component_attributes($component);
             
             $allowed_attrs = [];
@@ -100,17 +100,4 @@ class Kses {
         return Registry::is_enabled($component);
     }
 
-    /**
-     * Get all allowed Nostr element names
-     */
-    public static function get_allowed_element_names(): array {
-        $enabled_components = Registry::enabled_slugs();
-        $names = [];
-
-        foreach ($enabled_components as $component) {
-            $names[] = str_replace('nostr-', '', $component);
-        }
-
-        return $names;
-    }
 }

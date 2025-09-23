@@ -32,7 +32,7 @@ class Assets {
      * Mark ESM handles as <script type="module">
      */
     public static function as_module($tag, $handle, $src) {
-        if (str_ends_with($handle, '-esm')) {
+        if (substr($handle, -4) === '-esm') {
             $tag = sprintf('<script type="module" src="%s"></script>'."\n", esc_url($src));
         }
         return $tag;
@@ -128,23 +128,4 @@ class Assets {
         return plugins_url($meta['esm'], NOSTR_WP_FILE);
     }
 
-    /**
-     * Debug method to get asset information
-     */
-    public static function get_asset_info(): array {
-        $info = [
-            'enabled_components' => Registry::enabled_slugs(),
-            'enabled_with_dependencies' => self::get_enabled_with_dependencies(),
-            'registered_scripts' => [],
-            'enqueued_scripts' => [],
-        ];
-
-        foreach (Registry::all() as $slug => $meta) {
-            $handle = self::get_component_handle($slug);
-            $info['registered_scripts'][$slug] = wp_script_is($handle, 'registered');
-            $info['enqueued_scripts'][$slug] = wp_script_is($handle, 'enqueued');
-        }
-
-        return $info;
-    }
 }

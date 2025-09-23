@@ -56,43 +56,35 @@ class Settings {
                 <h2>Enable Components</h2>
                 <p>Select which Nostr components you want to make available in your WordPress site.</p>
                 
-                <table class="form-table">
-                    <tbody>
-                        <?php foreach ($all as $slug => $meta): ?>
-                            <tr>
-                                <th scope="row">
-                                    <label for="component_<?php echo esc_attr($slug); ?>">
-                                        <?php echo esc_html($meta['title']); ?>
-                                    </label>
-                                </th>
-                                <td>
-                                    <fieldset>
-                                        <label for="component_<?php echo esc_attr($slug); ?>">
-                                            <input type="checkbox" 
-                                                id="component_<?php echo esc_attr($slug); ?>"
-                                                name="<?php echo self::OPT_ENABLED; ?>[]"
-                                                value="<?php echo esc_attr($slug); ?>"
-                                                <?php checked(in_array($slug, $enabled, true)); ?> />
-                                            <?php echo esc_html($meta['description']); ?>
-                                        </label>
-                                        
-                                        <?php if (!empty($meta['dependencies'])): ?>
-                                            <p class="description">
-                                                <strong>Dependencies:</strong> 
-                                                <?php 
-                                                $dep_names = array_map(function($dep) use ($all) {
-                                                    return $all[$dep]['title'] ?? $dep;
-                                                }, $meta['dependencies']);
-                                                echo esc_html(implode(', ', $dep_names));
-                                                ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </fieldset>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <div style="background: #f9f9f9; padding: 20px; border: 1px solid #ddd; margin: 20px 0;">
+                    <?php foreach ($all as $slug => $meta): ?>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: flex; align-items: center; font-weight: 500;">
+                                <input type="checkbox" 
+                                    id="component_<?php echo esc_attr($slug); ?>"
+                                    name="<?php echo self::OPT_ENABLED; ?>[]"
+                                    value="<?php echo esc_attr($slug); ?>"
+                                    <?php checked(in_array($slug, $enabled, true)); ?>
+                                    style="margin-right: 10px;" />
+                                <strong><?php echo esc_html($meta['title']); ?></strong>
+                            </label>
+                            <p style="margin: 5px 0 0 30px; color: #666; font-size: 14px;">
+                                <?php echo esc_html($meta['description']); ?>
+                            </p>
+                            <?php if (!empty($meta['dependencies'])): ?>
+                                <p style="margin: 5px 0 0 30px; color: #d63638; font-size: 13px;">
+                                    <strong>Dependencies:</strong> 
+                                    <?php 
+                                    $dep_names = array_map(function($dep) use ($all) {
+                                        return $all[$dep]['title'] ?? $dep;
+                                    }, $meta['dependencies']);
+                                    echo esc_html(implode(', ', $dep_names));
+                                    ?>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
 
                 <h2>Shared Settings</h2>
                 <p>These settings apply to all components unless overridden individually.</p>

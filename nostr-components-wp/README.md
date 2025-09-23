@@ -4,7 +4,7 @@ This WordPress plugin provides Gutenberg blocks and shortcodes for Nostr web com
 
 ## Directory Structure
 
-```
+```text
 wp-plugin/
 ├── nostr-components-wp.php    # Main plugin file
 ├── inc/                       # Core plugin classes
@@ -19,15 +19,16 @@ wp-plugin/
 │   ├── nostr-profile/
 │   ├── nostr-profile-badge/
 │   └── nostr-follow-button/
-├── build/                    # Component bundles (copied from dist/)
+├── assets/                   # All component bundles and dependencies
 │   ├── manifest.json         # Asset manifest
 │   ├── nostr-post.es.js
 │   ├── nostr-profile.es.js
 │   ├── nostr-profile-badge.es.js
-│   └── nostr-follow-button.es.js
-├── assets/                   # Plugin assets
-│   ├── admin.css
-│   └── settings.js
+│   ├── nostr-follow-button.es.js
+│   ├── nostr-service-w4c-zprD.js
+│   ├── base-styles-B5J6mwtp.js
+│   ├── utils-Blx44Hni.js
+│   └── [other dependencies...]
 ```
 
 ## Features

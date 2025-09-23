@@ -6,8 +6,7 @@ import crypto from 'crypto';
 
 const sourceDir = './dist/components';
 const assetsDir = './dist/assets';
-const targetDir = './nostr-components-wp/build';
-const targetAssetsDir = './nostr-components-wp/assets';
+const targetDir = './nostr-components-wp/assets';
 
 // Component files to copy (only the ones we support)
 const components = [
@@ -19,15 +18,10 @@ const components = [
 
 console.log('🚀 Starting WordPress plugin build...');
 
-// Ensure target directories exist
+// Ensure target directory exists
 if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
     console.log(`📁 Created directory: ${targetDir}`);
-}
-
-if (!fs.existsSync(targetAssetsDir)) {
-    fs.mkdirSync(targetAssetsDir, { recursive: true });
-    console.log(`📁 Created directory: ${targetAssetsDir}`);
 }
 
 // Generate manifest
@@ -64,7 +58,7 @@ for (const component of components) {
             file: `${component}.es.js`,
             size: fileSize,
             hash: hash,
-            url: `build/${component}.es.js`
+            url: `assets/${component}.es.js`
         };
         
         console.log(`✅ Copied: ${component}.es.js (${formatBytes(fileSize)})`);
@@ -82,7 +76,7 @@ if (fs.existsSync(assetsDir)) {
     
     for (const file of jsFiles) {
         const sourceFile = path.join(assetsDir, file);
-        const targetFile = path.join(targetAssetsDir, file);
+        const targetFile = path.join(targetDir, file);
         
         // Copy the file
         fs.copyFileSync(sourceFile, targetFile);
@@ -107,7 +101,10 @@ console.log(`📄 Created manifest.json`);
 
 // Summary
 console.log('\n📊 Build Summary:');
-console.log(`   Files copied: ${copiedFiles}/${components.length}`);
+const componentCopies = Object.keys(manifest.components).length;
+const assetCopies = copiedFiles - componentCopies;
+console.log(`   Component files: ${componentCopies}/${components.length}`);
+console.log(`   Asset files: ${assetCopies}`);
 console.log(`   Total size: ${formatBytes(totalSize)}`);
 console.log(`   Target directory: ${targetDir}`);
 console.log(`   Manifest: ${manifestPath}`);

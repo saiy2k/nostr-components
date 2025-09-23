@@ -7,7 +7,7 @@
 	registerBlockType('nostr/nostr-profile', {
 		title: 'Nostr Profile',
 		icon: 'admin-users',
-		category: 'widgets',
+		category: 'nostr',
 		attributes: {
 			npub: { type: 'string', default: '' },
 			pubkey: { type: 'string', default: '' },
@@ -26,17 +26,20 @@
 						wp.element.createElement(TextControl, {
 							label: 'NPUB (bech32)',
 							value: attributes.npub,
-							onChange: (value) => setAttributes({ npub: value })
+							onChange: (value) => setAttributes({ npub: value }),
+							placeholder: 'npub1...'
 						}),
 						wp.element.createElement(TextControl, {
 							label: 'Public Key (hex)',
 							value: attributes.pubkey,
-							onChange: (value) => setAttributes({ pubkey: value })
+							onChange: (value) => setAttributes({ pubkey: value }),
+							placeholder: 'hex: 64 chars'
 						}),
 						wp.element.createElement(TextControl, {
 							label: 'NIP-05 Identifier',
 							value: attributes.nip05,
-							onChange: (value) => setAttributes({ nip05: value })
+							onChange: (value) => setAttributes({ nip05: value }),
+							placeholder: 'name@example.com'
 						}),
 						wp.element.createElement(SelectControl, {
 							label: 'Theme',

@@ -3,7 +3,7 @@
  * Plugin Name: Nostr Components for WordPress
  * Description: Gutenberg blocks + shortcodes for Nostr web components (enable only what you need).
  * Version:     0.1.0
- * Author:      Nostr Components Team
+ * Author:      Akap Azmon (github.com/akapazmon), saiy2k (x.com/saiy2k)
  * Requires PHP: 7.4
  * Requires at least: 6.0
  * License:     MIT
@@ -50,18 +50,21 @@ add_action('plugins_loaded', function() {
 
 // Plugin activation hook
 register_activation_hook(__FILE__, function() {
-    // Set default enabled components (core components)
-    update_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button']);
+    // Set default enabled components only if option doesn't exist
+    if (get_option('nostr_wp_enabled_components') === false) {
+        add_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button']);
+    }
     
-    // Set default shared settings
-    update_option('nostr_wp_shared_config', [
-        'relays' => 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://relay.nostr.band,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.getalby.com,wss://relay.primal.net,wss://purplepag.es',
-        'theme' => 'light'
-    ]);
+    // Set default shared settings only if option doesn't exist
+    if (get_option('nostr_wp_shared_config') === false) {
+        add_option('nostr_wp_shared_config', [
+            'relays' => 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://relay.nostr.band,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.getalby.com,wss://relay.primal.net,wss://purplepag.es',
+            'theme' => 'light'
+        ]);
+    }
 });
 
 // Plugin deactivation hook
 register_deactivation_hook(__FILE__, function() {
-    // Clean up if needed (optional)
-    // Could clear caches, remove temporary data, etc.
+    // No cleanup needed
 });

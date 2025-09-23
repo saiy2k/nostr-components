@@ -4,7 +4,7 @@
   "name": "nostr/nostr-post",
   "version": "0.1.0",
   "title": "Nostr Post",
-  "category": "widgets",
+  "category": "nostr",
   "icon": "format-quote",
   "description": "Display Nostr posts by note ID",
   "supports": {
@@ -28,6 +28,5 @@
       "type": "boolean",
       "default": false
     }
-  },
-  "editorScript": "file:./index.js"
+  }
 }

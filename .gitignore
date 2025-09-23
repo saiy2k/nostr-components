@@ -29,5 +29,4 @@ dist
 .prettierrc
 
 # WordPress plugin build output
-wp-plugin/build/
-wp-plugin/assets/
+/nostr-components-wp/assets/

@@ -17,9 +17,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "wp-build": "npm run build:esm && npm run wp-copy",
-    "wp-copy": "node scripts/wp-copy.js",
-    "wp-dev": "npm run build:esm && npm run wp-copy && npm run wp-watch",
-    "wp-watch": "echo 'Watching for changes...' && npm run build:esm && npm run wp-copy"
+    "wp-copy": "node scripts/wp-copy.js"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.3",
@@ -49,7 +47,6 @@
     "dompurify": "^3.2.6",
     "light-bolt11-decoder": "^3.2.0",
     "nostr-tools": "^2.7.2",
-    "npm": "^11.3.0",
     "qrcode": "^1.5.4"
   }
 }

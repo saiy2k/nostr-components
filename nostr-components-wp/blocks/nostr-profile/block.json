@@ -4,7 +4,7 @@
   "name": "nostr/nostr-profile",
   "version": "0.1.0",
   "title": "Nostr Profile",
-  "category": "widgets",
+  "category": "nostr",
   "icon": "admin-users",
   "description": "Display Nostr user profiles",
   "supports": {
@@ -40,6 +40,5 @@
       "type": "boolean",
       "default": true
     }
-  },
-  "editorScript": "file:./index.js"
+  }
 }

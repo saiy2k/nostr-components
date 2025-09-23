@@ -9,20 +9,12 @@ class Shortcodes {
     public static function register() {
         $enabled = Registry::enabled_slugs();
         
-        // Debug: Log enabled components
-        error_log('Nostr Components - Enabled components: ' . print_r($enabled, true));
-        
         foreach ($enabled as $slug) {
             $meta = Registry::get($slug);
             if (!$meta) continue;
 
-            // Debug: Log shortcode registration
-            error_log("Nostr Components - Registering shortcode: {$meta['shortcode']} for component: $slug");
-
             add_shortcode($meta['shortcode'], function($atts = [], $content = '', $tag = '') use ($slug, $meta) {
-                // Debug: Log shortcode execution
-                error_log("Nostr Components - Shortcode executed: $tag for component: $slug with atts: " . print_r($atts, true));
-                
+
                 // Ensure component script is loaded
                 Assets::ensure_component_loaded($slug);
 
@@ -226,14 +218,4 @@ class Shortcodes {
         ];
     }
 
-    /**
-     * Debug method to get shortcode information
-     */
-    public static function get_debug_info(): array {
-        return [
-            'enabled_components' => Registry::enabled_slugs(),
-            'registered_shortcodes' => self::get_registered_shortcodes(),
-            'usage_examples' => self::get_usage_examples(),
-        ];
-    }
 }

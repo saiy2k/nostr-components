@@ -4,8 +4,6 @@ namespace NostrComponentsWP;
 class Registry {
     /**
      * Component metadata - single source of truth for all components
-     * Focused on core components: post, profile, profile-badge, follow-button
-     * Attributes based on actual JavaScript class files
      */
     public static function all(): array {
         return [
@@ -14,15 +12,12 @@ class Registry {
                 'description' => 'Display Nostr posts by note ID',
                 'shortcode'   => 'nostr_post',
                 'block'       => 'nostr/nostr-post',
-                'esm'         => 'build/nostr-post.es.js',
-                'dependencies' => [], // No dependencies
+                'esm'         => 'assets/nostr-post.es.js',
+                'dependencies' => [],
                 'attributes'  => [
-                    // From NostrEventComponent (base)
-                    'eventid' => ['type' => 'string', 'required' => true], // Note ID
-                    // From NostrBaseComponent (base)
+                    'eventid' => ['type' => 'string', 'required' => true],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
-                    'relays'  => ['type' => 'string'], // CSV of relay URLs
-                    // From NostrPost (specific)
+                    'relays'  => ['type' => 'string'],
                     'show-stats' => ['type' => 'boolean', 'default' => false],
                 ],
             ],
@@ -31,17 +26,14 @@ class Registry {
                 'description' => 'Display Nostr user profiles',
                 'shortcode'   => 'nostr_profile',
                 'block'       => 'nostr/nostr-profile',
-                'esm'         => 'build/nostr-profile.es.js',
-                'dependencies' => ['nostr-follow-button'], // Uses follow-button when show-follow is true
+                'esm'         => 'assets/nostr-profile.es.js',
+                'dependencies' => ['nostr-follow-button'],
                 'attributes'  => [
-                    // From NostrUserComponent (base)
-                    'npub'    => ['type' => 'string'], // bech32 npub
-                    'pubkey'  => ['type' => 'string'], // hex public key
-                    'nip05'   => ['type' => 'string'], // NIP-05 identifier
-                    // From NostrBaseComponent (base)
+                    'npub'    => ['type' => 'string'],
+                    'pubkey'  => ['type' => 'string'],
+                    'nip05'   => ['type' => 'string'],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
-                    'relays'  => ['type' => 'string'], // CSV of relay URLs
-                    // From NostrProfile (specific)
+                    'relays'  => ['type' => 'string'],
                     'show-npub' => ['type' => 'boolean', 'default' => true],
                     'show-follow' => ['type' => 'boolean', 'default' => true],
                 ],
@@ -51,17 +43,15 @@ class Registry {
                 'description' => 'Compact Nostr profile display',
                 'shortcode'   => 'nostr_profile_badge',
                 'block'       => 'nostr/nostr-profile-badge',
-                'esm'         => 'build/nostr-profile-badge.es.js',
-                'dependencies' => ['nostr-follow-button'], // Uses follow-button when show-follow is true
+                'esm'         => 'assets/nostr-profile-badge.es.js',
+                'dependencies' => ['nostr-follow-button'],
                 'attributes'  => [
                     // From NostrUserComponent (base)
                     'npub'    => ['type' => 'string'], // bech32 npub
-                    'pubkey'  => ['type' => 'string'], // hex public key
-                    'nip05'   => ['type' => 'string'], // NIP-05 identifier
-                    // From NostrBaseComponent (base)
+                    'pubkey'  => ['type' => 'string'],
+                    'nip05'   => ['type' => 'string'],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
-                    'relays'  => ['type' => 'string'], // CSV of relay URLs
-                    // From NostrProfileBadge (specific)
+                    'relays'  => ['type' => 'string'],
                     'show-npub' => ['type' => 'boolean', 'default' => true],
                     'show-follow' => ['type' => 'boolean', 'default' => true],
                 ],
@@ -71,24 +61,22 @@ class Registry {
                 'description' => 'Follow/unfollow Nostr users',
                 'shortcode'   => 'nostr_follow_button',
                 'block'       => 'nostr/nostr-follow-button',
-                'esm'         => 'build/nostr-follow-button.es.js',
-                'dependencies' => [], // No dependencies - standalone component
+                'esm'         => 'assets/nostr-follow-button.es.js',
+                'dependencies' => [],
                 'attributes'  => [
                     // From NostrUserComponent (base)
                     'npub'    => ['type' => 'string'], // bech32 npub
-                    'pubkey'  => ['type' => 'string'], // hex public key
-                    'nip05'   => ['type' => 'string'], // NIP-05 identifier
-                    // From NostrBaseComponent (base)
+                    'pubkey'  => ['type' => 'string'],
+                    'nip05'   => ['type' => 'string'],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
-                    'relays'  => ['type' => 'string'], // CSV of relay URLs
-                    // From NostrFollowButton (specific) - no additional attributes
+                    'relays'  => ['type' => 'string'],
                 ],
             ],
         ];
     }
 
     /**
-     * Get enabled component slugs from settings
+     * Get enabled component slugs
      */
     public static function enabled_slugs(): array {
         $enabled = get_option('nostr_wp_enabled_components', []);
@@ -99,7 +87,7 @@ class Registry {
     }
 
     /**
-     * Get component metadata by slug
+     * Get component metadata
      */
     public static function get(string $slug): ?array {
         $all = self::all();
@@ -107,7 +95,7 @@ class Registry {
     }
 
     /**
-     * Check if a component is enabled
+     * Check if component is enabled
      */
     public static function is_enabled(string $slug): bool {
         return in_array($slug, self::enabled_slugs(), true);
@@ -115,10 +103,8 @@ class Registry {
 
     /**
      * Resolve dependencies for a component
-     * Returns array of component slugs including the component itself and all dependencies
      */
     public static function resolve_dependencies(string $component, array $visited = []): array {
-        // Prevent circular dependencies
         if (in_array($component, $visited, true)) {
             return [];
         }
@@ -137,7 +123,7 @@ class Registry {
     }
 
     /**
-     * Get all enabled components with their dependencies resolved
+     * Get all enabled components with dependencies
      */
     public static function get_enabled_with_dependencies(): array {
         $enabled = self::enabled_slugs();
@@ -151,7 +137,7 @@ class Registry {
     }
 
     /**
-     * Get component assets (ESM only)
+     * Get component assets
      */
     public static function get_component_assets(string $slug): array {
         $meta = self::get($slug);

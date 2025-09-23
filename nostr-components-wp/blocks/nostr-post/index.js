@@ -7,7 +7,7 @@
 	registerBlockType('nostr/nostr-post', {
 		title: 'Nostr Post',
 		icon: 'format-quote',
-		category: 'widgets',
+		category: 'nostr',
 		attributes: {
 			eventid: { type: 'string', default: '' },
 			theme: { type: 'string', enum: ['light', 'dark'], default: 'light' },
@@ -24,7 +24,8 @@
 							label: 'Event ID (Note ID)',
 							value: attributes.eventid,
 							onChange: (value) => setAttributes({ eventid: value }),
-							help: 'The Nostr note ID to display'
+							help: 'The Nostr note ID to display',
+							placeholder: 'note1...'
 						}),
 						wp.element.createElement(SelectControl, {
 							label: 'Theme',
