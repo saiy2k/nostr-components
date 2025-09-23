@@ -44,10 +44,10 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 Simply add the Nostr blocks from the block inserter and configure them in the block settings.
 
 **Shortcodes:**
-`[nostr-post note-id="note1abc..."]`
-`[nostr-profile pubkey="npub1abc..."]`
-`[nostr-profile-badge pubkey="npub1abc..."]`
-`[nostr-follow-button pubkey="npub1abc..."]`
+`[nostr_post eventid="note1abc..."]`
+`[nostr_profile pubkey="npub1abc..."]`
+`[nostr_profile_badge pubkey="npub1abc..."]`
+`[nostr_follow_button pubkey="npub1abc..."]`
 
 == Installation ==
 
@@ -90,7 +90,7 @@ Yes, the components are designed to work with any WordPress theme. They use mode
 
 == Changelog ==
 
-= 1.0.0 =
+= 0.2.0 =
 * Initial release
 * Gutenberg blocks for Nostr Post, Profile, Profile Badge, and Follow Button
 * Shortcode support for all components
@@ -114,4 +114,4 @@ For support, please visit the [GitHub repository](https://github.com/saiy2k/nost
 
 == Privacy Policy ==
 
-This plugin does not collect, store, or transmit any personal data. All Nostr data is fetched directly from public relays and displayed locally on your site.
+This plugin does not collect, store, or transmit any personal data. All Nostr data is fetched directly from public relays and displayed locally on your site. If components fetch data client‑side, visitors' browsers may directly connect to configured relays (exposing their IP and user agent to those relays). Configure trusted relays accordingly.

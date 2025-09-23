@@ -20,7 +20,7 @@ const EVT_EVENT = 'nc:event';
  * Observed attributes
  * - `hex`     — raw hex-encoded event ID
  * - `noteid`  — bech32-encoded event ID starting with 'note1...'
- * - `eventid` — bech32-encoded event ID starting with 'event1...' with extra metadata
+ * - `eventid` — bech32-encoded event pointer starting with 'nevent1...' (encodes extra metadata)
  *
  * Events
  * - `nc:status` — from base, reflects connection and event loading status

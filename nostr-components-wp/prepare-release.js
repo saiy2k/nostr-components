@@ -125,16 +125,33 @@ class NostrWPReleasePrep {
     }
     
     createZip(outputPath = null) {
+        // Extract version from plugin file
+        const mainFile = path.join(this.pluginDir, 'nostr-components-wp.php');
+        let version = '0.2.0'; // fallback
+        if (fs.existsSync(mainFile)) {
+            const content = fs.readFileSync(mainFile, 'utf8');
+            const versionMatch = content.match(/Version:\s*([^\r\n]+)/);
+            if (versionMatch) {
+                version = versionMatch[1].trim();
+            }
+        }
+        
         if (!outputPath) {
-            outputPath = path.join(path.dirname(this.pluginDir), 'nostr-components-wp-v0.2.0.zip');
+            outputPath = path.join(path.dirname(this.pluginDir), `nostr-components-wp-v${version}.zip`);
         }
         
         console.log('\n📦 Creating release zip...');
         
         try {
-            // Use zip command if available
-            const zipCommand = `cd "${path.dirname(this.pluginDir)}" && zip -r "${path.basename(outputPath)}" "${path.basename(this.pluginDir)}" -x "*.DS_Store" "*/node_modules/*" "*/.git/*"`;
-            execSync(zipCommand, { stdio: 'inherit' });
+            // Use safer approach with proper escaping
+            const cwd = path.dirname(this.pluginDir);
+            const zipArgs = [
+                '-r',
+                path.basename(outputPath),
+                path.basename(this.pluginDir),
+                '-x', '*.DS_Store', '*/node_modules/*', '*/.git/*'
+            ];
+            execSync('zip', zipArgs, { cwd, stdio: 'inherit' });
             
             const stats = fs.statSync(outputPath);
             console.log(`✅ Created release zip: ${outputPath}`);

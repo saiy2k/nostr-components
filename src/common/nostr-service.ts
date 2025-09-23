@@ -68,15 +68,9 @@ export class NostrService {
 
   public async resolveNDKEvent(identifier: {
     hex?: string | null;
-    noteid?: string | null;
-    eventid?: string | null;
   }): Promise<NDKEvent | null> {
     if (identifier.hex) {
       return this.ndk.fetchEvent(identifier.hex);
-    } else if (identifier.noteid) {
-      return this.ndk.fetchEvent(identifier.noteid);
-    } else if (identifier.eventid) {
-      return this.ndk.fetchEvent(identifier.eventid);
     }
   
     return null;

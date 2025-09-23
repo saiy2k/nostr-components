@@ -194,22 +194,21 @@ export function validateNip05(nip05: string): boolean {
   return nip05Regex.test(nip05);
 }
 
-export function validateNoteId(noteId: string): boolean {
+function validateBech32OfType(input: string, expected: 'note' | 'nevent'): boolean {
   try {
-    const { type } = nip19.decode(noteId);
-    return type === 'note';
-  } catch (e) {
+    const { type } = nip19.decode(input);
+    return type === expected;
+  } catch {
     return false;
   }
 }
 
+export function validateNoteId(noteId: string): boolean {
+  return validateBech32OfType(noteId, 'note');
+}
+
 export function validateEventId(eventId: string): boolean {
-  try {
-    const { type } = nip19.decode(eventId);
-    return type === 'nevent';
-  } catch (e) {
-    return false;
-  }
+  return validateBech32OfType(eventId, 'nevent');
 }
 
 export function copyToClipboard(text: string): Promise<void> {

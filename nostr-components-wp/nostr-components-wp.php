@@ -66,7 +66,7 @@ register_activation_hook(__FILE__, function() {
     // Set default shared settings only if option doesn't exist
     if (get_option('nostr_wp_shared_config') === false) {
         add_option('nostr_wp_shared_config', [
-            'relays' => 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://relay.nostr.band,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.getalby.com,wss://relay.primal.net,wss://purplepag.es',
+            'relays' => 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://relay.nostr.band,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://relay.getalby.com,wss://relay.primal.net',
             'theme' => 'light'
         ]);
     }
