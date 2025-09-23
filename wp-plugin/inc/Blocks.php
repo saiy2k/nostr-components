@@ -102,7 +102,7 @@ class Blocks {
             return '';
         }
 
-        $tag_name = str_replace('nostr-', '', $component);
+        $tag_name = $component;
         $attrs = [];
 
         foreach ($attributes as $key => $value) {
