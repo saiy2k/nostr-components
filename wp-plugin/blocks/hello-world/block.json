@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "nostr/hello-world",
+  "version": "0.1.0",
+  "title": "Hello World",
+  "category": "widgets",
+  "icon": "smiley",
+  "description": "A simple no-build test block",
+  "supports": {
+    "html": false
+  },
+  "attributes": {},
+  "editorScript": "file:./index.js",
+  "render": "file:./render.php"
+}

@@ -48,6 +48,14 @@ add_action('plugins_loaded', function() {
     // NostrComponentsWP\Kses::boot();
 });
 
+// Register no-build Hello World block
+add_action('init', function() {
+    $block_path = NOSTR_WP_DIR . 'blocks/hello-world';
+    if (file_exists($block_path . '/block.json')) {
+        register_block_type($block_path);
+    }
+});
+
 // Plugin activation hook
 register_activation_hook(__FILE__, function() {
     // Set default enabled components (core components)
