@@ -9,6 +9,7 @@ import NDK, {
 import { DEFAULT_RELAYS } from './constants';
 import { DEFAULT_PROFILE_IMAGE } from './constants';
 
+// TODO: Is this class doing too much work? Time to split into smaller services?
 export class NostrService {
 
   private static instance: NostrService;
@@ -60,6 +61,22 @@ export class NostrService {
       return user ?? null;
     } else if (identifier.pubkey) {
       return this.ndk.getUser({ pubkey: identifier.pubkey });
+    }
+  
+    return null;
+  }
+
+  public async resolveNDKEvent(identifier: {
+    hex?: string | null;
+    noteid?: string | null;
+    eventid?: string | null;
+  }): Promise<NDKEvent | null> {
+    if (identifier.hex) {
+      return this.ndk.fetchEvent(identifier.hex);
+    } else if (identifier.noteid) {
+      return this.ndk.fetchEvent(identifier.noteid);
+    } else if (identifier.eventid) {
+      return this.ndk.fetchEvent(identifier.eventid);
     }
   
     return null;
