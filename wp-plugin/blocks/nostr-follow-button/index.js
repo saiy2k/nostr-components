@@ -48,9 +48,46 @@
 					)
 				),
 				wp.element.createElement('div', props,
-					wp.element.createElement('p', null, 'Nostr Follow Button'),
-					wp.element.createElement('p', { style: { fontSize: '12px', color: '#666' } },
-						attributes.nip05 || attributes.npub || attributes.pubkey || 'No profile specified'
+					wp.element.createElement('div', { 
+						style: { 
+							border: '2px dashed #007cba',
+							borderRadius: '8px',
+							padding: '16px',
+							backgroundColor: '#f8f9fa',
+							textAlign: 'center',
+							fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+						} 
+					},
+						wp.element.createElement('div', { 
+							style: { 
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								gap: '12px'
+							} 
+						},
+							wp.element.createElement('div', { 
+								style: { 
+									width: '40px',
+									height: '40px',
+									borderRadius: '50%',
+									backgroundColor: '#e74c3c',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									color: 'white',
+									fontSize: '18px',
+									fontWeight: 'bold'
+								} 
+							}, '❤️'),
+							wp.element.createElement('div', { 
+								style: { 
+									fontWeight: '600',
+									fontSize: '14px',
+									color: '#1e1e1e'
+								} 
+							}, attributes.nip05 || attributes.npub || attributes.pubkey || 'Nostr Follow Button')
+						)
 					)
 				)
 			);
