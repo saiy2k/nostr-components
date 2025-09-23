@@ -119,16 +119,16 @@ export const defaultDesignTokens: DesignTokens = {
     },
     hoverBackground: {
       light: 'rgba(0, 0, 0, 0.05)',
-      dark: 'rgba(255, 255, 255, 0.05)',
+      dark: '#333333',
     },
     text: {
       primary: {
-        light: '#444444',
-        dark: '#ffffff',
+        light: '#333333',
+        dark: '#cccccc',
       },
       secondary: {
         light: '#666666',
-        dark: '#ffffff',
+        dark: '#999999',
       },
       muted: {
         light: '#808080',
@@ -379,7 +379,6 @@ export const styleUtils = {
       gap: var(--nostrc-spacing-sm);
       font-family: var(--nostrc-font-family-primary);
       font-size: var(--nostrc-font-size-base);
-      color: var(--nostrc-color-text-secondary);
     }
     
     .text-row.mono {

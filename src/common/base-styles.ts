@@ -28,6 +28,7 @@ export function getBaseStyles(theme: Theme): string {
         font-family: var(--nostrc-font-family-primary);
         font-size: var(--nostrc-font-size-base);
         background-color: var(--nostrc-color-background);
+        color: var(--nostrc-color-text-secondary);
         border-radius: var(--nostrc-border-radius-md);
         border: var(--nostrc-border-width) solid var(--nostrc-color-border);
         padding: var(--nostrc-spacing-md);
