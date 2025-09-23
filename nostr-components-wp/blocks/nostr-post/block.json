@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "nostr/nostr-post",
+  "version": "0.1.0",
+  "title": "Nostr Post",
+  "category": "nostr",
+  "icon": "format-quote",
+  "description": "Display Nostr posts by note ID",
+  "supports": {
+    "html": false
+  },
+  "attributes": {
+    "eventid": {
+      "type": "string",
+      "default": ""
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["light", "dark"],
+      "default": "light"
+    },
+    "relays": {
+      "type": "string",
+      "default": ""
+    },
+    "show-stats": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
