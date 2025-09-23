@@ -35,8 +35,8 @@ export class EventResolver {
       
       return null;
     } catch {
-      // If it's not bech32, assume it's already hex
-      return identifier;
+      // Not bech32; accept only if it is valid hex
+      return isValidHex(identifier) ? identifier : null;
     }
   }
 
@@ -54,6 +54,9 @@ export class EventResolver {
     
     if (!normalizedHex) {
       throw new Error("Unable to normalize identifier to hex format");
+    }
+    if (!isValidHex(normalizedHex)) {
+      throw new Error(`Invalid hex: ${normalizedHex}`);
     }
     
     const event = await this.nostrService.resolveNDKEvent({ hex: normalizedHex });

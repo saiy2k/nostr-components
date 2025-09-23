@@ -104,7 +104,7 @@ class Settings {
                                     placeholder="wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net" />
                                 <p class="description">
                                     Comma-separated list of Nostr relay URLs. Leave empty to use default relays:
-                                    <br><code>wss://relay.damus.io, wss://nostr.wine, wss://relay.nostr.net, wss://relay.nostr.band, wss://nos.lol, wss://nostr-pub.wellorder.net, wss://njump.me, wss://relay.getalby.com, wss://relay.primal.net, wss://purplepag.es</code>
+                                    <br><code>wss://relay.damus.io, wss://nostr.wine, wss://relay.nostr.net, wss://relay.nostr.band, wss://nos.lol, wss://nostr-pub.wellorder.net, wss://relay.getalby.com, wss://relay.primal.net</code>
                                 </p>
                             </td>
                         </tr>

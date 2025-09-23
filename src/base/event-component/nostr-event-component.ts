@@ -36,11 +36,12 @@ export class NostrEventComponent extends NostrBaseComponent {
   // guard to ignore stale event fetches
   private loadSeq = 0;
 
-  private resolver = new EventResolver(this.nostrService);
+  private resolver!: EventResolver;
 
   constructor(shadow: boolean = true) {
     super(shadow);
     this.initChannelStatus('event', NCStatus.Loading, { reflectOverall: false });
+    this.resolver = new EventResolver(this.nostrService);
   }
 
   /** Lifecycle methods */
@@ -97,6 +98,7 @@ export class NostrEventComponent extends NostrBaseComponent {
     if (err) {
       this.eventStatus.set(NCStatus.Error, err);
       console.error(`Nostr-Components: ${tagName}: ${err}`);
+      this.errorMessage = err;
       return false;
     }
 
@@ -119,6 +121,7 @@ export class NostrEventComponent extends NostrBaseComponent {
     }
 
     this.eventStatus.set(NCStatus.Loading);
+    this.event = null;
 
     try {
       const hex     = this.getAttribute('hex');
