@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "nostr/nostr-profile-badge",
+  "version": "0.1.0",
+  "title": "Nostr Profile Badge",
+  "category": "widgets",
+  "icon": "admin-users",
+  "description": "Compact Nostr profile display",
+  "supports": {
+    "html": false
+  },
+  "attributes": {
+    "npub": {
+      "type": "string",
+      "default": ""
+    },
+    "pubkey": {
+      "type": "string",
+      "default": ""
+    },
+    "nip05": {
+      "type": "string",
+      "default": ""
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["light", "dark"],
+      "default": "light"
+    },
+    "relays": {
+      "type": "string",
+      "default": ""
+    },
+    "show-npub": {
+      "type": "boolean",
+      "default": true
+    },
+    "show-follow": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "editorScript": "file:./index.js"
+}

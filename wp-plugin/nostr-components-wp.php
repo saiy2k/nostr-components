@@ -36,24 +36,16 @@ require_once NOSTR_WP_DIR . 'inc/Registry.php';
 require_once NOSTR_WP_DIR . 'inc/Settings.php';
 require_once NOSTR_WP_DIR . 'inc/Assets.php';
 require_once NOSTR_WP_DIR . 'inc/Shortcodes.php';
-// require_once NOSTR_WP_DIR . 'inc/Blocks.php';
-// require_once NOSTR_WP_DIR . 'inc/Kses.php';
+require_once NOSTR_WP_DIR . 'inc/Blocks.php';
+require_once NOSTR_WP_DIR . 'inc/Kses.php';
 
 // Initialize plugin classes
 add_action('plugins_loaded', function() {
     NostrComponentsWP\Settings::boot();
     NostrComponentsWP\Assets::boot();
     NostrComponentsWP\Shortcodes::boot();
-    // NostrComponentsWP\Blocks::boot();
-    // NostrComponentsWP\Kses::boot();
-});
-
-// Register no-build Hello World block
-add_action('init', function() {
-    $block_path = NOSTR_WP_DIR . 'blocks/hello-world';
-    if (file_exists($block_path . '/block.json')) {
-        register_block_type($block_path);
-    }
+    NostrComponentsWP\Blocks::boot();
+    NostrComponentsWP\Kses::boot();
 });
 
 // Plugin activation hook
