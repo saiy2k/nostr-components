@@ -38,7 +38,7 @@ const PARAMETERS = [
   },
   {
     variable: 'theme',
-    description: `Color theme of the component. Only supports two values - light and darkt`,
+    description: `Color theme of the component. Only supports two values - light and dark`,
     defaultValue: 'light',
     control: 'select',
     options: ['light', 'dark'],
@@ -249,7 +249,7 @@ type Story = StoryObj;
 export const Default: Story = {
   name: 'jb55 - Default',
   argTypes: {
-    width: { contro: 'number' },
+    width: { control: 'number' },
     npub: { control: 'text' },
   },
   args: {
@@ -261,7 +261,7 @@ export const Default: Story = {
 export const Jack: Story = {
   name: 'Jack Dorsey - Dark theme',
   argTypes: {
-    width: { contro: 'number' },
+    width: { control: 'number' },
     npub: { control: 'text' },
   },
   args: {
@@ -274,7 +274,7 @@ export const Jack: Story = {
 export const Gigi: Story = {
   name: 'Dergigi - nip05, follow button',
   argTypes: {
-    width: { contro: 'number' },
+    width: { control: 'number' },
     npub: { control: 'text' },
   },
   args: {
