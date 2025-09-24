@@ -1,5 +1,5 @@
-import { fn } from '@storybook/test';
-import type { ArgTypes, Meta, StoryObj } from '@storybook/web-components';
+import { fn } from 'storybook/test';
+import type { ArgTypes, Meta, StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_RELAYS } from '../src/common/constants';
 const PARAMETERS = [
   {
