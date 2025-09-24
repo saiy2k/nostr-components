@@ -1,0 +1,159 @@
+import type { ArgTypes, Meta } from '@storybook/web-components-vite';
+import { DEFAULT_RELAYS } from '../../src/common/constants.ts';
+
+// Constants
+export const DEFAULT_WIDTH = 300;
+export const BUNDLE_SCRIPT = '<script type="module" src="/nostr-components.es.js"></script>';
+
+export const PARAMETERS = [
+  {
+    variable: 'npub',
+    description:
+      'Nostr public key but in bech32 format.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    defaultValue: 'null',
+    control: 'text',
+  },
+  {
+    variable: 'nip05',
+    description: 'Nostr NIP-05 URI.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    defaultValue: 'null',
+    control: 'text',
+  },
+  {
+    variable: 'pubkey',
+    description:
+      'Raw pubkey provided by Nostr.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    defaultValue: 'null',
+    control: 'text',
+  },
+  {
+    variable: 'relays',
+    description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
+    defaultValue: DEFAULT_RELAYS.join(',\n'),
+    control: 'text',
+  },
+  {
+    variable: 'theme',
+    description: `Color theme of the component. Only supports two values - light and dark`,
+    defaultValue: 'light',
+    control: 'select',
+    options: ['light', 'dark'],
+  },
+  {
+    variable: 'show-npub',
+    description: `Whether need to show the npub in the profile badge or not`,
+    defaultValue: 'false',
+    control: 'boolean',
+  },
+  {
+    variable: 'show-follow',
+    description: `Whether need to show the follow button in the profile badge or not`,
+    defaultValue: 'false',
+    control: 'boolean',
+  },
+];
+
+export const CSS_VARIABLES = [
+  {
+    variable: '--nstrc-profile-badge-background-light',
+    description: 'Background color for light theme',
+    defaultValue: '#ffffff',
+    control: 'color',
+  },
+  {
+    variable: '--nstrc-profile-badge-background-dark',
+    description: 'Background color for dark theme',
+    defaultValue: '#1f2937',
+    control: 'color',
+  },
+  {
+    variable: '--nstrc-profile-badge-name-color-light',
+    description: 'Name text color for light theme',
+    defaultValue: '#111827',
+    control: 'color',
+  },
+  {
+    variable: '--nstrc-profile-badge-name-color-dark',
+    description: 'Name text color for dark theme',
+    defaultValue: '#f9fafb',
+    control: 'color',
+  },
+];
+
+export const generateCode = (args: any, forCodeGen = false) => {
+  const { width, onClick, ...otherArgs } = args;
+  const cssVars = CSS_VARIABLES.map(cssVar => {
+    const value = args[cssVar.variable];
+    return value ? `${cssVar.variable}: ${value};` : '';
+  }).filter(Boolean);
+
+  const cssVarsString = cssVars.length > 0 ? `\n  ${cssVars.join('\n  ')}` : '';
+
+  const attributes = Object.entries(otherArgs)
+    .filter(([key, value]) => value !== undefined && value !== null && value !== '')
+    .map(([key, value]) => {
+      if (typeof value === 'boolean') {
+        return value ? key : '';
+      }
+      return `${key}="${value}"`;
+    })
+    .filter(Boolean)
+    .join('\n  ');
+
+  // For Storybook's "Show Code" feature, we want clean HTML without the bundle script
+  // The bundle script should only be included in actual usage examples
+  return `<div style="width: ${width}px;${cssVarsString}">
+  <nostr-profile-badge${attributes ? `\n    ${attributes}` : ''}>
+  </nostr-profile-badge>
+</div>`.trim();
+};
+
+export const generateCodeWithScript = (args: any) => {
+  const cleanCode = generateCode(args);
+  return `${BUNDLE_SCRIPT}\n\n${cleanCode}`;
+};
+
+export const generateArgTypes = (): Partial<ArgTypes> => {
+  const argTypes: Partial<ArgTypes> = {};
+  
+  PARAMETERS.forEach(param => {
+    argTypes[param.variable] = {
+      description: param.description,
+      defaultValue: param.defaultValue,
+      control: param.control as any,
+    };
+  });
+
+  CSS_VARIABLES.forEach(cssVariable => {
+    argTypes[cssVariable.variable] = {
+      description: cssVariable.description,
+      defaultValue: cssVariable.defaultValue,
+      control: cssVariable.control as any,
+    };
+  });
+
+  return argTypes;
+};
+
+export const createTestingMeta = (title: string, tags: string[]) => ({
+  title,
+  tags,
+  render: args => generateCode(args),
+  argTypes: generateArgTypes(),
+  args: { onClick: () => {} },
+  parameters: {
+    docs: { disable: true },
+    test: {
+      enabled: true,
+      a11y: {
+        element: 'nostr-profile-badge',
+        config: {
+          rules: {
+            'color-contrast': { enabled: true },
+            'keyboard-navigation': { enabled: true },
+          },
+        },
+      },
+    },
+  },
+});
