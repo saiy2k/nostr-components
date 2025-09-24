@@ -1,5 +1,6 @@
 import { fn } from '@storybook/test';
 import type { ArgTypes, Meta, StoryObj } from '@storybook/web-components';
+import { DEFAULT_RELAYS } from '../src/common/constants';
 const PARAMETERS = [
   {
     variable: 'npub',
@@ -22,13 +23,12 @@ const PARAMETERS = [
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue:
-      'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
+    defaultValue: DEFAULT_RELAYS.join(',\n'),
     control: 'text',
   },
   {
     variable: 'theme',
-    description: `Color theme of the component. Only supports two values - light and darkt`,
+    description: `Color theme of the component. Only supports two values - light and dark`,
     defaultValue: 'light',
     control: 'select',
     options: ['light', 'dark'],

@@ -11,6 +11,10 @@ import {
 } from '@storybook/addon-docs';
 import { DEFAULT_RELAYS } from '../src/common/constants.ts';
 
+// Constants
+const DEFAULT_WIDTH = 300;
+const BUNDLE_SCRIPT = '<script type="module" src="/nostr-components.es.js"></script>';
+
 const PARAMETERS = [
   {
     variable: 'npub',
@@ -35,13 +39,12 @@ const PARAMETERS = [
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    // defaultValue: 'wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net,wss://nos.lol,wss://nostr-pub.wellorder.net,wss://njump.me,wss://relay.primal.net',
     defaultValue: DEFAULT_RELAYS.join(',\n'),
     control: 'text',
   },
   {
     variable: 'theme',
-    description: `Color theme of the component. Only supports two values - light and darkt`,
+    description: `Color theme of the component. Only supports two values - light and dark`,
     defaultValue: 'light',
     control: 'select',
     options: ['light', 'dark'],
@@ -162,7 +165,6 @@ const generateCode = (args, forCodeGen = false) => {
     .join('\n  ');
 
   const cssVariables = CSS_VARIABLES.map(cssVariable => {
-    // console.log(args[cssVariable.variable]);
     return args[cssVariable.variable]
       ? `${cssVariable.variable}: ${args[cssVariable.variable]} !important;`
       : '';
@@ -170,30 +172,20 @@ const generateCode = (args, forCodeGen = false) => {
     .filter(Boolean)
     .join('\n    ');
 
-  const showFollow = args['show-follow'];
-
   let styles = '';
 
   if (cssVariables.length > 0) {
     styles += `<style>\n  :root {\n    ${cssVariables}\n  }\n</style>`;
   }
 
-  const bundleScript = `<script type="module" src="/nostr-components.es.js"></script>`;
+  const bundleScript = BUNDLE_SCRIPT;
   let component = '';
 
-  // if(!forCodeGen) {
-  //   component += '<div style="width: 350px">\n  ';
-  // }
-
-  component += `<div style="width: ${args.width ? `${args.width}px` : '300px'}">\n`;
+  component += `<div style="width: ${args.width ? `${args.width}px` : DEFAULT_WIDTH}px">\n`;
 
   component += `<nostr-profile-badge\n  ${attributes}\n></nostr-profile-badge>`;
 
   component += '\n</div>';
-
-  // if(!forCodeGen) {
-  //   component += '\n</div>';
-  // }
 
   return `${bundleScript}${styles ? `\n\n${styles}` : ''}\n\n${component}`.trim();
 };
@@ -264,11 +256,11 @@ type Story = StoryObj;
 export const Default: Story = {
   name: 'Fiatjaf - Default',
   argTypes: {
-    width: { contro: 'number' },
+    width: { control: 'number' },
     npub: { control: 'text' },
   },
   args: {
-    width: 300,
+    width: DEFAULT_WIDTH,
     npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
   },
 };
@@ -276,11 +268,11 @@ export const Default: Story = {
 export const Odell: Story = {
   name: 'Odell - Dark theme',
   argTypes: {
-    width: { contro: 'number' },
+    width: { control: 'number' },
     npub: { control: 'text' },
   },
   args: {
-    width: 300,
+    width: DEFAULT_WIDTH,
     npub: 'npub1qny3tkh0acurzla8x3zy4nhrjz5zd8l9sy9jys09umwng00manysew95gx',
     theme: 'dark',
   },
@@ -289,11 +281,11 @@ export const Odell: Story = {
 export const Lyn: Story = {
   name: 'Lyn Alden - nip05',
   argTypes: {
-    width: { contro: 'number' },
+    width: { control: 'number' },
     npub: { control: 'text' },
   },
   args: {
-    width: 300,
+    width: DEFAULT_WIDTH,
     nip05: 'lyn@primal.net',
     theme: 'light',
   },
