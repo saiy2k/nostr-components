@@ -1,14 +1,6 @@
 import React from 'react';
 
-import { fn } from '@storybook/test';
-import type { ArgTypes, Meta, StoryObj } from '@storybook/web-components';
-import {
-  Title,
-  Subtitle,
-  Description,
-  Primary,
-  Controls,
-} from '@storybook/addon-docs';
+import type { ArgTypes, Meta, StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_RELAYS } from '../src/common/constants.ts';
 
 // Constants
@@ -228,23 +220,12 @@ const meta: Meta = {
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: argTypes,
-  args: { onClick: fn() },
+  args: { onClick: () => {} },
   parameters: {
     docs: {
       source: {
         transform: (code, storyContext) =>
           generateCode(storyContext.args, true),
-      },
-      page: () => {
-        return (
-          <>
-            <Title />
-            <Subtitle />
-            <Description />
-            <Primary />
-            <Controls />
-          </>
-        );
       },
     },
   },

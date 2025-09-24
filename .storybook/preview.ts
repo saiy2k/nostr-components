@@ -1,4 +1,4 @@
-import type { Preview } from '@storybook/web-components';
+import type { Preview } from '@storybook/web-components-vite';
 
 const preview: Preview = {
   parameters: {
@@ -13,6 +13,8 @@ const preview: Preview = {
       brandUrl: 'https://nostr-components.web.app/',
     },
   },
+
+  tags: ['autodocs']
 };
 
 export default preview;
