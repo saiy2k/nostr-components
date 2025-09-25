@@ -1,9 +1,11 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, BUNDLE_SCRIPT, generateCode, generateCodeWithScript, generateArgTypes } from './testing-utils.ts';
+import { TEST_CASES } from './test-cases.ts';
 
 const meta: Meta = {
   title: 'NostrProfileBadge',
+  tags: ['autodocs'],
   render: args => {
     const html = generateCode(args);
     // Create a template element to avoid HTML encoding
@@ -30,48 +32,36 @@ type Story = StoryObj;
 // ====================================
 
 export const Default: Story = {
-  name: 'Fiatjaf - Default',
-  args: {
-    width: DEFAULT_WIDTH,
-    npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
-    theme: 'light',
-  },
+  name: TEST_CASES.fiatjaf.name,
+  args: TEST_CASES.fiatjaf.args,
   parameters: {
     docs: {
       description: {
-        story: 'Default profile badge with npub input.',
+        story: TEST_CASES.fiatjaf.description,
       },
     },
   },
 };
 
 export const Odell: Story = {
-  name: 'Odell - Dark Theme',
-  args: {
-    width: DEFAULT_WIDTH,
-    npub: 'npub1qny3tkh0acurzla8x3zy4nhrjz5zd8l9sy9jys09umwng00manysew95gx',
-    theme: 'dark',
-  },
+  name: TEST_CASES.odell.name,
+  args: TEST_CASES.odell.args,
   parameters: {
     docs: {
       description: {
-        story: 'Profile badge with dark theme.',
+        story: TEST_CASES.odell.description,
       },
     },
   },
 };
 
 export const Lyn: Story = {
-  name: 'Lyn - Nip05',
-  args: {
-    width: DEFAULT_WIDTH,
-    nip05: 'lyn@primal.net',
-    theme: 'light',
-  },
+  name: TEST_CASES.lyn.name,
+  args: TEST_CASES.lyn.args,
   parameters: {
     docs: {
       description: {
-        story: 'Profile badge with nip05',
+        story: TEST_CASES.lyn.description,
       },
     },
   },

@@ -135,9 +135,42 @@ export const generateArgTypes = (): Partial<ArgTypes> => {
   return argTypes;
 };
 
+// Helper function to generate dashboard HTML from test cases
+export const generateDashboardHTML = (testCases: any[], title: string, color: string) => {
+  const testCaseHTML = testCases.map(testCase => {
+    const attributes = Object.entries(testCase.args)
+      .filter(([key, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => {
+        if (typeof value === 'boolean') {
+          return value ? key : '';
+        }
+        return `${key}="${value}"`;
+      })
+      .filter(Boolean)
+      .join(' ');
+
+    return `
+        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid ${color};">
+          <h4 style="margin: 0 0 10px 0; color: ${color};">${testCase.name}</h4>
+          <nostr-profile-badge ${attributes}></nostr-profile-badge>
+        </div>`;
+  }).join('');
+
+  return `
+    <div style="padding: 20px; background: #f5f5f5;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h2 style="margin: 0; color: ${color};">${title}</h2>
+        <p style="margin: 5px 0 0 0; color: #666;">Test cases showing component behavior</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        ${testCaseHTML}
+      </div>
+    </div>`;
+};
+
 export const createTestingMeta = (title: string, tags: string[]) => ({
   title,
-  tags,
+  tags: ['test', ...tags],
   render: args => generateCode(args),
   argTypes: generateArgTypes(),
   args: { onClick: () => {} },

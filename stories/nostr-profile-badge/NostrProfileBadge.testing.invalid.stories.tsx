@@ -1,6 +1,7 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, generateCode, generateArgTypes } from './testing-utils.ts';
+import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
 
 const meta = {
   title: 'NostrProfileBadge/Testing/Invalid',
@@ -9,7 +10,6 @@ const meta = {
   argTypes: generateArgTypes(),
   args: { onClick: () => {} },
   parameters: {
-    docs: { disable: true },
     test: {
       enabled: true,
       a11y: {
@@ -98,6 +98,32 @@ export const NetworkFailure: Story = {
     docs: {
       description: {
         story: 'Tests component resilience with unreachable relays.',
+      },
+    },
+  },
+};
+
+export const InvalidPubkey: Story = {
+  name: INVALID_TEST_CASES.invalidPubkey.name,
+  tags: ['test', 'error-handling', 'invalid'],
+  args: INVALID_TEST_CASES.invalidPubkey.args,
+  parameters: {
+    docs: {
+      description: {
+        story: INVALID_TEST_CASES.invalidPubkey.description,
+      },
+    },
+  },
+};
+
+export const InvalidTheme: Story = {
+  name: INVALID_TEST_CASES.invalidTheme.name,
+  tags: ['test', 'error-handling', 'invalid'],
+  args: INVALID_TEST_CASES.invalidTheme.args,
+  parameters: {
+    docs: {
+      description: {
+        story: INVALID_TEST_CASES.invalidTheme.description,
       },
     },
   },

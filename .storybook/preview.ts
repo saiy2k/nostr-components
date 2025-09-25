@@ -13,8 +13,6 @@ const preview: Preview = {
       brandUrl: 'https://nostr-components.web.app/',
     },
   },
-
-  tags: ['autodocs']
 };
 
 export default preview;
