@@ -429,6 +429,30 @@ Check out our full documentation [here](https://nostr-components.web.app).
 
 ---
 
+## 🛠️ Development
+
+### Storybook Setup
+
+This project uses Storybook for component development and testing. The setup includes both public showcase stories and private testing stories.
+
+**Development Commands:**
+
+```bash
+# Start Storybook in development mode (includes testing stories)
+npm run storybook
+
+# Build Storybook for production (excludes testing stories)
+STORYBOOK_ENV=production npm run build-storybook
+```
+
+**Story Organization:**
+- **Public Stories**: Showcase stories for component demos and documentation
+- **Testing Stories**: Private stories for development testing (excluded from production builds)
+
+The production build automatically excludes all testing stories to keep the public Storybook clean and focused on showcasing components.
+
+---
+
 ## 🤝 Contributing
 
 We welcome contributions!  
