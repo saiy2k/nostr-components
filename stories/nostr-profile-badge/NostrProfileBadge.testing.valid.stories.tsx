@@ -1,6 +1,7 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, generateCode, generateArgTypes } from './testing-utils.ts';
+import { TEST_CASES } from './test-cases.ts';
 
 const meta = {
   title: 'NostrProfileBadge/Testing/Valid',
@@ -9,7 +10,6 @@ const meta = {
   argTypes: generateArgTypes(),
   args: { onClick: () => {} },
   parameters: {
-    docs: { disable: true },
     test: {
       enabled: true,
       a11y: {
@@ -28,58 +28,40 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
-// ====================================
-// VALID CASES - Individual Stories
-// ====================================
-
 export const ShowNPub: Story = {
-  name: 'Show NPub Feature',
+  name: TEST_CASES.showNpub.name,
   tags: ['test', 'features', 'valid'],
-  args: {
-    width: DEFAULT_WIDTH,
-    npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
-    'show-npub': true,
-    theme: 'light',
-  },
+  args: TEST_CASES.showNpub.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests the show-npub feature display and copy functionality.',
+        story: TEST_CASES.showNpub.description,
       },
     },
   },
 };
 
 export const ShowFollow: Story = {
-  name: 'Show Follow Button',
+  name: TEST_CASES.showFollow.name,
   tags: ['test', 'features', 'valid'],
-  args: {
-    width: DEFAULT_WIDTH,
-    npub: 'npub1qny3tkh0acurzla8x3zy4nhrjz5zd8l9sy9jys09umwng00manysew95gx',
-    'show-follow': true,
-    theme: 'dark',
-  },
+  args: TEST_CASES.showFollow.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests the follow button integration and functionality.',
+        story: TEST_CASES.showFollow.description,
       },
     },
   },
 };
 
-export const PubkeyInput: Story = {
-  name: 'Raw Pubkey Input',
+export const RawPubkeyInput: Story = {
+  name: TEST_CASES.rawPubkey.name,
   tags: ['test', 'input-types', 'valid'],
-  args: {
-    width: DEFAULT_WIDTH,
-    pubkey: '1989034e56b8f606c724f45a12ce84a11841621aaf7182a1f6564380b9c4276b',
-    theme: 'light',
-  },
+  args: TEST_CASES.rawPubkey.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests component with raw hex pubkey instead of npub.',
+        story: TEST_CASES.rawPubkey.description,
       },
     },
   },
@@ -102,18 +84,27 @@ export const NarrowWidth: Story = {
   },
 };
 
-export const ExtremelyWideWidth: Story = {
-  name: 'Extremely Wide Width',
-  tags: ['test', 'responsive', 'valid'],
-  args: {
-    width: 1200,
-    npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
-    theme: 'light',
-  },
+export const ShowFollowButton: Story = {
+  name: TEST_CASES.showFollow.name,
+  tags: ['test', 'features', 'valid'],
+  args: TEST_CASES.showFollow.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests component behavior at very wide widths.',
+        story: TEST_CASES.showFollow.description,
+      },
+    },
+  },
+};
+
+export const AllFeatures: Story = {
+  name: TEST_CASES.allFeatures.name,
+  tags: ['test', 'features', 'valid'],
+  args: TEST_CASES.allFeatures.args,
+  parameters: {
+    docs: {
+      description: {
+        story: TEST_CASES.allFeatures.description,
       },
     },
   },
@@ -133,6 +124,19 @@ export const HighContrastTest: Story = {
     docs: {
       description: {
         story: 'Tests high contrast mode for visually impaired users.',
+      },
+    },
+  },
+};
+
+export const LynNip05: Story = {
+  name: TEST_CASES.lyn.name,
+  tags: ['test', 'input-types', 'valid'],
+  args: TEST_CASES.lyn.args,
+  parameters: {
+    docs: {
+      description: {
+        story: TEST_CASES.lyn.description,
       },
     },
   },
