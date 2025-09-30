@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, BUNDLE_SCRIPT, generateCode, generateCodeWithScript, generateArgTypes } from './testing-utils.ts';
-import { TEST_CASES } from './test-cases.ts';
+import { TEST_CASES } from './test-cases-valid.ts';
 
 const meta: Meta = {
   title: 'NostrProfileBadge',
@@ -31,7 +31,7 @@ type Story = StoryObj;
 // PUBLIC DEMO STORIES
 // ====================================
 
-export const Default: Story = {
+export const Fiatjaf: Story = {
   name: TEST_CASES.fiatjaf.name,
   args: TEST_CASES.fiatjaf.args,
   parameters: {

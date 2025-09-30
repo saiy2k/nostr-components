@@ -1,7 +1,7 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { generateCode, generateArgTypes, generateDashboardHTML } from './testing-utils.ts';
-import { TEST_CASES } from './test-cases.ts';
+import { TEST_CASES } from './test-cases-valid.ts';
 import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
 
 const meta = {
