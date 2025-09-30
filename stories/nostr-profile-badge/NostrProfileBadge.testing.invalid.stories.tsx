@@ -33,71 +33,52 @@ type Story = StoryObj;
 // ====================================
 
 export const InvalidNPub: Story = {
-  name: 'Invalid NPub Format',
+  name: INVALID_TEST_CASES.invalidNpub.name,
   tags: ['test', 'error-handling', 'invalid'],
-  args: {
-    width: DEFAULT_WIDTH,
-    npub: 'invalid-npub-format-xyz123',
-    theme: 'light',
-  },
+  args: INVALID_TEST_CASES.invalidNpub.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests how the component handles malformed npub input.',
+        story: INVALID_TEST_CASES.invalidNpub.description,
       },
     },
   },
 };
 
 export const InvalidNip05: Story = {
-  name: 'Invalid NIP-05',
+  name: INVALID_TEST_CASES.invalidNip05.name,
   tags: ['test', 'error-handling', 'invalid'],
-  args: {
-    width: DEFAULT_WIDTH,
-    nip05: 'malformed@invalid@domain.com',
-    theme: 'light',
-  },
+  args: INVALID_TEST_CASES.invalidNip05.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests how the component handles malformed NIP-05 format.',
+        story: INVALID_TEST_CASES.invalidNip05.description,
       },
     },
   },
 };
 
 export const EmptyInputs: Story = {
-  name: 'Empty/Null Inputs',
+  name: INVALID_TEST_CASES.emptyInputs.name,
   tags: ['test', 'edge-cases', 'invalid'],
-  args: {
-    width: DEFAULT_WIDTH,
-    npub: '',
-    nip05: '',
-    pubkey: '',
-    theme: 'light',
-  },
+  args: INVALID_TEST_CASES.emptyInputs.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests component behavior with empty or null values.',
+        story: INVALID_TEST_CASES.emptyInputs.description,
       },
     },
   },
 };
 
 export const NetworkFailure: Story = {
-  name: 'Network/Relay Failure',
+  name: INVALID_TEST_CASES.networkFailure.name,
   tags: ['test', 'network', 'invalid'],
-  args: {
-    width: DEFAULT_WIDTH,
-    npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
-    relays: 'wss://invalid-relay.nonexistent',
-    theme: 'light',
-  },
+  args: INVALID_TEST_CASES.networkFailure.args,
   parameters: {
     docs: {
       description: {
-        story: 'Tests component resilience with unreachable relays.',
+        story: INVALID_TEST_CASES.networkFailure.description,
       },
     },
   },

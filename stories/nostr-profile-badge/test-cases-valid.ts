@@ -1,11 +1,12 @@
 import { DEFAULT_WIDTH } from './testing-utils.ts';
+import { PROFILE_DATA } from '../profile-data.ts';
 
 export const TEST_CASES = {
   showNpub: {
     name: 'Show NPub Feature',
     args: {
       width: DEFAULT_WIDTH,
-      npub: 'npub1dergggklka99wwrs92yz8wdjs952h2ux2ha2ed598ngwu9w7a6fsh9xzpc',
+      npub: PROFILE_DATA.derGigi.npub,
       'show-npub': true,
       theme: 'light',
     },
@@ -15,7 +16,7 @@ export const TEST_CASES = {
     name: 'Show Follow Button',
     args: {
       width: DEFAULT_WIDTH,
-      npub: 'npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3',
+      npub: PROFILE_DATA.fiatjaf.npub,
       'show-follow': true,
       theme: 'light',
     },
@@ -25,7 +26,7 @@ export const TEST_CASES = {
     name: 'All Features',
     args: {
       width: DEFAULT_WIDTH,
-      npub: 'npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s',
+      npub: PROFILE_DATA.jb55.npub,
       'show-npub': true,
       'show-follow': true,
       theme: 'light',
@@ -36,7 +37,7 @@ export const TEST_CASES = {
     name: 'Raw Pubkey Input',
     args: {
       width: DEFAULT_WIDTH,
-      pubkey: '1989034e56b8f606c724f45a12ce84a11841621aaf7182a1f6564380b9c4276b',
+      pubkey: PROFILE_DATA.jack.pubkey,
       theme: 'light',
     },
     description: 'Tests component with raw pubkey input instead of npub.',
@@ -45,7 +46,7 @@ export const TEST_CASES = {
     name: 'Narrow Width',
     args: {
       width: 200,
-      npub: 'npub1utx00neqgqln72j22kej3ux7803c2k986henvvha4thuwfkper4s7r50e8',
+      npub: PROFILE_DATA.lyn.npub,
       theme: 'light',
     },
     description: 'Tests component behavior with constrained width.',
@@ -54,7 +55,7 @@ export const TEST_CASES = {
     name: 'Valid NPub',
     args: {
       width: DEFAULT_WIDTH,
-      npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
+      npub: PROFILE_DATA.jack.npub,
       theme: 'light',
     },
     description: 'Basic valid npub input test.',
@@ -63,7 +64,7 @@ export const TEST_CASES = {
     name: 'Dark Theme',
     args: {
       width: DEFAULT_WIDTH,
-      npub: 'npub1qny3tkh0acurzla8x3zy4nhrjz5zd8l9sy9jys09umwng00manysew95gx',
+      npub: PROFILE_DATA.odell.npub,
       theme: 'dark',
     },
     description: 'Tests dark theme styling.',
@@ -73,7 +74,7 @@ export const TEST_CASES = {
     name: 'Fiatjaf - Default',
     args: {
       width: DEFAULT_WIDTH,
-      npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
+      npub: PROFILE_DATA.fiatjaf.npub,
       theme: 'light',
     },
     description: 'Default profile badge with npub input.',
@@ -82,16 +83,16 @@ export const TEST_CASES = {
     name: 'Odell - Dark Theme',
     args: {
       width: DEFAULT_WIDTH,
-      npub: 'npub1qny3tkh0acurzla8x3zy4nhrjz5zd8l9sy9jys09umwng00manysew95gx',
+      npub: PROFILE_DATA.odell.npub,
       theme: 'dark',
     },
     description: 'Profile badge with dark theme.',
   },
   lyn: {
-    name: 'Lyn - Nip05',
+    name: 'Nip05',
     args: {
       width: DEFAULT_WIDTH,
-      nip05: 'lyn@primal.net',
+      nip05: PROFILE_DATA.lyn.nip05,
       theme: 'light',
     },
     description: 'Profile badge with nip05',
