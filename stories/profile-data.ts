@@ -54,6 +54,12 @@ export const PROFILE_DATA: Record<string, Profile> = {
     nip05: '',
     pubkey: 'e2ccf7cf20403f3f2a4a55b328f0de3be38558a7d5f33632fdaaefc726c1c8eb',
   },
+  sai: {
+    name: 'Saiyasodharan',
+    npub: 'npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3',
+    nip05: 'saiy2k@.iris.to',
+    pubkey: '0418ca2d6cd6c7fbc4e0391bb745027023a7edbc38f2a60fc3b68f006efb85eb',
+  },
 };
 
 export const getRandomProfile = (): Profile => {
