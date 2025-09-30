@@ -122,13 +122,11 @@ export const DynamicAllAttributes: Story = {
     const inputs = allInputs.sort(() => Math.random() - 0.5);
     
     const themes = ['light', 'dark'];
-    const showFollowOptions = [true, false];
-    const showNpubOptions = [true, false];
+    let showFollow = true;
+    let showNpub = false;
     
     let inputIndex = 0;
     let themeIndex = 0;
-    let showFollowIndex = 0;
-    let showNpubIndex = 0;
 
     // Create input list container
     const inputListContainer = document.createElement('div');
@@ -164,12 +162,12 @@ export const DynamicAllAttributes: Story = {
       component.setAttribute('theme', themes[themeIndex]);
       
       // Update show-follow
-      showFollowIndex = (showFollowIndex + 1) % showFollowOptions.length;
-      component.setAttribute('show-follow', showFollowOptions[showFollowIndex].toString());
+      showFollow = !showFollow;
+      component.setAttribute('show-follow', showFollow.toString());
       
       // Update show-npub
-      showNpubIndex = (showNpubIndex + 1) % showNpubOptions.length;
-      component.setAttribute('show-npub', showNpubOptions[showNpubIndex].toString());
+      showNpub = !showNpub;
+      component.setAttribute('show-npub', showNpub.toString());
       
       // Update input list display
       const inputListElement = document.getElementById('input-list');
@@ -181,14 +179,198 @@ export const DynamicAllAttributes: Story = {
       console.log(`Updated all attributes:`, {
         input: `${input.type}: ${input.value} (${input.name})`,
         theme: themes[themeIndex],
-        showFollow: showFollowOptions[showFollowIndex],
-        showNpub: showNpubOptions[showNpubIndex]
+        showFollow: showFollow,
+        showNpub: showNpub
       });
       
       inputIndex = (inputIndex + 1) % inputs.length;
     };
 
     setInterval(updateAllAttributes, 5000);
+    
+  },
+};
+
+export const DynamicNPubAndRelays: Story = {
+  name: 'Dynamic NPub and Relays',
+  tags: ['test', 'dynamic', 'npub', 'relays'],
+  args: {
+    width: DEFAULT_WIDTH,
+    npub: PROFILE_DATA.jack.npub,
+    relays: 'wss://relay.damus.io',
+    theme: 'light',
+  },
+  play: async ({ canvasElement }) => {
+    // Wait for component to be ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const component = canvasElement.querySelector('nostr-profile-badge');
+    if (!component) return;
+
+    // Create status display container
+    const statusContainer = document.createElement('div');
+    statusContainer.style.cssText = `
+      margin-top: 20px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    `;
+    statusContainer.innerHTML = `
+      <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">Current Configuration</h4>
+      <div id="current-npub" style="margin-bottom: 8px; font-family: monospace; font-size: 12px;"></div>
+      <div id="current-relays" style="margin-bottom: 8px; font-family: monospace; font-size: 12px;"></div>
+      <div id="change-log" style="font-size: 11px; color: #6c757d; height: 500px; max-height: 500px; overflow-y: auto;"></div>
+    `;
+    
+    // Insert after the component
+    component.parentNode?.insertBefore(statusContainer, component.nextSibling);
+
+    // Different npubs to cycle through
+    const npubs = [
+      { npub: PROFILE_DATA.jack.npub, name: 'Jack' },
+      { npub: PROFILE_DATA.derGigi.npub, name: 'DerGigi' },
+      { npub: PROFILE_DATA.fiatjaf.npub, name: 'Fiatjaf' },
+      { npub: PROFILE_DATA.jb55.npub, name: 'jb55' },
+      { npub: PROFILE_DATA.odell.npub, name: 'Odell' },
+      { npub: PROFILE_DATA.lyn.npub, name: 'Lyn' },
+      { npub: PROFILE_DATA.utxo.npub, name: 'Utxo' },
+      { npub: PROFILE_DATA.sai.npub, name: 'Sai' },
+    ];
+
+    // Different relay configurations
+    const relayConfigs = [
+      { relays: 'wss://relay.damus.io', name: 'Damus Relay' },
+      { relays: 'wss://relay.snort.social', name: 'Snort Social' },
+      { relays: 'wss://nos.lol', name: 'Nos.lol' },
+      { relays: 'wss://relay.nostr.band', name: 'Nostr Band' },
+      { relays: 'wss://relay.damus.io,wss://relay.snort.social', name: 'Multiple Relays' },
+      { relays: 'wss://no.netsec.vip/', name: 'New Relay' },
+      { relays: 'wss://invalid-relay.nonexistent', name: 'Invalid Relay' },
+      { relays: '', name: 'No Relays' },
+    ];
+
+    let npubIndex = 0;
+    let relayIndex = 0;
+    let changeCount = 0;
+
+    // Function to update status display
+    const updateStatusDisplay = (currentNpub: any, currentRelays: any) => {
+      const npubElement = document.getElementById('current-npub');
+      const relaysElement = document.getElementById('current-relays');
+      
+      if (npubElement && currentNpub != null) {
+        npubElement.innerHTML = `<strong>NPub:</strong> ${currentNpub.name} (${currentNpub.npub.substring(0, 20)}...)`;
+      }
+      
+      if (relaysElement && currentRelays != null) {
+        relaysElement.innerHTML = `<strong>Relays:</strong> ${currentRelays.name} (${currentRelays.relays || 'none'})`;
+      }
+    };
+
+    // Function to add log entry
+    const addLogEntry = (message: string) => {
+      const logElement = document.getElementById('change-log');
+      if (logElement) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = `${timestamp}: ${message}<br>`;
+        logElement.innerHTML = logEntry + logElement.innerHTML;
+        
+        // Keep only last 10 entries
+        const entries = logElement.innerHTML.split('<br>');
+        if (entries.length > 40) {
+          logElement.innerHTML = entries.slice(0, 40).join('<br>');
+        }
+      }
+    };
+
+    let isFastMode = true;
+    let fastUpdateCount = 0;
+    const maxFastUpdates = 10; // Number of fast updates before pause
+
+    // Function to update npub only
+    const updateNPub = () => {
+      const currentNpub = npubs[npubIndex];
+      
+      // Update npub
+      component.setAttribute('npub', currentNpub.npub);
+      
+      // Log the change
+      addLogEntry(`NPub changed to ${currentNpub.name}`);
+      console.log(`NPub change ${++changeCount}:`, {
+        npub: `${currentNpub.name} (${currentNpub.npub})`
+      });
+      
+      // Update status display immediately after change
+      updateStatusDisplay(currentNpub, null);
+      
+      // Move to next npub
+      npubIndex = (npubIndex + 1) % npubs.length;
+    };
+
+    // Function to update relays only
+    const updateRelays = () => {
+      const currentRelays = relayConfigs[relayIndex];
+      
+      // Update relays
+      if (currentRelays.relays) {
+        component.setAttribute('relays', currentRelays.relays);
+      } else {
+        component.removeAttribute('relays');
+      }
+      
+      // Log the change
+      addLogEntry(`Relays changed to ${currentRelays.name}`);
+      console.log(`Relay change ${++changeCount}:`, {
+        relays: `${currentRelays.name} (${currentRelays.relays || 'none'})`
+      });
+      
+      // Update status display immediately after change
+      updateStatusDisplay(null, currentRelays);
+      
+      // Move to next relay configuration
+      relayIndex = (relayIndex + 1) % relayConfigs.length;
+    };
+
+    // Function to handle fast updates
+    const performFastUpdate = () => {
+      if (fastUpdateCount >= maxFastUpdates) {
+        // Switch to pause mode
+        isFastMode = false;
+        fastUpdateCount = 0;
+        addLogEntry(`Pausing for 15000ms...`);
+        console.log('Switching to pause mode for 15000ms');
+        
+        // Schedule next fast cycle after pause
+        setTimeout(() => {
+          isFastMode = true;
+          addLogEntry(`Resuming fast updates...`);
+          console.log('Resuming fast updates');
+          performFastUpdate();
+        }, 15000);
+        return;
+      }
+
+      // Alternate between npub and relay updates
+      if (fastUpdateCount % 2 === 0) {
+        updateNPub();
+      } else {
+        updateRelays();
+      }
+
+      fastUpdateCount++;
+
+      // Schedule next fast update with random delay between 50-100ms
+      const nextDelay = 100 + Math.random() * 100; // 100-200ms
+      setTimeout(performFastUpdate, nextDelay);
+    };
+
+    // Initial status update
+    updateStatusDisplay(npubs[npubIndex], relayConfigs[relayIndex]);
+
+    // Start the fast update cycle
+    addLogEntry(`Starting fast update cycle...`);
+    performFastUpdate();
     
   },
 };
