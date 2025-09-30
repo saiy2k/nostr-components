@@ -92,7 +92,7 @@ export class NostrService {
 
   public async getProfile(user: NDKUser | null): Promise<NDKUserProfile | null> {
     if (!user) return null;
-  
+
     await user.fetchProfile();
 
     const profile = user.profile;

@@ -119,7 +119,11 @@ export default class NostrProfileBadge extends NostrUserComponent {
     // Get attribute values
     const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
     const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
-    const errorMessage  = isError ? super.renderError(this.errorMessage) : '';
+    var errorMessage  = isError ? super.renderError(this.errorMessage) : '';
+
+    if (errorMessage.length == 0 && this.profile == null) {
+      errorMessage = 'Cant find user profile';
+    }
 
     const renderOptions: RenderProfileBadgeOptions = {
       theme       : this.theme,

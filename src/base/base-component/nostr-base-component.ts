@@ -288,7 +288,6 @@ export abstract class NostrBaseComponent extends HTMLElement {
     this.delegateEvent(type, selector, handler);
   }
 
-
   protected renderError(errorMessage: string): string {
     return `Error: ${errorMessage}`;
   }
