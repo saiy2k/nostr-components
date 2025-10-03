@@ -78,6 +78,18 @@ export const CSS_VARIABLES = [
     defaultValue: '#f9fafb',
     control: 'color',
   },
+  {
+    variable: '--nstrc-profile-badge-text-secondary-light',
+    description: 'Secondary text color for light theme',
+    defaultValue: '#666666',
+    control: 'color',
+  },
+  {
+    variable: '--nstrc-profile-badge-text-secondary-dark',
+    description: 'Secondary text color for dark theme',
+    defaultValue: '#999999',
+    control: 'color',
+  },
 ];
 
 export const generateCode = (args: any, forCodeGen = false) => {
