@@ -185,7 +185,7 @@ export default class NostrProfile extends NostrUserComponent {
     const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
     const showNpub      = this.getAttribute('show-npub') !== 'false';
-    const showFollow    = this.getAttribute('show-follow') !== 'false';
+    const showFollow    = this.getAttribute('show-follow') === 'true';
 
     const renderOptions: RenderProfileOptions = {
       theme: this.theme,
