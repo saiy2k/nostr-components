@@ -2,13 +2,21 @@
 
 import { Theme } from "../common/types";
 import { getComponentStyles } from "../common/base-styles";
+import { getProfileBadgeCSSVars, getThemeAwareProfileBadgeVars } from "./css-vars";
 
 export function getProfileBadgeStyles(theme: Theme): string {
   const customStyles = `
+    /* === PROFILE BADGE SPECIFIC CSS VARIABLES === */
+    :host {
+      ${getProfileBadgeCSSVars()}
+      ${getThemeAwareProfileBadgeVars(theme)}
+    }
+    
     /* === PROFILE BADGE CONTAINER PATTERN === */
     .nostr-profile-badge-container {
       display: flex;
       gap: var(--nostrc-spacing-md);
+      background-color: var(--nostrc-profile-badge-background);
     }
     
     .nostr-profile-badge-left-container {
@@ -29,6 +37,15 @@ export function getProfileBadgeStyles(theme: Theme): string {
       justify-content: center;
       flex-grow: 1;
       min-width: 0;
+    }
+    
+    /* Profile badge specific styling using component variables */
+    .nostr-profile-badge-container .nostr-profile-name {
+      color: var(--nostrc-profile-badge-name-color);
+    }
+    
+    .nostr-profile-badge-container {
+      color: var(--nostrc-profile-badge-text-secondary);
     }
     
     /* Skeleton specific styles */
