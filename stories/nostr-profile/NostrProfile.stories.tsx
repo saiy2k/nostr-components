@@ -4,11 +4,10 @@ import { DEFAULT_WIDTH, BUNDLE_SCRIPT, generateCode, generateCodeWithScript, gen
 import { TEST_CASES } from './test-cases-valid.ts';
 
 const meta: Meta = {
-  title: 'NostrProfileBadge',
+  title: 'NostrProfile',
   tags: ['autodocs'],
   render: args => {
     const html = generateCode(args);
-    // Create a template element to avoid HTML encoding
     const template = document.createElement('template');
     template.innerHTML = html;
     return template.content.cloneNode(true);
@@ -18,7 +17,7 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: 'A web component for displaying Nostr profile information in a compact badge format. Supports npub, nip05, and raw pubkey inputs with light/dark theme support and optional features like npub display and follow button integration.',
+        component: 'A web component for displaying comprehensive Nostr profile information including user stats, banner, avatar, bio, and optional features like npub display and follow button integration.',
       },
     },
   },
@@ -31,37 +30,37 @@ type Story = StoryObj;
 // PUBLIC DEMO STORIES
 // ====================================
 
-export const Fiatjaf: Story = {
-  name: 'Fiatjaf - Default',
-  args: TEST_CASES.fiatjaf.args,
+export const Jb55: Story = {
+  name: 'jb55 - Default',
+  args: TEST_CASES.jb55.args,
   parameters: {
     docs: {
       description: {
-        story: TEST_CASES.fiatjaf.description,
+        story: TEST_CASES.jb55.description,
       },
     },
   },
 };
 
-export const Odell: Story = {
-  name: 'Odell - Dark theme',
-  args: TEST_CASES.odell.args,
+export const JackDorsey: Story = {
+  name: 'Jack Dorsey - Dark theme',
+  args: TEST_CASES.darkTheme.args,
   parameters: {
     docs: {
       description: {
-        story: TEST_CASES.odell.description,
+        story: TEST_CASES.darkTheme.description,
       },
     },
   },
 };
 
-export const Lyn: Story = {
-  name: 'Lyn Alden - nip05',
-  args: TEST_CASES.lyn.args,
+export const DerGigi: Story = {
+  name: 'Dergigi - nip05, follow button',
+  args: TEST_CASES.derGigi.args,
   parameters: {
     docs: {
       description: {
-        story: TEST_CASES.lyn.description,
+        story: TEST_CASES.derGigi.description,
       },
     },
   },
