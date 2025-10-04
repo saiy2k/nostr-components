@@ -1,3 +1,3 @@
 // SPDX-License-Identifier: MIT
 
-export type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'ocean-glass' | 'holographic' | 'neo-matrix' | 'bitcoin-orange';

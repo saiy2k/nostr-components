@@ -45,12 +45,79 @@ export const Fiatjaf: Story = {
 
 export const Odell: Story = {
   name: 'Odell - Dark theme',
-  args: TEST_CASES.odell.args,
+  args: {
+    ...TEST_CASES.odell.args,
+    wrapperDataTheme: TEST_CASES.odell.wrapperDataTheme,
+  },
   parameters: {
     docs: {
       description: {
-        story: TEST_CASES.odell.description,
+        story: `${TEST_CASES.odell.description}
+
+**New Theme System Usage:**
+\`\`\`html
+<link rel="stylesheet" href="dist/themes.css">
+
+<div data-theme="dark">
+  <nostr-profile-badge npub="${TEST_CASES.odell.args.npub}"></nostr-profile-badge>
+</div>
+\`\`\`
+
+The component now uses the new \`data-theme="dark"\` approach instead of the \`theme\` prop.`,
       },
+    },
+  },
+};
+
+export const OceanGlass: Story = {
+  name: 'Ocean Glass',
+  args: {
+    ...TEST_CASES.oceanGlass.args,
+    wrapperDataTheme: TEST_CASES.oceanGlass.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.oceanGlass.description },
+    },
+  },
+};
+
+
+export const Holographic: Story = {
+  name: 'Holographic',
+  args: {
+    ...TEST_CASES.holographic.args,
+    wrapperDataTheme: TEST_CASES.holographic.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.holographic.description },
+    },
+  },
+};
+
+export const NeoMatrix: Story = {
+  name: 'Neo Matrix',
+  args: {
+    ...TEST_CASES.neoMatrix.args,
+    wrapperDataTheme: TEST_CASES.neoMatrix.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.neoMatrix.description },
+    },
+  },
+};
+
+export const BitcoinOrange: Story = {
+  name: 'Bitcoin Orange',
+  args: {
+    ...TEST_CASES.bitcoinOrange.args,
+    wrapperDataTheme: TEST_CASES.bitcoinOrange.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.bitcoinOrange.description },
     },
   },
 };

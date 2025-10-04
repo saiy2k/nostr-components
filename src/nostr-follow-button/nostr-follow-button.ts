@@ -106,7 +106,6 @@ export default class NostrFollowButton extends NostrUserComponent {
     const errorMessage        = super.renderError(this.errorMessage);
 
     const renderOptions: RenderFollowButtonOptions = {
-      theme       : this.theme,
       isLoading   : isLoading,
       isError     : isError,
       errorMessage: errorMessage,
@@ -115,7 +114,7 @@ export default class NostrFollowButton extends NostrUserComponent {
     };
 
     this.shadowRoot!.innerHTML = `
-      ${getFollowButtonStyles(this.theme)}
+      ${getFollowButtonStyles()}
       ${renderFollowButton(renderOptions)}
     `
   }

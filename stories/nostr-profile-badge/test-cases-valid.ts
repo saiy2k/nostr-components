@@ -84,9 +84,50 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.odell.npub,
-      theme: 'dark',
+      theme: 'light', // Use light as base since we'll wrap with data-theme="dark"
     },
-    description: 'Profile badge with dark theme.',
+    description: 'Profile badge with dark theme enabled via data-theme attribute (new theme system).',
+    wrapperDataTheme: 'dark', // Add wrapper theme
+  },
+  oceanGlass: {
+    name: 'Ocean Glass Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.fiatjaf.npub,
+      theme: 'light',
+    },
+    description: 'Profile badge themed with ocean-glass via data-theme.',
+    wrapperDataTheme: 'ocean-glass',
+  },
+  holographic: {
+    name: 'Holographic Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.jb55.npub,
+      theme: 'light',
+    },
+    description: 'Profile badge themed with holographic via data-theme.',
+    wrapperDataTheme: 'holographic',
+  },
+  neoMatrix: {
+    name: 'Neo Matrix Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.derGigi.npub,
+      theme: 'light',
+    },
+    description: 'Profile badge themed with neo-matrix via data-theme.',
+    wrapperDataTheme: 'neo-matrix',
+  },
+  bitcoinOrange: {
+    name: 'Bitcoin Orange Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.jack.npub,
+      theme: 'light',
+    },
+    description: 'Profile badge themed with bitcoin-orange via data-theme.',
+    wrapperDataTheme: 'bitcoin-orange',
   },
   lyn: {
     name: 'Nip05',

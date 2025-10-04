@@ -65,3 +65,55 @@ export const DerGigi: Story = {
     },
   },
 };
+
+export const Holographic: Story = {
+  name: 'Holographic',
+  args: {
+    ...TEST_CASES.holographic.args,
+    wrapperDataTheme: TEST_CASES.holographic.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.holographic.description },
+    },
+  },
+};
+
+export const OceanGlass: Story = {
+  name: 'Ocean Glass',
+  args: {
+    ...TEST_CASES.oceanGlass.args,
+    wrapperDataTheme: TEST_CASES.oceanGlass.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.oceanGlass.description },
+    },
+  },
+};
+
+export const NeoMatrix: Story = {
+  name: 'Neo Matrix',
+  args: {
+    ...TEST_CASES.neoMatrix.args,
+    wrapperDataTheme: TEST_CASES.neoMatrix.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.neoMatrix.description },
+    },
+  },
+};
+
+export const BitcoinOrange: Story = {
+  name: 'Bitcoin Orange',
+  args: {
+    ...TEST_CASES.bitcoinOrange.args,
+    wrapperDataTheme: TEST_CASES.bitcoinOrange.wrapperDataTheme,
+  },
+  parameters: {
+    docs: {
+      description: { story: TEST_CASES.bitcoinOrange.description },
+    },
+  },
+};

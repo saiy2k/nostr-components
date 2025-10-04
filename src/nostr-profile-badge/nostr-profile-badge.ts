@@ -137,7 +137,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
     };
 
     this.shadowRoot!.innerHTML = `
-      ${getProfileBadgeStyles(this.theme)}
+      ${getProfileBadgeStyles()}
       ${renderProfileBadge(renderOptions)}
     `;
   }
