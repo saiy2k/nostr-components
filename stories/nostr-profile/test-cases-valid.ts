@@ -127,6 +127,46 @@ export const TEST_CASES = {
     },
     description: 'Basic profile without additional features.',
   },
+  holographic: {
+    name: 'Holographic Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.jb55.npub,
+      theme: 'light',
+    },
+    description: 'Profile themed with holographic via data-theme on the component.',
+    wrapperDataTheme: 'holographic',
+  },
+  oceanGlass: {
+    name: 'Ocean Glass Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.fiatjaf.npub,
+      theme: 'light',
+    },
+    description: 'Profile themed with ocean-glass via data-theme.',
+    wrapperDataTheme: 'ocean-glass',
+  },
+  neoMatrix: {
+    name: 'Neo Matrix Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.derGigi.npub,
+      theme: 'light',
+    },
+    description: 'Profile themed with neo-matrix via data-theme.',
+    wrapperDataTheme: 'neo-matrix',
+  },
+  bitcoinOrange: {
+    name: 'Bitcoin Orange Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.jack.npub,
+      theme: 'light',
+    },
+    description: 'Profile themed with bitcoin-orange via data-theme.',
+    wrapperDataTheme: 'bitcoin-orange',
+  },
   wideLayout: {
     name: 'Wide Layout',
     args: {

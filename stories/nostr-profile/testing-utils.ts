@@ -33,13 +33,6 @@ export const PARAMETERS = [
     control: 'text',
   },
   {
-    variable: 'theme',
-    description: `Color theme of the component. Only supports two values - light and dark`,
-    defaultValue: 'light',
-    control: 'select',
-    options: ['light', 'dark'],
-  },
-  {
     variable: 'show-npub',
     description: `Whether need to show the npub in the profile or not`,
     defaultValue: 'false',
@@ -147,7 +140,7 @@ export const CSS_VARIABLES = [
 ];
 
 export const generateCode = (args: any, forCodeGen = false) => {
-  const { width, onClick, ...otherArgs } = args;
+  const { width, onClick, wrapperDataTheme, ...otherArgs } = args;
   const cssVars = CSS_VARIABLES.map(cssVar => {
     const value = args[cssVar.variable];
     return value ? `${cssVar.variable}: ${value};` : '';
@@ -166,12 +159,16 @@ export const generateCode = (args: any, forCodeGen = false) => {
     .filter(Boolean)
     .join('\n  ');
 
+  // Handle data-theme attribute on component itself
+  let componentAttributes = attributes;
+  if (wrapperDataTheme) {
+    componentAttributes = `${attributes ? `${attributes}\n    ` : ''}data-theme="${wrapperDataTheme}"`;
+  }
+
   // For Storybook's "Show Code" feature, we want clean HTML without the bundle script
   // The bundle script should only be included in actual usage examples
-  return `<div style="width: ${width}px;${cssVarsString}">
-  <nostr-profile${attributes ? `\n    ${attributes}` : ''}>
-  </nostr-profile>
-</div>`.trim();
+  return `<nostr-profile style="width: ${width}px;${cssVarsString}"${componentAttributes ? `\n  ${componentAttributes}` : ''}>
+  </nostr-profile>`.trim();
 };
 
 export const generateCodeWithScript = (args: any) => {

@@ -5,7 +5,7 @@ import { getComponentStyles } from "../common/base-styles";
 
 export function getProfileStyles(theme: Theme): string {
   const customStyles = `
-    /* === PROFILE CONTAINER PATTERN === */
+    /* === PROFILE CSS VARIABLES & CONTAINER PATTERN === */
     :host {
       /* Override follow button styles for profile context */
       --nostrc-follow-btn-padding: 5px 8px !important;
@@ -16,6 +16,15 @@ export function getProfileStyles(theme: Theme): string {
       --nostrc-follow-btn-horizontal-alignment: end !important;
       --nostrc-follow-btn-min-height: auto !important;
       --nostrc-follow-btn-width: 280px;
+
+      /* Component theme variables (fallback to global theme tokens) */
+      --nostrc-profile-bg: var(--nostrc-theme-bg, var(--nostrc-color-background-light));
+      --nostrc-profile-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary-light));
+      --nostrc-profile-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary-light));
+      --nostrc-profile-border: var(--nostrc-theme-border, var(--nostrc-color-border-light));
+      --nostrc-profile-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
+      --nostrc-profile-banner-placeholder: var(--nostrc-profile-border);
+      --nostrc-profile-accent: var(--nostrc-color-accent);
     }
 
     .nostr-profile-container {
@@ -26,6 +35,10 @@ export function getProfileStyles(theme: Theme): string {
 
       min-height: 500px;
       padding: 0px;
+      background: var(--nostrc-profile-bg);
+      border: var(--nostrc-profile-border-width) solid var(--nostrc-profile-border);
+      border-radius: var(--nostrc-border-radius-md);
+      transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
     }
     
     :host(.is-clickable) .nostrc-container {
@@ -61,6 +74,13 @@ export function getProfileStyles(theme: Theme): string {
       border-radius: var(--nostrc-border-radius-md) var(--nostrc-border-radius-md) 0px 0px;
     }
 
+    .banner-placeholder {
+      width: 100%;
+      height: 100%;
+      background-color: var(--nostrc-profile-banner-placeholder);
+      border-radius: var(--nostrc-border-radius-md) var(--nostrc-border-radius-md) 0px 0px;
+    }
+
     .profile-banner img {
       width: 100%;
       height: 214px;
@@ -83,8 +103,8 @@ export function getProfileStyles(theme: Theme): string {
       overflow: hidden;
 
       /* ring + backfill in one place */
-      background-color: var(--nostrc-color-background);
-      border: var(--avatar-ring) solid var(--nostrc-color-background);
+      background-color: var(--nostrc-profile-bg);
+      border: var(--avatar-ring) solid var(--nostrc-profile-bg);
     }
 
     .avatar img {
@@ -116,7 +136,7 @@ export function getProfileStyles(theme: Theme): string {
     .website a {
       line-height: 20px;
       outline: none;
-      color: var(--nostrc-color-accent);
+      color: var(--nostrc-profile-accent);
       max-width: 350px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -132,7 +152,7 @@ export function getProfileStyles(theme: Theme): string {
       align-items: center;
       border-radius: 0;
       border-top: none;
-      background-color: var(--nostrc-color-background);
+      background-color: var(--nostrc-profile-bg);
       margin-top: var(--nostrc-spacing-md);
     }
 
@@ -158,13 +178,14 @@ export function getProfileStyles(theme: Theme): string {
     .stat-inner .stat-value {
       font-weight: 100;
       font-size: 1.5em;
-      color: var(--nostrc-color-text-primary);
+      color: var(--nostrc-profile-text-primary);
     }
 
     .stat-inner .stat-name {
       font-weight: 400;
       line-height: 16px;
       text-transform: lowercase;
+      color: var(--nostrc-profile-text-secondary);
     }
 
     .error-container {

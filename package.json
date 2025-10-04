@@ -12,10 +12,11 @@
     "dev": "vite",
     "build:esm": "vite build --config vite.config.esm.ts",
     "build:umd": "vite build --config vite.config.umd.ts",
-    "build": "npm run build:esm && npm run build:umd",
+    "build:themes": "node scripts/build-themes.js",
+    "build": "npm run build:esm && npm run build:umd && npm run build:themes",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "build-storybook": "storybook build && npm run build:themes",
     "wp-build": "npm run build:esm && npm run wp-copy",
     "wp-copy": "node scripts/wp-copy.js"
   },
