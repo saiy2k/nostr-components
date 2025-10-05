@@ -1,5 +1,38 @@
 import type { ArgTypes, Meta } from '@storybook/web-components-vite';
 import { DEFAULT_RELAYS } from '../../src/common/constants.ts';
+import { POST_DATA, getAllInputTypes } from '../post-data.ts';
+
+// Theme presets for CSS variable-based theming
+export const THEME_PRESETS = {
+  'Ocean Glass': {
+    '--nostrc-post-bg': 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)), linear-gradient(135deg, #0b486b, #f56217)',
+    '--nostrc-post-text-primary': '#e8fbff',
+    '--nostrc-post-text-secondary': '#c8e6f0',
+    '--nostrc-post-border': '1px solid rgba(232,251,255,0.35)',
+    '--nostrc-post-accent': '#e8fbff',
+  },
+  'Holographic': {
+    '--nostrc-post-bg': 'linear-gradient(120deg, #d4fc79 0%, #96e6a1 30%, #84fab0 60%, #8fd3f4 100%)',
+    '--nostrc-post-text-primary': '#1b2a2f',
+    '--nostrc-post-text-secondary': '#2a3a3f',
+    '--nostrc-post-border': '1px solid rgba(27,42,47,0.25)',
+    '--nostrc-post-accent': '#1b2a2f',
+  },
+  'Neo Matrix': {
+    '--nostrc-post-bg': '#061a12',
+    '--nostrc-post-text-primary': '#00ff88',
+    '--nostrc-post-text-secondary': '#00cc66',
+    '--nostrc-post-border': '2px solid #00ff66',
+    '--nostrc-post-accent': '#00ff88',
+  },
+  'Bitcoin Orange': {
+    '--nostrc-post-bg': '#F7931A',
+    '--nostrc-post-text-primary': '#1a1a1a',
+    '--nostrc-post-text-secondary': '#333333',
+    '--nostrc-post-border': '1px solid #cc6f00',
+    '--nostrc-post-accent': '#1a1a1a',
+  },
+};
 
 // Constants
 export const DEFAULT_WIDTH = 600;
@@ -7,22 +40,20 @@ export const BUNDLE_SCRIPT = '<script type="module" src="/nostr-components.es.js
 
 export const PARAMETERS = [
   {
-    variable: 'npub',
-    description:
-      'Nostr public key but in bech32 format.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    variable: 'noteid',
+    description: 'Valid raw Nostr ID or valid Bech32 note ID',
     defaultValue: 'null',
     control: 'text',
   },
   {
-    variable: 'nip05',
-    description: 'Nostr NIP-05 URI.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    variable: 'hex',
+    description: 'Valid hex format Nostr event ID',
     defaultValue: 'null',
     control: 'text',
   },
   {
-    variable: 'pubkey',
-    description:
-      'Raw pubkey provided by Nostr.<br/><b>Precedence:</b> npub, nip05, pubkey',
+    variable: 'eventid',
+    description: 'Valid event ID format (nevent)',
     defaultValue: 'null',
     control: 'text',
   },
@@ -33,67 +64,73 @@ export const PARAMETERS = [
     control: 'text',
   },
   {
-    variable: 'show-npub',
-    description: `Whether need to show the npub in the profile or not`,
+    variable: 'show-stats',
+    description: `Whether need to show the stats of the post or not`,
     defaultValue: 'false',
     control: 'boolean',
   },
   {
-    variable: 'show-follow',
-    description: `Whether need to show the follow button in the profile or not`,
-    defaultValue: 'false',
-    control: 'boolean',
+    variable: 'onClick',
+    description: `Function name to call when post is clicked`,
+    defaultValue: 'null',
+    control: 'text',
+  },
+  {
+    variable: 'onAuthorClick',
+    description: `Function name to call when author is clicked`,
+    defaultValue: 'null',
+    control: 'text',
+  },
+  {
+    variable: 'onMentionClick',
+    description: `Function name to call when mention is clicked`,
+    defaultValue: 'null',
+    control: 'text',
   },
 ];
 
 export const CSS_VARIABLES = [
-  // Profile-specific variables
+  // Post-specific variables
   {
-    variable: '--nostrc-profile-bg',
-    description: 'Profile background color',
+    variable: '--nostrc-post-bg',
+    description: 'Post background color',
     defaultValue: 'var(--nostrc-theme-bg, var(--nostrc-color-background))',
     control: 'color',
   },
   {
-    variable: '--nostrc-profile-text-primary',
-    description: 'Profile primary text color',
+    variable: '--nostrc-post-text-primary',
+    description: 'Post primary text color',
     defaultValue: 'var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary))',
     control: 'color',
   },
   {
-    variable: '--nostrc-profile-text-secondary',
-    description: 'Profile secondary text color',
+    variable: '--nostrc-post-text-secondary',
+    description: 'Post secondary text color',
     defaultValue: 'var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary))',
     control: 'color',
   },
   {
-    variable: '--nostrc-profile-border',
-    description: 'Profile border color',
+    variable: '--nostrc-post-border',
+    description: 'Post border color',
     defaultValue: 'var(--nostrc-theme-border, var(--nostrc-color-border))',
     control: 'color',
   },
   {
-    variable: '--nostrc-profile-border-width',
-    description: 'Profile border width',
+    variable: '--nostrc-post-border-width',
+    description: 'Post border width',
     defaultValue: 'var(--nostrc-theme-border-width, var(--nostrc-border-width))',
     control: 'text',
   },
   {
-    variable: '--nostrc-profile-banner-placeholder',
-    description: 'Profile banner placeholder color',
-    defaultValue: 'var(--nostrc-profile-border)',
-    control: 'color',
-  },
-  {
-    variable: '--nostrc-profile-accent',
-    description: 'Profile accent color (used for links, etc.)',
+    variable: '--nostrc-post-accent',
+    description: 'Post accent color (used for mentions, links, etc.)',
     defaultValue: 'var(--nostrc-color-accent)',
     control: 'color',
   },
 ];
 
 export const generateCode = (args: any, forCodeGen = false) => {
-  const { width, onClick, wrapperDataTheme, ...otherArgs } = args;
+  const { width, onClick, onAuthorClick, onMentionClick, wrapperDataTheme, ...otherArgs } = args;
   const cssVars = CSS_VARIABLES.map(cssVar => {
     const value = args[cssVar.variable];
     return value ? `${cssVar.variable}: ${value};` : '';
@@ -120,8 +157,8 @@ export const generateCode = (args: any, forCodeGen = false) => {
 
   // For Storybook's "Show Code" feature, we want clean HTML without the bundle script
   // The bundle script should only be included in actual usage examples
-  return `<nostr-profile style="width: ${width}px;${cssVarsString}"${componentAttributes ? `\n  ${componentAttributes}` : ''}>
-  </nostr-profile>`.trim();
+  return `<nostr-post style="width: ${width}px;${cssVarsString}"${componentAttributes ? `\n  ${componentAttributes}` : ''}>
+  </nostr-post>`.trim();
 };
 
 export const generateCodeWithScript = (args: any) => {
@@ -168,7 +205,7 @@ export const generateDashboardHTML = (testCases: any[], title: string, color: st
     return `
         <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid ${color};">
           <h4 style="margin: 0 0 10px 0; color: ${color};">${testCase.name}</h4>
-          <nostr-profile ${attributes}></nostr-profile>
+          <nostr-post ${attributes}></nostr-post>
         </div>`;
   }).join('');
 
@@ -189,13 +226,13 @@ export const createTestingMeta = (title: string, tags: string[]) => ({
   tags: ['test', ...tags],
   render: args => generateCode(args),
   argTypes: generateArgTypes(),
-  args: { onClick: () => {} },
+  args: { onClick: () => {}, onAuthorClick: () => {}, onMentionClick: () => {} },
   parameters: {
     docs: { disable: true },
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-profile',
+        element: 'nostr-post',
         config: {
           rules: {
             'color-contrast': { enabled: true },

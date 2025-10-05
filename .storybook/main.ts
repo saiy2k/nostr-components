@@ -5,9 +5,9 @@ const getStories = () => {
     return [
       '../stories/**/*.mdx',
       // Only include public stories, exclude testing stories
-      '../stories/NostrFollowButton.stories.@(js|jsx|mjs|ts|tsx)',
-      '../stories/NostrPost.stories.@(js|jsx|mjs|ts|tsx)',
-      '../stories/NostrProfile.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-follow-button/NostrFollowButton.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-post/NostrPost.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-profile/NostrProfile.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-profile-badge/NostrProfileBadge.stories.@(js|jsx|mjs|ts|tsx)',
     ];
   } else {

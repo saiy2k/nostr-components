@@ -3,13 +3,11 @@
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { escapeHtml, maskNPub } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
-import { Theme } from '../common/types';
 import { renderNpub } from '../base/text-row/render-npub';
 import { renderNip05 } from '../base/text-row/render-nip05';
 import { renderName } from '../base/text-row/render-name';
 
 export interface RenderProfileBadgeOptions {
-  theme: Theme;
   isLoading: boolean;
   isError: boolean;
   errorMessage?: string;

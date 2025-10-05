@@ -31,7 +31,6 @@ export interface RenderProfileOptions extends IRenderOptions {
 
 export function renderProfile(options: RenderProfileOptions): string {
   const {
-    theme,
     isLoading,
     isError,
     errorMessage,
@@ -61,8 +60,7 @@ export function renderProfile(options: RenderProfileOptions): string {
     if (!showFollow) return '';
     return `
       <nostr-follow-button
-        npub="${showFollow}"
-        theme="${theme}">
+        npub="${showFollow}">
       </nostr-follow-button>
     `;
   };

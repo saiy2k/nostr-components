@@ -33,13 +33,6 @@ export const PARAMETERS = [
     control: 'text',
   },
   {
-    variable: 'theme',
-    description: `Color theme of the component. Only supports two values - light and dark`,
-    defaultValue: 'light',
-    control: 'select',
-    options: ['light', 'dark'],
-  },
-  {
     variable: 'show-npub',
     description: `Whether need to show the npub in the profile badge or not`,
     defaultValue: 'false',
@@ -55,45 +48,68 @@ export const PARAMETERS = [
 
 export const CSS_VARIABLES = [
   {
-    variable: '--nstrc-profile-badge-background-light',
-    description: 'Background color for light theme',
-    defaultValue: '#ffffff',
+    variable: '--nostrc-profile-badge-bg',
+    description: 'Background color of the profile badge',
+    defaultValue: 'var(--nostrc-color-background)',
     control: 'color',
   },
   {
-    variable: '--nstrc-profile-badge-background-dark',
-    description: 'Background color for dark theme',
-    defaultValue: '#1f2937',
+    variable: '--nostrc-profile-badge-text-primary',
+    description: 'Primary text color (name)',
+    defaultValue: 'var(--nostrc-color-text-primary)',
     control: 'color',
   },
   {
-    variable: '--nstrc-profile-badge-name-color-light',
-    description: 'Name text color for light theme',
-    defaultValue: '#111827',
+    variable: '--nostrc-profile-badge-text-secondary',
+    description: 'Secondary text color (nip05, npub)',
+    defaultValue: 'var(--nostrc-color-text-secondary)',
     control: 'color',
   },
   {
-    variable: '--nstrc-profile-badge-name-color-dark',
-    description: 'Name text color for dark theme',
-    defaultValue: '#f9fafb',
+    variable: '--nostrc-profile-badge-border',
+    description: 'Border color of the profile badge',
+    defaultValue: 'var(--nostrc-color-border)',
     control: 'color',
   },
   {
-    variable: '--nstrc-profile-badge-text-secondary-light',
-    description: 'Secondary text color for light theme',
-    defaultValue: '#666666',
-    control: 'color',
-  },
-  {
-    variable: '--nstrc-profile-badge-text-secondary-dark',
-    description: 'Secondary text color for dark theme',
-    defaultValue: '#999999',
-    control: 'color',
+    variable: '--nostrc-profile-badge-border-width',
+    description: 'Border width of the profile badge',
+    defaultValue: 'var(--nostrc-border-width)',
+    control: 'text',
   },
 ];
 
+// Special theme presets for Storybook controls
+export const THEME_PRESETS = {
+  'Ocean Glass': {
+    '--nostrc-profile-badge-bg': 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)), linear-gradient(135deg, #0b486b, #f56217)',
+    '--nostrc-profile-badge-text-primary': '#e8fbff',
+    '--nostrc-profile-badge-text-secondary': '#bfeaf4',
+    '--nostrc-profile-badge-border': 'rgba(232,251,255,0.35)',
+  },
+  'Holographic': {
+    '--nostrc-profile-badge-bg': 'linear-gradient(120deg, #d4fc79 0%, #96e6a1 30%, #84fab0 60%, #8fd3f4 100%)',
+    '--nostrc-profile-badge-text-primary': '#1b2a2f',
+    '--nostrc-profile-badge-text-secondary': '#38535a',
+    '--nostrc-profile-badge-border': 'rgba(27,42,47,0.25)',
+  },
+  'Neo Matrix': {
+    '--nostrc-profile-badge-bg': '#061a12',
+    '--nostrc-profile-badge-text-primary': '#00ff88',
+    '--nostrc-profile-badge-text-secondary': '#33ffaa',
+    '--nostrc-profile-badge-border': '#00ff66',
+    '--nostrc-profile-badge-border-width': '2px',
+  },
+  'Bitcoin Orange': {
+    '--nostrc-profile-badge-bg': '#F7931A',
+    '--nostrc-profile-badge-text-primary': '#1a1a1a',
+    '--nostrc-profile-badge-text-secondary': '#333333',
+    '--nostrc-profile-badge-border': '#cc6f00',
+  },
+};
+
 export const generateCode = (args: any, forCodeGen = false) => {
-  const { width, onClick, wrapperDataTheme, ...otherArgs } = args;
+  const { width, onClick, ...otherArgs } = args;
   const cssVars = CSS_VARIABLES.map(cssVar => {
     const value = args[cssVar.variable];
     return value ? `${cssVar.variable}: ${value};` : '';
@@ -111,16 +127,10 @@ export const generateCode = (args: any, forCodeGen = false) => {
     })
     .filter(Boolean)
     .join('\n  ');
-
-  // Handle data-theme attribute on component itself
-  let componentAttributes = attributes;
-  if (wrapperDataTheme) {
-    componentAttributes = `${attributes ? `${attributes}\n    ` : ''}data-theme="${wrapperDataTheme}"`;
-  }
   
   // For Storybook's "Show Code" feature, we want clean HTML without the bundle script
   // The bundle script should only be included in actual usage examples
-  return `<nostr-profile-badge style="width: ${width}px;${cssVarsString}"${componentAttributes ? `\n  ${componentAttributes}` : ''}>
+  return `<nostr-profile-badge style="width: ${width}px;${cssVarsString}"${attributes ? `\n  ${attributes}` : ''}>
 </nostr-profile-badge>`.trim();
 };
 

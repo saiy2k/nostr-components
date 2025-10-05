@@ -188,7 +188,6 @@ export default class NostrProfile extends NostrUserComponent {
     const showFollow    = this.getAttribute('show-follow') === 'true';
 
     const renderOptions: RenderProfileOptions = {
-      theme: this.theme,
       isLoading: isLoading,
       isError: isError,
       errorMessage: this.errorMessage,
@@ -211,7 +210,7 @@ export default class NostrProfile extends NostrUserComponent {
     };
 
     this.shadowRoot!.innerHTML = `
-      ${getProfileStyles(this.theme)}
+      ${getProfileStyles()}
       ${renderProfile(renderOptions)}
     `;
 

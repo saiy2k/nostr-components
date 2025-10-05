@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-import { Theme } from "../common/types";
 import { getComponentStyles } from "../common/base-styles";
 
-export function getProfileStyles(theme: Theme): string {
+export function getProfileStyles(): string {
   const customStyles = `
     /* === PROFILE CSS VARIABLES & CONTAINER PATTERN === */
     :host {
@@ -11,17 +10,16 @@ export function getProfileStyles(theme: Theme): string {
       --nostrc-follow-btn-padding: 5px 8px !important;
       --nostrc-follow-btn-font-size: 14px !important;
       --nostrc-follow-btn-border-radius: 12px !important;
-      --nostrc-follow-btn-border-dark: 1px solid #DDDDDD !important;
-      --nostrc-follow-btn-border-light: 1px solid #DDDDDD !important;
+      --nostrc-follow-btn-border: var(--nostrc-border-width) solid var(--nostrc-color-border) !important;
       --nostrc-follow-btn-horizontal-alignment: end !important;
       --nostrc-follow-btn-min-height: auto !important;
       --nostrc-follow-btn-width: 280px;
 
       /* Component theme variables (fallback to global theme tokens) */
-      --nostrc-profile-bg: var(--nostrc-theme-bg, var(--nostrc-color-background-light));
-      --nostrc-profile-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary-light));
-      --nostrc-profile-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary-light));
-      --nostrc-profile-border: var(--nostrc-theme-border, var(--nostrc-color-border-light));
+      --nostrc-profile-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
+      --nostrc-profile-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-profile-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
+      --nostrc-profile-border: var(--nostrc-theme-border, var(--nostrc-color-border));
       --nostrc-profile-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
       --nostrc-profile-banner-placeholder: var(--nostrc-profile-border);
       --nostrc-profile-accent: var(--nostrc-color-accent);
@@ -228,5 +226,5 @@ export function getProfileStyles(theme: Theme): string {
   `;
   
   // Use component styles - includes design tokens + utilities + custom styles
-  return getComponentStyles(theme, customStyles);
+  return getComponentStyles(customStyles);
 }

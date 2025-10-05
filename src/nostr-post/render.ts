@@ -21,7 +21,6 @@ export interface RenderPostOptions extends IRenderOptions {
 
 export function renderPost(options: RenderPostOptions): string {
   const {
-    theme,
     isLoading,
     isError,
     author,
@@ -32,7 +31,7 @@ export function renderPost(options: RenderPostOptions): string {
   } = options;
 
   return `
-    ${getPostStyles(theme)}
+    ${getPostStyles()}
     <div class="nostrc-container nostr-post-container">
       ${renderPostHeader(isLoading, isError, author, date)}
       ${renderPostBody(isLoading, isError, htmlToRender)}

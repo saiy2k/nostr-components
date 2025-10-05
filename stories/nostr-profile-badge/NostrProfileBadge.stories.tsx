@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { DEFAULT_WIDTH, BUNDLE_SCRIPT, generateCode, generateCodeWithScript, generateArgTypes } from './testing-utils.ts';
+import { DEFAULT_WIDTH, BUNDLE_SCRIPT, generateCode, generateCodeWithScript, generateArgTypes, THEME_PRESETS } from './testing-utils.ts';
 import { TEST_CASES } from './test-cases-valid.ts';
 
 const meta: Meta = {
@@ -72,12 +72,12 @@ The component now uses the new \`data-theme="dark"\` approach instead of the \`t
 export const OceanGlass: Story = {
   name: 'Ocean Glass',
   args: {
-    ...TEST_CASES.oceanGlass.args,
-    wrapperDataTheme: TEST_CASES.oceanGlass.wrapperDataTheme,
+    nip05: 'saiy2k@iris.to',
+    ...THEME_PRESETS['Ocean Glass'],
   },
   parameters: {
     docs: {
-      description: { story: TEST_CASES.oceanGlass.description },
+      description: { story: 'Profile badge with Ocean Glass theme applied via CSS variables.' },
     },
   },
 };
@@ -86,12 +86,12 @@ export const OceanGlass: Story = {
 export const Holographic: Story = {
   name: 'Holographic',
   args: {
-    ...TEST_CASES.holographic.args,
-    wrapperDataTheme: TEST_CASES.holographic.wrapperDataTheme,
+    nip05: 'saiy2k@iris.to',
+    ...THEME_PRESETS['Holographic'],
   },
   parameters: {
     docs: {
-      description: { story: TEST_CASES.holographic.description },
+      description: { story: 'Profile badge with Holographic theme applied via CSS variables.' },
     },
   },
 };
@@ -99,12 +99,12 @@ export const Holographic: Story = {
 export const NeoMatrix: Story = {
   name: 'Neo Matrix',
   args: {
-    ...TEST_CASES.neoMatrix.args,
-    wrapperDataTheme: TEST_CASES.neoMatrix.wrapperDataTheme,
+    nip05: 'saiy2k@iris.to',
+    ...THEME_PRESETS['Neo Matrix'],
   },
   parameters: {
     docs: {
-      description: { story: TEST_CASES.neoMatrix.description },
+      description: { story: 'Profile badge with Neo Matrix theme applied via CSS variables.' },
     },
   },
 };
@@ -112,12 +112,12 @@ export const NeoMatrix: Story = {
 export const BitcoinOrange: Story = {
   name: 'Bitcoin Orange',
   args: {
-    ...TEST_CASES.bitcoinOrange.args,
-    wrapperDataTheme: TEST_CASES.bitcoinOrange.wrapperDataTheme,
+    nip05: 'saiy2k@iris.to',
+    ...THEME_PRESETS['Bitcoin Orange'],
   },
   parameters: {
     docs: {
-      description: { story: TEST_CASES.bitcoinOrange.description },
+      description: { story: 'Profile badge with Bitcoin Orange theme applied via CSS variables.' },
     },
   },
 };
