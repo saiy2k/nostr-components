@@ -1,20 +1,20 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, generateCode, generateArgTypes } from './testing-utils.ts';
-import { PROFILE_DATA, getAllInputTypes } from '../profile-data.ts';
+import { POST_DATA, getAllInputTypes } from '../post-data.ts';
 import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
 
 const meta = {
-  title: 'NostrProfile/Testing/Dynamic',
+  title: 'NostrPost/Testing/Dynamic',
   tags: ['test', 'dynamic'],
   render: args => generateCode(args),
   argTypes: generateArgTypes(),
-  args: { onClick: () => {} },
+  args: { onClick: () => {}, onAuthorClick: () => {}, onMentionClick: () => {} },
   parameters: {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-profile',
+        element: 'nostr-post',
         config: {
           rules: {
             'color-contrast': { enabled: true },
@@ -33,41 +33,53 @@ type Story = StoryObj;
 // DYNAMIC ATTRIBUTE CHANGES
 // ====================================
 
-export const DynamicNPubChanges: Story = {
-  name: 'Dynamic NPub Changes',
+export const DynamicNoteIdChanges: Story = {
+  name: 'Dynamic Note ID Changes',
   tags: ['test', 'dynamic', 'attributes'],
   args: {
     width: DEFAULT_WIDTH,
-    npub: PROFILE_DATA.jack.npub,
+    noteid: POST_DATA.gigi_free_web.noteid,
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const component = canvasElement.querySelector('nostr-profile');
+    const component = canvasElement.querySelector('nostr-post');
     if (!component) return;
 
-    // Array of different npubs from profile data
-    const npubs = [
-      PROFILE_DATA.jack.npub,
-      PROFILE_DATA.derGigi.npub,
-      PROFILE_DATA.fiatjaf.npub,
-      PROFILE_DATA.jb55.npub,
-      PROFILE_DATA.odell.npub,
+    // Array of different note IDs and hex values from post data
+    const noteIds = [
+      POST_DATA.gigi_free_web.noteid,
+      POST_DATA.utxo_us_dollar_backing.noteid,
+      POST_DATA.jack_video_programming_you.noteid,
+      POST_DATA.toxic_bitcoiner_image_state_exists.noteid,
+      POST_DATA.nvk_future_here.hex,
+      POST_DATA.ben_expensive_government.hex,
     ];
 
     let currentIndex = 0;
     
-    // Function to update npub
-    const updateNPub = () => {
-      currentIndex = (currentIndex + 1) % npubs.length;
-      component.setAttribute('npub', npubs[currentIndex]);
+    // Function to update note ID or hex
+    const updateNoteId = () => {
+      currentIndex = (currentIndex + 1) % noteIds.length;
+      const currentId = noteIds[currentIndex];
+      
+      // Clear previous attributes
+      component.removeAttribute('noteid');
+      component.removeAttribute('hex');
+      
+      // Determine if it's a noteid or hex based on format
+      if (currentId.startsWith('note1')) {
+        component.setAttribute('noteid', currentId);
+      } else {
+        component.setAttribute('hex', currentId);
+      }
       
       // Log the change for debugging
-      console.log(`Updated npub to: ${npubs[currentIndex]}`);
+      console.log(`Updated to: ${currentId}`);
     };
 
-    setInterval(updateNPub, 10000);
+    setInterval(updateNoteId, 10000);
     
   },
 };
@@ -77,13 +89,13 @@ export const DynamicAllAttributes: Story = {
   tags: ['test', 'dynamic', 'comprehensive'],
   args: {
     width: DEFAULT_WIDTH,
-    npub: PROFILE_DATA.jack.npub,
+    noteid: POST_DATA.gigi_free_web.noteid,
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const component = canvasElement.querySelector('nostr-profile');
+    const component = canvasElement.querySelector('nostr-post');
     if (!component) return;
 
     // Create input list display
@@ -100,27 +112,27 @@ export const DynamicAllAttributes: Story = {
 
     // Test data - 5 valid cases and 5 invalid cases
     const validInputs = [
-      { type: 'npub', value: PROFILE_DATA.jack.npub, name: 'Jack' },
-      { type: 'nip05', value: PROFILE_DATA.derGigi.nip05, name: 'DerGigi' },
-      { type: 'pubkey', value: PROFILE_DATA.fiatjaf.pubkey, name: 'Fiatjaf' },
-      { type: 'npub', value: PROFILE_DATA.jb55.npub, name: 'jb55' },
-      { type: 'nip05', value: PROFILE_DATA.lyn.nip05, name: 'Lyn' },
+      { type: 'noteid', value: POST_DATA.gigi_free_web.noteid, name: 'Gigi Free Web' },
+      { type: 'noteid', value: POST_DATA.utxo_us_dollar_backing.noteid, name: 'UTXO Dollar' },
+      { type: 'noteid', value: POST_DATA.jack_video_programming_you.noteid, name: 'Jack Video' },
+      { type: 'noteid', value: POST_DATA.toxic_bitcoiner_image_state_exists.noteid, name: 'Toxic Image' },
+      { type: 'hex', value: POST_DATA.nvk_future_here.hex, name: 'NVK Future' },
+      { type: 'hex', value: POST_DATA.ben_expensive_government.hex, name: 'Ben Government' },
     ];
     
     const invalidInputs = [
-      { type: 'npub', value: INVALID_TEST_CASES.invalidNpub.args.npub, name: 'Invalid NPub' },
-      { type: 'nip05', value: INVALID_TEST_CASES.invalidNip05.args.nip05, name: 'Invalid NIP-05' },
-      { type: 'pubkey', value: INVALID_TEST_CASES.invalidPubkey.args.pubkey, name: 'Invalid Pubkey' },
-      { type: 'npub', value: INVALID_TEST_CASES.emptyInputs.args.npub, name: 'Empty NPub' },
-      { type: 'nip05', value: INVALID_TEST_CASES.emptyInputs.args.nip05, name: 'Empty NIP-05' },
+      { type: 'noteid', value: INVALID_TEST_CASES.invalidNoteId.args.noteid, name: 'Invalid Note ID' },
+      { type: 'noteid', value: INVALID_TEST_CASES.malformedNoteId.args.noteid, name: 'Malformed Note ID' },
+      { type: 'noteid', value: INVALID_TEST_CASES.emptyNoteId.args.noteid, name: 'Empty Note ID' },
+      { type: 'noteid', value: INVALID_TEST_CASES.nullNoteId.args.noteid, name: 'Null Note ID' },
+      { type: 'noteid', value: INVALID_TEST_CASES.tooLongNoteId.args.noteid, name: 'Too Long Note ID' },
     ];
     
-    // Mix valid and invalid inputs randomly
-    const allInputs = [...validInputs, ...invalidInputs];
+    // Mix valid and invalid inputs randomly, filtering out null values
+    const allInputs = [...validInputs, ...invalidInputs].filter(input => input.value !== null);
     const inputs = allInputs.sort(() => Math.random() - 0.5);
     
-    let showFollow = true;
-    let showNpub = false;
+    let showStats = true;
     
     let inputIndex = 0;
 
@@ -146,21 +158,15 @@ export const DynamicAllAttributes: Story = {
       const input = inputs[inputIndex];
       
       // Clear all input attributes
-      component.removeAttribute('npub');
-      component.removeAttribute('nip05');
-      component.removeAttribute('pubkey');
+      component.removeAttribute('noteid');
+      component.removeAttribute('hex');
       
       // Set the new input
-      component.setAttribute(input.type, input.value);
+      component.setAttribute(input.type, input.value || '');
       
-      
-      // Update show-follow
-      showFollow = !showFollow;
-      component.setAttribute('show-follow', showFollow.toString());
-      
-      // Update show-npub
-      showNpub = !showNpub;
-      component.setAttribute('show-npub', showNpub.toString());
+      // Update show-stats
+      showStats = !showStats;
+      component.setAttribute('show-stats', showStats.toString());
       
       // Update input list container
       const inputListElement = document.getElementById('input-list');
@@ -171,8 +177,7 @@ export const DynamicAllAttributes: Story = {
       // Log the changes for debugging
       console.log(`Updated all attributes:`, {
         input: `${input.type}: ${input.value} (${input.name})`,
-        showFollow: showFollow,
-        showNpub: showNpub
+        showStats: showStats
       });
       
       inputIndex = (inputIndex + 1) % inputs.length;
@@ -183,19 +188,19 @@ export const DynamicAllAttributes: Story = {
   },
 };
 
-export const DynamicNPubAndRelays: Story = {
-  name: 'Dynamic NPub and Relays',
-  tags: ['test', 'dynamic', 'npub', 'relays'],
+export const DynamicNoteIdAndRelays: Story = {
+  name: 'Dynamic Note ID and Relays',
+  tags: ['test', 'dynamic', 'noteid', 'relays'],
   args: {
     width: DEFAULT_WIDTH,
-    npub: PROFILE_DATA.jack.npub,
+    noteid: POST_DATA.gigi_free_web.noteid,
     relays: 'wss://relay.damus.io',
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const component = canvasElement.querySelector('nostr-profile');
+    const component = canvasElement.querySelector('nostr-post');
     if (!component) return;
 
     // Create status display container
@@ -209,7 +214,7 @@ export const DynamicNPubAndRelays: Story = {
     `;
     statusContainer.innerHTML = `
       <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">Current Configuration</h4>
-      <div id="current-npub" style="margin-bottom: 8px; font-family: monospace; font-size: 12px;"></div>
+      <div id="current-noteid" style="margin-bottom: 8px; font-family: monospace; font-size: 12px;"></div>
       <div id="current-relays" style="margin-bottom: 8px; font-family: monospace; font-size: 12px;"></div>
       <div id="change-log" style="font-size: 11px; color: #6c757d; height: 500px; max-height: 500px; overflow-y: auto;"></div>
     `;
@@ -217,16 +222,14 @@ export const DynamicNPubAndRelays: Story = {
     // Insert after the component
     component.parentNode?.insertBefore(statusContainer, component.nextSibling);
 
-    // Different npubs to cycle through
-    const npubs = [
-      { npub: PROFILE_DATA.jack.npub, name: 'Jack' },
-      { npub: PROFILE_DATA.derGigi.npub, name: 'DerGigi' },
-      { npub: PROFILE_DATA.fiatjaf.npub, name: 'Fiatjaf' },
-      { npub: PROFILE_DATA.jb55.npub, name: 'jb55' },
-      { npub: PROFILE_DATA.odell.npub, name: 'Odell' },
-      { npub: PROFILE_DATA.lyn.npub, name: 'Lyn' },
-      { npub: PROFILE_DATA.utxo.npub, name: 'Utxo' },
-      { npub: PROFILE_DATA.sai.npub, name: 'Sai' },
+    // Different note IDs and hex values to cycle through
+    const noteIds = [
+      { id: POST_DATA.gigi_free_web.noteid, name: 'Gigi Free Web', type: 'noteid' },
+      { id: POST_DATA.utxo_us_dollar_backing.noteid, name: 'UTXO Dollar', type: 'noteid' },
+      { id: POST_DATA.jack_video_programming_you.noteid, name: 'Jack Video', type: 'noteid' },
+      { id: POST_DATA.toxic_bitcoiner_image_state_exists.noteid, name: 'Toxic Image', type: 'noteid' },
+      { id: POST_DATA.nvk_future_here.hex, name: 'NVK Future', type: 'hex' },
+      { id: POST_DATA.ben_expensive_government.hex, name: 'Ben Government', type: 'hex' },
     ];
 
     // Different relay configurations
@@ -241,17 +244,17 @@ export const DynamicNPubAndRelays: Story = {
       { relays: '', name: 'No Relays' },
     ];
 
-    let npubIndex = 0;
+    let noteIdIndex = 0;
     let relayIndex = 0;
     let changeCount = 0;
 
     // Function to update status display
-    const updateStatusDisplay = (currentNpub: any, currentRelays: any) => {
-      const npubElement = document.getElementById('current-npub');
+    const updateStatusDisplay = (currentNoteId: any, currentRelays: any) => {
+      const noteIdElement = document.getElementById('current-noteid');
       const relaysElement = document.getElementById('current-relays');
       
-      if (npubElement && currentNpub != null) {
-        npubElement.innerHTML = `<strong>NPub:</strong> ${currentNpub.name} (${currentNpub.npub.substring(0, 20)}...)`;
+      if (noteIdElement && currentNoteId != null) {
+        noteIdElement.innerHTML = `<strong>Note ID:</strong> ${currentNoteId.name} (${currentNoteId.id.substring(0, 20)}...)`;
       }
       
       if (relaysElement && currentRelays != null) {
@@ -279,24 +282,28 @@ export const DynamicNPubAndRelays: Story = {
     let fastUpdateCount = 0;
     const maxFastUpdates = 10; // Number of fast updates before pause
 
-    // Function to update npub only
-    const updateNPub = () => {
-      const currentNpub = npubs[npubIndex];
+    // Function to update note ID or hex only
+    const updateNoteId = () => {
+      const currentNoteId = noteIds[noteIdIndex];
       
-      // Update npub
-      component.setAttribute('npub', currentNpub.npub);
+      // Clear previous attributes
+      component.removeAttribute('noteid');
+      component.removeAttribute('hex');
+      
+      // Update with correct attribute type
+      component.setAttribute(currentNoteId.type, currentNoteId.id);
       
       // Log the change
-      addLogEntry(`NPub changed to ${currentNpub.name}`);
-      console.log(`NPub change ${++changeCount}:`, {
-        npub: `${currentNpub.name} (${currentNpub.npub})`
+      addLogEntry(`${currentNoteId.type.toUpperCase()} changed to ${currentNoteId.name}`);
+      console.log(`${currentNoteId.type.toUpperCase()} change ${++changeCount}:`, {
+        [currentNoteId.type]: `${currentNoteId.name} (${currentNoteId.id})`
       });
       
       // Update status display immediately after change
-      updateStatusDisplay(currentNpub, null);
+      updateStatusDisplay(currentNoteId, null);
       
-      // Move to next npub
-      npubIndex = (npubIndex + 1) % npubs.length;
+      // Move to next note ID
+      noteIdIndex = (noteIdIndex + 1) % noteIds.length;
     };
 
     // Function to update relays only
@@ -342,9 +349,9 @@ export const DynamicNPubAndRelays: Story = {
         return;
       }
 
-      // Alternate between npub and relay updates
+      // Alternate between note ID and relay updates
       if (fastUpdateCount % 2 === 0) {
-        updateNPub();
+        updateNoteId();
       } else {
         updateRelays();
       }
@@ -357,7 +364,7 @@ export const DynamicNPubAndRelays: Story = {
     };
 
     // Initial status update
-    updateStatusDisplay(npubs[npubIndex], relayConfigs[relayIndex]);
+    updateStatusDisplay(noteIds[noteIdIndex], relayConfigs[relayIndex]);
 
     // Start the fast update cycle
     addLogEntry(`Starting fast update cycle...`);

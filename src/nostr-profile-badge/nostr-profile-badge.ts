@@ -126,7 +126,6 @@ export default class NostrProfileBadge extends NostrUserComponent {
     }
 
     const renderOptions: RenderProfileBadgeOptions = {
-      theme       : this.theme,
       isLoading   : isLoading,
       isError     : isError,
       errorMessage: errorMessage,

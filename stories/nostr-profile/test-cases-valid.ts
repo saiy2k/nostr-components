@@ -8,7 +8,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.derGigi.npub,
       'show-npub': true,
-      theme: 'light',
     },
     description: 'Tests the show-npub feature display and copy functionality.',
   },
@@ -18,7 +17,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.fiatjaf.npub,
       'show-follow': true,
-      theme: 'light',
     },
     description: 'Tests the follow button functionality and integration.',
   },
@@ -29,7 +27,6 @@ export const TEST_CASES = {
       npub: PROFILE_DATA.jb55.npub,
       'show-npub': true,
       'show-follow': true,
-      theme: 'light',
     },
     description: 'Tests all features working together.',
   },
@@ -38,7 +35,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       pubkey: PROFILE_DATA.jack.pubkey,
-      theme: 'light',
     },
     description: 'Tests component with raw pubkey input instead of npub.',
   },
@@ -47,7 +43,6 @@ export const TEST_CASES = {
     args: {
       width: 300,
       npub: PROFILE_DATA.lyn.npub,
-      theme: 'light',
     },
     description: 'Tests component behavior with constrained width.',
   },
@@ -56,7 +51,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jack.npub,
-      theme: 'light',
     },
     description: 'Basic valid npub input test.',
   },
@@ -65,9 +59,9 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.odell.npub,
-      theme: 'dark',
     },
     description: 'Tests dark theme styling.',
+    wrapperDataTheme: 'dark',
   },
   // Public demo cases
   fiatjaf: {
@@ -75,7 +69,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.fiatjaf.npub,
-      theme: 'light',
     },
     description: 'Default profile with npub input.',
   },
@@ -84,16 +77,15 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.odell.npub,
-      theme: 'dark',
     },
     description: 'Profile with dark theme.',
+    wrapperDataTheme: 'dark',
   },
   lyn: {
     name: 'Lyn - NIP-05',
     args: {
       width: DEFAULT_WIDTH,
       nip05: PROFILE_DATA.lyn.nip05,
-      theme: 'light',
     },
     description: 'Profile with nip05 input.',
   },
@@ -104,7 +96,6 @@ export const TEST_CASES = {
       npub: PROFILE_DATA.jb55.npub,
       'show-npub': true,
       'show-follow': true,
-      theme: 'light',
     },
     description: 'Full profile with all features enabled.',
   },
@@ -114,7 +105,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       nip05: PROFILE_DATA.derGigi.nip05,
       'show-follow': true,
-      theme: 'light',
     },
     description: 'Profile with NIP-05 and follow button.',
   },
@@ -123,7 +113,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.utxo.npub,
-      theme: 'light',
     },
     description: 'Basic profile without additional features.',
   },
@@ -132,7 +121,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jb55.npub,
-      theme: 'light',
     },
     description: 'Profile themed with holographic via data-theme on the component.',
     wrapperDataTheme: 'holographic',
@@ -142,7 +130,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.fiatjaf.npub,
-      theme: 'light',
     },
     description: 'Profile themed with ocean-glass via data-theme.',
     wrapperDataTheme: 'ocean-glass',
@@ -152,7 +139,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.derGigi.npub,
-      theme: 'light',
     },
     description: 'Profile themed with neo-matrix via data-theme.',
     wrapperDataTheme: 'neo-matrix',
@@ -162,7 +148,6 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jack.npub,
-      theme: 'light',
     },
     description: 'Profile themed with bitcoin-orange via data-theme.',
     wrapperDataTheme: 'bitcoin-orange',
@@ -174,7 +159,6 @@ export const TEST_CASES = {
       npub: PROFILE_DATA.jack.npub,
       'show-npub': true,
       'show-follow': true,
-      theme: 'light',
     },
     description: 'Tests component with wider layout.',
   },
@@ -184,7 +168,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.sai.npub,
       relays: 'wss://relay.damus.io,wss://nos.lol',
-      theme: 'light',
     },
     description: 'Tests component with custom relay configuration.',
   },

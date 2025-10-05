@@ -6,7 +6,6 @@ export const INVALID_TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: 'invalid-npub-format-xyz123',
-      theme: 'light',
     },
     description: 'Tests how the component handles malformed npub input.',
   },
@@ -15,7 +14,6 @@ export const INVALID_TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       nip05: 'malformed@invalid@domain.com',
-      theme: 'light',
     },
     description: 'Tests how the component handles malformed NIP-05 format.',
   },
@@ -26,7 +24,6 @@ export const INVALID_TEST_CASES = {
       npub: '',
       nip05: '',
       pubkey: '',
-      theme: 'light',
     },
     description: 'Tests component behavior with empty or null values.',
   },
@@ -35,7 +32,6 @@ export const INVALID_TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       pubkey: 'invalid-pubkey-format-xyz123',
-      theme: 'light',
     },
     description: 'Tests component with invalid pubkey format.',
   },
@@ -46,7 +42,7 @@ export const INVALID_TEST_CASES = {
       npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
       theme: 'invalid-theme',
     },
-    description: 'Tests component with invalid theme value.',
+    description: 'Tests component with invalid theme value (legacy test - theme attribute no longer used).',
   },
   networkFailure: {
     name: 'Network/Relay Failure',
@@ -54,7 +50,6 @@ export const INVALID_TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
       relays: 'wss://invalid-relay.nonexistent',
-      theme: 'light',
     },
     description: 'Tests component resilience with unreachable relays.',
   },
