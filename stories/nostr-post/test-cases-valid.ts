@@ -1,4 +1,4 @@
-import { DEFAULT_WIDTH } from './testing-utils.ts';
+import { DEFAULT_WIDTH } from "./utils";
 import { POST_DATA } from '../post-data.ts';
 
 export const TEST_CASES = {

@@ -80,7 +80,7 @@ export const checkmarkIcon = (
   </svg>
 `;
 
-export const nostrLogo = (theme: string, width: number = 21, height: number = 24) => `
+export const nostrLogo = (width: number = 21, height: number = 24) => `
   <svg 
     width="${width}" 
     height="${height}" 
@@ -93,7 +93,6 @@ export const nostrLogo = (theme: string, width: number = 21, height: number = 24
     <style>
     .nostrich {
       transform-origin: center;
-      fill: ${theme === 'dark' ? '#fff' : '#000'};
     }
     </style>
     <g class="nostrich">
@@ -102,9 +101,7 @@ export const nostrLogo = (theme: string, width: number = 21, height: number = 24
   </svg>
 `;
 
-export const loadingNostrich = (
-  theme: Theme = 'dark'
-) => `
+export const loadingNostrich = () => `
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <style>
       @keyframes nostrich-run {
@@ -118,7 +115,6 @@ export const loadingNostrich = (
       .nostrich {
         animation: nostrich-run 1.5s infinite ease-in-out;
         transform-origin: center;
-        fill: ${theme === 'dark' ? '#fff' : '#000'};
       }
     </style>
     <g class="nostrich">

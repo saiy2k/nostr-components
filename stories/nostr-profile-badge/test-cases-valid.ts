@@ -1,102 +1,67 @@
-import { DEFAULT_WIDTH } from './testing-utils.ts';
+import { DEFAULT_WIDTH } from "./utils";
 import { PROFILE_DATA } from '../profile-data.ts';
 
 export const TEST_CASES = {
-  showNpub: {
-    name: 'Show NPub Feature',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.derGigi.npub,
-      'show-npub': true,
-      theme: 'light',
-    },
-    description: 'Tests the show-npub feature display and copy functionality.',
-  },
-  showFollow: {
-    name: 'Show Follow Button',
+  default: {
+    name: 'Default',
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.fiatjaf.npub,
-      'show-follow': true,
-      theme: 'light',
     },
-    description: 'Tests the follow button functionality and integration.',
-  },
-  allFeatures: {
-    name: 'All Features',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.jb55.npub,
-      'show-npub': true,
-      'show-follow': true,
-      theme: 'light',
-    },
-    description: 'Tests all features working together.',
-  },
-  rawPubkey: {
-    name: 'Raw Pubkey Input',
-    args: {
-      width: DEFAULT_WIDTH,
-      pubkey: PROFILE_DATA.jack.pubkey,
-      theme: 'light',
-    },
-    description: 'Tests component with raw pubkey input instead of npub.',
-  },
-  narrowWidth: {
-    name: 'Narrow Width',
-    args: {
-      width: 200,
-      npub: PROFILE_DATA.lyn.npub,
-      theme: 'light',
-    },
-    description: 'Tests component behavior with constrained width.',
-  },
-  validNpub: {
-    name: 'Valid NPub',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.jack.npub,
-      theme: 'light',
-    },
-    description: 'Basic valid npub input test.',
   },
   darkTheme: {
     name: 'Dark Theme',
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.odell.npub,
-      theme: 'dark',
+      'data-theme': 'dark',
     },
-    description: 'Tests dark theme styling.',
+    description: 'Dark theme enabled via data-theme attribute',
   },
-  // Public demo cases
-  fiatjaf: {
-    name: 'Fiatjaf - Default',
+  nip05: {
+    name: 'Nip05',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.fiatjaf.npub,
-      theme: 'light',
+      nip05: PROFILE_DATA.lyn.nip05,
     },
-    description: 'Default profile badge with npub input.',
+    description: 'Nip05 identifier',
   },
-  odell: {
-    name: 'Odell - Dark Theme',
+  rawPubkey: {
+    name: 'Raw Pubkey Input',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.odell.npub,
-      theme: 'light', // Use light as base since we'll wrap with data-theme="dark"
+      pubkey: PROFILE_DATA.jack.pubkey,
     },
-    description: 'Profile badge with dark theme enabled via data-theme attribute (new theme system).',
-    wrapperDataTheme: 'dark', // Add wrapper theme
+    description: 'Raw pubkey hex instead of npub.',
   },
+
+  showFollow: {
+    name: 'Show Follow Button',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.saiy2k.npub,
+      'show-follow': true,
+    },
+    description: 'With Follow button',
+  },
+  showNpub: {
+    name: 'Show NPub',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.derGigi.npub,
+      'show-npub': true,
+    },
+    description: 'Npub is shown with copy',
+  },
+
+  // Theme Variations
   oceanGlass: {
     name: 'Ocean Glass Theme',
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.fiatjaf.npub,
-      theme: 'light',
     },
-    description: 'Profile badge themed with ocean-glass via data-theme.',
+    description: '',
     wrapperDataTheme: 'ocean-glass',
   },
   holographic: {
@@ -104,9 +69,8 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jb55.npub,
-      theme: 'light',
     },
-    description: 'Profile badge themed with holographic via data-theme.',
+    description: '',
     wrapperDataTheme: 'holographic',
   },
   neoMatrix: {
@@ -114,9 +78,8 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.derGigi.npub,
-      theme: 'light',
     },
-    description: 'Profile badge themed with neo-matrix via data-theme.',
+    description: '',
     wrapperDataTheme: 'neo-matrix',
   },
   bitcoinOrange: {
@@ -124,18 +87,8 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jack.npub,
-      theme: 'light',
     },
-    description: 'Profile badge themed with bitcoin-orange via data-theme.',
+    description: '',
     wrapperDataTheme: 'bitcoin-orange',
-  },
-  lyn: {
-    name: 'Nip05',
-    args: {
-      width: DEFAULT_WIDTH,
-      nip05: PROFILE_DATA.lyn.nip05,
-      theme: 'light',
-    },
-    description: 'Profile badge with nip05',
   },
 };

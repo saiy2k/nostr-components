@@ -1,14 +1,14 @@
 import React from 'react';
 import { fn } from 'storybook/test';
 import type { ArgTypes, Meta, StoryObj } from '@storybook/web-components-vite';
-import { generateCode, generateArgTypes, THEME_PRESETS } from './testing-utils';
+import { generateCode, getArgTypes } from './utils';
 import { POST_DATA } from '../post-data';
 
 const meta: Meta = {
   title: 'NostrPost',
   tags: ['autodocs'],
   render: args => generateCode(args),
-  argTypes: generateArgTypes(),
+  argTypes: getArgTypes(),
   args: { onClick: fn(), onAuthorClick: fn(), onMentionClick: fn() },
   parameters: {
     docs: {
@@ -92,10 +92,6 @@ export const CustomRelays: Story = {
   },
 };
 
-// ====================================
-// THEME STORIES
-// ====================================
-
 export const DarkTheme: Story = {
   name: 'Dark Theme',
   args: {
@@ -108,74 +104,6 @@ export const DarkTheme: Story = {
     docs: {
       description: {
         story: 'Post with dark theme applied via data-theme attribute.',
-      },
-    },
-  },
-};
-
-export const OceanGlass: Story = {
-  name: 'Ocean Glass Theme',
-  args: {
-    width: 600,
-    noteid: POST_DATA.gigi_free_web.noteid,
-    'show-stats': true,
-    ...THEME_PRESETS['Ocean Glass'],
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Post with Ocean Glass theme applied via CSS variables. Demonstrates gradient backgrounds and glassmorphism effects.',
-      },
-    },
-  },
-};
-
-export const Holographic: Story = {
-  name: 'Holographic Theme',
-  args: {
-    width: 600,
-    noteid: POST_DATA.jack_video_programming_you.noteid,
-    'show-stats': true,
-    ...THEME_PRESETS['Holographic'],
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Post with Holographic theme applied via CSS variables. Shows vibrant gradient styling.',
-      },
-    },
-  },
-};
-
-export const NeoMatrix: Story = {
-  name: 'Neo Matrix Theme',
-  args: {
-    width: 600,
-    noteid: POST_DATA.toxic_bitcoiner_image_state_exists.noteid,
-    'show-stats': true,
-    ...THEME_PRESETS['Neo Matrix'],
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Post with Neo Matrix theme applied via CSS variables. Cyberpunk-inspired green terminal styling.',
-      },
-    },
-  },
-};
-
-export const BitcoinOrange: Story = {
-  name: 'Bitcoin Orange Theme',
-  args: {
-    width: 600,
-    noteid: POST_DATA.ben_expensive_government.hex,
-    'show-stats': true,
-    ...THEME_PRESETS['Bitcoin Orange'],
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Post with Bitcoin Orange theme applied via CSS variables. Bitcoin-inspired orange and black styling.',
       },
     },
   },
