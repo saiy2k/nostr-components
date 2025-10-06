@@ -1,13 +1,13 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
-import { generateCode, generateArgTypes } from './testing-utils';
+import { generateCode, getArgTypes } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta = {
   title: 'NostrProfile/Testing/Invalid',
   tags: ['test', 'invalid'],
   render: args => generateCode(args),
-  argTypes: generateArgTypes(),
+  argTypes: getArgTypes(),
   args: { onClick: () => {} },
   parameters: {
     test: {
@@ -30,73 +30,26 @@ type Story = StoryObj;
 
 // Stories from InvalidCasesDashboard
 export const InvalidNpub: Story = {
-  name: 'Invalid NPub Format',
+  name: 'Invalid NPub',
   args: INVALID_TEST_CASES.invalidNpub.args,
-  parameters: {
-    docs: {
-      description: {
-        story: INVALID_TEST_CASES.invalidNpub.description,
-      },
-    },
-  },
 };
 
 export const InvalidNip05: Story = {
-  name: 'Invalid NIP-05 Format',
+  name: 'Invalid NIP-05',
   args: INVALID_TEST_CASES.invalidNip05.args,
-  parameters: {
-    docs: {
-      description: {
-        story: INVALID_TEST_CASES.invalidNip05.description,
-      },
-    },
-  },
 };
 
 export const InvalidPubkey: Story = {
-  name: 'Invalid Pubkey Format',
+  name: 'Invalid Pubkey',
   args: INVALID_TEST_CASES.invalidPubkey.args,
-  parameters: {
-    docs: {
-      description: {
-        story: INVALID_TEST_CASES.invalidPubkey.description,
-      },
-    },
-  },
 };
 
 export const EmptyInputs: Story = {
   name: 'Empty/Null Inputs',
   args: INVALID_TEST_CASES.emptyInputs.args,
-  parameters: {
-    docs: {
-      description: {
-        story: INVALID_TEST_CASES.emptyInputs.description,
-      },
-    },
-  },
-};
-
-export const InvalidTheme: Story = {
-  name: 'Invalid Theme Value',
-  args: INVALID_TEST_CASES.invalidTheme.args,
-  parameters: {
-    docs: {
-      description: {
-        story: INVALID_TEST_CASES.invalidTheme.description,
-      },
-    },
-  },
 };
 
 export const NetworkFailure: Story = {
-  name: 'Network/Relay Failure',
+  name: 'Network Failure',
   args: INVALID_TEST_CASES.networkFailure.args,
-  parameters: {
-    docs: {
-      description: {
-        story: INVALID_TEST_CASES.networkFailure.description,
-      },
-    },
-  },
 };

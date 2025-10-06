@@ -8,8 +8,8 @@ import { getFollowButtonStyles } from './style';
 
 /**
  * TODO:
- *  * To have a text attribute. Default value being "Follow me on Nostr"
- *  * iconWidth, iconHeight should be customized via CSS4 vars
+ *  1. To have a text attribute. Default value being "Follow me on Nostr"
+ *  2. show-avatar attribute to show the avatar of the user, instead of nostr logo.
  */
 export default class NostrFollowButton extends NostrUserComponent {
 

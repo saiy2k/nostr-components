@@ -1,6 +1,7 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
-import { generateCode, generateArgTypes, generateDashboardHTML } from './testing-utils.ts';
+import { generateCode, generateDashboardHTML, getArgTypes } from "./utils";
+
 import { TEST_CASES } from './test-cases-valid.ts';
 import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
 
@@ -8,7 +9,7 @@ const meta = {
   title: 'NostrProfileBadge/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
-  argTypes: generateArgTypes(),
+  argTypes: getArgTypes(),
   args: { onClick: () => {} },
   parameters: {
     test: {
@@ -38,44 +39,28 @@ type Story = StoryObj;
 
 export const ValidCasesDashboard: Story = {
   name: 'Valid Cases Dashboard',
-  tags: ['test', 'dashboard', 'valid'],
   render: () => generateDashboardHTML([
-    TEST_CASES.validNpub,
     TEST_CASES.darkTheme,
-    TEST_CASES.lyn,
+    TEST_CASES.nip05,
     TEST_CASES.showNpub,
     TEST_CASES.showFollow,
-    TEST_CASES.allFeatures,
     TEST_CASES.rawPubkey,
-    TEST_CASES.narrowWidth,
   ], '✅ Valid Cases Dashboard', '#16a34a'),
   parameters: {
-    docs: {
-      description: {
-        story: 'Dashboard showcasing all valid input scenarios and proper component behavior.',
-      },
-    },
     layout: 'fullscreen',
   },
 };
 
 export const InvalidCasesDashboard: Story = {
   name: 'Invalid Cases Dashboard',
-  tags: ['test', 'dashboard', 'invalid'],
   render: () => generateDashboardHTML([
     INVALID_TEST_CASES.invalidNpub,
-    INVALID_TEST_CASES.emptyInputs,
     INVALID_TEST_CASES.invalidNip05,
     INVALID_TEST_CASES.invalidPubkey,
-    INVALID_TEST_CASES.invalidTheme,
+    INVALID_TEST_CASES.emptyInputs,
     INVALID_TEST_CASES.networkFailure,
   ], '❌ Invalid Cases Dashboard', '#dc2626'),
   parameters: {
-    docs: {
-      description: {
-        story: 'Dashboard showcasing error handling and component behavior with invalid inputs.',
-      },
-    },
     layout: 'fullscreen',
   },
 };

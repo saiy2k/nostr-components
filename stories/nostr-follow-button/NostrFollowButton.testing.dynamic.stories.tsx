@@ -1,6 +1,9 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
-import { DEFAULT_WIDTH, generateCode, generateArgTypes } from './testing-utils.ts';
+import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
+
+
+
 import { PROFILE_DATA } from '../profile-data.ts';
 import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
 
@@ -8,7 +11,7 @@ const meta = {
   title: 'NostrFollowButton/Testing/Dynamic',
   tags: ['test', 'dynamic'],
   render: args => generateCode(args),
-  argTypes: generateArgTypes(),
+  argTypes: getArgTypes(),
   args: { onClick: () => {} },
   parameters: {
     test: {
@@ -35,7 +38,6 @@ export const DynamicInputChanges: Story = {
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
-    theme: 'light',
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
@@ -84,7 +86,6 @@ export const DynamicThemeChanges: Story = {
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
-    theme: 'light',
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
@@ -112,7 +113,6 @@ export const DynamicAllChanges: Story = {
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
-    theme: 'light',
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready

@@ -1,174 +1,94 @@
-import { DEFAULT_WIDTH } from './testing-utils.ts';
+import { DEFAULT_WIDTH } from "./utils";
 import { PROFILE_DATA } from '../profile-data.ts';
 
 export const TEST_CASES = {
-  showNpub: {
-    name: 'Show NPub Feature',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.derGigi.npub,
-      'show-npub': true,
-    },
-    description: 'Tests the show-npub feature display and copy functionality.',
-  },
-  showFollow: {
-    name: 'Show Follow Button',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.fiatjaf.npub,
-      'show-follow': true,
-    },
-    description: 'Tests the follow button functionality and integration.',
-  },
-  allFeatures: {
-    name: 'All Features',
+  default: {
+    name: 'Default',
     args: {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jb55.npub,
-      'show-npub': true,
-      'show-follow': true,
     },
-    description: 'Tests all features working together.',
-  },
-  rawPubkey: {
-    name: 'Raw Pubkey Input',
-    args: {
-      width: DEFAULT_WIDTH,
-      pubkey: PROFILE_DATA.jack.pubkey,
-    },
-    description: 'Tests component with raw pubkey input instead of npub.',
-  },
-  narrowWidth: {
-    name: 'Narrow Width',
-    args: {
-      width: 300,
-      npub: PROFILE_DATA.lyn.npub,
-    },
-    description: 'Tests component behavior with constrained width.',
-  },
-  validNpub: {
-    name: 'Valid NPub',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.jack.npub,
-    },
-    description: 'Basic valid npub input test.',
   },
   darkTheme: {
     name: 'Dark Theme',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.odell.npub,
+      npub: PROFILE_DATA.ross.npub,
+      'data-theme': 'dark',
     },
-    description: 'Tests dark theme styling.',
-    wrapperDataTheme: 'dark',
+    description: 'Dark theme enabled via data-theme attribute',
   },
-  // Public demo cases
-  fiatjaf: {
-    name: 'Fiatjaf - Default',
+  nip05: {
+    name: 'Nip05',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.fiatjaf.npub,
+      nip05: PROFILE_DATA.snowden.nip05,
     },
-    description: 'Default profile with npub input.',
+    description: 'Nip05 identifier',
   },
-  odell: {
-    name: 'Odell - Dark Theme',
+  rawPubkey: {
+    name: 'Raw Pubkey Input',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.odell.npub,
+      pubkey: PROFILE_DATA.vitor.pubkey,
     },
-    description: 'Profile with dark theme.',
-    wrapperDataTheme: 'dark',
+    description: 'Raw pubkey hex instead of npub.',
   },
-  lyn: {
-    name: 'Lyn - NIP-05',
+
+  showFollow: {
+    name: 'Show Follow Button',
     args: {
       width: DEFAULT_WIDTH,
-      nip05: PROFILE_DATA.lyn.nip05,
+      npub: PROFILE_DATA.saiy2k.npub,
+      'show-follow': true,
     },
-    description: 'Profile with nip05 input.',
+    description: 'With Follow button',
   },
-  jb55: {
-    name: 'jb55 - Full Profile',
+  showNpub: {
+    name: 'Show NPub',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.jb55.npub,
+      npub: PROFILE_DATA.calle.npub,
       'show-npub': true,
-      'show-follow': true,
     },
-    description: 'Full profile with all features enabled.',
+    description: 'Npub is shown with copy',
   },
-  derGigi: {
-    name: 'DerGigi - NIP-05 with Follow',
+
+  // Theme Variations
+  oceanGlass: {
+    name: 'Ocean Glass Theme',
     args: {
       width: DEFAULT_WIDTH,
-      nip05: PROFILE_DATA.derGigi.nip05,
-      'show-follow': true,
+      npub: PROFILE_DATA.vitor.npub,
     },
-    description: 'Profile with NIP-05 and follow button.',
-  },
-  utxo: {
-    name: 'Utxo - Basic Profile',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.utxo.npub,
-    },
-    description: 'Basic profile without additional features.',
+    description: '',
+    wrapperDataTheme: 'ocean-glass',
   },
   holographic: {
     name: 'Holographic Theme',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.jb55.npub,
+      npub: PROFILE_DATA.utxo.npub,
     },
-    description: 'Profile themed with holographic via data-theme on the component.',
+    description: '',
     wrapperDataTheme: 'holographic',
-  },
-  oceanGlass: {
-    name: 'Ocean Glass Theme',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.fiatjaf.npub,
-    },
-    description: 'Profile themed with ocean-glass via data-theme.',
-    wrapperDataTheme: 'ocean-glass',
   },
   neoMatrix: {
     name: 'Neo Matrix Theme',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.derGigi.npub,
+      npub: PROFILE_DATA.samson.npub,
     },
-    description: 'Profile themed with neo-matrix via data-theme.',
+    description: '',
     wrapperDataTheme: 'neo-matrix',
   },
   bitcoinOrange: {
     name: 'Bitcoin Orange Theme',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.jack.npub,
+      npub: PROFILE_DATA.walker.npub,
     },
-    description: 'Profile themed with bitcoin-orange via data-theme.',
+    description: '',
     wrapperDataTheme: 'bitcoin-orange',
-  },
-  wideLayout: {
-    name: 'Wide Layout',
-    args: {
-      width: 800,
-      npub: PROFILE_DATA.jack.npub,
-      'show-npub': true,
-      'show-follow': true,
-    },
-    description: 'Tests component with wider layout.',
-  },
-  customRelays: {
-    name: 'Custom Relays',
-    args: {
-      width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.sai.npub,
-      relays: 'wss://relay.damus.io,wss://nos.lol',
-    },
-    description: 'Tests component with custom relay configuration.',
   },
 };

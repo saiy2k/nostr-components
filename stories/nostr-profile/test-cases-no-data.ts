@@ -1,4 +1,4 @@
-import { DEFAULT_WIDTH } from './testing-utils.ts';
+import { DEFAULT_WIDTH } from "./utils";
 
 export const NO_DATA_TEST_CASES = {
   saiNpubNoDataRelay: {

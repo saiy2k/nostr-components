@@ -17,7 +17,7 @@ export function getFollowButtonStyles(): string {
       --nostrc-follow-btn-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
       --nostrc-follow-btn-min-height: auto;
       --nostrc-follow-btn-width: auto;
-      --nostrc-follow-btn-horizontal-alignment: center;
+      --nostrc-follow-btn-horizontal-alignment: left;
       --nostrc-follow-btn-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
       --nostrc-follow-btn-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
 
@@ -49,7 +49,7 @@ export function getFollowButtonStyles(): string {
     
     /* SVG Icon Styles */
     .nostr-follow-button-left-container svg {
-      fill: currentColor;
+      fill: var(--nostrc-follow-btn-color);
       display: inline-block;
       vertical-align: middle;
       width: var(--nostrc-icon-width);

@@ -35,7 +35,7 @@ export function renderFollowButton({
 
   const iconContent = isFollowed
     ? getSuccessAnimation('light')
-    : getNostrLogo('light');
+    : getNostrLogo();
   const textContent = isFollowed
     ? 'Followed'
     : `<span>Follow me on Nostr</span>`;
@@ -45,14 +45,14 @@ export function renderFollowButton({
 
 function renderLoading(): string {
   return renderContainer(
-    getLoadingNostrich('light'), // Use default values
+    getLoadingNostrich(), // Use default values
     '<span>Loading...</span>'
   );
 }
 
 function renderFollowing(): string {
   return renderContainer(
-    getLoadingNostrich('light'), // Use default values
+    getLoadingNostrich(), // Use default values
     '<span>Following...</span>'
   );
 }

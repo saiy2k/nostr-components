@@ -1,14 +1,13 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
-import { DEFAULT_WIDTH, generateCode, generateArgTypes } from './testing-utils.ts';
+import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
 import { PROFILE_DATA, getAllInputTypes } from '../profile-data.ts';
 import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
 
 const meta = {
   title: 'NostrProfileBadge/Testing/Dynamic',
-  tags: ['test', 'dynamic'],
   render: args => generateCode(args),
-  argTypes: generateArgTypes(),
+  argTypes: getArgTypes(),
   args: { onClick: () => {} },
   parameters: {
     test: {
@@ -29,17 +28,11 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
-// ====================================
-// DYNAMIC ATTRIBUTE CHANGES
-// ====================================
-
 export const DynamicNPubChanges: Story = {
-  name: 'Dynamic NPub Changes',
-  tags: ['test', 'dynamic', 'attributes'],
+  name: 'Dynamic Npub Changes',
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
-    theme: 'light',
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
@@ -58,6 +51,7 @@ export const DynamicNPubChanges: Story = {
     ];
 
     let currentIndex = 0;
+    let intervalId: NodeJS.Timeout;
     
     // Function to update npub
     const updateNPub = () => {
@@ -68,18 +62,24 @@ export const DynamicNPubChanges: Story = {
       console.log(`Updated npub to: ${npubs[currentIndex]}`);
     };
 
-    setInterval(updateNPub, 5000);
+    // Start the interval
+    intervalId = setInterval(updateNPub, 5000);
     
+    // Store cleanup function on the component for potential cleanup
+    (component as any).__cleanup = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        console.log('DynamicNPubChanges: Interval cleared');
+      }
+    };
   },
 };
 
 export const DynamicAllAttributes: Story = {
   name: 'Dynamic All Attributes',
-  tags: ['test', 'dynamic', 'comprehensive'],
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
-    theme: 'light',
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
@@ -88,16 +88,14 @@ export const DynamicAllAttributes: Story = {
     const component = canvasElement.querySelector('nostr-profile-badge');
     if (!component) return;
 
-    // Create input list display
-    const createInputList = (inputs: Array<{type: string, value: string, name: string}>, currentIndex: number) => {
+    // Create static input list display
+    const createStaticInputList = (inputs: Array<{type: string, value: string, name: string}>) => {
       return inputs.map((input, index) => {
-        const isCurrent = index === currentIndex;
         const isValid = !input.name.includes('Invalid') && !input.name.includes('Empty');
         const displayName = isValid ? input.name : input.value;
         const displayCase = isValid ? input.type : input.name;
-        const item = `${index + 1}. ${displayName} - ${displayCase}`;
-        return isCurrent ? `<strong>${item}</strong>` : item;
-      }).join('<br>');
+        return `<div id="input-item-${index}" style="margin: 2px 0;">${index + 1}. ${displayName} - ${displayCase}</div>`;
+      }).join('');
     };
 
     // Test data - 5 valid cases and 5 invalid cases
@@ -128,7 +126,7 @@ export const DynamicAllAttributes: Story = {
     let inputIndex = 0;
     let themeIndex = 0;
 
-    // Create input list container
+    // Create input list container with static list
     const inputListContainer = document.createElement('div');
     inputListContainer.style.cssText = `
       margin-top: 20px;
@@ -139,11 +137,20 @@ export const DynamicAllAttributes: Story = {
     `;
     inputListContainer.innerHTML = `
       <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">Input Sequence (Name, type)</h4>
-      <div id="input-list"></div>
+      <div id="input-list">${createStaticInputList(inputs)}</div>
     `;
     
     // Insert after the component
     component.parentNode?.insertBefore(inputListContainer, component.nextSibling);
+    
+    // Highlight the first item initially
+    const firstItemElement = document.getElementById(`input-item-${inputIndex}`);
+    if (firstItemElement) {
+      firstItemElement.style.fontWeight = 'bold';
+      firstItemElement.style.backgroundColor = '#e3f2fd';
+      firstItemElement.style.padding = '4px 8px';
+      firstItemElement.style.borderRadius = '4px';
+    }
     
     // Function to update all attributes and input types
     const updateAllAttributes = () => {
@@ -159,7 +166,7 @@ export const DynamicAllAttributes: Story = {
       
       // Update theme
       themeIndex = (themeIndex + 1) % themes.length;
-      component.setAttribute('theme', themes[themeIndex]);
+      component.setAttribute('data-theme', themes[themeIndex]);
       
       // Update show-follow
       showFollow = !showFollow;
@@ -169,10 +176,25 @@ export const DynamicAllAttributes: Story = {
       showNpub = !showNpub;
       component.setAttribute('show-npub', showNpub.toString());
       
-      // Update input list display
-      const inputListElement = document.getElementById('input-list');
-      if (inputListElement) {
-        inputListElement.innerHTML = createInputList(inputs, inputIndex);
+      // Update input list display - highlight current item only
+      // Clear previous highlights
+      inputs.forEach((_, index) => {
+        const itemElement = document.getElementById(`input-item-${index}`);
+        if (itemElement) {
+          itemElement.style.fontWeight = 'normal';
+          itemElement.style.backgroundColor = 'transparent';
+          itemElement.style.padding = '0';
+          itemElement.style.borderRadius = '0';
+        }
+      });
+      
+      // Highlight current item
+      const currentItemElement = document.getElementById(`input-item-${inputIndex}`);
+      if (currentItemElement) {
+        currentItemElement.style.fontWeight = 'bold';
+        currentItemElement.style.backgroundColor = '#e3f2fd';
+        currentItemElement.style.padding = '4px 8px';
+        currentItemElement.style.borderRadius = '4px';
       }
       
       // Log the changes for debugging
@@ -186,19 +208,25 @@ export const DynamicAllAttributes: Story = {
       inputIndex = (inputIndex + 1) % inputs.length;
     };
 
-    setInterval(updateAllAttributes, 5000);
+    // Start the interval
+    const intervalId = setInterval(updateAllAttributes, 5000);
     
+    // Store cleanup function on the component for potential cleanup
+    (component as any).__cleanup = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        console.log('DynamicAllAttributes: Interval cleared');
+      }
+    };
   },
 };
 
 export const DynamicNPubAndRelays: Story = {
   name: 'Dynamic NPub and Relays',
-  tags: ['test', 'dynamic', 'npub', 'relays'],
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
     relays: 'wss://relay.damus.io',
-    theme: 'light',
   },
   play: async ({ canvasElement }) => {
     // Wait for component to be ready
@@ -235,7 +263,7 @@ export const DynamicNPubAndRelays: Story = {
       { npub: PROFILE_DATA.odell.npub, name: 'Odell' },
       { npub: PROFILE_DATA.lyn.npub, name: 'Lyn' },
       { npub: PROFILE_DATA.utxo.npub, name: 'Utxo' },
-      { npub: PROFILE_DATA.sai.npub, name: 'Sai' },
+      { npub: PROFILE_DATA.saiy2k.npub, name: 'Sai' },
     ];
 
     // Different relay configurations
@@ -287,6 +315,9 @@ export const DynamicNPubAndRelays: Story = {
     let isFastMode = true;
     let fastUpdateCount = 0;
     const maxFastUpdates = 10; // Number of fast updates before pause
+    
+    // Store timeout IDs for cleanup
+    let timeoutId: NodeJS.Timeout | null = null;
 
     // Function to update npub only
     const updateNPub = () => {
@@ -342,7 +373,7 @@ export const DynamicNPubAndRelays: Story = {
         console.log('Switching to pause mode for 15000ms');
         
         // Schedule next fast cycle after pause
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           isFastMode = true;
           addLogEntry(`Resuming fast updates...`);
           console.log('Resuming fast updates');
@@ -362,7 +393,7 @@ export const DynamicNPubAndRelays: Story = {
 
       // Schedule next fast update with random delay between 50-100ms
       const nextDelay = 100 + Math.random() * 100; // 100-200ms
-      setTimeout(performFastUpdate, nextDelay);
+      timeoutId = setTimeout(performFastUpdate, nextDelay);
     };
 
     // Initial status update
@@ -372,6 +403,13 @@ export const DynamicNPubAndRelays: Story = {
     addLogEntry(`Starting fast update cycle...`);
     performFastUpdate();
     
+    // Store cleanup function on the component for potential cleanup
+    (component as any).__cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        console.log('DynamicNPubAndRelays: Timeout cleared');
+      }
+    };
   },
 };
 

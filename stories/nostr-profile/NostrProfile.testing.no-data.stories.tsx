@@ -1,13 +1,13 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
-import { generateCode, generateArgTypes } from './testing-utils';
+import { generateCode, getArgTypes } from "./utils";
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
 const meta = {
   title: 'NostrProfile/Testing',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
-  argTypes: generateArgTypes(),
+  argTypes: getArgTypes(),
   args: { onClick: () => {} },
   parameters: {
     test: {
@@ -32,11 +32,4 @@ type Story = StoryObj;
 export const SaiNpubNoDataRelay: Story = {
   name: 'No Data',
   args: NO_DATA_TEST_CASES.saiNpubNoDataRelay.args,
-  parameters: {
-    docs: {
-      description: {
-        story: NO_DATA_TEST_CASES.saiNpubNoDataRelay.description,
-      },
-    },
-  },
 };
