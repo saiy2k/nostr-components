@@ -123,7 +123,7 @@ export const PROFILE_DATA: Record<string, Profile> = {
   saiy2k: {
     name: 'Saiyasodharan',
     npub: 'npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3',
-    nip05: 'saiy2k@.iris.to',
+    nip05: 'saiy2k@iris.to',
     pubkey: '0418ca2d6cd6c7fbc4e0391bb745027023a7edbc38f2a60fc3b68f006efb85eb',
   },
 };
@@ -134,11 +134,13 @@ export const getRandomProfile = (): Profile => {
 };
 
 export const getProfilesByType = (type: 'npub' | 'nip05' | 'pubkey'): InputType[] => {
-  return Object.values(PROFILE_DATA).map(profile => ({
-    type,
-    value: profile[type],
-    name: profile.name,
-  }));
+  return Object.values(PROFILE_DATA)
+    .filter(profile => Boolean(profile[type]))
+    .map(profile => ({
+      type,
+      value: profile[type],
+      name: profile.name,
+    }));
 };
 
 export const getAllInputTypes = (): InputType[] => {
@@ -146,11 +148,15 @@ export const getAllInputTypes = (): InputType[] => {
   const inputs: InputType[] = [];
   
   profiles.forEach(profile => {
-    inputs.push(
-      { type: 'npub', value: profile.npub, name: profile.name },
-      { type: 'nip05', value: profile.nip05, name: profile.name },
-      { type: 'pubkey', value: profile.pubkey, name: profile.name },
-    );
+    if (profile.npub) {
+      inputs.push({ type: 'npub', value: profile.npub, name: profile.name });
+    }
+    if (profile.nip05) {
+      inputs.push({ type: 'nip05', value: profile.nip05, name: profile.name });
+    }
+    if (profile.pubkey) {
+      inputs.push({ type: 'pubkey', value: profile.pubkey, name: profile.name });
+    }
   });
   
   return inputs;

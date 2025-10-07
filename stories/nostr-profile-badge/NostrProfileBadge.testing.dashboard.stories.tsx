@@ -1,11 +1,10 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, generateDashboardHTML, getArgTypes } from "./utils";
 
 import { TEST_CASES } from './test-cases-valid';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrProfileBadge/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
@@ -28,7 +27,7 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 // ====================================
 // COMPREHENSIVE TESTING DASHBOARDS

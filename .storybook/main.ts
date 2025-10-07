@@ -4,11 +4,16 @@ const getStories = () => {
   if (process.env.STORYBOOK_ENV === 'production') {
     return [
       '../stories/**/*.mdx',
-      // Only include public stories, exclude testing stories
+      // Include main component stories
       '../stories/nostr-follow-button/NostrFollowButton.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-post/NostrPost.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-profile/NostrProfile.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-profile-badge/NostrProfileBadge.stories.@(js|jsx|mjs|ts|tsx)',
+      // Include theme stories
+      '../stories/nostr-follow-button/NostrFollowButton.theme.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-post/NostrPost.theme.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-profile/NostrProfile.theme.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-profile-badge/NostrProfileBadge.theme.stories.@(js|jsx|mjs|ts|tsx)',
     ];
   } else {
     return [

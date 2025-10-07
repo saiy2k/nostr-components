@@ -1,9 +1,8 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, getArgTypes } from "./utils";
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrProfile/Testing',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
@@ -26,7 +25,7 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 // Individual story exports for better organization
 export const SaiNpubNoDataRelay: Story = {

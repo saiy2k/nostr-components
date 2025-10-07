@@ -79,7 +79,7 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.gigi_free_web.noteid,
-      'show-stats': true,
+      'show-stats': "true",
       onClick: 'handlePostClick',
       onAuthorClick: 'handleAuthorClick',
       onMentionClick: 'handleMentionClick',
@@ -90,7 +90,7 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.jack_video_programming_you.noteid,
-      'show-stats': true,
+      'show-stats': "true",
     },
   },
   imagePost: {
@@ -98,7 +98,7 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.toxic_bitcoiner_image_state_exists.noteid,
-      'show-stats': true,
+      'show-stats': "true",
     },
   },
   allFeatures: {
@@ -106,7 +106,7 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.jack_video_programming_you.noteid,
-      'show-stats': true,
+      'show-stats': "true",
       onClick: 'handlePostClick',
       onAuthorClick: 'handleAuthorClick',
       onMentionClick: 'handleMentionClick',
@@ -125,7 +125,7 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.jack_video_programming_you.noteid,
-      'show-stats': true,
+      'show-stats': "true",
     },
   },
   toxicBitcoinerImage: {
@@ -133,7 +133,7 @@ export const TEST_CASES = {
     args: {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.toxic_bitcoiner_image_state_exists.noteid,
-      'show-stats': true,
+      'show-stats': "true",
     },
   },
 

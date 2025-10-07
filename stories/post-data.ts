@@ -80,11 +80,13 @@ export const getRandomProfile = (): Post => {
 };
 
 export const getProfilesByType = (type: 'hex' | 'noteid' | 'eventid'): InputType[] => {
-  return Object.values(POST_DATA).map(post => ({
-    type,
-    value: post[type],
-    name: post.name,
-  }));
+  return Object.values(POST_DATA)
+    .filter(post => Boolean(post[type]))
+    .map(post => ({
+      type,
+      value: post[type],
+      name: post.name,
+    }));
 };
 
 export const getAllInputTypes = (): InputType[] => {
@@ -92,11 +94,15 @@ export const getAllInputTypes = (): InputType[] => {
   const inputs: InputType[] = [];
   
   profiles.forEach(post => {
-    inputs.push(
-      { type: 'hex', value: post.hex, name: post.name },
-      { type: 'noteid', value: post.noteid, name: post.name },
-      { type: 'eventid', value: post.eventid, name: post.name },
-    );
+    if (post.hex) {
+      inputs.push({ type: 'hex', value: post.hex, name: post.name });
+    }
+    if (post.noteid) {
+      inputs.push({ type: 'noteid', value: post.noteid, name: post.name });
+    }
+    if (post.eventid) {
+      inputs.push({ type: 'eventid', value: post.eventid, name: post.name });
+    }
   });
   
   return inputs;

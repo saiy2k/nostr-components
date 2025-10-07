@@ -208,7 +208,7 @@ export function renderLiveChatInner({
           `
       : `
             <div class="nostr-chat-recipient-placeholder">
-              ${getNostrLogo(theme, iconSize, iconSize)}
+              ${getNostrLogo(iconSize, iconSize)}
               <span>Nostr Live Chat</span>
             </div>
           `
@@ -239,7 +239,7 @@ export function renderLiveChatInner({
             <input type="text" class="nostr-chat-npub-input" placeholder="Enter recipient's npub/nip05 address..." />
             <button class="nostr-chat-find-btn" ${isFinding ? "disabled" : ""}>
               ${isFinding
-        ? `${getLoadingNostrich(theme)} <span>Finding...</span>`
+        ? `${getLoadingNostrich()} <span>Finding...</span>`
         : `<span>Find</span>`
       }
             </button>
@@ -272,7 +272,7 @@ export function renderLiveChatInner({
             <div class="${counterClass}" aria-live="polite">${remaining} chars left</div>
             <button class="nostr-chat-send-btn" ${isLoading ? "disabled" : ""}>
               ${isLoading
-          ? getLoadingNostrich(theme)
+          ? getLoadingNostrich()
           : `Send`
         }
             </button>

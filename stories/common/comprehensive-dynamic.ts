@@ -122,6 +122,9 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
       let currentWidth: number | undefined;
       if (widths.length > 0) {
         currentWidth = widths[widthIndex];
+        // Set width on the component itself
+        component.style.width = `${currentWidth}px`;
+        // Optionally also set container width to preserve wrapper sizing
         const container = component.parentElement;
         if (container) container.style.width = `${currentWidth}px`;
       }
@@ -156,7 +159,7 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
     // Start interval
     const intervalId = setInterval(updateAll, updateInterval);
     
-    // Cleanup
+    // Store cleanup function on the component for manual cleanup
     (component as any).__cleanup = () => {
       if (intervalId) {
         clearInterval(intervalId);

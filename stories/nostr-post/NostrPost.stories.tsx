@@ -1,6 +1,5 @@
-import React from 'react';
 import { fn } from 'storybook/test';
-import type { Meta, StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
@@ -24,7 +23,7 @@ const meta: Meta = {
 } satisfies Meta;
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 export const Default: Story = {
   name: TEST_CASES.default.name,

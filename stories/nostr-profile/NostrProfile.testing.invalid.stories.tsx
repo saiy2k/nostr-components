@@ -1,9 +1,8 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, getArgTypes } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrProfile/Testing/Invalid',
   tags: ['test', 'invalid'],
   render: args => generateCode(args),
@@ -26,30 +25,30 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 // Stories from InvalidCasesDashboard
 export const InvalidNpub: Story = {
-  name: 'Invalid NPub',
+  name: INVALID_TEST_CASES.invalidNpub.name,
   args: INVALID_TEST_CASES.invalidNpub.args,
 };
 
 export const InvalidNip05: Story = {
-  name: 'Invalid NIP-05',
+  name: INVALID_TEST_CASES.invalidNip05.name,
   args: INVALID_TEST_CASES.invalidNip05.args,
 };
 
 export const InvalidPubkey: Story = {
-  name: 'Invalid Pubkey',
+  name: INVALID_TEST_CASES.invalidPubkey.name,
   args: INVALID_TEST_CASES.invalidPubkey.args,
 };
 
 export const EmptyInputs: Story = {
-  name: 'Empty/Null Inputs',
+  name: INVALID_TEST_CASES.emptyInputs.name,
   args: INVALID_TEST_CASES.emptyInputs.args,
 };
 
 export const NetworkFailure: Story = {
-  name: 'Network Failure',
+  name: INVALID_TEST_CASES.networkFailure.name,
   args: INVALID_TEST_CASES.networkFailure.args,
 };

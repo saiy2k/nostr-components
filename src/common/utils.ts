@@ -5,7 +5,7 @@ import { nip19 } from "nostr-tools";
 
 
 import { Theme } from './types';
-import { DEFAULT_RELAYS, MILLISATS_PER_SAT, NPUB_LENGTH } from './constants';
+import { DEFAULT_RELAYS, MILLISATS_PER_SAT } from './constants';
 
 export function maskNPub(npubString: string = '', length = 3) {
   const npubLength = npubString.length;

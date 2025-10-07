@@ -37,7 +37,7 @@ export function createPrimaryAttributeChangesPlay(
     if (!component) return;
 
     let currentIndex = 0;
-    let intervalId: NodeJS.Timeout;
+    let intervalId: ReturnType<typeof setInterval>;
     
     const updateInput = () => {
       currentIndex = (currentIndex + 1) % testInputs.length;
@@ -55,7 +55,7 @@ export function createPrimaryAttributeChangesPlay(
     // Start the interval
     intervalId = setInterval(updateInput, updateInterval);
     
-    // Store cleanup function on the component for potential cleanup
+    // Store cleanup function on the component for manual cleanup
     (component as any).__cleanup = () => {
       if (intervalId) {
         clearInterval(intervalId);

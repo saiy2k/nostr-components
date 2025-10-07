@@ -54,13 +54,13 @@ export function renderZapButton({
             isError
               ? `<span style="color: red">ERROR</span>`
               : isLoading
-                ? `${getLoadingNostrich(theme)} <span>Zapping...</span>`
+                ? `${getLoadingNostrich()} <span>Zapping...</span>`
                 : isSuccess
                   ? `${getSuccessAnimation(theme)} ${escapeHtml(buttonText)}`
                   : `${getLightningIcon(iconWidth, iconHeight)} <span>${escapeHtml(buttonText)}</span>`
           }
         </button>
-        ${isAmountLoading ? `${getLoadingNostrich(theme)}` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
+        ${isAmountLoading ? `${getLoadingNostrich()}` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
       </div>
       ${isError ? `<small style="color: red">${escapeHtml(errorMessage)}</small>` : ''}
     </div>

@@ -1,5 +1,4 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
 import { PROFILE_DATA } from '../profile-data';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
@@ -7,7 +6,7 @@ import { createPrimaryAttributeChangesPlay } from '../common/primary-attribute-c
 import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic';
 import { createFastSwitchingPlay } from '../common/fast-switching';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrFollowButton/Testing/Dynamic',
   tags: ['test', 'dynamic'],
   render: args => generateCode(args),
@@ -30,7 +29,7 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 export const InputChanges: Story = {
   name: 'Input Changes',

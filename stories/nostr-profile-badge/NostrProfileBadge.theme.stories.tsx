@@ -1,5 +1,4 @@
-import React from 'react';
-import type { Meta, StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, getArgTypes } from './utils';
 import { PROFILE_BADGE_THEMES } from './theme';
 import { TEST_CASES } from './test-cases-valid';
@@ -12,7 +11,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 export const OceanGlass: Story = {
   name: TEST_CASES.oceanGlass.name,
