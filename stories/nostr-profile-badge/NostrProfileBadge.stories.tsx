@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from './utils';
+import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
@@ -15,7 +15,7 @@ const meta: Meta = {
       },
       source: {
         transform: (code, storyContext) =>
-          generateCode(storyContext.args, true),
+          generateCodeWithScript(storyContext.args),
       },
     },
   },

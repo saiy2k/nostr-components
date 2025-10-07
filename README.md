@@ -1,6 +1,6 @@
 # Nostr Components
 
-**Take Nostr content beyond Nostr clients – embed it anywhere on the internet.**
+**Embed nostr anywhere on the internet**
 
 ## 🚀 About the Project
 
