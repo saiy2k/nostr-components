@@ -51,7 +51,7 @@ export function renderDm({
         `
             : `
           <div class="nostr-dm-recipient-placeholder">
-            ${getNostrLogo(theme, iconSize, iconSize)}
+            ${getNostrLogo(iconSize, iconSize)}
             <span>Nostr Direct Message</span>
           </div>
         `
@@ -67,8 +67,8 @@ export function renderDm({
             <button class="nostr-dm-find-btn" ${isFinding ? "disabled" : ""}>
               ${
                 isFinding
-                  ? `${getLoadingNostrich(theme)} <span>Finding...</span>`
-                  : `${getNostrLogo(theme, iconSize, iconSize)} <span>Find</span>`
+                  ? `${getLoadingNostrich()} <span>Finding...</span>`
+                  : `${getNostrLogo(iconSize, iconSize)} <span>Find</span>`
               }
             </button>
           </div>
@@ -86,8 +86,8 @@ export function renderDm({
           <button class="nostr-dm-send-btn" ${!recipientNpub || isLoading ? "disabled" : ""}>
             ${
               isLoading
-                ? `${getLoadingNostrich(theme)} <span>Sending...</span>`
-                : `${getNostrLogo(theme, iconSize, iconSize)} <span>${buttonText}</span>`
+                ? `${getLoadingNostrich()} <span>Sending...</span>`
+                : `${getNostrLogo(iconSize, iconSize)} <span>${buttonText}</span>`
             }
           </button>
         </div>

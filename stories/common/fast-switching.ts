@@ -83,7 +83,7 @@ export function createFastSwitchingPlay(config: FastSwitchingConfig) {
     let changeCount = 0;
     let isFastMode = true;
     let fastUpdateCount = 0;
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     // Helper functions
     const updateStatus = (currentAttr1?: any, currentAttr2?: any) => {
@@ -200,7 +200,7 @@ export function createFastSwitchingPlay(config: FastSwitchingConfig) {
     addLog(`Starting fast update cycle...`);
     performFastUpdate();
     
-    // Cleanup
+    // Store cleanup function on the component for manual cleanup
     (component as any).__cleanup = () => {
       if (timeoutId) {
         clearTimeout(timeoutId);

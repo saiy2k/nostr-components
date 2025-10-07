@@ -1,10 +1,9 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
 
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrProfileBadge/Testing',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
@@ -27,7 +26,7 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 export const NoData: Story = {
   name: NO_DATA_TEST_CASES.saiNpubNoDataRelay.name,

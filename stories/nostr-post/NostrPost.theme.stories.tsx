@@ -1,5 +1,4 @@
-import React from 'react';
-import type { Meta, StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, getArgTypes } from './utils';
 import { POST_THEMES } from './theme';
 import { POST_DATA } from '../post-data';
@@ -13,7 +12,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 export const OceanGlass: Story = {
   name: TEST_CASES.oceanGlassTheme.name,

@@ -1,11 +1,8 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
-import { DEFAULT_WIDTH, generateCode, getArgTypes } from './utils';
-
+import type { Meta, StoryObj } from '@storybook/web-components';
+import { generateCode, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
-import { PROFILE_DATA } from '../profile-data';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrProfileBadge/Testing/Valid',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -27,7 +24,7 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 export const DarkTheme: Story = {
   name: TEST_CASES.darkTheme.name,

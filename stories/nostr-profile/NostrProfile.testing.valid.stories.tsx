@@ -1,9 +1,8 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, getArgTypes } from "./utils";
 import { TEST_CASES } from './test-cases-valid';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrProfile/Testing/Valid',
   tags: ['test', 'valid'],
   render: args => generateCode(args),
@@ -26,30 +25,29 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
-// Stories from ValidCasesDashboard
 export const DarkTheme: Story = {
-  name: 'Dark Theme',
+  name: TEST_CASES.darkTheme.name,
   args: TEST_CASES.darkTheme.args,
 };
 
 export const Lyn: Story = {
-  name: 'Nip 05',
+  name: TEST_CASES.nip05.name,
   args: TEST_CASES.nip05.args,
 };
 
 export const ShowNPub: Story = {
-  name: 'Show Npub',
+  name: TEST_CASES.showNpub.name,
   args: TEST_CASES.showNpub.args,
 };
 
 export const ShowFollow: Story = {
-  name: 'Show Follow',
+  name: TEST_CASES.showFollow.name,
   args: TEST_CASES.showFollow.args,
 };
 
 export const RawPubkey: Story = {
-  name: 'Raw Pubkey Input',
+  name: TEST_CASES.rawPubkey.name,
   args: TEST_CASES.rawPubkey.args,
 };

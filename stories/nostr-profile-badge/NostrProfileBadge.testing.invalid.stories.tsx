@@ -1,12 +1,8 @@
-import React from 'react';
-import type { StoryObj } from '@storybook/web-components-vite';
-import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
-
-
-
+import type { Meta, StoryObj } from '@storybook/web-components';
+import { generateCode, getArgTypes } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
-const meta = {
+const meta: Meta = {
   title: 'NostrProfileBadge/Testing/Invalid',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -28,7 +24,7 @@ const meta = {
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<any>;
 
 export const InvalidNpub: Story = {
   name: INVALID_TEST_CASES.invalidNpub.name,

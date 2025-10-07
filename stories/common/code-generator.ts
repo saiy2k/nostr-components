@@ -16,6 +16,7 @@
  */
 
 import { ParameterDefinition } from './parameters';
+import { escapeHtml } from '../../src/common/utils';
 
 export interface CodeGeneratorConfig {
   componentName: string;
@@ -66,7 +67,7 @@ export function generateCode(options: GenerateCodeOptions): string {
       if (typeof value === 'boolean') {
         return value ? key : '';
       }
-      return `${key}="${value}"`;
+      return `${key}="${escapeHtml(String(value))}"`;
     })
     .filter(Boolean)
     .join('\n  ');
@@ -104,7 +105,7 @@ export function generateDashboardHTML(options: GenerateDashboardOptions): string
         if (typeof value === 'boolean') {
           return value ? key : '';
         }
-        return `${key}="${value}"`;
+        return `${key}="${escapeHtml(String(value))}"`;
       })
       .filter(Boolean)
       .join(' ');
