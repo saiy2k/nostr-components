@@ -1,24 +1,22 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { generateCode, getArgTypes } from './utils.ts';
-import { TEST_CASES } from './test-cases-valid.ts';
+import { generateCode, getArgTypes } from './utils';
+import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
   title: 'NostrProfileBadge',
   tags: ['autodocs'],
-  render: args => {
-    const html = generateCode(args);
-    // Create a template element to avoid HTML encoding
-    const template = document.createElement('template');
-    template.innerHTML = html;
-    return template.content.cloneNode(true);
-  },
+  render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     docs: {
       description: {
-        component: 'A web component for displaying Nostr profile information in a compact badge format. Supports npub, nip05, and raw pubkey inputs with light/dark theme support and optional features like npub display and follow button integration.',
+        component: 'A web component that displays Nostr profile information in a compact badge format. Perfect for embedding in lists, comments, or sidebars.',
+      },
+      source: {
+        transform: (code, storyContext) =>
+          generateCode(storyContext.args, true),
       },
     },
   },
@@ -27,72 +25,32 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-// ====================================
-// PUBLIC DEMO STORIES
-// ====================================
-
 export const Default: Story = {
-  name: 'Default',
+  name: TEST_CASES.default.name,
   args: TEST_CASES.default.args,
 };
 
 export const DarkTheme: Story = {
-  name: 'Dark theme',
-  args: {
-    ...TEST_CASES.darkTheme.args,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.darkTheme.description,
-      },
-    },
-  },
+  name: TEST_CASES.darkTheme.name,
+  args: TEST_CASES.darkTheme.args,
 };
 
 export const Nip05: Story = {
-  name: 'Nip05',
+  name: TEST_CASES.nip05.name,
   args: TEST_CASES.nip05.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.nip05.description,
-      },
-    },
-  },
 };
 
 export const RawPubkey: Story = {
-  name: 'Raw pubkey (hex)',
+  name: TEST_CASES.rawPubkey.name,
   args: TEST_CASES.rawPubkey.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.rawPubkey.description,
-      },
-    },
-  },
 };
 
 export const FollowButton: Story = {
-  name: 'Follow button',
+  name: TEST_CASES.showFollow.name,
   args: TEST_CASES.showFollow.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.showFollow.description,
-      },
-    },
-  },
 };
+
 export const ShowNPub: Story = {
-  name: 'Show Npub',
+  name: TEST_CASES.showNpub.name,
   args: TEST_CASES.showNpub.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.showNpub.description,
-      },
-    },
-  },
 };

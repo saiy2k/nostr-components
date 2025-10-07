@@ -1,14 +1,13 @@
 import { DEFAULT_WIDTH } from "./utils";
-import { POST_DATA } from '../post-data.ts';
+import { POST_DATA } from '../post-data';
 
 export const TEST_CASES = {
-  Default: {
+  default: {
     name: 'Default',
     args: {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.gigi_free_web.noteid,
     },
-    description: '',
   },
   darkTheme: {
     name: 'Dark Theme',
@@ -17,7 +16,6 @@ export const TEST_CASES = {
       noteid: POST_DATA.jack_rough_consensus.noteid,
       'data-theme': 'dark',
     },
-    description: 'Dark theme',
   },
   eventId: {
     name: 'Event id',
@@ -25,7 +23,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       eventid: POST_DATA.calle_build_fools.eventid,
     },
-    description: 'Using event Id',
   },
   rawHex: {
     name: 'Raw hex',
@@ -33,7 +30,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       hex: POST_DATA.nvk_future_here.hex,
     },
-    description: 'Using Raw hex',
   },
   showStats: {
     name: 'Show Stats',
@@ -42,7 +38,6 @@ export const TEST_CASES = {
       noteid: POST_DATA.utxo_us_dollar_backing.noteid,
       'show-stats': "true",
     },
-    description: 'Show stats',
   },
 
   // Theme Variations
@@ -89,7 +84,6 @@ export const TEST_CASES = {
       onAuthorClick: 'handleAuthorClick',
       onMentionClick: 'handleMentionClick',
     },
-    description: 'Post with all click handlers configured.',
   },
   mediaPost: {
     name: 'Media Post',
@@ -98,7 +92,6 @@ export const TEST_CASES = {
       noteid: POST_DATA.jack_video_programming_you.noteid,
       'show-stats': true,
     },
-    description: 'Post with embedded media content.',
   },
   imagePost: {
     name: 'Image Post',
@@ -107,7 +100,6 @@ export const TEST_CASES = {
       noteid: POST_DATA.toxic_bitcoiner_image_state_exists.noteid,
       'show-stats': true,
     },
-    description: 'Post with embedded image content.',
   },
   allFeatures: {
     name: 'All Features',
@@ -119,7 +111,6 @@ export const TEST_CASES = {
       onAuthorClick: 'handleAuthorClick',
       onMentionClick: 'handleMentionClick',
     },
-    description: 'Tests all features working together.',
   },
   validNoteId: {
     name: 'Valid Note ID',
@@ -127,7 +118,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       noteid: POST_DATA.gigi_free_web.noteid,
     },
-    description: 'Basic valid note ID input test.',
   },
 
   jackVideoProgramming: {
@@ -137,7 +127,6 @@ export const TEST_CASES = {
       noteid: POST_DATA.jack_video_programming_you.noteid,
       'show-stats': true,
     },
-    description: 'Video post from Jack about programming with stats display.',
   },
   toxicBitcoinerImage: {
     name: 'Toxic Bitcoiner - Image',
@@ -146,7 +135,6 @@ export const TEST_CASES = {
       noteid: POST_DATA.toxic_bitcoiner_image_state_exists.noteid,
       'show-stats': true,
     },
-    description: 'Image post from Toxic Bitcoiner about state existence with stats display.',
   },
 
   // Types:

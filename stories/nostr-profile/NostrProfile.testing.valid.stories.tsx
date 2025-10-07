@@ -8,7 +8,7 @@ const meta = {
   tags: ['test', 'valid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,
@@ -39,7 +39,7 @@ export const Lyn: Story = {
   args: TEST_CASES.nip05.args,
 };
 
-export const ShowNpub: Story = {
+export const ShowNPub: Story = {
   name: 'Show Npub',
   args: TEST_CASES.showNpub.args,
 };

@@ -8,7 +8,7 @@
  * These parameters define the common attributes like npub, nip05, pubkey, and relays.
  */
 
-import { DEFAULT_RELAYS } from '../../src/common/constants.ts';
+import { DEFAULT_RELAYS } from '../../src/common/constants';
 
 export interface ParameterDefinition {
   variable: string;

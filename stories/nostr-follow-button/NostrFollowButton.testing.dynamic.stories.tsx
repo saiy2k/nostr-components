@@ -1,15 +1,18 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
-import { PROFILE_DATA } from '../profile-data.ts';
-import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
+import { PROFILE_DATA } from '../profile-data';
+import { INVALID_TEST_CASES } from './test-cases-invalid';
+import { createPrimaryAttributeChangesPlay } from '../common/primary-attribute-changes';
+import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic';
+import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta = {
   title: 'NostrFollowButton/Testing/Dynamic',
   tags: ['test', 'dynamic'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,
@@ -29,141 +32,83 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
-export const DynamicInputChanges: Story = {
-  name: 'Dynamic Input Changes',
-  tags: ['test', 'dynamic', 'inputs'],
+export const InputChanges: Story = {
+  name: 'Input Changes',
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
   },
-  play: async ({ canvasElement }) => {
-    // Wait for component to be ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const component = canvasElement.querySelector('nostr-follow-button');
-    if (!component) return;
-
-    const testInputs = [
+  play: createPrimaryAttributeChangesPlay(
+    'nostr-follow-button',
+    ['npub', 'nip05', 'pubkey'],
+    [
       { type: 'npub', value: PROFILE_DATA.jack.npub, name: 'Jack' },
+      { type: 'npub', value: INVALID_TEST_CASES.invalidNpub.args.npub, name: 'Invalid NPub' },
       { type: 'nip05', value: PROFILE_DATA.fiatjaf.nip05, name: 'Fiatjaf' },
+      { type: 'nip05', value: INVALID_TEST_CASES.invalidNip05.args.nip05, name: 'Invalid NIP-05' },
       { type: 'pubkey', value: PROFILE_DATA.jb55.pubkey, name: 'jb55' },
+      { type: 'pubkey', value: INVALID_TEST_CASES.invalidPubkey.args.pubkey, name: 'Invalid Pubkey' },
       { type: 'npub', value: PROFILE_DATA.odell.npub, name: 'Odell' },
-    ];
-
-    let currentIndex = 0;
-    
-    const updateInput = () => {
-      currentIndex = (currentIndex + 1) % testInputs.length;
-      const input = testInputs[currentIndex];
-      
-      // Clear all inputs first
-      component.removeAttribute('npub');
-      component.removeAttribute('nip05');
-      component.removeAttribute('pubkey');
-      
-      // Set the new input
-      if (input.type === 'npub') {
-        component.setAttribute('npub', input.value);
-      } else if (input.type === 'nip05') {
-        component.setAttribute('nip05', input.value);
-      } else if (input.type === 'pubkey') {
-        component.setAttribute('pubkey', input.value);
-      }
-      
-      console.log(`Updated ${input.type} to: ${input.name}`);
-    };
-
-    setInterval(updateInput, 8000);
-  },
+      { type: 'npub', value: INVALID_TEST_CASES.emptyInputs.args.npub, name: 'Empty NPub' },
+    ],
+    8000
+  ),
 };
 
-export const DynamicThemeChanges: Story = {
-  name: 'Dynamic Theme Changes',
-  tags: ['test', 'dynamic', 'themes'],
+export const AllAttributes: Story = {
+  name: 'All attributes',
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
   },
-  play: async ({ canvasElement }) => {
-    // Wait for component to be ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const component = canvasElement.querySelector('nostr-follow-button');
-    if (!component) return;
-
-    const themes = ['light', 'dark'];
-    let themeIndex = 0;
-    
-    const updateTheme = () => {
-      themeIndex = (themeIndex + 1) % themes.length;
-      component.setAttribute('theme', themes[themeIndex]);
-      console.log(`Updated theme to: ${themes[themeIndex]}`);
-    };
-
-    setInterval(updateTheme, 5000);
-  },
+  play: createComprehensiveDynamicPlay({
+    componentName: 'nostr-follow-button',
+    inputAttributes: ['npub', 'nip05', 'pubkey'],
+    testInputs: [
+      { type: 'npub', value: PROFILE_DATA.jack.npub, name: 'Jack' },
+      { type: 'npub', value: INVALID_TEST_CASES.invalidNpub.args.npub, name: 'Invalid NPub' },
+      { type: 'nip05', value: PROFILE_DATA.fiatjaf.nip05, name: 'Fiatjaf' },
+      { type: 'nip05', value: INVALID_TEST_CASES.invalidNip05.args.nip05, name: 'Invalid NIP-05' },
+      { type: 'pubkey', value: PROFILE_DATA.jb55.pubkey, name: 'jb55' },
+      { type: 'pubkey', value: INVALID_TEST_CASES.invalidPubkey.args.pubkey, name: 'Invalid Pubkey' },
+      { type: 'npub', value: PROFILE_DATA.odell.npub, name: 'Odell' },
+      { type: 'npub', value: INVALID_TEST_CASES.emptyInputs.args.npub, name: 'Empty NPub' },
+    ],
+    widths: [300, 250, 200, 400],
+    updateInterval: 6000
+  }),
 };
 
-export const DynamicAllChanges: Story = {
-  name: 'Dynamic All Changes',
-  tags: ['test', 'dynamic', 'comprehensive'],
+export const FastSwitching: Story = {
+  name: 'Fast switching',
   args: {
     width: DEFAULT_WIDTH,
     npub: PROFILE_DATA.jack.npub,
   },
-  play: async ({ canvasElement }) => {
-    // Wait for component to be ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const component = canvasElement.querySelector('nostr-follow-button');
-    if (!component) return;
-
-    const inputs = [
-      { type: 'npub', value: PROFILE_DATA.jack.npub, name: 'Jack' },
-      { type: 'nip05', value: PROFILE_DATA.fiatjaf.nip05, name: 'Fiatjaf' },
-      { type: 'pubkey', value: PROFILE_DATA.jb55.pubkey, name: 'jb55' },
-      { type: 'npub', value: PROFILE_DATA.odell.npub, name: 'Odell' },
-    ];
-
-    const themes = ['light', 'dark'];
-    const widths = [300, 250, 200, 400];
-    
-    let inputIndex = 0;
-    let themeIndex = 0;
-    let widthIndex = 0;
-
-    const updateAll = () => {
-      // Update input
-      const input = inputs[inputIndex];
-      component.removeAttribute('npub');
-      component.removeAttribute('nip05');
-      component.removeAttribute('pubkey');
-      
-      if (input.type === 'npub') {
-        component.setAttribute('npub', input.value);
-      } else if (input.type === 'nip05') {
-        component.setAttribute('nip05', input.value);
-      } else if (input.type === 'pubkey') {
-        component.setAttribute('pubkey', input.value);
-      }
-
-      // Update theme
-      component.setAttribute('theme', themes[themeIndex]);
-      
-      // Update width
-      const container = component.parentElement;
-      if (container) {
-        container.style.width = `${widths[widthIndex]}px`;
-      }
-
-      // Cycle indices
-      inputIndex = (inputIndex + 1) % inputs.length;
-      themeIndex = (themeIndex + 1) % themes.length;
-      widthIndex = (widthIndex + 1) % widths.length;
-
-      console.log(`Updated: ${input.name} (${input.type}), ${themes[themeIndex]} theme, ${widths[widthIndex]}px width`);
-    };
-
-    setInterval(updateAll, 6000);
-  },
+  play: createFastSwitchingPlay({
+    componentName: 'nostr-follow-button',
+    attribute1: {
+      name: 'theme',
+      values: [
+        { value: 'light', name: 'Light Theme' },
+        { value: 'dark', name: 'Dark Theme' },
+      ]
+    },
+    attribute2: {
+      name: 'npub',
+      values: [
+        { value: PROFILE_DATA.jack.npub, name: 'Jack' },
+        { value: INVALID_TEST_CASES.invalidNpub.args.npub, name: 'Invalid NPub' },
+        { value: PROFILE_DATA.derGigi.npub, name: 'DerGigi' },
+        { value: PROFILE_DATA.fiatjaf.npub, name: 'Fiatjaf' },
+        { value: INVALID_TEST_CASES.emptyInputs.args.npub, name: 'Empty NPub' },
+        { value: PROFILE_DATA.jb55.npub, name: 'jb55' },
+        { value: PROFILE_DATA.odell.npub, name: 'Odell' },
+      ]
+    },
+    maxFastUpdates: 8,
+    pauseDuration: 10000,
+    fastDelayMin: 200,
+    fastDelayMax: 500
+  }),
 };

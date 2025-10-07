@@ -8,7 +8,7 @@ const meta = {
   tags: ['test', 'invalid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,

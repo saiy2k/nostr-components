@@ -9,7 +9,7 @@ const meta: Meta = {
   title: 'NostrPost/Themes',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {}, onAuthorClick: () => {}, onMentionClick: () => {} },
+  args: {},
 };
 
 export default meta;
@@ -31,7 +31,6 @@ export const Holographic: Story = {
   },
 };
 
-
 export const NeoMatrix: Story = {
   name: TEST_CASES.neoMatrixTheme.name,
   args: {
@@ -39,7 +38,6 @@ export const NeoMatrix: Story = {
     ...POST_THEMES['neo-matrix'],
   },
 };
-
 
 export const BitcoinOrange: Story = {
   name: TEST_CASES.bitcoinOrangeTheme.name,

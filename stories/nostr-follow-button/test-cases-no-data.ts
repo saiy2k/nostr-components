@@ -8,6 +8,5 @@ export const NO_DATA_TEST_CASES = {
       npub: 'npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3',
       relays: 'wss://no.netsec.vip/(-',
     },
-    description: 'Tests component when npub is valid but no profile data exists in relays.',
   },
 };

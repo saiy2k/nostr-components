@@ -1,56 +1,47 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { DEFAULT_WIDTH, generateCode, getArgTypes } from './utils.ts';
+import { generateCode, getArgTypes } from './utils';
 import { PROFILE_THEMES } from './theme';
-import { PROFILE_DATA } from '../profile-data.ts';
+import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
   title: 'NostrProfile/Themes',
-  render: args => {
-    const html = generateCode(args);
-    const template = document.createElement('template');
-    template.innerHTML = html;
-    return template.content.cloneNode(true);
-  },
+  render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
 };
 
 export default meta;
 type Story = StoryObj;
 
 export const OceanGlass: Story = {
-  name: 'Ocean Glass',
+  name: TEST_CASES.oceanGlass.name,
   args: {
-    width: DEFAULT_WIDTH,
-    npub: PROFILE_DATA.saiy2k.npub,
+    ...TEST_CASES.oceanGlass.args,
     ...PROFILE_THEMES['ocean-glass'],
   },
 };
 
 export const Holographic: Story = {
-  name: 'Holographic',
+  name: TEST_CASES.holographic.name,
   args: {
-    width: DEFAULT_WIDTH,
-    npub: PROFILE_DATA.jb55.npub,
+    ...TEST_CASES.holographic.args,
     ...PROFILE_THEMES['holographic'],
   },
 };
 
 export const NeoMatrix: Story = {
-  name: 'Neo Matrix',
+  name: TEST_CASES.neoMatrix.name,
   args: {
-    width: DEFAULT_WIDTH,
-    npub: PROFILE_DATA.derGigi.npub,
+    ...TEST_CASES.neoMatrix.args,
     ...PROFILE_THEMES['neo-matrix'],
   },
 };
 
 export const BitcoinOrange: Story = {
-  name: 'Bitcoin Orange',
+  name: TEST_CASES.bitcoinOrange.name,
   args: {
-    width: DEFAULT_WIDTH,
-    npub: PROFILE_DATA.utxo.npub,
+    ...TEST_CASES.bitcoinOrange.args,
     ...PROFILE_THEMES['bitcoin-orange'],
   },
 };

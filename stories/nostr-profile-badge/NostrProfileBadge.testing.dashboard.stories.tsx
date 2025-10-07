@@ -1,20 +1,21 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { generateCode, generateDashboardHTML, getArgTypes } from "./utils";
-import { TEST_CASES } from './test-cases-valid.ts';
-import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
+
+import { TEST_CASES } from './test-cases-valid';
+import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta = {
-  title: 'NostrFollowButton/Testing',
+  title: 'NostrProfileBadge/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-follow-button',
+        element: 'nostr-profile-badge',
         config: {
           rules: {
             'color-contrast': { enabled: true },
@@ -33,14 +34,16 @@ type Story = StoryObj;
 // COMPREHENSIVE TESTING DASHBOARDS
 // ====================================
 // Individual test stories have been moved to separate files:
-// - NostrFollowButton.testing.valid.stories.tsx (for valid cases)
-// - NostrFollowButton.testing.invalid.stories.tsx (for invalid cases)
+// - NostrProfileBadge.testing.valid.stories.tsx (for valid cases)
+// - NostrProfileBadge.testing.invalid.stories.tsx (for invalid cases)
 
 export const ValidCasesDashboard: Story = {
   name: 'Valid Cases Dashboard',
   render: () => generateDashboardHTML([
     TEST_CASES.darkTheme,
     TEST_CASES.nip05,
+    TEST_CASES.showNpub,
+    TEST_CASES.showFollow,
     TEST_CASES.rawPubkey,
   ], '✅ Valid Cases Dashboard', '#16a34a'),
   parameters: {
