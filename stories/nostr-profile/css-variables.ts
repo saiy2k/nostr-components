@@ -57,4 +57,10 @@ export const PROFILE_CSS_VARIABLES: ParameterDefinition[] = [
     defaultValue: 'var(--nostrc-color-accent)',
     control: 'color',
   },
+  {
+    variable: '--nostrc-profile-font-family',
+    description: 'Font family for the profile component text',
+    defaultValue: 'ui-sans-serif, system-ui, sans-serif',
+    control: 'text',
+  },
 ];

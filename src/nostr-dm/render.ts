@@ -133,7 +133,7 @@ export function getDmStyles(theme: Theme): string {
       .nostr-dm-container {
         display: flex;
         flex-direction: column;
-        font-family: Inter, sans-serif;
+        font-family: var(--nostrc-font-family-primary);
         max-width: 500px;
         width: 100%;
         box-sizing: border-box;
@@ -214,7 +214,7 @@ export function getDmStyles(theme: Theme): string {
         border: var(--nstrc-dm-border);
         background-color: var(--nstrc-dm-input-background);
         color: var(--nstrc-dm-text-color);
-        font-family: Inter, sans-serif;
+        font-family: var(--nostrc-font-family-primary);
         resize: vertical;
       }
 

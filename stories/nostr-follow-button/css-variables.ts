@@ -38,6 +38,12 @@ export const FOLLOW_BUTTON_CSS_VARIABLES: ParameterDefinition[] = [
     control: 'text',
   },
   {
+    variable: '--nostrc-follow-btn-font-family',
+    description: 'Font family for the follow button text',
+    defaultValue: 'ui-sans-serif, system-ui, sans-serif',
+    control: 'text',
+  },
+  {
     variable: '--nostrc-follow-btn-border-radius',
     description: 'Border radius of the button',
     defaultValue: '8px',

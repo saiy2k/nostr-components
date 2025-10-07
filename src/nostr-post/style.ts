@@ -12,6 +12,8 @@ export function getPostStyles(): string {
       --nostrc-post-border: var(--nostrc-theme-border, var(--nostrc-color-border));
       --nostrc-post-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
       --nostrc-post-accent: var(--nostrc-color-accent);
+      --nostrc-post-font-family: var(--nostrc-font-family-primary);
+      --nostrc-post-font-size: var(--nostrc-font-size-base);
     }
 
     /* === POST CONTAINER PATTERN === */
@@ -26,6 +28,9 @@ export function getPostStyles(): string {
       border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
       border-radius: var(--nostrc-border-radius-md);
       transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
+
+      font-family: var(--nostrc-post-font-family);
+      font-size: var(--nostrc-post-font-size);
     }
 
     /* === POST HEADER PATTERN === */

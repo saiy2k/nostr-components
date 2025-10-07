@@ -23,6 +23,8 @@ export function getProfileStyles(): string {
       --nostrc-profile-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
       --nostrc-profile-banner-placeholder: var(--nostrc-profile-border);
       --nostrc-profile-accent: var(--nostrc-color-accent);
+      --nostrc-profile-font-family: var(--nostrc-font-family-primary);
+      --nostrc-profile-font-size: var(--nostrc-font-size-base);
     }
 
     .nostr-profile-container {
@@ -37,6 +39,8 @@ export function getProfileStyles(): string {
       border: var(--nostrc-profile-border-width) solid var(--nostrc-profile-border);
       border-radius: var(--nostrc-border-radius-md);
       transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
+      font-family: var(--nostrc-profile-font-family);
+      font-size: var(--nostrc-profile-font-size);
     }
     
     :host(.is-clickable) .nostrc-container {

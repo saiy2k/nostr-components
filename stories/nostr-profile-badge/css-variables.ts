@@ -44,4 +44,10 @@ export const PROFILE_BADGE_CSS_VARIABLES: ParameterDefinition[] = [
     defaultValue: 'var(--nostrc-border-width)',
     control: 'text',
   },
+  {
+    variable: '--nostrc-profile-badge-font-family',
+    description: 'Font family for the profile badge text',
+    defaultValue: 'ui-sans-serif, system-ui, sans-serif',
+    control: 'text',
+  },
 ];

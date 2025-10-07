@@ -11,6 +11,8 @@ export function getProfileBadgeStyles(): string {
       --nostrc-profile-badge-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
       --nostrc-profile-badge-border: var(--nostrc-theme-border, var(--nostrc-color-border));
       --nostrc-profile-badge-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
+      --nostrc-profile-badge-font-family: var(--nostrc-font-family-primary);
+      --nostrc-profile-badge-font-size: var(--nostrc-font-size-base);
     }
     
     /* === PROFILE BADGE CONTAINER PATTERN === */
@@ -22,6 +24,8 @@ export function getProfileBadgeStyles(): string {
       padding: var(--nostrc-spacing-md);
       border-radius: var(--nostrc-border-radius-md);
       transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
+      font-family: var(--nostrc-profile-badge-font-family);
+      font-size: var(--nostrc-profile-badge-font-size);
     }
     
     .nostr-profile-badge-left-container {

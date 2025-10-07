@@ -12,7 +12,6 @@ export function getFollowButtonStyles(): string {
 
       /* Follow button CSS variables (overridable by parent components) */
       --nostrc-follow-btn-padding: var(--nostrc-spacing-sm) var(--nostrc-spacing-md);
-      --nostrc-follow-btn-font-size: var(--nostrc-font-size-base);
       --nostrc-follow-btn-border-radius: var(--nostrc-border-radius-md);
       --nostrc-follow-btn-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
       --nostrc-follow-btn-min-height: auto;
@@ -20,6 +19,8 @@ export function getFollowButtonStyles(): string {
       --nostrc-follow-btn-horizontal-alignment: left;
       --nostrc-follow-btn-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
       --nostrc-follow-btn-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-follow-btn-font-family: var(--nostrc-font-family-primary);
+      --nostrc-follow-btn-font-size: var(--nostrc-font-size-base);
 
       /* Make the host the visual button surface */
       display: inline-flex;
@@ -30,6 +31,7 @@ export function getFollowButtonStyles(): string {
       color: var(--nostrc-follow-btn-color);
       border: var(--nostrc-follow-btn-border);
       border-radius: var(--nostrc-follow-btn-border-radius);
+      font-family: var(--nostrc-follow-btn-font-family);
       font-size: var(--nostrc-follow-btn-font-size);
       min-height: var(--nostrc-follow-btn-min-height);
       width: var(--nostrc-follow-btn-width);

@@ -28,5 +28,8 @@ dist-ssr
 dist
 .prettierrc
 
-# WordPress plugin build output
 /nostr-components-wp/assets/
+/storybook-static/
+
+.cursor
+.firebase

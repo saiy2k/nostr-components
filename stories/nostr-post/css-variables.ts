@@ -51,4 +51,10 @@ export const POST_CSS_VARIABLES: ParameterDefinition[] = [
     defaultValue: 'var(--nostrc-color-accent)',
     control: 'color',
   },
+  {
+    variable: '--nostrc-post-font-family',
+    description: 'Font family for the post component text',
+    defaultValue: 'ui-sans-serif, system-ui, sans-serif',
+    control: 'text',
+  },
 ];
