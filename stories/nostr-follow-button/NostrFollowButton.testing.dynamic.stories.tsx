@@ -1,9 +1,6 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
-
-
-
 import { PROFILE_DATA } from '../profile-data.ts';
 import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
 

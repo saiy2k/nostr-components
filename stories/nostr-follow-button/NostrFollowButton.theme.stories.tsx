@@ -51,3 +51,4 @@ export const BitcoinOrange: Story = {
     ...FOLLOW_BUTTON_THEMES['bitcoin-orange'],
   },
 };
+

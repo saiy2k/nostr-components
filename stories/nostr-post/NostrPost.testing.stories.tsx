@@ -40,18 +40,13 @@ export const ValidCasesDashboard: Story = {
   name: 'Valid Cases Dashboard',
   tags: ['test', 'dashboard', 'valid'],
   render: () => generateDashboardHTML([
-    TEST_CASES.gigiFreeWeb,
-    TEST_CASES.utxoUsDollarBacking,
-    TEST_CASES.nvkFutureHere,
-    TEST_CASES.benExpensiveGovernment,
+    TEST_CASES.darkTheme,
+    TEST_CASES.eventId,
+    TEST_CASES.rawHex,
+    TEST_CASES.showStats,
     TEST_CASES.jackVideoProgramming,
   ], '✅ Valid Cases Dashboard', '#16a34a'),
   parameters: {
-    docs: {
-      description: {
-        story: 'Dashboard showcasing all valid input scenarios and proper component behavior.',
-      },
-    },
     layout: 'fullscreen',
   },
 };
@@ -61,18 +56,11 @@ export const InvalidCasesDashboard: Story = {
   tags: ['test', 'dashboard', 'invalid'],
   render: () => generateDashboardHTML([
     INVALID_TEST_CASES.invalidNoteId,
-    INVALID_TEST_CASES.malformedNoteId,
-    INVALID_TEST_CASES.emptyNoteId,
-    INVALID_TEST_CASES.nullNoteId,
-    INVALID_TEST_CASES.invalidRelays,
-    INVALID_TEST_CASES.networkTimeout,
+    INVALID_TEST_CASES.invalidEventId,
+    INVALID_TEST_CASES.invalidHex,
+    INVALID_TEST_CASES.emptyValues,
   ], '❌ Invalid Cases Dashboard', '#dc2626'),
   parameters: {
-    docs: {
-      description: {
-        story: 'Dashboard showcasing error handling and component behavior with invalid inputs.',
-      },
-    },
     layout: 'fullscreen',
   },
 };

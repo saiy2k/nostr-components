@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { generateCode, getArgTypes } from './utils';
 import { POST_THEMES } from './theme';
 import { POST_DATA } from '../post-data';
+import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
   title: 'NostrPost/Themes',
@@ -15,41 +16,36 @@ export default meta;
 type Story = StoryObj;
 
 export const OceanGlass: Story = {
-  name: 'Ocean Glass Theme',
+  name: TEST_CASES.oceanGlassTheme.name,
   args: {
-    width: 600,
-    noteid: POST_DATA.gigi_free_web.noteid,
-    'show-stats': true,
+    noteid: TEST_CASES.oceanGlassTheme.args.noteid,
     ...POST_THEMES['ocean-glass'],
   },
 };
 
 export const Holographic: Story = {
-  name: 'Holographic Theme',
+  name: TEST_CASES.holographicTheme.name,
   args: {
-    width: 600,
-    noteid: POST_DATA.jack_video_programming_you.noteid,
-    'show-stats': true,
+    noteid: TEST_CASES.holographicTheme.args.noteid,
     ...POST_THEMES['holographic'],
   },
 };
 
+
 export const NeoMatrix: Story = {
-  name: 'Neo Matrix Theme',
+  name: TEST_CASES.neoMatrixTheme.name,
   args: {
-    width: 600,
-    noteid: POST_DATA.toxic_bitcoiner_image_state_exists.noteid,
-    'show-stats': true,
+    noteid: TEST_CASES.neoMatrixTheme.args.noteid,
     ...POST_THEMES['neo-matrix'],
   },
 };
 
+
 export const BitcoinOrange: Story = {
-  name: 'Bitcoin Orange Theme',
+  name: TEST_CASES.bitcoinOrangeTheme.name,
   args: {
-    width: 600,
-    noteid: POST_DATA.ben_expensive_government.hex,
-    'show-stats': true,
+    noteid: TEST_CASES.bitcoinOrangeTheme.args.noteid,
     ...POST_THEMES['bitcoin-orange'],
   },
 };
+
