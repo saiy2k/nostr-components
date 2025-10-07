@@ -1,5 +1,5 @@
 import { DEFAULT_WIDTH } from "./utils";
-import { PROFILE_DATA } from '../profile-data.ts';
+import { PROFILE_DATA } from '../profile-data';
 
 export const TEST_CASES = {
   default: {
@@ -16,7 +16,6 @@ export const TEST_CASES = {
       npub: PROFILE_DATA.odell.npub,
       'data-theme': 'dark',
     },
-    description: 'Dark theme enabled via data-theme attribute',
   },
   nip05: {
     name: 'Nip05',
@@ -24,7 +23,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       nip05: PROFILE_DATA.lyn.nip05,
     },
-    description: 'Nip05 identifier',
   },
   rawPubkey: {
     name: 'Raw Pubkey Input',
@@ -32,7 +30,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       pubkey: PROFILE_DATA.jack.pubkey,
     },
-    description: 'Raw pubkey hex instead of npub.',
   },
 
   showFollow: {
@@ -42,7 +39,6 @@ export const TEST_CASES = {
       npub: PROFILE_DATA.saiy2k.npub,
       'show-follow': true,
     },
-    description: 'With Follow button',
   },
   showNpub: {
     name: 'Show NPub',
@@ -51,7 +47,6 @@ export const TEST_CASES = {
       npub: PROFILE_DATA.derGigi.npub,
       'show-npub': true,
     },
-    description: 'Npub is shown with copy',
   },
 
   // Theme Variations
@@ -61,7 +56,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.fiatjaf.npub,
     },
-    description: '',
     wrapperDataTheme: 'ocean-glass',
   },
   holographic: {
@@ -70,7 +64,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jb55.npub,
     },
-    description: '',
     wrapperDataTheme: 'holographic',
   },
   neoMatrix: {
@@ -79,7 +72,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.derGigi.npub,
     },
-    description: '',
     wrapperDataTheme: 'neo-matrix',
   },
   bitcoinOrange: {
@@ -88,7 +80,6 @@ export const TEST_CASES = {
       width: DEFAULT_WIDTH,
       npub: PROFILE_DATA.jack.npub,
     },
-    description: '',
     wrapperDataTheme: 'bitcoin-orange',
   },
 };

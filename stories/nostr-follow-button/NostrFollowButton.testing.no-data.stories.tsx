@@ -1,14 +1,14 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
-import { NO_DATA_TEST_CASES } from './test-cases-no-data.ts';
+import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
 const meta = {
   title: 'NostrFollowButton/Testing',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,

@@ -7,7 +7,6 @@ export const INVALID_TEST_CASES = {
       width: DEFAULT_WIDTH,
       noteid: 'invalid-note-id-format-xyz123',
     },
-    description: '',
   },
   invalidEventId: {
     name: 'Invalid Event ID',
@@ -15,7 +14,6 @@ export const INVALID_TEST_CASES = {
       width: DEFAULT_WIDTH,
       eventid: 'invalid-event-id-format-xyz123',
     },
-    description: '',
   },
   invalidHex: {
     name: 'Invalid Hex',
@@ -23,7 +21,6 @@ export const INVALID_TEST_CASES = {
       width: DEFAULT_WIDTH,
       hex: 'invalid-hex',
     },
-    description: '',
   },
   emptyValues: {
     name: 'Empty Values',
@@ -33,6 +30,5 @@ export const INVALID_TEST_CASES = {
       eventid: '',
       hex: '',
     },
-    description: '',
   },
 };

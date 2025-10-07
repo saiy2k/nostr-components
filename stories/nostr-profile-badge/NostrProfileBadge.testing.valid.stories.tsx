@@ -2,14 +2,14 @@ import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { DEFAULT_WIDTH, generateCode, getArgTypes } from './utils';
 
-import { TEST_CASES } from './test-cases-valid.ts';
-import { PROFILE_DATA } from '../profile-data.ts';
+import { TEST_CASES } from './test-cases-valid';
+import { PROFILE_DATA } from '../profile-data';
 
 const meta = {
   title: 'NostrProfileBadge/Testing/Valid',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,
@@ -39,7 +39,7 @@ export const Nip05: Story = {
   args: TEST_CASES.nip05.args,
 };
 
-export const ShowNpub: Story = {
+export const ShowNPub: Story = {
   name: TEST_CASES.showNpub.name,
   args: TEST_CASES.showNpub.args,
 };
@@ -49,7 +49,7 @@ export const ShowFollow: Story = {
   args: TEST_CASES.showFollow.args,
 };
 
-export const RawPubkeyInput: Story = {
+export const RawPubkey: Story = {
   name: TEST_CASES.rawPubkey.name,
   args: TEST_CASES.rawPubkey.args,
 };

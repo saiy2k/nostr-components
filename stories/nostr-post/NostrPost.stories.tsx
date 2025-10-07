@@ -9,9 +9,12 @@ const meta: Meta = {
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: fn(), onAuthorClick: fn(), onMentionClick: fn() },
+  args: {},
   parameters: {
     docs: {
+      description: {
+        component: 'A web component that displays Nostr posts with content, metadata, and statistics. Supports note IDs, event IDs, and raw hex inputs.',
+      },
       source: {
         transform: (code, storyContext) =>
           generateCode(storyContext.args, true),
@@ -24,61 +27,26 @@ export default meta;
 type Story = StoryObj;
 
 export const Default: Story = {
-  name: TEST_CASES.Default.name,
-  args: TEST_CASES.Default.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.Default.description,
-      },
-    },
-  },
+  name: TEST_CASES.default.name,
+  args: TEST_CASES.default.args,
 };
 
 export const DarkTheme: Story = {
   name: TEST_CASES.darkTheme.name,
   args: TEST_CASES.darkTheme.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.darkTheme.description,
-      },
-    },
-  },
 };
 
-export const eventId: Story = {
+export const EventId: Story = {
   name: TEST_CASES.eventId.name,
   args: TEST_CASES.eventId.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.eventId.description,
-      },
-    },
-  },
 };
 
-export const rawHex: Story = {
+export const RawHex: Story = {
   name: TEST_CASES.rawHex.name,
   args: TEST_CASES.rawHex.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.rawHex.description,
-      },
-    },
-  },
 };
 
-export const showStats: Story = {
+export const ShowStats: Story = {
   name: TEST_CASES.showStats.name,
   args: TEST_CASES.showStats.args,
-  parameters: {
-    docs: {
-      description: {
-        story: TEST_CASES.showStats.description,
-      },
-    },
-  },
 };

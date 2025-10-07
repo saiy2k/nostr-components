@@ -8,7 +8,7 @@ const meta = {
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {}, onAuthorClick: () => {}, onMentionClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,

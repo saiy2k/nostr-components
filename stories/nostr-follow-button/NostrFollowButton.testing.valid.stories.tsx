@@ -1,14 +1,14 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
 import { generateCode, getArgTypes } from './utils';
-import { TEST_CASES } from './test-cases-valid.ts';
+import { TEST_CASES } from './test-cases-valid';
 
 const meta = {
   title: 'NostrFollowButton/Testing/Valid',
   tags: ['test', 'valid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,
@@ -38,7 +38,7 @@ export const Nip05: Story = {
   args: TEST_CASES.nip05.args,
 };
 
-export const RawPubkeyInput: Story = {
+export const RawPubkey: Story = {
   name: TEST_CASES.rawPubkey.name,
   args: TEST_CASES.rawPubkey.args,
 };

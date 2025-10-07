@@ -9,6 +9,5 @@ export const NO_DATA_TEST_CASES = {
       relays: 'wss://no.netsec.vip/',
       'show-stats': true,
     },
-    description: 'Tests component behavior when using a valid note ID with a relay that doesn\'t have the post data.',
   },
 };

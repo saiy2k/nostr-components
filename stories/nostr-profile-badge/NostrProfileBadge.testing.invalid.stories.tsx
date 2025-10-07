@@ -4,13 +4,13 @@ import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
 
 
 
-import { INVALID_TEST_CASES } from './test-cases-invalid.ts';
+import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta = {
   title: 'NostrProfileBadge/Testing/Invalid',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
-  args: { onClick: () => {} },
+  args: {},
   parameters: {
     test: {
       enabled: true,
