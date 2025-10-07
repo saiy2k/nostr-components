@@ -28,48 +28,27 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
-// Stories from ValidCasesDashboard
-export const GigiFreeWeb: Story = {
-  name: 'Gigi - Free Web',
-  args: TEST_CASES.gigiFreeWeb.args,
+export const DarkTheme: Story = {
+  name: TEST_CASES.darkTheme.name,
+  args: TEST_CASES.darkTheme.args,
 };
 
-export const UtxoUsDollarBacking: Story = {
-  name: 'UTXO - US Dollar Backing',
-  args: TEST_CASES.utxoUsDollarBacking.args,
+export const EventId: Story = {
+  name: TEST_CASES.eventId.name,
+  args: TEST_CASES.eventId.args,
 };
 
-export const ToxicBitcoinerImage: Story = {
-  name: 'Toxic Bitcoiner - Image',
-  args: TEST_CASES.toxicBitcoinerImage.args,
+export const RawHex: Story = {
+  name: TEST_CASES.rawHex.name,
+  args: TEST_CASES.rawHex.args,
 };
 
-export const NarrowWidth: Story = {
-  name: 'Narrow Width',
-  args: TEST_CASES.narrowWidth.args,
+export const ShowStats: Story = {
+  name: TEST_CASES.showStats.name,
+  args: TEST_CASES.showStats.args,
 };
 
-export const WideWidth: Story = {
-  name: 'Wide Width',
-  args: TEST_CASES.wideWidth.args,
-};
-
-export const NoStats: Story = {
-  name: 'No Stats Display',
-  args: TEST_CASES.noStats.args,
-};
-
-export const CustomRelays: Story = {
-  name: 'Custom Relays',
-  args: TEST_CASES.customRelays.args,
-};
-
-export const MediaPost: Story = {
-  name: 'Media Post',
-  args: TEST_CASES.mediaPost.args,
-};
-
-export const ImagePost: Story = {
-  name: 'Image Post',
-  args: TEST_CASES.imagePost.args,
+export const VideoContent: Story = {
+  name: TEST_CASES.jackVideoProgramming.name,
+  args: TEST_CASES.jackVideoProgramming.args,
 };

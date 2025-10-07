@@ -1,8 +1,8 @@
 import React from 'react';
 import { fn } from 'storybook/test';
-import type { ArgTypes, Meta, StoryObj } from '@storybook/web-components-vite';
+import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { generateCode, getArgTypes } from './utils';
-import { POST_DATA } from '../post-data';
+import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
   title: 'NostrPost',
@@ -23,87 +23,61 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-// ====================================
-// CORE FUNCTIONALITY STORIES
-// ====================================
-
 export const Default: Story = {
-  name: 'Dergigi - Default',
-  args: {
-    width: 600,
-    noteid: POST_DATA.gigi_free_web.noteid,
-    'show-stats': true,
-  },
+  name: TEST_CASES.Default.name,
+  args: TEST_CASES.Default.args,
   parameters: {
     docs: {
       description: {
-        story: 'Default post display with stats enabled. Shows the basic functionality of the nostr-post component.',
-      },
-    },
-  },
-};
-
-export const WithHexId: Story = {
-  name: 'With Hex ID',
-  args: {
-    width: 600,
-    hex: POST_DATA.nvk_future_here.hex,
-    'show-stats': false,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Post using hex format event ID instead of note ID. Demonstrates alternative input format support.',
-      },
-    },
-  },
-};
-
-export const NoStats: Story = {
-  name: 'No Stats',
-  args: {
-    width: 600,
-    noteid: POST_DATA.jack_video_programming_you.noteid,
-    'show-stats': false,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Post without stats display. Cleaner look for minimal interfaces.',
-      },
-    },
-  },
-};
-
-export const CustomRelays: Story = {
-  name: 'Custom Relays',
-  args: {
-    width: 600,
-    noteid: POST_DATA.utxo_us_dollar_backing.noteid,
-    relays: 'wss://relay.damus.io,wss://nos.lol',
-    'show-stats': true,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Post with custom relay configuration. Demonstrates relay customization capability.',
+        story: TEST_CASES.Default.description,
       },
     },
   },
 };
 
 export const DarkTheme: Story = {
-  name: 'Dark Theme',
-  args: {
-    width: 600,
-    noteid: POST_DATA.utxo_us_dollar_backing.noteid,
-    'show-stats': true,
-    wrapperDataTheme: 'dark',
-  },
+  name: TEST_CASES.darkTheme.name,
+  args: TEST_CASES.darkTheme.args,
   parameters: {
     docs: {
       description: {
-        story: 'Post with dark theme applied via data-theme attribute.',
+        story: TEST_CASES.darkTheme.description,
+      },
+    },
+  },
+};
+
+export const eventId: Story = {
+  name: TEST_CASES.eventId.name,
+  args: TEST_CASES.eventId.args,
+  parameters: {
+    docs: {
+      description: {
+        story: TEST_CASES.eventId.description,
+      },
+    },
+  },
+};
+
+export const rawHex: Story = {
+  name: TEST_CASES.rawHex.name,
+  args: TEST_CASES.rawHex.args,
+  parameters: {
+    docs: {
+      description: {
+        story: TEST_CASES.rawHex.description,
+      },
+    },
+  },
+};
+
+export const showStats: Story = {
+  name: TEST_CASES.showStats.name,
+  args: TEST_CASES.showStats.args,
+  parameters: {
+    docs: {
+      description: {
+        story: TEST_CASES.showStats.description,
       },
     },
   },

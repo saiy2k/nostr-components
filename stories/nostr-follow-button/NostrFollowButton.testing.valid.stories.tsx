@@ -1,8 +1,7 @@
 import React from 'react';
 import type { StoryObj } from '@storybook/web-components-vite';
-import { DEFAULT_WIDTH, generateCode, getArgTypes } from './utils';
+import { generateCode, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid.ts';
-import { PROFILE_DATA } from '../profile-data.ts';
 
 const meta = {
   title: 'NostrFollowButton/Testing/Valid',

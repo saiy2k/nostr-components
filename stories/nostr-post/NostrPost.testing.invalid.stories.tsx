@@ -28,33 +28,22 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
-// Stories from InvalidTestCasesDashboard
 export const InvalidNoteId: Story = {
-  name: 'Invalid Note ID Format',
+  name: INVALID_TEST_CASES.invalidNoteId.name,
   args: INVALID_TEST_CASES.invalidNoteId.args,
 };
 
-export const MalformedNoteId: Story = {
-  name: 'Malformed Note ID',
-  args: INVALID_TEST_CASES.malformedNoteId.args,
+export const InvalidEventId: Story = {
+  name: INVALID_TEST_CASES.invalidEventId.name,
+  args: INVALID_TEST_CASES.invalidEventId.args,
 };
 
-export const EmptyNoteId: Story = {
-  name: 'Empty Note ID',
-  args: INVALID_TEST_CASES.emptyNoteId.args,
+export const InvalidHex: Story = {
+  name: INVALID_TEST_CASES.invalidHex.name,
+  args: INVALID_TEST_CASES.invalidHex.args,
 };
 
-export const NullNoteId: Story = {
-  name: 'Null Note ID',
-  args: INVALID_TEST_CASES.nullNoteId.args,
-};
-
-export const InvalidRelays: Story = {
-  name: 'Invalid Relays',
-  args: INVALID_TEST_CASES.invalidRelays.args,
-};
-
-export const NetworkTimeout: Story = {
-  name: 'Network Timeout',
-  args: INVALID_TEST_CASES.networkTimeout.args,
+export const EmptyValues: Story = {
+  name: INVALID_TEST_CASES.emptyValues.name,
+  args: INVALID_TEST_CASES.emptyValues.args,
 };

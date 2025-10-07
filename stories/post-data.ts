@@ -54,9 +54,21 @@ export const POST_DATA: Record<string, Post> = {
     hex: '',
     eventid: '',
   },
+  utxo_bitcoin_threat_govt: {
+    name: 'UTXO - Bitcoin Threat Govt',
+    noteid: 'note1xpfjezay98v5x6tptkn5wkckyyjwv3ar0zu2x5kmpq55d3c2kz7qz0f7hl',
+    hex: '',
+    eventid: '',
+  },
   toxic_bitcoiner_image_state_exists: {
     name: 'Toxic Bitcoiner - Image - State Exists',
     noteid: 'note1tc9d0ad7039a8nhcdrzmp6ey09q2hmtz7eujm6jtt8htzu8geewq0epnwa',
+    hex: '',
+    eventid: '',
+  },
+  jack_rough_consensus: {
+    name: 'Jack - Rough Consensus',
+    noteid: 'note10q9f33dyh9cvsarfuyz32nr6u43smzregechp7w3efgjfs33nmusstjgtn',
     hex: '',
     eventid: '',
   },
