@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { Theme } from "./types";
+
 export const replyIcon = `
   <svg width="18" height="18" fill="#00b3ff">
     <path xmlns="http://www.w3.org/2000/svg" d="M12.2197 1.65717C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
@@ -21,7 +23,7 @@ export const copyIcon = `
 `;
 
 export const checkmarkIcon = (
-  theme: 'light' | 'dark' = 'dark',
+  theme: Theme = 'dark',
 ) => `
   <svg 
     class="checkmark" 
@@ -78,7 +80,7 @@ export const checkmarkIcon = (
   </svg>
 `;
 
-export const nostrLogo = (theme: string, width: number = 21, height: number = 24) => `
+export const nostrLogo = (width: number = 21, height: number = 24) => `
   <svg 
     width="${width}" 
     height="${height}" 
@@ -91,7 +93,6 @@ export const nostrLogo = (theme: string, width: number = 21, height: number = 24
     <style>
     .nostrich {
       transform-origin: center;
-      fill: ${theme === 'dark' ? '#fff' : '#000'};
     }
     </style>
     <g class="nostrich">
@@ -100,9 +101,7 @@ export const nostrLogo = (theme: string, width: number = 21, height: number = 24
   </svg>
 `;
 
-export const loadingNostrich = (
-  theme: 'light' | 'dark' = 'dark'
-) => `
+export const loadingNostrich = () => `
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <style>
       @keyframes nostrich-run {
@@ -116,7 +115,6 @@ export const loadingNostrich = (
       .nostrich {
         animation: nostrich-run 1.5s infinite ease-in-out;
         transform-origin: center;
-        fill: ${theme === 'dark' ? '#fff' : '#000'};
       }
     </style>
     <g class="nostrich">

@@ -348,7 +348,6 @@ export default class NostrPost extends NostrEventComponent {
 
     // Prepare the options for the render function
     const renderOptions: RenderPostOptions = {
-      theme: this.theme,
       isLoading: isLoading,
       isError: isError,
       errorMessage: errorMessage,

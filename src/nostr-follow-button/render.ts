@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-import { Theme } from '../common/types';
 import {
   getLoadingNostrich,
   getNostrLogo,
@@ -15,7 +14,6 @@ export interface RenderFollowButtonOptions extends IRenderOptions {
 }
 
 export function renderFollowButton({
-  theme,
   isLoading,
   isError,
   errorMessage,
@@ -24,11 +22,11 @@ export function renderFollowButton({
 }: RenderFollowButtonOptions): string {
 
   if (isFollowing) {
-    return renderFollowing(theme);
+    return renderFollowing();
   }
 
   if (isLoading) {
-    return renderLoading(theme);
+    return renderLoading();
   }
 
   if (isError) {
@@ -36,8 +34,8 @@ export function renderFollowButton({
   }
 
   const iconContent = isFollowed
-    ? getSuccessAnimation(theme)
-    : getNostrLogo(theme);
+    ? getSuccessAnimation('light')
+    : getNostrLogo();
   const textContent = isFollowed
     ? 'Followed'
     : `<span>Follow me on Nostr</span>`;
@@ -45,16 +43,16 @@ export function renderFollowButton({
   return renderContainer(iconContent, textContent);
 }
 
-function renderLoading(theme: Theme): string {
+function renderLoading(): string {
   return renderContainer(
-    getLoadingNostrich(theme), // Use default values
+    getLoadingNostrich(), // Use default values
     '<span>Loading...</span>'
   );
 }
 
-function renderFollowing(theme: Theme): string {
+function renderFollowing(): string {
   return renderContainer(
-    getLoadingNostrich(theme), // Use default values
+    getLoadingNostrich(), // Use default values
     '<span>Following...</span>'
   );
 }

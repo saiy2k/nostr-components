@@ -1,15 +1,31 @@
 // SPDX-License-Identifier: MIT
 
-import { Theme } from '../common/types';
 import { getComponentStyles } from '../common/base-styles';
 
-export function getPostStyles(theme: Theme): string {
+export function getPostStyles(): string {
   const customStyles = `
+    /* === POST CSS VARIABLES === */
+    :host {
+      --nostrc-post-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
+      --nostrc-post-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
+      --nostrc-post-border: var(--nostrc-theme-border, var(--nostrc-color-border));
+      --nostrc-post-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
+      --nostrc-post-accent: var(--nostrc-color-accent);
+    }
+
     /* === POST CONTAINER PATTERN === */
     .nostr-post-container {
       display: flex;
       flex-direction: column;
       gap: var(--nostrc-spacing-lg);
+      
+      padding: var(--nostrc-spacing-md);
+      background: var(--nostrc-post-bg);
+      color: var(--nostrc-post-text-primary);
+      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
+      border-radius: var(--nostrc-border-radius-md);
+      transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
     }
 
     /* === POST HEADER PATTERN === */
@@ -51,16 +67,22 @@ export function getPostStyles(theme: Theme): string {
 
     /* === AUTHOR INFO STYLES === */
     .author-name {
-      color: var(--nostrc-color-text-primary);
+      color: var(--nostrc-post-text-primary);
       font-weight: var(--nostrc-font-weight-bold);
       word-break: break-word;
     }
 
     .author-username {
       font-weight: var(--nostrc-font-weight-normal);
-      color: var(--nostrc-color-text-secondary);
+      color: var(--nostrc-post-text-secondary);
       font-size: var(--nostrc-font-size-sm);
       word-break: break-all;
+    }
+
+    .post-date {
+      font-weight: var(--nostrc-font-weight-normal);
+      color: var(--nostrc-post-text-secondary);
+      font-size: var(--nostrc-font-size-sm);
     }
 
     .text-content {
@@ -83,7 +105,7 @@ export function getPostStyles(theme: Theme): string {
       display: flex;
       align-items: center;
       gap: var(--nostrc-spacing-xs);
-      color: var(--nostrc-color-text-secondary);
+      color: var(--nostrc-post-text-secondary);
     }
 
     /* === MEDIA STYLING === */
@@ -131,12 +153,12 @@ export function getPostStyles(theme: Theme): string {
     }
 
     .glide__bullets button {
-      border: var(--nostrc-border-width) solid var(--nostrc-color-border);
+      border: var(--nostrc-border-width) solid var(--nostrc-post-border);
     }
 
     /* === MENTION STYLES === */
     .nostr-mention {
-      color: #1DA1F2;
+      color: var(--nostrc-post-accent);
       font-weight: var(--nostrc-font-weight-medium);
       cursor: pointer;
     }
@@ -145,7 +167,7 @@ export function getPostStyles(theme: Theme): string {
     .embedded-post {
       margin: var(--nostrc-spacing-sm) 0;
       padding: var(--nostrc-spacing-sm);
-      border: var(--nostrc-border-width) solid var(--nostrc-color-border);
+      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
       border-radius: var(--nostrc-border-radius-md);
       background: var(--nostrc-color-background-secondary);
     }
@@ -179,22 +201,22 @@ export function getPostStyles(theme: Theme): string {
     .embedded-author-name {
       font-weight: var(--nostrc-font-weight-bold);
       font-size: var(--nostrc-font-size-sm);
-      color: var(--nostrc-color-text-primary);
+      color: var(--nostrc-post-text-primary);
     }
     
     .embedded-author-username {
       font-size: var(--nostrc-font-size-xs);
-      color: var(--nostrc-color-text-secondary);
+      color: var(--nostrc-post-text-secondary);
     }
     
     .embedded-post-date {
       font-size: var(--nostrc-font-size-xs);
-      color: var(--nostrc-color-text-secondary);
+      color: var(--nostrc-post-text-secondary);
     }
     
     .embedded-post-content {
       font-size: var(--nostrc-font-size-sm);
-      color: var(--nostrc-color-text-primary);
+      color: var(--nostrc-post-text-primary);
       line-height: 1.4;
       white-space: pre-line;
     }
@@ -234,6 +256,6 @@ export function getPostStyles(theme: Theme): string {
   `;
   
   // Use component styles - includes design tokens + utilities + custom styles
-  return getComponentStyles(theme, customStyles);
+  return getComponentStyles(customStyles);
 }
 
