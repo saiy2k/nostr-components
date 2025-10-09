@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from './utils';
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
 const meta: Meta = {
-  title: 'NostrPost/Testing',
+  title: 'Post/Testing',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

@@ -5,7 +5,7 @@ import { TEST_CASES } from './test-cases-valid';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrProfileBadge/Testing',
+  title: 'Profile Badge/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -28,13 +28,6 @@ const meta: Meta = {
 
 export default meta;
 type Story = StoryObj<any>;
-
-// ====================================
-// COMPREHENSIVE TESTING DASHBOARDS
-// ====================================
-// Individual test stories have been moved to separate files:
-// - NostrProfileBadge.testing.valid.stories.tsx (for valid cases)
-// - NostrProfileBadge.testing.invalid.stories.tsx (for invalid cases)
 
 export const ValidCasesDashboard: Story = {
   name: 'Valid Cases Dashboard',

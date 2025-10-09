@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrProfileBadge/Testing/Invalid',
+  title: 'Profile Badge/Testing/Invalid',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},

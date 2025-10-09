@@ -4,7 +4,7 @@ import { TEST_CASES } from './test-cases-valid';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrProfile/Testing',
+  title: 'Profile/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

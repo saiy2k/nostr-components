@@ -4,7 +4,7 @@ import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
 const meta: Meta = {
-  title: 'NostrProfileBadge/Testing',
+  title: 'Profile Badge/Testing',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

@@ -4,7 +4,7 @@ import { TEST_CASES } from './test-cases-valid';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrFollowButton/Testing',
+  title: 'Follow Button/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -27,13 +27,6 @@ const meta: Meta = {
 
 export default meta;
 type Story = StoryObj<any>;
-
-// ====================================
-// COMPREHENSIVE TESTING DASHBOARDS
-// ====================================
-// Individual test stories have been moved to separate files:
-// - NostrFollowButton.testing.valid.stories.tsx (for valid cases)
-// - NostrFollowButton.testing.invalid.stories.tsx (for invalid cases)
 
 export const ValidCasesDashboard: Story = {
   name: 'Valid Cases Dashboard',

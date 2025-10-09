@@ -3,7 +3,7 @@ import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrFollowButton/Testing/Invalid',
+  title: 'Follow Button/Testing/Invalid',
   tags: ['test', 'invalid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

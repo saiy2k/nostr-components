@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'NostrFollowButton/Testing/Valid',
+  title: 'Follow Button/Testing/Valid',
   tags: ['test', 'valid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

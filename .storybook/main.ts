@@ -9,11 +9,11 @@ const getStories = () => {
       '../stories/nostr-post/NostrPost.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-profile/NostrProfile.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-profile-badge/NostrProfileBadge.stories.@(js|jsx|mjs|ts|tsx)',
-      // Include theme stories
-      '../stories/nostr-follow-button/NostrFollowButton.theme.stories.@(js|jsx|mjs|ts|tsx)',
-      '../stories/nostr-post/NostrPost.theme.stories.@(js|jsx|mjs|ts|tsx)',
-      '../stories/nostr-profile/NostrProfile.theme.stories.@(js|jsx|mjs|ts|tsx)',
-      '../stories/nostr-profile-badge/NostrProfileBadge.theme.stories.@(js|jsx|mjs|ts|tsx)',
+      // Include styling stories
+      '../stories/nostr-follow-button/NostrFollowButton.styling.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-post/NostrPost.styling.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-profile/NostrProfile.styling.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-profile-badge/NostrProfileBadge.styling.stories.@(js|jsx|mjs|ts|tsx)',
     ];
   } else {
     return [

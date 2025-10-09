@@ -4,7 +4,7 @@ import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'NostrPost',
+  title: 'Post',
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

@@ -3,7 +3,7 @@ import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'NostrFollowButton',
+  title: 'Follow Button',
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
