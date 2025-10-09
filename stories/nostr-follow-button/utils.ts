@@ -6,7 +6,7 @@ import { generateCode as generateCodeShared, generateCodeWithScript as generateC
 // Component-specific configuration
 export const COMPONENT_CONFIG: CodeGeneratorConfig = {
   componentName: 'nostr-follow-button',
-  defaultWidth: 200,
+  defaultWidth: 250,
   eventHandlers: ['onClick'],
   gridColumns: 'minmax(300px, 1fr)'
 };

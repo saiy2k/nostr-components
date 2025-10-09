@@ -34,6 +34,8 @@ export const ValidCasesDashboard: Story = {
     TEST_CASES.darkTheme,
     TEST_CASES.nip05,
     TEST_CASES.rawPubkey,
+    TEST_CASES.showAvatar,
+    TEST_CASES.customText,
   ], '✅ Valid Cases Dashboard', '#16a34a'),
   parameters: {
     layout: 'fullscreen',

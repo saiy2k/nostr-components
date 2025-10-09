@@ -15,4 +15,16 @@ import { USER_PARAMETERS, ParameterDefinition } from '../common/parameters';
  */
 export const FOLLOW_BUTTON_PARAMETERS: ParameterDefinition[] = [
   ...USER_PARAMETERS,
+  {
+    variable: 'show-avatar',
+    description: 'Show user avatar instead of Nostr logo',
+    defaultValue: 'false',
+    control: 'boolean',
+  },
+  {
+    variable: 'text',
+    description: 'Custom text to display on the button',
+    defaultValue: 'Follow me on nostr',
+    control: 'text',
+  },
 ];

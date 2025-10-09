@@ -7,10 +7,15 @@ import {
 } from '../common/theme';
 import { escapeHtml } from '../common/utils';
 import { IRenderOptions } from '../base/render-options';
+import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 
 export interface RenderFollowButtonOptions extends IRenderOptions {
   isFollowed: boolean;
   isFollowing: boolean;
+  showAvatar?: boolean;
+  user?: NDKUser | null;
+  profile?: NDKUserProfile | null;
+  customText?: string;
 }
 
 export function renderFollowButton({
@@ -19,6 +24,10 @@ export function renderFollowButton({
   errorMessage,
   isFollowed,
   isFollowing,
+  showAvatar = false,
+  user,
+  profile,
+  customText = 'Follow me on nostr',
 }: RenderFollowButtonOptions): string {
 
   if (isFollowing) {
@@ -35,10 +44,12 @@ export function renderFollowButton({
 
   const iconContent = isFollowed
     ? getSuccessAnimation('light')
-    : getNostrLogo();
+    : showAvatar && user && profile?.image
+      ? `<img src="${escapeHtml(profile.image)}" alt="${escapeHtml(profile.name || user.npub)}" class="user-avatar" />`
+      : getNostrLogo();
   const textContent = isFollowed
     ? 'Followed'
-    : `<span>Follow me on Nostr</span>`;
+    : `<span>${escapeHtml(customText)}</span>`;
 
   return renderContainer(iconContent, textContent);
 }

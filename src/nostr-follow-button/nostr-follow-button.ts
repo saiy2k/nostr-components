@@ -17,7 +17,7 @@ export default class NostrFollowButton extends NostrUserComponent {
   private isFollowed: boolean = false;
 
   static get observedAttributes() {
-    return [...super.observedAttributes];
+    return [...super.observedAttributes, 'show-avatar', 'text'];
   }
 
   connectedCallback() {
@@ -104,6 +104,8 @@ export default class NostrFollowButton extends NostrUserComponent {
     const isFollowing         = this.followStatus.get() == NCStatus.Loading;
     const isError             = this.computeOverall() === NCStatus.Error;
     const errorMessage        = super.renderError(this.errorMessage);
+    const showAvatar          = this.hasAttribute('show-avatar');
+    const customText          = this.getAttribute('text') || 'Follow me on nostr';
 
     const renderOptions: RenderFollowButtonOptions = {
       isLoading   : isLoading,
@@ -111,6 +113,10 @@ export default class NostrFollowButton extends NostrUserComponent {
       errorMessage: errorMessage,
       isFollowed  : this.isFollowed,
       isFollowing : isFollowing,
+      showAvatar  : showAvatar,
+      user        : this.user,
+      profile     : this.profile,
+      customText  : customText,
     };
 
     this.shadowRoot!.innerHTML = `

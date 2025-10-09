@@ -76,6 +76,16 @@ export function getFollowButtonStyles(): string {
       width: var(--nostrc-icon-width);
       height: var(--nostrc-icon-height);
     }
+
+    /* User Avatar Styles */
+    .nostr-follow-button-left-container .user-avatar {
+      width: var(--nostrc-icon-width);
+      height: var(--nostrc-icon-height);
+      border-radius: 50%;
+      object-fit: cover;
+      display: inline-block;
+      vertical-align: middle;
+    }
   `;
   
   // Use simple component styles - includes design tokens + utilities + custom styles
