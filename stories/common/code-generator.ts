@@ -67,9 +67,13 @@ export function generateCode(options: GenerateCodeOptions): string {
 
   const cssVarsString = cssVars.length > 0 ? `\n  ${cssVars.join('\n  ')}` : '';
 
-  // Generate attributes string
+  const cssVarNames = cssVariables.map(cssVar => cssVar.variable);
   const attributes = Object.entries(otherArgs)
-    .filter(([key, value]) => value !== undefined && value !== null && value !== '')
+    .filter(([key, value]) => {
+      // Exclude CSS variables from attributes
+      if (cssVarNames.includes(key)) return false;
+      return value !== undefined && value !== null && value !== '';
+    })
     .map(([key, value]) => {
       if (typeof value === 'boolean') {
         return value ? key : '';

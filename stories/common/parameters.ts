@@ -18,14 +18,22 @@ export interface ParameterDefinition {
 }
 
 /**
- * Common parameter shared across all Nostr components
+ * Common parameters shared across all Nostr components
  */
-const RELAYS_PARAMETER: ParameterDefinition = {
-  variable: 'relays',
-  description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-  defaultValue: DEFAULT_RELAYS.join(',\n'),
-  control: 'text',
-};
+const COMMON_PARAMETERS: ParameterDefinition[] = [
+  {
+    variable: 'relays',
+    description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
+    defaultValue: DEFAULT_RELAYS.join(',\n'),
+    control: 'text',
+  },
+  {
+    variable: 'data-theme',
+    description: 'Theme for the component (light, dark)',
+    defaultValue: '',
+    control: 'text',
+  },
+];
 
 /**
  * User-facing parameters shared across most Nostr components
@@ -49,7 +57,7 @@ export const USER_PARAMETERS: ParameterDefinition[] = [
     defaultValue: 'null',
     control: 'text',
   },
-  RELAYS_PARAMETER,
+  ...COMMON_PARAMETERS,
 ];
 
 /**
@@ -74,5 +82,5 @@ export const EVENT_PARAMETERS: ParameterDefinition[] = [
     defaultValue: 'null',
     control: 'text',
   },
-  RELAYS_PARAMETER,
+  ...COMMON_PARAMETERS,
 ];
