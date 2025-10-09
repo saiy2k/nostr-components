@@ -66,19 +66,19 @@ export const USER_PARAMETERS: ParameterDefinition[] = [
 export const EVENT_PARAMETERS: ParameterDefinition[] = [
   {
     variable: 'noteid',
-    description: 'Valid raw Nostr ID or valid Bech32 note ID',
+    description: 'Valid raw Nostr ID or valid Bech32 note ID.<br/><b>Precedence:</b> noteid, hex, eventid',
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'hex',
-    description: 'Valid hex format Nostr event ID',
+    description: 'Valid hex format Nostr event ID.<br/><b>Precedence:</b> noteid, hex, eventid',
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'eventid',
-    description: 'Valid event ID format (nevent)',
+    description: 'Valid event ID format (nevent).<br/><b>Precedence:</b> noteid, hex, eventid',
     defaultValue: 'null',
     control: 'text',
   },

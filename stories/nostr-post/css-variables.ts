@@ -35,21 +35,9 @@ export const POST_CSS_VARIABLES: ParameterDefinition[] = [
   },
   {
     variable: '--nostrc-post-border',
-    description: 'Post border color',
+    description: 'Post border style',
     defaultValue: 'var(--nostrc-theme-border, var(--nostrc-color-border))',
-    control: 'color',
-  },
-  {
-    variable: '--nostrc-post-border-width',
-    description: 'Post border width',
-    defaultValue: 'var(--nostrc-theme-border-width, var(--nostrc-border-width))',
     control: 'text',
-  },
-  {
-    variable: '--nostrc-post-accent',
-    description: 'Post accent color (used for mentions, links, etc.)',
-    defaultValue: 'var(--nostrc-color-accent)',
-    control: 'color',
   },
   {
     variable: '--nostrc-post-font-family',

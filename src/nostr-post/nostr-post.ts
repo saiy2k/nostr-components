@@ -113,7 +113,7 @@ export default class NostrPost extends NostrEventComponent {
 
   async getPostStats() {
     try {
-      const shouldShowStats = this.getAttribute('show-stats');
+      const shouldShowStats = this.getAttribute('show-stats') === 'true';
 
       if (this.event && shouldShowStats) {
         const stats = await getPostStats(

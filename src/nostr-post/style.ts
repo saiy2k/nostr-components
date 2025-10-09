@@ -9,8 +9,7 @@ export function getPostStyles(): string {
       --nostrc-post-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
       --nostrc-post-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
       --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
-      --nostrc-post-border: var(--nostrc-theme-border, var(--nostrc-color-border));
-      --nostrc-post-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
+      --nostrc-post-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
       --nostrc-post-accent: var(--nostrc-color-accent);
       --nostrc-post-font-family: var(--nostrc-font-family-primary);
       --nostrc-post-font-size: var(--nostrc-font-size-base);
@@ -24,7 +23,7 @@ export function getPostStyles(): string {
       display: block;
       background: var(--nostrc-post-bg);
       color: var(--nostrc-post-text-primary);
-      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
+      border: var(--nostrc-post-border);
       border-radius: var(--nostrc-border-radius-md);
       font-family: var(--nostrc-post-font-family);
       font-size: var(--nostrc-post-font-size);
@@ -171,7 +170,7 @@ export function getPostStyles(): string {
     }
 
     .glide__bullets button {
-      border: var(--nostrc-border-width) solid var(--nostrc-post-border);
+      border: var(--nostrc-post-border);
     }
 
     /* === MENTION STYLES === */
@@ -185,7 +184,7 @@ export function getPostStyles(): string {
     .embedded-post {
       margin: var(--nostrc-spacing-sm) 0;
       padding: var(--nostrc-spacing-sm);
-      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
+      border: var(--nostrc-post-border);
       border-radius: var(--nostrc-border-radius-md);
       background: var(--nostrc-color-background-secondary);
     }
@@ -267,7 +266,7 @@ export function getPostStyles(): string {
       padding: var(--nostrc-spacing-sm);
       color: var(--nostrc-color-error-text);
       background-color: var(--nostrc-color-error-background);
-      border: var(--nostrc-border-width) solid var(--nostrc-color-error-border);
+      border: var(--nostrc-post-border);
       border-radius: var(--nostrc-border-radius-sm);
       font-size: var(--nostrc-font-size-sm);
     }

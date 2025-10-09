@@ -76,7 +76,7 @@ export function generateCode(options: GenerateCodeOptions): string {
     })
     .map(([key, value]) => {
       if (typeof value === 'boolean') {
-        return value ? key : '';
+        return value ? `${key}="true"` : '';
       }
       return `${key}="${escapeHtml(String(value))}"`;
     })
@@ -115,7 +115,7 @@ export function generateDashboardHTML(options: GenerateDashboardOptions): string
       .filter(([key, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => {
         if (typeof value === 'boolean') {
-          return value ? key : '';
+          return value ? `${key}="true"` : '';
         }
         return `${key}="${escapeHtml(String(value))}"`;
       })
