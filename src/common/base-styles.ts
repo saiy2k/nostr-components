@@ -70,10 +70,6 @@ export function getBaseStyles(): string {
         transition: all 0.2s ease;
       }
       
-      :host(.is-clickable) .nostrc-container:hover {
-        background-color: var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background));
-      }
-      
       :host(.is-disabled) {
         opacity: 0.7;
         cursor: not-allowed;

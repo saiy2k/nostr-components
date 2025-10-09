@@ -21,6 +21,11 @@ export function getFollowButtonStyles(): string {
       --nostrc-follow-btn-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
       --nostrc-follow-btn-font-family: var(--nostrc-font-family-primary);
       --nostrc-follow-btn-font-size: var(--nostrc-font-size-base);
+      
+      /* Hover state variables */
+      --nostrc-follow-btn-hover-bg: var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background));
+      --nostrc-follow-btn-hover-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-follow-btn-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
 
       /* Make the host the visual button surface */
       display: inline-flex;
@@ -36,6 +41,20 @@ export function getFollowButtonStyles(): string {
       min-height: var(--nostrc-follow-btn-min-height);
       width: var(--nostrc-follow-btn-width);
       cursor: pointer;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Hover state */
+    :host(.is-clickable:hover) {
+      background: var(--nostrc-follow-btn-hover-bg);
+      color: var(--nostrc-follow-btn-hover-color);
+      border: var(--nostrc-follow-btn-hover-border);
+    }
+
+    /* Focus state for accessibility */
+    :host(:focus-visible) {
+      outline: 2px solid var(--nostrc-color-primary, #007bff);
+      outline-offset: 2px;
     }
 
     .nostr-follow-button-container {

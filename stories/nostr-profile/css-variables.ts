@@ -63,4 +63,22 @@ export const PROFILE_CSS_VARIABLES: ParameterDefinition[] = [
     defaultValue: 'ui-sans-serif, system-ui, sans-serif',
     control: 'text',
   },
+  {
+    variable: '--nostrc-profile-hover-bg',
+    description: 'Profile background color on hover',
+    defaultValue: 'var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background))',
+    control: 'color',
+  },
+  {
+    variable: '--nostrc-profile-hover-color',
+    description: 'Profile text color on hover',
+    defaultValue: 'var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary))',
+    control: 'color',
+  },
+  {
+    variable: '--nostrc-profile-hover-border',
+    description: 'Profile border on hover',
+    defaultValue: 'var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border))',
+    control: 'text',
+  },
 ];

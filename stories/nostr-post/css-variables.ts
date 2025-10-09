@@ -57,4 +57,22 @@ export const POST_CSS_VARIABLES: ParameterDefinition[] = [
     defaultValue: 'ui-sans-serif, system-ui, sans-serif',
     control: 'text',
   },
+  {
+    variable: '--nostrc-post-hover-bg',
+    description: 'Post background color on hover',
+    defaultValue: 'var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background))',
+    control: 'color',
+  },
+  {
+    variable: '--nostrc-post-hover-color',
+    description: 'Post text color on hover',
+    defaultValue: 'var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary))',
+    control: 'color',
+  },
+  {
+    variable: '--nostrc-post-hover-border',
+    description: 'Post border on hover',
+    defaultValue: 'var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border))',
+    control: 'text',
+  },
 ];

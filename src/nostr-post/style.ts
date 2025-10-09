@@ -14,6 +14,21 @@ export function getPostStyles(): string {
       --nostrc-post-accent: var(--nostrc-color-accent);
       --nostrc-post-font-family: var(--nostrc-font-family-primary);
       --nostrc-post-font-size: var(--nostrc-font-size-base);
+      
+      /* Hover state variables */
+      --nostrc-post-hover-bg: var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background));
+      --nostrc-post-hover-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-post-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
+
+      /* Make the host the visual post surface */
+      display: block;
+      background: var(--nostrc-post-bg);
+      color: var(--nostrc-post-text-primary);
+      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
+      border-radius: var(--nostrc-border-radius-md);
+      font-family: var(--nostrc-post-font-family);
+      font-size: var(--nostrc-post-font-size);
+      transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
     }
 
     /* === POST CONTAINER PATTERN === */
@@ -21,16 +36,14 @@ export function getPostStyles(): string {
       display: flex;
       flex-direction: column;
       gap: var(--nostrc-spacing-lg);
-      
       padding: var(--nostrc-spacing-md);
-      background: var(--nostrc-post-bg);
-      color: var(--nostrc-post-text-primary);
-      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
-      border-radius: var(--nostrc-border-radius-md);
-      transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
+    }
 
-      font-family: var(--nostrc-post-font-family);
-      font-size: var(--nostrc-post-font-size);
+    /* Hover state */
+    :host(.is-clickable:hover) {
+      background: var(--nostrc-post-hover-bg);
+      color: var(--nostrc-post-hover-color);
+      border: var(--nostrc-post-hover-border);
     }
 
     /* === POST HEADER PATTERN === */

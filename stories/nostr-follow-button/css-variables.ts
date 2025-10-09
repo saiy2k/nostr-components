@@ -70,7 +70,19 @@ export const FOLLOW_BUTTON_CSS_VARIABLES: ParameterDefinition[] = [
   {
     variable: '--nostrc-follow-btn-hover-bg',
     description: 'Background color of the button on hover',
-    defaultValue: 'var(--nostrc-color-hover)',
+    defaultValue: 'var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background))',
     control: 'color',
+  },
+  {
+    variable: '--nostrc-follow-btn-hover-color',
+    description: 'Text color of the button on hover',
+    defaultValue: 'var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary))',
+    control: 'color',
+  },
+  {
+    variable: '--nostrc-follow-btn-hover-border',
+    description: 'Border style of the button on hover',
+    defaultValue: 'var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border))',
+    control: 'text',
   },
 ];
