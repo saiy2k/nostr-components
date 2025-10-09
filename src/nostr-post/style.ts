@@ -120,7 +120,6 @@ export function getPostStyles(): string {
 
     .stat {
       display: flex;
-      align-items: center;
       gap: var(--nostrc-spacing-xs);
       color: var(--nostrc-post-text-secondary);
     }
