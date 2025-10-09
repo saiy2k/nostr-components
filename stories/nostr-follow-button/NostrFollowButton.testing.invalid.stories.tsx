@@ -47,7 +47,7 @@ export const EmptyInputs: Story = {
   args: INVALID_TEST_CASES.emptyInputs.args,
 };
 
-export const NetworkFailure: Story = {
-  name: INVALID_TEST_CASES.networkFailure.name,
-  args: INVALID_TEST_CASES.networkFailure.args,
+export const InvalidRelay: Story = {
+  name: INVALID_TEST_CASES.invalidRelay.name,
+  args: INVALID_TEST_CASES.invalidRelay.args,
 };

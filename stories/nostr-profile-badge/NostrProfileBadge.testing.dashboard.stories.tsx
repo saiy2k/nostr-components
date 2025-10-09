@@ -50,7 +50,7 @@ export const InvalidCasesDashboard: Story = {
     INVALID_TEST_CASES.invalidNip05,
     INVALID_TEST_CASES.invalidPubkey,
     INVALID_TEST_CASES.emptyInputs,
-    INVALID_TEST_CASES.networkFailure,
+    INVALID_TEST_CASES.invalidRelay,
   ], '❌ Invalid Cases Dashboard', '#dc2626'),
   parameters: {
     layout: 'fullscreen',

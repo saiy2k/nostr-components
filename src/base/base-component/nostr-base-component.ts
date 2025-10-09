@@ -2,7 +2,7 @@
 
 import { NostrService } from '../../common/nostr-service';
 import { Theme } from '../../common/types';
-import { parseRelays, parseTheme } from '../../common/utils';
+import { parseRelays, parseTheme, isValidRelayUrl } from '../../common/utils';
 
 export enum NCStatus {
   Idle,      // 0
@@ -214,11 +214,20 @@ export abstract class NostrBaseComponent extends HTMLElement {
       this.conn.set(NCStatus.Error, `Invalid theme '${theme}'. Accepted values are 'light', 'dark'`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
-      // TODO: Improve relay validation
     } else if (relays && typeof relays != 'string') {
       this.conn.set(NCStatus.Error, `Invalid relays list`);
       console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
       return false;
+    } else if (relays) {
+      const relayList = relays.split(',').map(r => r.trim()).filter(Boolean);
+      const invalidRelays = relayList.filter(relay => !isValidRelayUrl(relay));
+      
+      if (invalidRelays.length > 0) {
+        const invalidRelaysList = invalidRelays.join(', ');
+        this.conn.set(NCStatus.Error, `Invalid relay URLs: ${invalidRelaysList}. Relay URLs must start with 'wss://' or 'ws://'`);
+        console.error(`Nostr-Components: ${tagName}: ${this.errorMessage}`);
+        return false;
+      }
     }
 
     this.errorMessage = "";

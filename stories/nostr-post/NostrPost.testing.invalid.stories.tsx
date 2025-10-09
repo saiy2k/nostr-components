@@ -46,3 +46,8 @@ export const EmptyValues: Story = {
   name: INVALID_TEST_CASES.emptyValues.name,
   args: INVALID_TEST_CASES.emptyValues.args,
 };
+
+export const InvalidRelay: Story = {
+  name: INVALID_TEST_CASES.invalidRelay.name,
+  args: INVALID_TEST_CASES.invalidRelay.args,
+};

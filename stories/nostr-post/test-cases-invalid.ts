@@ -31,4 +31,12 @@ export const INVALID_TEST_CASES = {
       hex: '',
     },
   },
+  invalidRelay: {
+    name: 'Invalid Relay',
+    args: {
+      width: DEFAULT_WIDTH,
+      noteid: 'note1trkwajmyzqvagxd7052z9dntfeq3yqm0myvnk457tnzpatrlfflq8jzdsn',
+      relays: 'https://invalid-relay.com,ftp://another-invalid.com',
+    },
+  },
 };
