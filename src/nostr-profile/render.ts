@@ -52,7 +52,7 @@ export function renderProfile(options: RenderProfileOptions): string {
   // Extract profile data with null checks and default values
   const displayName = userProfile?.displayName || userProfile?.name || '';
   const nip05 = userProfile?.nip05 || '';
-  const image = userProfile?.image || '';
+  const image = userProfile?.picture || '';
   const about = userProfile?.about || '';
   const website = userProfile?.website || '';
 
@@ -66,7 +66,7 @@ export function renderProfile(options: RenderProfileOptions): string {
   };
 
   return `
-    <div class="nostrc-container nostr-profile-container">
+    <div class="nostr-profile-container">
       <div class="profile-banner">
         ${isLoading
           ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
@@ -92,11 +92,11 @@ export function renderProfile(options: RenderProfileOptions): string {
       </div>
 
       <div class="profile_actions">
-      ${showFollow ?
-        isLoading? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
-          : renderFollowButton()
-        
-        : '' }
+        ${showFollow ?
+          isLoading? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
+            : renderFollowButton()
+          : ''
+        }
       </div>
         
       <div class="profile_data">
@@ -155,7 +155,7 @@ export function renderProfile(options: RenderProfileOptions): string {
 
 function renderError(errorMessage: string): string {
   return `
-    <div class='nostrc-container nostr-profile-container'>
+    <div class='nostr-profile-container'>
       <div class='nostr-profile-top-container'>
         <div class="error-icon">&#9888;</div>
       </div>

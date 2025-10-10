@@ -23,7 +23,6 @@ export function getBaseStyles(): string {
         --nostrc-color-error-background: #ffebee;
         --nostrc-color-error-text: #d32f2f;
         --nostrc-color-error-icon: #d32f2f;
-        --nostrc-color-accent: #ca077c;
         
         /* === TYPOGRAPHY === */
         --nostrc-font-family-primary: ui-sans-serif, system-ui, sans-serif;
@@ -61,20 +60,8 @@ export function getBaseStyles(): string {
         --nostrc-transition-timing: ease;
       }
       
-      /* === GENERIC CONTAINER STYLES === */
-      :host(.is-clickable) .nostrc-container {
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      
       :host(.is-disabled) {
         opacity: 0.7;
-        cursor: not-allowed;
-      }
-      
-      :host(.is-error) .nostrc-container {
-        color: var(--nostrc-color-error-text);
-        border-color: var(--nostrc-color-error-text);
         cursor: not-allowed;
       }
       

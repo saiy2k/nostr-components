@@ -10,7 +10,6 @@ export function getPostStyles(): string {
       --nostrc-post-text-primary: var(--nostrc-theme-text-primary, #333333);
       --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, #666666);
       --nostrc-post-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
-      --nostrc-post-accent: var(--nostrc-color-accent);
       --nostrc-post-font-family: var(--nostrc-font-family-primary);
       --nostrc-post-font-size: var(--nostrc-font-size-base);
       

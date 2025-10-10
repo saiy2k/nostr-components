@@ -209,7 +209,7 @@ export default class NostrPost extends NostrEventComponent {
       authorProfile
         ? {
           displayName: authorProfile.displayName || '',
-          image: authorProfile.image || '',
+          image: authorProfile.picture || '',
           nip05: authorProfile.nip05 || '',
         }
         : undefined,

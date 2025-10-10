@@ -21,7 +21,6 @@ export function getProfileStyles(): string {
       --nostrc-profile-text-secondary: var(--nostrc-theme-text-secondary, #666666);
       --nostrc-profile-border: var(--nostrc-theme-border, var(--nostrc-border-width) solid var(--nostrc-color-border));
       --nostrc-profile-banner-placeholder: var(--nostrc-profile-border);
-      --nostrc-profile-accent: var(--nostrc-color-accent);
       --nostrc-profile-font-family: var(--nostrc-font-family-primary);
       --nostrc-profile-font-size: var(--nostrc-font-size-base);
       
@@ -49,21 +48,12 @@ export function getProfileStyles(): string {
       min-height: 500px;
       padding: 0px;
     }
-    
-    :host(.is-clickable) .nostrc-container {
-      cursor: auto;
-    }
 
     /* Hover state */
     :host(.is-clickable:hover) {
       background: var(--nostrc-profile-hover-bg);
       color: var(--nostrc-profile-hover-color);
       border: var(--nostrc-profile-hover-border);
-    }
-
-    :host(.is-error) .nostrc-container {
-      justify-content: center;
-      align-items: center;
     }
 
     .nostr-profile-top-container img {

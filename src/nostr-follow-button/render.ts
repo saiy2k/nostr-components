@@ -77,7 +77,7 @@ function renderError(errorMessage: string): string {
 
 function renderContainer(leftContent: string, rightContent: string): string {
   return `
-    <div class='nostrc-container nostr-follow-button-container'>
+    <div class='nostr-follow-button-container'>
       <div class='nostr-follow-button-left-container'>
         ${leftContent}
       </div>

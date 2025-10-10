@@ -44,13 +44,8 @@ export default class NostrProfile extends NostrUserComponent {
     this.render();
   }
 
-  disconnectedCallback() {
-    // TODO: Check for cleanup method
-  }
-
   /** Base class functions */
   protected onStatusChange(_status: NCStatus) {
-    // console.log("onStatusChange: ", _status);
     this.render();
   }
 
