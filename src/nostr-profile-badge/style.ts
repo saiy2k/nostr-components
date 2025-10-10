@@ -6,23 +6,22 @@ export function getProfileBadgeStyles(): string {
   const customStyles = `
     /* === PROFILE BADGE SPECIFIC CSS VARIABLES === */
     :host {
-      --nostrc-profile-badge-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
-      --nostrc-profile-badge-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
-      --nostrc-profile-badge-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
+      --nostrc-profile-badge-bg: var(--nostrc-theme-bg, #ffffff);
+      --nostrc-profile-badge-text-primary: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-profile-badge-text-secondary: var(--nostrc-theme-text-secondary, #666666);
       --nostrc-profile-badge-border: var(--nostrc-theme-border, var(--nostrc-color-border));
-      --nostrc-profile-badge-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
       --nostrc-profile-badge-font-family: var(--nostrc-font-family-primary);
       --nostrc-profile-badge-font-size: var(--nostrc-font-size-base);
       
       /* Hover state variables */
-      --nostrc-profile-badge-hover-bg: var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background));
-      --nostrc-profile-badge-hover-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-profile-badge-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
+      --nostrc-profile-badge-hover-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-profile-badge-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
 
       /* Make the host the visual profile badge surface */
       display: block;
       background: var(--nostrc-profile-badge-bg);
-      border: var(--nostrc-profile-badge-border-width) solid var(--nostrc-profile-badge-border);
+      border: var(--nostrc-border-width) solid var(--nostrc-profile-badge-border);
       border-radius: var(--nostrc-border-radius-md);
       font-family: var(--nostrc-profile-badge-font-family);
       font-size: var(--nostrc-profile-badge-font-size);

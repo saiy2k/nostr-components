@@ -16,25 +16,25 @@ export function getProfileStyles(): string {
       --nostrc-follow-btn-width: 280px;
 
       /* Component theme variables (fallback to global theme tokens) */
-      --nostrc-profile-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
-      --nostrc-profile-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
-      --nostrc-profile-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
-      --nostrc-profile-border: var(--nostrc-theme-border, var(--nostrc-color-border));
-      --nostrc-profile-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
+      --nostrc-profile-bg: var(--nostrc-theme-bg, #ffffff);
+      --nostrc-profile-text-primary: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-profile-text-secondary: var(--nostrc-theme-text-secondary, #666666);
+      --nostrc-profile-border: var(--nostrc-theme-border, var(--nostrc-border-width) solid var(--nostrc-color-border));
       --nostrc-profile-banner-placeholder: var(--nostrc-profile-border);
       --nostrc-profile-accent: var(--nostrc-color-accent);
       --nostrc-profile-font-family: var(--nostrc-font-family-primary);
       --nostrc-profile-font-size: var(--nostrc-font-size-base);
       
       /* Hover state variables */
-      --nostrc-profile-hover-bg: var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background));
-      --nostrc-profile-hover-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
-      --nostrc-profile-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
+      --nostrc-profile-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
+      --nostrc-profile-hover-color: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-profile-hover-border: var(--nostrc-theme-hover-border, var(--nostrc-border-width) solid var(--nostrc-color-border));
 
       /* Make the host the visual profile surface */
       display: block;
       background: var(--nostrc-profile-bg);
-      border: var(--nostrc-profile-border-width) solid var(--nostrc-profile-border);
+      color: var(--nostrc-profile-text-primary);
+      border: var(--nostrc-profile-border);
       border-radius: var(--nostrc-border-radius-md);
       font-family: var(--nostrc-profile-font-family);
       font-size: var(--nostrc-profile-font-size);

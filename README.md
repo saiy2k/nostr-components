@@ -170,15 +170,6 @@ A Lightning Network zap button that allows users to send sats to any Nostr user 
 </body>
 ```
 
-**Attributes:**
-- `npub` or `pubkey` (required) - Nostr public key (npub or hex)
-- `relays` (optional) - Comma-separated list of relay URLs (default: common Nostr relays)
-- `theme` (optional) - "light" or "dark" theme (default: "light")
-- `button-text` (optional) - Custom text for the zap button (default: "⚡️")
-- `button-color` (optional) - Custom background color for the button
-- `amount` (optional) - Default zap amount in sats (default: 1000)
-
-
 **Preview:**
 
 ![Preview of zap button](images/zap-preview.png)
@@ -214,11 +205,6 @@ A simple direct message composer for sending one-time messages to any Nostr user
 </body>
 ```
 
-**Attributes:**
-- `recipient-npub` (optional): Pre-fill recipient's npub
-- `nip05` (optional): Use NIP-05 identifier instead of npub
-- `theme` (optional): "light" or "dark" (default: "light")
-- `relays` (optional): Comma-separated relay URLs
 
 **Preview:**
 
@@ -255,29 +241,6 @@ Real-time chat component with persistent message history and live updates.
 </body>
 ```
 
-**Attributes:**
-- `recipient-npub` (optional): Pre-fill recipient's npub
-- `recipient-pubkey` (optional): Hex recipient pubkey. Alias: `recipientPubkey`
-- `nip05` (optional): Use NIP-05 identifier instead of npub
-- `relays` (optional): Comma-separated relay URLs
-- `theme` (optional): "light" or "dark" (default: "light")
-- `display-type` (optional): "fab" | "bottom-bar" | "full" | "embed" (default: "embed"). Alias: `displayType`
-- `welcome-text` (optional): Custom text for the welcome screen
-- `start-chat-text` (optional): Label for the Start button on the welcome screen
-- `history-days` (optional): Positive integer N to load the last N days. Set to "all" or any value <= 0, or omit the attribute, to load full history (omits `since` in filters).
-
-History window examples:
-
-```html
-<!-- Load last 7 days -->
-<nostr-live-chat history-days="7" ...></nostr-live-chat>
-
-<!-- Load full history -->
-<nostr-live-chat history-days="all" ...></nostr-live-chat>
-
-<!-- Also full history when attribute is omitted -->
-<nostr-live-chat ...></nostr-live-chat>
-```
 
 
 **Preview:**
@@ -313,25 +276,6 @@ A complete decentralized comment system that stores comments on the Nostr networ
 </body>
 ```
 
-**Attributes:**
-- `url` (optional) - URL for comment grouping (default: current page URL)
-- `theme` (optional) - "light" or "dark" theme (default: "light")
-- `relays` (optional) - Comma-separated list of relay URLs (default: common Nostr relays)
-- `placeholder` (optional) - Placeholder text for comment input (default: "Write a comment...")
-- `readonly` (optional) - "true" to disable commenting (default: "false")
-
-
-**CSS Customization:**
-```css
-:root {
-  --nstrc-comment-background-light: #ffffff;
-  --nstrc-comment-text-color-light: #333333;
-  --nstrc-comment-button-background-light: #007bff;
-  --nstrc-comment-border-color-light: #e1e5e9;
-  /* Dark theme variables also available */
-}
-```
-
 **Preview:**
 
 ![Preview of comment system](images/comment-preview.png)
@@ -340,40 +284,7 @@ A complete decentralized comment system that stores comments on the Nostr networ
 
 ## 9. WordPress Integration
 
-![Integrating with WordPress](images/wordpress_help.png)
-
-1. In your WP dashboard, navigate to `Appearance -> Theme file editor`
-2. Select your current theme
-3. Open `functions.php`
-4. Include nostr-components script with this code:
-
-```php
-function my_custom_js() {
-    // Include Nostr Components (choose UMD or ES Module)
-    // Option 1: UMD
-    echo '<script src="https://nostr-components.web.app/dist/nostr-components.umd.js"></script>';
-    // Initialize if using UMD
-    echo '<script>NostrComponents.default.init();</script>';
-
-    /* --- OR Option 2: ES Module --- */
-    /*
-    echo '<script type="module">';
-    echo "  import NostrComponents from 'https://nostr-components.web.app/dist/nostr-components.es.js';";
-    echo "  NostrComponents.init();";
-    echo '</script>';
-    */
-
-    // Optional: Glide.js CSS for Post Carousel (if needed)
-    echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css">';
-    echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css">';
-}
-
-add_action( 'wp_head', 'my_custom_js' );
-```
-
-5. (Optional) Rather than hotlinking from `nostr-components.web.app`, you can download the `dist/nostr-components.umd.js` (or `.es.js`) file, upload it to your own server/WordPress media library, and update the `src` path in the code above.
-6. Now you can use the components anywhere in your post or sidebar by adding the HTML tags (e.g., `<nostr-profile-badge pubkey="..."></nostr-profile-badge>`).
-   ![Integrating in WordPress post](images/wordpress_post.png)
+Install the Nostr Components plugin from the WordPress plugin directory to easily embed Nostr content in your posts and pages.
 
 ---
 

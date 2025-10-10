@@ -19,9 +19,6 @@ export function getBaseStyles(): string {
         /* === GENERIC DESIGN TOKENS === */
         --nostrc-color-background: #ffffff;
         --nostrc-color-hover-background: rgba(0, 0, 0, 0.05);
-        --nostrc-color-text-primary: #333333;
-        --nostrc-color-text-secondary: #666666;
-        --nostrc-color-text-muted: #808080;
         --nostrc-color-border: #e0e0e0;
         --nostrc-color-error-background: #ffebee;
         --nostrc-color-error-text: #d32f2f;
@@ -174,7 +171,7 @@ export const styleUtils = {
    */
   profileName: () => `
     .nostr-profile-name {
-      color: var(--nostrc-color-text-primary);
+      color: var(--nostrc-theme-text-primary, #333333);
       font-weight: var(--nostrc-font-weight-bold);
       padding-bottom: var(--nostrc-spacing-xs);
     }

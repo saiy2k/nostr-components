@@ -34,14 +34,8 @@ export const PROFILE_BADGE_CSS_VARIABLES: ParameterDefinition[] = [
   },
   {
     variable: '--nostrc-profile-badge-border',
-    description: 'Border color of the profile badge',
+    description: 'Border style of the profile badge',
     defaultValue: 'var(--nostrc-color-border)',
-    control: 'color',
-  },
-  {
-    variable: '--nostrc-profile-badge-border-width',
-    description: 'Border width of the profile badge',
-    defaultValue: 'var(--nostrc-border-width)',
     control: 'text',
   },
   {

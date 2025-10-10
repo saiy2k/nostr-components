@@ -24,6 +24,10 @@
         "destination": "/dist/**"
       },
       {
+        "source": "/images/**",
+        "destination": "/images/**"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

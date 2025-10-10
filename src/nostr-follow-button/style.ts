@@ -17,14 +17,14 @@ export function getFollowButtonStyles(): string {
       --nostrc-follow-btn-min-height: auto;
       --nostrc-follow-btn-width: auto;
       --nostrc-follow-btn-horizontal-alignment: left;
-      --nostrc-follow-btn-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
-      --nostrc-follow-btn-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-follow-btn-bg: var(--nostrc-theme-bg, #ffffff);
+      --nostrc-follow-btn-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-follow-btn-font-family: var(--nostrc-font-family-primary);
       --nostrc-follow-btn-font-size: var(--nostrc-font-size-base);
       
       /* Hover state variables */
-      --nostrc-follow-btn-hover-bg: var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background));
-      --nostrc-follow-btn-hover-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-follow-btn-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
+      --nostrc-follow-btn-hover-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-follow-btn-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
 
       /* Make the host the visual button surface */

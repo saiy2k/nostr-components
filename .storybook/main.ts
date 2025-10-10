@@ -33,7 +33,10 @@ const config: StorybookConfig = {
     options: {},
   },
 
-  // Add this line to serve the 'dist' directory
-  staticDirs: ['../dist'],
+  // Add this line to serve the 'dist' and 'images' directories
+  staticDirs: [
+    '../dist',
+    { from: '../images', to: '/images' }
+  ],
 };
 export default config;

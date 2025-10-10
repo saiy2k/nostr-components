@@ -25,7 +25,7 @@ export interface RenderProfileOptions extends IRenderOptions {
   isStatsFollowsLoading: boolean;
   isZapsLoading: boolean;
   stats: Stats;
-  showFollow: string | boolean;
+  showFollow: boolean;
   showNpub: boolean;
 }
 
@@ -57,10 +57,10 @@ export function renderProfile(options: RenderProfileOptions): string {
   const website = userProfile?.website || '';
 
   const renderFollowButton = () => {
-    if (!showFollow) return '';
+    if (!showFollow && npub == '') return '';
     return `
       <nostr-follow-button
-        npub="${showFollow}">
+        npub="${npub}">
       </nostr-follow-button>
     `;
   };
@@ -70,7 +70,7 @@ export function renderProfile(options: RenderProfileOptions): string {
       <div class="profile-banner">
         ${isLoading
           ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
-          : userProfile.banner
+          : userProfile?.banner
             ? `<img src="${userProfile.banner}" width="524px"/>`
             : '<div class="banner-placeholder"></div>'
         }
@@ -92,9 +92,11 @@ export function renderProfile(options: RenderProfileOptions): string {
       </div>
 
       <div class="profile_actions">
-        ${isLoading ? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
+      ${showFollow ?
+        isLoading? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
           : renderFollowButton()
-        }
+        
+        : '' }
       </div>
         
       <div class="profile_data">

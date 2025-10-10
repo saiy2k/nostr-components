@@ -6,17 +6,17 @@ export function getPostStyles(): string {
   const customStyles = `
     /* === POST CSS VARIABLES === */
     :host {
-      --nostrc-post-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
-      --nostrc-post-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
-      --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
+      --nostrc-post-bg: var(--nostrc-theme-bg, #ffffff);
+      --nostrc-post-text-primary: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, #666666);
       --nostrc-post-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
       --nostrc-post-accent: var(--nostrc-color-accent);
       --nostrc-post-font-family: var(--nostrc-font-family-primary);
       --nostrc-post-font-size: var(--nostrc-font-size-base);
       
       /* Hover state variables */
-      --nostrc-post-hover-bg: var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background));
-      --nostrc-post-hover-color: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
+      --nostrc-post-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
+      --nostrc-post-hover-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-post-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
 
       /* Make the host the visual post surface */

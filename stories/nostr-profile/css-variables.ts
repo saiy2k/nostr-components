@@ -35,26 +35,14 @@ export const PROFILE_CSS_VARIABLES: ParameterDefinition[] = [
   },
   {
     variable: '--nostrc-profile-border',
-    description: 'Profile border color',
+    description: 'Profile border style',
     defaultValue: 'var(--nostrc-theme-border, var(--nostrc-color-border))',
-    control: 'color',
-  },
-  {
-    variable: '--nostrc-profile-border-width',
-    description: 'Profile border width',
-    defaultValue: 'var(--nostrc-theme-border-width, var(--nostrc-border-width))',
     control: 'text',
   },
   {
     variable: '--nostrc-profile-banner-placeholder',
     description: 'Profile banner placeholder color',
     defaultValue: 'var(--nostrc-profile-border)',
-    control: 'color',
-  },
-  {
-    variable: '--nostrc-profile-accent',
-    description: 'Profile accent color (used for links, etc.)',
-    defaultValue: 'var(--nostrc-color-accent)',
     control: 'color',
   },
   {
