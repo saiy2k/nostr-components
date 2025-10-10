@@ -4,7 +4,7 @@ import { TEST_CASES } from './test-cases-valid';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrPost/Testing',
+  title: 'Post/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -58,6 +58,7 @@ export const InvalidCasesDashboard: Story = {
     INVALID_TEST_CASES.invalidEventId,
     INVALID_TEST_CASES.invalidHex,
     INVALID_TEST_CASES.emptyValues,
+    INVALID_TEST_CASES.invalidRelay,
   ], '❌ Invalid Cases Dashboard', '#dc2626'),
   parameters: {
     layout: 'fullscreen',

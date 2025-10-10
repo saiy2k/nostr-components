@@ -7,7 +7,7 @@ import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic'
 import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta: Meta = {
-  title: 'NostrProfile/Testing/Dynamic',
+  title: 'Profile/Testing/Dynamic',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},

@@ -16,6 +16,7 @@ export interface RenderPostOptions extends IRenderOptions {
     replies: number;
     likes: number;
   } | null;
+  statsLoading: boolean;
   htmlToRender: string;
 }
 
@@ -27,6 +28,7 @@ export function renderPost(options: RenderPostOptions): string {
     date,
     shouldShowStats,
     stats,
+    statsLoading,
     htmlToRender,
   } = options;
 
@@ -35,7 +37,7 @@ export function renderPost(options: RenderPostOptions): string {
     <div class="nostrc-container nostr-post-container">
       ${renderPostHeader(isLoading, isError, author, date)}
       ${renderPostBody(isLoading, isError, htmlToRender)}
-      ${shouldShowStats ? renderPostFooter(isLoading, isError, stats) : ''}
+      ${shouldShowStats ? renderPostFooter(isLoading, isError, stats, statsLoading) : ''}
     </div>
   `;
 }
@@ -133,20 +135,20 @@ function renderPostBody(
 function renderPostFooter(
   isLoading: boolean,
   isError: boolean,
-  stats: { replies: number; likes: number } | null
+  stats: { replies: number; likes: number } | null,
+  statsLoading: boolean
 ): string {
-  if (isLoading) {
+  if (isLoading || statsLoading) {
     return `
       <div class="post-footer">
         <div class='stats-container'>
           <div class="stat">
-            <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
+            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
           </div>
           <div class="stat">
-            <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
-          </div>
-          <div class="stat">
-            <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
+            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
           </div>
         </div>
       </div>

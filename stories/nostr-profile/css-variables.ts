@@ -35,14 +35,8 @@ export const PROFILE_CSS_VARIABLES: ParameterDefinition[] = [
   },
   {
     variable: '--nostrc-profile-border',
-    description: 'Profile border color',
+    description: 'Profile border style',
     defaultValue: 'var(--nostrc-theme-border, var(--nostrc-color-border))',
-    control: 'color',
-  },
-  {
-    variable: '--nostrc-profile-border-width',
-    description: 'Profile border width',
-    defaultValue: 'var(--nostrc-theme-border-width, var(--nostrc-border-width))',
     control: 'text',
   },
   {
@@ -52,9 +46,27 @@ export const PROFILE_CSS_VARIABLES: ParameterDefinition[] = [
     control: 'color',
   },
   {
-    variable: '--nostrc-profile-accent',
-    description: 'Profile accent color (used for links, etc.)',
-    defaultValue: 'var(--nostrc-color-accent)',
+    variable: '--nostrc-profile-font-family',
+    description: 'Font family for the profile component text',
+    defaultValue: 'ui-sans-serif, system-ui, sans-serif',
+    control: 'text',
+  },
+  {
+    variable: '--nostrc-profile-hover-bg',
+    description: 'Profile background color on hover',
+    defaultValue: 'var(--nostrc-theme-hover-bg, var(--nostrc-color-hover-background))',
     control: 'color',
+  },
+  {
+    variable: '--nostrc-profile-hover-color',
+    description: 'Profile text color on hover',
+    defaultValue: 'var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary))',
+    control: 'color',
+  },
+  {
+    variable: '--nostrc-profile-hover-border',
+    description: 'Profile border on hover',
+    defaultValue: 'var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border))',
+    control: 'text',
   },
 ];

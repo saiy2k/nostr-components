@@ -6,12 +6,28 @@ export function getPostStyles(): string {
   const customStyles = `
     /* === POST CSS VARIABLES === */
     :host {
-      --nostrc-post-bg: var(--nostrc-theme-bg, var(--nostrc-color-background));
-      --nostrc-post-text-primary: var(--nostrc-theme-text-primary, var(--nostrc-color-text-primary));
-      --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, var(--nostrc-color-text-secondary));
-      --nostrc-post-border: var(--nostrc-theme-border, var(--nostrc-color-border));
-      --nostrc-post-border-width: var(--nostrc-theme-border-width, var(--nostrc-border-width));
+      --nostrc-post-bg: var(--nostrc-theme-bg, #ffffff);
+      --nostrc-post-text-primary: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, #666666);
+      --nostrc-post-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
       --nostrc-post-accent: var(--nostrc-color-accent);
+      --nostrc-post-font-family: var(--nostrc-font-family-primary);
+      --nostrc-post-font-size: var(--nostrc-font-size-base);
+      
+      /* Hover state variables */
+      --nostrc-post-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
+      --nostrc-post-hover-color: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-post-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
+
+      /* Make the host the visual post surface */
+      display: block;
+      background: var(--nostrc-post-bg);
+      color: var(--nostrc-post-text-primary);
+      border: var(--nostrc-post-border);
+      border-radius: var(--nostrc-border-radius-md);
+      font-family: var(--nostrc-post-font-family);
+      font-size: var(--nostrc-post-font-size);
+      transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
     }
 
     /* === POST CONTAINER PATTERN === */
@@ -19,13 +35,14 @@ export function getPostStyles(): string {
       display: flex;
       flex-direction: column;
       gap: var(--nostrc-spacing-lg);
-      
       padding: var(--nostrc-spacing-md);
-      background: var(--nostrc-post-bg);
-      color: var(--nostrc-post-text-primary);
-      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
-      border-radius: var(--nostrc-border-radius-md);
-      transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
+    }
+
+    /* Hover state */
+    :host(.is-clickable:hover) {
+      background: var(--nostrc-post-hover-bg);
+      color: var(--nostrc-post-hover-color);
+      border: var(--nostrc-post-hover-border);
     }
 
     /* === POST HEADER PATTERN === */
@@ -103,7 +120,6 @@ export function getPostStyles(): string {
 
     .stat {
       display: flex;
-      align-items: center;
       gap: var(--nostrc-spacing-xs);
       color: var(--nostrc-post-text-secondary);
     }
@@ -153,7 +169,7 @@ export function getPostStyles(): string {
     }
 
     .glide__bullets button {
-      border: var(--nostrc-border-width) solid var(--nostrc-post-border);
+      border: var(--nostrc-post-border);
     }
 
     /* === MENTION STYLES === */
@@ -167,7 +183,7 @@ export function getPostStyles(): string {
     .embedded-post {
       margin: var(--nostrc-spacing-sm) 0;
       padding: var(--nostrc-spacing-sm);
-      border: var(--nostrc-post-border-width) solid var(--nostrc-post-border);
+      border: var(--nostrc-post-border);
       border-radius: var(--nostrc-border-radius-md);
       background: var(--nostrc-color-background-secondary);
     }
@@ -249,7 +265,7 @@ export function getPostStyles(): string {
       padding: var(--nostrc-spacing-sm);
       color: var(--nostrc-color-error-text);
       background-color: var(--nostrc-color-error-background);
-      border: var(--nostrc-border-width) solid var(--nostrc-color-error-border);
+      border: var(--nostrc-post-border);
       border-radius: var(--nostrc-border-radius-sm);
       font-size: var(--nostrc-font-size-sm);
     }

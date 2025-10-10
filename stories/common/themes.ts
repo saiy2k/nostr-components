@@ -14,14 +14,18 @@ export const COMMON_THEMES = {
     '--nostrc-theme-text-primary': '#e8fbff',
     '--nostrc-theme-text-secondary': '#e8fbff',
     '--nostrc-theme-border': '1px solid rgba(232,251,255,0.35)',
-    '--nostrc-theme-hover-bg': 'rgba(232, 251, 255, 0.15)',
+    '--nostrc-theme-hover-bg': 'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.12)), linear-gradient(135deg, #0d5a7a, #f7752a)',
+    '--nostrc-theme-hover-color': '#e8fbff',
+    '--nostrc-theme-hover-border': '1px solid rgba(232,251,255,0.5)',
   },
   'holographic': {
     '--nostrc-theme-bg': 'linear-gradient(120deg, #d4fc79 0%, #96e6a1 30%, #84fab0 60%, #8fd3f4 100%)',
     '--nostrc-theme-text-primary': '#1b2a2f',
     '--nostrc-theme-text-secondary': '#1b2a2f',
     '--nostrc-theme-border': '1px solid rgba(27,42,47,0.25)',
-    '--nostrc-theme-hover-bg': 'rgba(27, 42, 47, 0.1)',
+    '--nostrc-theme-hover-bg': 'linear-gradient(120deg, #f4ffa8 0%, #c8f8d0 30%, #b8fdd0 60%, #b8e8ff 100%)',
+    '--nostrc-theme-hover-color': '#1b2a2f',
+    '--nostrc-theme-hover-border': '1px solid rgba(27,42,47,0.4)',
   },
   'neo-matrix': {
     '--nostrc-theme-bg': '#061a12',
@@ -29,13 +33,17 @@ export const COMMON_THEMES = {
     '--nostrc-theme-text-secondary': '#00ff88',
     '--nostrc-theme-border': '2px solid #00ff66',
     '--nostrc-theme-hover-bg': 'rgba(0, 255, 136, 0.1)',
+    '--nostrc-theme-hover-color': '#00ff88',
+    '--nostrc-theme-hover-border': '2px solid #00ff66',
   },
   'bitcoin-orange': {
     '--nostrc-theme-bg': '#F7931A',
     '--nostrc-theme-text-primary': '#1a1a1a',
     '--nostrc-theme-text-secondary': '#1a1a1a',
     '--nostrc-theme-border': '1px solid #cc6f00',
-    '--nostrc-theme-hover-bg': 'rgba(26, 26, 26, 0.1)',
+    '--nostrc-theme-hover-bg': 'rgba(247, 147, 26, 0.8)',
+    '--nostrc-theme-hover-color': '#1a1a1a',
+    '--nostrc-theme-hover-border': '1px solid #b35900',
   },
 };
 
@@ -68,6 +76,8 @@ export function createComponentTheme(
     [`--${componentPrefix}-text-secondary`]: commonTheme['--nostrc-theme-text-secondary'],
     [`--${componentPrefix}-border`]: commonTheme['--nostrc-theme-border'],
     [`--${componentPrefix}-hover-bg`]: commonTheme['--nostrc-theme-hover-bg'],
+    [`--${componentPrefix}-hover-color`]: commonTheme['--nostrc-theme-hover-color'],
+    [`--${componentPrefix}-hover-border`]: commonTheme['--nostrc-theme-hover-border'],
   };
 }
 

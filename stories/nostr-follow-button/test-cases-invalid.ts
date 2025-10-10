@@ -31,12 +31,12 @@ export const INVALID_TEST_CASES = {
       pubkey: '',
     },
   },
-  networkFailure: {
-    name: 'Unreachable Relays',
+  invalidRelay: {
+    name: 'Invalid Relay',
     args: {
       width: DEFAULT_WIDTH,
       npub: 'npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6',
-      relays: 'wss://invalid-relay.nonexistent',
+      relays: 'https://invalid-relay.com,ftp://another-invalid.com',
     },
   },
 };

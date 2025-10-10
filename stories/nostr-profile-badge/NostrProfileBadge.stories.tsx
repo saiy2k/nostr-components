@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from './utils';
+import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'NostrProfileBadge',
+  title: 'Profile Badge',
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -15,7 +15,7 @@ const meta: Meta = {
       },
       source: {
         transform: (code, storyContext) =>
-          generateCode(storyContext.args, true),
+          generateCodeWithScript(storyContext.args),
       },
     },
   },

@@ -3,7 +3,14 @@ import { themes } from 'storybook/theming';
 
 addons.setConfig({
   storySort: {
-    order: ['Introduction', 'Components', 'Documentation'],
+    order: [
+      'Introduction', 
+      'Follow Button', 
+      'Post', 
+      'Profile', 
+      'Profile Badge',
+      'Documentation'
+    ],
   },
   initialActive: 'Introduction',
   theme: {

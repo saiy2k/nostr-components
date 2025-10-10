@@ -31,6 +31,22 @@ export const TEST_CASES = {
       pubkey: PROFILE_DATA.jack.pubkey,
     },
   },
+  showAvatar: {
+    name: 'Show Avatar',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.fiatjaf.npub,
+      'show-avatar': true,
+    },
+  },
+  customText: {
+    name: 'Custom Text',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.fiatjaf.npub,
+      text: 'Follow me please!',
+    },
+  },
 
   // Theme Variations
   oceanGlass: {

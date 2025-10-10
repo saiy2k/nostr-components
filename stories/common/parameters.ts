@@ -18,14 +18,22 @@ export interface ParameterDefinition {
 }
 
 /**
- * Common parameter shared across all Nostr components
+ * Common parameters shared across all Nostr components
  */
-const RELAYS_PARAMETER: ParameterDefinition = {
-  variable: 'relays',
-  description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-  defaultValue: DEFAULT_RELAYS.join(',\n'),
-  control: 'text',
-};
+const COMMON_PARAMETERS: ParameterDefinition[] = [
+  {
+    variable: 'relays',
+    description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
+    defaultValue: DEFAULT_RELAYS.join(',\n'),
+    control: 'text',
+  },
+  {
+    variable: 'data-theme',
+    description: 'Theme for the component (light, dark)',
+    defaultValue: '',
+    control: 'text',
+  },
+];
 
 /**
  * User-facing parameters shared across most Nostr components
@@ -49,7 +57,7 @@ export const USER_PARAMETERS: ParameterDefinition[] = [
     defaultValue: 'null',
     control: 'text',
   },
-  RELAYS_PARAMETER,
+  ...COMMON_PARAMETERS,
 ];
 
 /**
@@ -58,21 +66,21 @@ export const USER_PARAMETERS: ParameterDefinition[] = [
 export const EVENT_PARAMETERS: ParameterDefinition[] = [
   {
     variable: 'noteid',
-    description: 'Valid raw Nostr ID or valid Bech32 note ID',
+    description: 'Valid raw Nostr ID or valid Bech32 note ID.<br/><b>Precedence:</b> noteid, hex, eventid',
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'hex',
-    description: 'Valid hex format Nostr event ID',
+    description: 'Valid hex format Nostr event ID.<br/><b>Precedence:</b> noteid, hex, eventid',
     defaultValue: 'null',
     control: 'text',
   },
   {
     variable: 'eventid',
-    description: 'Valid event ID format (nevent)',
+    description: 'Valid event ID format (nevent).<br/><b>Precedence:</b> noteid, hex, eventid',
     defaultValue: 'null',
     control: 'text',
   },
-  RELAYS_PARAMETER,
+  ...COMMON_PARAMETERS,
 ];

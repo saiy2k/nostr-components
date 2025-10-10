@@ -3,7 +3,7 @@ import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrFollowButton/Testing/Invalid',
+  title: 'Follow Button/Testing/Invalid',
   tags: ['test', 'invalid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -47,7 +47,7 @@ export const EmptyInputs: Story = {
   args: INVALID_TEST_CASES.emptyInputs.args,
 };
 
-export const NetworkFailure: Story = {
-  name: INVALID_TEST_CASES.networkFailure.name,
-  args: INVALID_TEST_CASES.networkFailure.args,
+export const InvalidRelay: Story = {
+  name: INVALID_TEST_CASES.invalidRelay.name,
+  args: INVALID_TEST_CASES.invalidRelay.args,
 };

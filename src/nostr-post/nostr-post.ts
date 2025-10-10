@@ -18,6 +18,7 @@ import { NCStatus } from '../base/base-component/nostr-base-component';
 export default class NostrPost extends NostrEventComponent {
 
   protected stats: Stats | null = null;
+  protected statsLoading: boolean = false;
   protected embeddedPosts: Map<string, NDKEvent> = new Map();
 
   protected author: NDKUser | null = null;
@@ -113,9 +114,12 @@ export default class NostrPost extends NostrEventComponent {
 
   async getPostStats() {
     try {
-      const shouldShowStats = this.getAttribute('show-stats');
+      const shouldShowStats = this.getAttribute('show-stats') === 'true';
 
       if (this.event && shouldShowStats) {
+        this.statsLoading = true;
+        this.render(); // Show skeleton loader
+        
         const stats = await getPostStats(
           this.nostrService.getNDK(),
           this.event.id
@@ -129,6 +133,7 @@ export default class NostrPost extends NostrEventComponent {
       console.error('[NostrPostComponent] ' + msg, err);
       this.eventStatus.set(NCStatus.Error, msg);
     } finally {
+      this.statsLoading = false;
       this.render();
     }
   }
@@ -355,6 +360,7 @@ export default class NostrPost extends NostrEventComponent {
       date,
       shouldShowStats,
       stats: this.stats,
+      statsLoading: this.statsLoading,
       htmlToRender,
     };
 

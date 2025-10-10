@@ -7,7 +7,7 @@ import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic'
 import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta: Meta = {
-  title: 'NostrFollowButton/Testing/Dynamic',
+  title: 'Follow Button/Testing/Dynamic',
   tags: ['test', 'dynamic'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

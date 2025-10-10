@@ -44,10 +44,10 @@ export class EventResolver {
     // Normalize all identifiers to hex format
     let normalizedHex: string | null = null;
     
-    if (hex) {
-      normalizedHex = hex;
-    } else if (noteid) {
+    if (noteid) {
       normalizedHex = this.normalizeToHex(noteid);
+    } else if (hex) {
+      normalizedHex = hex;
     } else if (eventid) {
       normalizedHex = this.normalizeToHex(eventid);
     }

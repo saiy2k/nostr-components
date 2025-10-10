@@ -1,10 +1,10 @@
 import { fn } from 'storybook/test';
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from './utils';
+import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'NostrPost',
+  title: 'Post',
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -16,7 +16,7 @@ const meta: Meta = {
       },
       source: {
         transform: (code, storyContext) =>
-          generateCode(storyContext.args, true),
+          generateCodeWithScript(storyContext.args),
       },
     },
   },

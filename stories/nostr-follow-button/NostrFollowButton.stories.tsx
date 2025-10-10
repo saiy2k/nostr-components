@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from './utils';
+import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'NostrFollowButton',
+  title: 'Follow Button',
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -15,7 +15,7 @@ const meta: Meta = {
       },
       source: {
         transform: (code, storyContext) =>
-          generateCode(storyContext.args, true),
+          generateCodeWithScript(storyContext.args),
       },
     },
   },
@@ -42,4 +42,14 @@ export const Nip05: Story = {
 export const RawPubkey: Story = {
   name: TEST_CASES.rawPubkey.name,
   args: TEST_CASES.rawPubkey.args,
+};
+
+export const ShowAvatar: Story = {
+  name: TEST_CASES.showAvatar.name,
+  args: TEST_CASES.showAvatar.args,
+};
+
+export const CustomText: Story = {
+  name: TEST_CASES.customText.name,
+  args: TEST_CASES.customText.args,
 };

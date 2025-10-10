@@ -1,33 +1,20 @@
 # Nostr Components
 
-**Take Nostr content beyond Nostr clients – embed it anywhere on the internet.**
+**Embed Nostr anywhere on the internet, a Zap Button for every website.**
 
 ## 🚀 About the Project
 
-Nostr Components makes it easy to embed **Nostr profiles, posts, and follow buttons** in any website. Inspired by [fiatjaf's Nostr Web Components](https://unpkg.com/nostr-web-components@0.0.6/demo.html). this project **adds a beautiful UI, a storybook component generator (for webmasters),** and expands the usability of Nostr across the web.
+Nostr Components makes it easy to embed Nostr profiles, posts, and follow buttons in any website. Inspired by <a href="https://unpkg.com/nostr-web-components@0.0.15/demo.html">fiatjaf's Nostr Web Components</a>, this project adds a beautiful UI, a Storybook component generator (for webmasters), and allows embedding Nostr content anywhere on the Internet.
 
-## 🏗️ Available Components
-
+🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
 🔹 **[Nostr Profile Badge](#1-nostr-profile-badge-)** - Compact badge-style profile display  
 🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
-🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
-🔹 **[Nostr Comment](#6-nostr-comment-)** - Decentralized comment system for any website  
-🔹 **[Nostr DM](#5-nostr-dm-)** - Send a direct message on Nostr
-🔹 **[Nostr Live Chat](#6-nostr-live-chat-)** - Real-time chat with message history  
-🔹 **[Wordpress Integration](#7-wordpress-integration)** - Wordpress Integration
-
-### Future roadmap:
-
-🔹 WordPress plugin wrapping all the components - Think you install this WP plugin, configure it with your npub that has a LN-URL. And instantly you get a zap button for all your blog posts.
-
-## 📌 Why Use Nostr Components?
-
-✅ **Simplified Integration** - Nostr Development Kit (NDK) and related Nostr libraries are bundled in. Just include our script!
-✅ **Lightweight & Fast** - Works on any modern browser.
-✅ **Fully Customizable** - Match your website’s style with ease.
-✅ **Decentralized Friendly** - Works seamlessly with any custom set of Nostr relays.
+🔹 **[Nostr DM](#6-nostr-dm-)** - Send a direct message on Nostr 
+🔹 **[Nostr Live Chat](#7-nostr-live-chat-)** - Real-time chat with message history  
+🔹 **[Nostr Comment](#8-nostr-comment-)** - Decentralized comment system for any website  
+🔹 **[Wordpress Integration](#9-wordpress-integration)** - Wordpress Integration
 
 ## 🛠️ Usage
 
@@ -162,20 +149,36 @@ A simple button that allows users to follow a Nostr profile.
 
 ![Preview of follow button](images/follow-button-preview.png)
 
-<<<<<<< HEAD
 ## 5. Nostr Zap ⚡
-=======
+
+A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="./dist/components/nostr-zap.es.js"></script>
+</head>
+<body>
+  <nostr-zap 
+    npub="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
+    theme="dark"
+    button-text="⚡ Zap Me"
+    button-color="#8a63d2"
+    amount="1000"
+  ></nostr-zap>
+</body>
+```
+
+**Preview:**
+
+![Preview of zap button](images/zap-preview.png)
+
 ---
 
-## 5. Nostr DM 💬
+## 6. Nostr DM 💬
 
 A simple direct message composer for sending one-time messages to any Nostr user.
-
-**Features:**
-- 📝 Clean message composition interface
-- 🎯 Send to any user via npub or NIP-05 identifier  
-- ✅ Success confirmation with visual feedback
-- 🔄 Ready for immediate next message after sending
 
 **Usage:**
 
@@ -202,29 +205,16 @@ A simple direct message composer for sending one-time messages to any Nostr user
 </body>
 ```
 
-<<<<<<< HEAD
-## 6. Wordpress Integration
->>>>>>> f9ce3c3 (feat: Add Nostr DM component)
-=======
-**Attributes:**
-- `recipient-npub` (optional): Pre-fill recipient's npub
-- `nip05` (optional): Use NIP-05 identifier instead of npub
-- `theme` (optional): "light" or "dark" (default: "light")
-- `relays` (optional): Comma-separated relay URLs
+
+**Preview:**
+
+![Preview of DM component](images/dm-preview.png)
 
 ---
 
-## 6. Nostr Live Chat 💬
+## 7. Nostr Live Chat 💬
 
 Real-time chat component with persistent message history and live updates.
-
-**Features:**
-- 💬 Full conversation history display
-- ⚡ Real-time message updates via Nostr relays
-- 🔄 Optimistic message rendering with relay confirmation
-- 👥 Shows messages from both participants with proper attribution
-- 🕐 Chronological message ordering by timestamp
-- 📱 Responsive design for all screen sizes
 
 **Usage:**
 
@@ -251,79 +241,15 @@ Real-time chat component with persistent message history and live updates.
 </body>
 ```
 
-**Attributes:**
-- `recipient-npub` (optional): Pre-fill recipient's npub
-- `recipient-pubkey` (optional): Hex recipient pubkey. Alias: `recipientPubkey`
-- `nip05` (optional): Use NIP-05 identifier instead of npub
-- `relays` (optional): Comma-separated relay URLs
-- `theme` (optional): "light" or "dark" (default: "light")
-- `display-type` (optional): "fab" | "bottom-bar" | "full" | "embed" (default: "embed"). Alias: `displayType`
-- `welcome-text` (optional): Custom text for the welcome screen
-- `start-chat-text` (optional): Label for the Start button on the welcome screen
-- `history-days` (optional): Positive integer N to load the last N days. Set to "all" or any value <= 0, or omit the attribute, to load full history (omits `since` in filters).
 
-History window examples:
 
-```html
-<!-- Load last 7 days -->
-<nostr-live-chat history-days="7" ...></nostr-live-chat>
+**Preview:**
 
-<!-- Load full history -->
-<nostr-live-chat history-days="all" ...></nostr-live-chat>
-
-<!-- Also full history when attribute is omitted -->
-<nostr-live-chat ...></nostr-live-chat>
-```
-
-**Use Cases:**
-- Customer support chat widgets
-- Real-time discussions on websites
-- Community chat integration
-- Direct communication between users
+![Preview of live chat component](images/live-chat-preview.png)
 
 ---
 
-## 7. Wordpress Integration
->>>>>>> 79d2d9d (Updated redme)
-
-A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
-
-**Usage:**
-
-```html
-<head>
-  <script type="module" src="./dist/components/nostr-zap.es.js"></script>
-</head>
-<body>
-  <nostr-zap 
-    npub="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
-    theme="dark"
-    button-text="⚡ Zap Me"
-    button-color="#8a63d2"
-    amount="1000"
-  ></nostr-zap>
-</body>
-```
-
-**Attributes:**
-- `npub` or `pubkey` (required) - Nostr public key (npub or hex)
-- `relays` (optional) - Comma-separated list of relay URLs (default: common Nostr relays)
-- `theme` (optional) - "light" or "dark" theme (default: "light")
-- `button-text` (optional) - Custom text for the zap button (default: "⚡️")
-- `button-color` (optional) - Custom background color for the button
-- `amount` (optional) - Default zap amount in sats (default: 1000)
-
-**Features:**
-- Lightning Network zaps via LNURL
-- WebLN support for browser-based lightning wallets
-- Multiple wallet integration (Phoenix, Wallet of Satoshi, etc.)
-- QR code generation for mobile wallets
-- Customizable styling and theming
-- Responsive design
-
----
-
-## 6. Nostr Comment 💬
+## 8. Nostr Comment 💬
 
 A complete decentralized comment system that stores comments on the Nostr network instead of a traditional database.
 
@@ -350,76 +276,15 @@ A complete decentralized comment system that stores comments on the Nostr networ
 </body>
 ```
 
-**Attributes:**
-- `url` (optional) - URL for comment grouping (default: current page URL)
-- `theme` (optional) - "light" or "dark" theme (default: "light")
-- `relays` (optional) - Comma-separated list of relay URLs (default: common Nostr relays)
-- `placeholder` (optional) - Placeholder text for comment input (default: "Write a comment...")
-- `readonly` (optional) - "true" to disable commenting (default: "false")
+**Preview:**
 
-**Features:**
-- **Decentralized Storage**: Comments stored on Nostr network across multiple relays
-- **No Backend Required**: No database or server infrastructure needed
-- **Identity Management**: Automatic key generation or NIP-07 extension support
-- **Real-time Updates**: Comments appear instantly for all users
-- **Censorship Resistant**: Distributed across multiple relays
-- **Responsive Design**: Works perfectly on desktop and mobile
-- **Themeable**: Full light/dark theme support with CSS customization
-
-**Authentication:**
-- **NIP-07 Extensions**: Automatically detects browser extensions (nos2x, Alby, etc.)
-- **Local Keys**: Generates and stores keys in localStorage as fallback
-- **User Ownership**: Users control their identity and data
-
-**CSS Customization:**
-```css
-:root {
-  --nstrc-comment-background-light: #ffffff;
-  --nstrc-comment-text-color-light: #333333;
-  --nstrc-comment-button-background-light: #007bff;
-  --nstrc-comment-border-color-light: #e1e5e9;
-  /* Dark theme variables also available */
-}
-```
+![Preview of comment system](images/comment-preview.png)
 
 ---
 
-## 7. WordPress Integration
+## 9. WordPress Integration
 
-![Integrating with WordPress](images/wordpress_help.png)
-
-1. In your WP dashboard, navigate to `Appearance -> Theme file editor`
-2. Select your current theme
-3. Open `functions.php`
-4. Include nostr-components script with this code:
-
-```php
-function my_custom_js() {
-    // Include Nostr Components (choose UMD or ES Module)
-    // Option 1: UMD
-    echo '<script src="https://nostr-components.web.app/dist/nostr-components.umd.js"></script>';
-    // Initialize if using UMD
-    echo '<script>NostrComponents.default.init();</script>';
-
-    /* --- OR Option 2: ES Module --- */
-    /*
-    echo '<script type="module">';
-    echo "  import NostrComponents from 'https://nostr-components.web.app/dist/nostr-components.es.js';";
-    echo "  NostrComponents.init();";
-    echo '</script>';
-    */
-
-    // Optional: Glide.js CSS for Post Carousel (if needed)
-    echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css">';
-    echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css">';
-}
-
-add_action( 'wp_head', 'my_custom_js' );
-```
-
-5. (Optional) Rather than hotlinking from `nostr-components.web.app`, you can download the `dist/nostr-components.umd.js` (or `.es.js`) file, upload it to your own server/WordPress media library, and update the `src` path in the code above.
-6. Now you can use the components anywhere in your post or sidebar by adding the HTML tags (e.g., `<nostr-profile-badge pubkey="..."></nostr-profile-badge>`).
-   ![Integrating in WordPress post](images/wordpress_post.png)
+Install the Nostr Components plugin from the WordPress plugin directory to easily embed Nostr content in your posts and pages.
 
 ---
 

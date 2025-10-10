@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrProfileBadge/Testing/Invalid',
+  title: 'Profile Badge/Testing/Invalid',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
@@ -46,7 +46,7 @@ export const EmptyInputs: Story = {
   args: INVALID_TEST_CASES.emptyInputs.args,
 };
 
-export const NetworkFailure: Story = {
-  name: INVALID_TEST_CASES.networkFailure.name,
-  args: INVALID_TEST_CASES.networkFailure.args,
+export const InvalidRelay: Story = {
+  name: INVALID_TEST_CASES.invalidRelay.name,
+  args: INVALID_TEST_CASES.invalidRelay.args,
 };

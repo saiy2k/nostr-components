@@ -5,7 +5,7 @@ import { POST_DATA } from '../post-data';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'NostrPost/Themes',
+  title: 'Post/Styling',
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},

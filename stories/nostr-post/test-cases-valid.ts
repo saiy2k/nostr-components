@@ -13,7 +13,7 @@ export const TEST_CASES = {
     name: 'Dark Theme',
     args: {
       width: DEFAULT_WIDTH,
-      noteid: POST_DATA.jack_rough_consensus.noteid,
+      noteid: POST_DATA.gigi_free_web.noteid,
       'data-theme': 'dark',
     },
   },

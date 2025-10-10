@@ -184,7 +184,7 @@ export default class NostrProfile extends NostrUserComponent {
   protected renderContent() {
     const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
-    const showNpub      = this.getAttribute('show-npub') !== 'false';
+    const showNpub      = this.getAttribute('show-npub') === 'true';
     const showFollow    = this.getAttribute('show-follow') === 'true';
 
     const renderOptions: RenderProfileOptions = {
@@ -205,7 +205,7 @@ export default class NostrProfile extends NostrUserComponent {
         zaps: this.stats.zaps,
         relays: this.stats.relays,
       },
-      showFollow: showFollow && this.user?.npub ? this.user.npub : '',
+      showFollow: showFollow,
       showNpub: showNpub,
     };
 

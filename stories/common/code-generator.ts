@@ -43,6 +43,13 @@ export interface GenerateDashboardOptions {
 export const BUNDLE_SCRIPT = '<script type="module" src="/nostr-components.es.js"></script>';
 
 /**
+ * Generates component-specific bundle script
+ */
+export const generateBundleScript = (componentName: string): string => {
+  return `<script type="module" src="/components/${componentName}.es.js"></script>`;
+};
+
+/**
  * Generates HTML code for a component with CSS variables and attributes
  */
 export function generateCode(options: GenerateCodeOptions): string {
@@ -60,12 +67,16 @@ export function generateCode(options: GenerateCodeOptions): string {
 
   const cssVarsString = cssVars.length > 0 ? `\n  ${cssVars.join('\n  ')}` : '';
 
-  // Generate attributes string
+  const cssVarNames = cssVariables.map(cssVar => cssVar.variable);
   const attributes = Object.entries(otherArgs)
-    .filter(([key, value]) => value !== undefined && value !== null && value !== '')
+    .filter(([key, value]) => {
+      // Exclude CSS variables from attributes
+      if (cssVarNames.includes(key)) return false;
+      return value !== undefined && value !== null && value !== '';
+    })
     .map(([key, value]) => {
       if (typeof value === 'boolean') {
-        return value ? key : '';
+        return value ? `${key}="true"` : '';
       }
       return `${key}="${escapeHtml(String(value))}"`;
     })
@@ -84,11 +95,12 @@ export function generateCode(options: GenerateCodeOptions): string {
 }
 
 /**
- * Generates HTML code with bundle script included
+ * Generates HTML code with component-specific bundle script included
  */
 export function generateCodeWithScript(options: GenerateCodeOptions): string {
   const cleanCode = generateCode(options);
-  return `${BUNDLE_SCRIPT}\n\n${cleanCode}`;
+  const bundleScript = generateBundleScript(options.config.componentName);
+  return `${bundleScript}\n\n${cleanCode}`;
 }
 
 /**
@@ -103,7 +115,7 @@ export function generateDashboardHTML(options: GenerateDashboardOptions): string
       .filter(([key, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => {
         if (typeof value === 'boolean') {
-          return value ? key : '';
+          return value ? `${key}="true"` : '';
         }
         return `${key}="${escapeHtml(String(value))}"`;
       })

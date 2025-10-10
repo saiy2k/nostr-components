@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from './utils';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'NostrPost/Testing/Invalid',
+  title: 'Post/Testing/Invalid',
   tags: ['test', 'invalid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -45,4 +45,9 @@ export const InvalidHex: Story = {
 export const EmptyValues: Story = {
   name: INVALID_TEST_CASES.emptyValues.name,
   args: INVALID_TEST_CASES.emptyValues.args,
+};
+
+export const InvalidRelay: Story = {
+  name: INVALID_TEST_CASES.invalidRelay.name,
+  args: INVALID_TEST_CASES.invalidRelay.args,
 };
