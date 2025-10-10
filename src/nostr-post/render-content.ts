@@ -5,6 +5,7 @@
   import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { parseText } from './parse-text';
   import { renderEmbeddedPost } from './render';
+  import { formatEventDate } from '../common/date-utils';
 
   export function renderContent(content: ContentItem[]): string {
     const html: string[] = [];
@@ -151,14 +152,7 @@
       );
     }
 
-    // Use base class formatted date instead of duplicating logic
-    const date = post.created_at
-      ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-      : '';
+    const date = formatEventDate(post.created_at);
 
     // Process the post content
     const content = await parseText(post.content, event, embeddedPosts, nostrService);

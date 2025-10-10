@@ -4,6 +4,7 @@ import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
 import { EventResolver } from '../resolvers/event-resolver';
 import { UserResolver } from '../resolvers/user-resolver';
+import { formatEventDate } from '../../common/date-utils';
 
 const EVT_EVENT = 'nc:event';
 
@@ -202,13 +203,7 @@ export class NostrEventComponent extends NostrBaseComponent {
   }
 
   private formatEventDate(event: NDKEvent): string {
-    if (!event.created_at) return '';
-    
-    return new Date(event.created_at * 1000).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return formatEventDate(event.created_at);
   }
 
   protected renderContent() { }
