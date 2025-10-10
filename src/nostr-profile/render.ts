@@ -57,7 +57,7 @@ export function renderProfile(options: RenderProfileOptions): string {
   const website = userProfile?.website || '';
 
   const renderFollowButton = () => {
-    if (!showFollow && npub == '') return '';
+    if (!showFollow || npub === '') return '';
     return `
       <nostr-follow-button
         npub="${npub}">

@@ -35,7 +35,7 @@ export const PROFILE_BADGE_CSS_VARIABLES: ParameterDefinition[] = [
   {
     variable: '--nostrc-profile-badge-border',
     description: 'Border style of the profile badge',
-    defaultValue: 'var(--nostrc-color-border)',
+    defaultValue: 'var(--nostrc-border-width) solid var(--nostrc-color-border)',
     control: 'text',
   },
   {

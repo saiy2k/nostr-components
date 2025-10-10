@@ -36,7 +36,7 @@ export const POST_CSS_VARIABLES: ParameterDefinition[] = [
   {
     variable: '--nostrc-post-border',
     description: 'Post border style',
-    defaultValue: 'var(--nostrc-theme-border, var(--nostrc-color-border))',
+    defaultValue: 'var(--nostrc-border-width) solid var(--nostrc-color-border)',
     control: 'text',
   },
   {
