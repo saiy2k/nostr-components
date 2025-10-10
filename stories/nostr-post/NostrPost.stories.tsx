@@ -49,3 +49,8 @@ export const ShowStats: Story = {
   name: TEST_CASES.showStats.name,
   args: TEST_CASES.showStats.args,
 };
+
+export const MentionPost: Story = {
+  name: TEST_CASES.mentionPost.name,
+  args: TEST_CASES.mentionPost.args,
+};

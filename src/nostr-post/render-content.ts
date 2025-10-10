@@ -15,7 +15,7 @@
         // Handle embedded note placeholder
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
@@ -26,7 +26,7 @@
       } else {
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
@@ -61,7 +61,7 @@
 
     if (textBuffer) {
       html.push(
-        `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
+        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
       );
     }
 

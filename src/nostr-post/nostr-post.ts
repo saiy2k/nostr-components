@@ -26,29 +26,11 @@ export default class NostrPost extends NostrEventComponent {
 
   private userResolver = new UserResolver(this.nostrService);
 
-  private onClick: ((post: NDKEvent | null) => void) | null = null;
-  private onAuthorClick:
-    | ((npub: string, author: NDKUserProfile | null | undefined) => void)
-    | null = null;
-
   async connectedCallback() {
 
-    const onClick = this.getAttribute('onClick');
-    if (onClick !== null && (window as any)[onClick]) {
-      this.onClick = (window as any)[onClick] as (
-        post: NDKEvent | null
-      ) => void;
-    }
-
-    const onAuthorClick = this.getAttribute('onAuthorClick');
-    if (onAuthorClick !== null && (window as any)[onAuthorClick]) {
-      this.onAuthorClick = (window as any)[onAuthorClick] as (
-        npub: string,
-        author: NDKUserProfile | null | undefined
-      ) => void;
-    }
 
     super.connectedCallback?.();
+    this.attachDelegatedListeners();
     attachCopyDelegation({
       addDelegatedListener: this.addDelegatedListener.bind(this),
     });
@@ -59,9 +41,6 @@ export default class NostrPost extends NostrEventComponent {
     return [
       ...super.observedAttributes,
       'show-stats',
-      'onClick',
-      'onAuthorClick',
-      'onMentionClick',
     ];
   }
 
@@ -81,22 +60,7 @@ export default class NostrPost extends NostrEventComponent {
     super.attributeChangedCallback(name, _oldValue, newValue);
     */
 
-    if (name === 'onClick' && newValue) {
-      const handler = (window as any)[newValue];
-      if (typeof handler === 'function') {
-        this.onClick = handler as (post: NDKEvent | null) => void;
-      }
-    }
 
-    if (name === 'onAuthorClick' && newValue) {
-      const handler = (window as any)[newValue];
-      if (typeof handler === 'function') {
-        this.onAuthorClick = handler as (
-          npub: string,
-          author: NDKUserProfile | null | undefined
-        ) => void;
-      }
-    }
 
   }
 
@@ -138,43 +102,70 @@ export default class NostrPost extends NostrEventComponent {
     }
   }
 
-  #_onPostClick() {
-    /*
-    if (this.isError || !this.event) {
-      return;
+  private onPostClick() {
+    if (this.computeOverall() !== NCStatus.Ready) return;
+
+    const event = new CustomEvent('nc:post', {
+      detail: this.event,
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+
+    const notPrevented = this.dispatchEvent(event);
+
+    if (notPrevented) {
+      // Default behavior: open post in new tab
+      const id = this.getAttribute('id') || this.event?.id;
+      if (id) {
+        window.open(`https://njump.me/${id}`, '_blank', 'noopener,noreferrer');
+      }
     }
-    */
-
-    if (this.onClick) {
-      this.onClick(this.event);
-      return;
-    }
-
-    let id = this.getAttribute('id');
-
-    window.open(`https://njump.me/${id}`, '_blank');
   }
 
-  #_onAuthorClick() {
-    /*
-    if (this.isError || !this.event?.author.npub) {
-      return;
-    }
-    */
+  private onAuthorClick() {
+    if (this.computeOverall() !== NCStatus.Ready) return;
 
-    if (this.onAuthorClick) {
-      this.onAuthorClick(this.event!.author.npub, this.authorProfile);
-      return;
-    }
+    const event = new CustomEvent('nc:author', {
+      detail: {
+        author: this.author,
+        authorProfile: this.authorProfile,
+        npub: this.author?.npub
+      },
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
 
-    window.open(`https://njump.me/${this.event?.author.npub}`, '_blank');
+    const notPrevented = this.dispatchEvent(event);
+
+    if (notPrevented) {
+      // Default behavior: open author profile in new tab
+      const npub = this.author?.npub;
+      if (npub) {
+        window.open(`https://njump.me/${npub}`, '_blank', 'noopener,noreferrer');
+      }
+    }
   }
 
-  #_onMentionClick(username: string, event: Event) {
-    event.preventDefault();
-    event.stopPropagation();
+  private onMentionClick(username: string) {
+    if (this.computeOverall() !== NCStatus.Ready) return;
 
-    window.open(`https://njump.me/p/${username}`, '_blank');
+    const event = new CustomEvent('nc:mention', {
+      detail: {
+        username: username
+      },
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+
+    const notPrevented = this.dispatchEvent(event);
+
+    if (notPrevented) {
+      // Default behavior: open mention profile in new tab
+      window.open(`https://njump.me/p/${username}`, '_blank', 'noopener,noreferrer');
+    }
   }
 
   async renderEmbeddedPost(noteId: string): Promise<string> {
@@ -219,7 +210,9 @@ export default class NostrPost extends NostrEventComponent {
   }
 
   async replaceEmbeddedPostPlaceholders() {
-    const placeholders = this.querySelectorAll('.embedded-post-placeholder');
+    const placeholders = this.shadowRoot?.querySelectorAll('.embedded-post-placeholder');
+
+    if (!placeholders) return;
 
     for (const placeholder of placeholders) {
       const noteId = placeholder.getAttribute('data-note-id');
@@ -236,97 +229,40 @@ export default class NostrPost extends NostrEventComponent {
           placeholder
         );
 
-        // Add click handlers to the author elements in this embedded post
-        const embeddedPost = temp.firstElementChild;
-        const authorAvatar = embeddedPost?.querySelector(
-          '.embedded-author-avatar'
-        );
-        const authorInfo = embeddedPost?.querySelector('.embedded-author-info');
-
-        if (embeddedPost && authorAvatar && authorInfo) {
-          const noteId = embeddedPost.getAttribute('data-note-id');
-          if (noteId && this.embeddedPosts.has(noteId)) {
-            const post = this.embeddedPosts.get(noteId)!;
-            const authorNpub = post.author.npub;
-
-            const handleAuthorClick = (e: Event) => {
-              e.preventDefault();
-              e.stopPropagation();
-
-              // Open the author's profile
-              window.open(`https://njump.me/${authorNpub}`, '_blank');
-            };
-
-            authorAvatar.addEventListener('click', handleAuthorClick);
-            authorInfo.addEventListener('click', handleAuthorClick);
-          }
-        }
       }
     }
   }
 
-  setupMentionClickHandlers() {
-    // Add direct click handlers to each mention element
-    const mentions = this.querySelectorAll('.nostr-mention');
-    mentions.forEach(mention => {
-      mention.addEventListener('click', event => {
-        const username =
-          mention.getAttribute('data-username') ||
-          mention.textContent?.slice(1);
-        if (username) {
-          this.#_onMentionClick(username, event);
-        }
-      });
+  private attachDelegatedListeners() {
+    // Click anywhere on the post container (except interactive elements)
+    this.delegateEvent('click', '.nostr-post-container', (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('a, .nostr-mention, video, img, .nc-copy-btn, .post-header-left, .post-header-middle')) {
+        this.onPostClick();
+      }
     });
 
-    // Also add direct click handlers to the main post author header for the main post
-    const authorAvatar = this.querySelector('.post-header-left');
-    const authorInfo = this.querySelector('.post-header-middle');
+    // Click on author avatar
+    this.delegateEvent('click', '.post-header-left', (e: Event) => {
+      this.onAuthorClick();
+    });
 
-    if (authorAvatar) {
-      authorAvatar.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.#_onAuthorClick();
-      });
-    }
+    // Click on author info (name/username area)
+    this.delegateEvent('click', '.post-header-middle', (e: Event) => {
+      this.onAuthorClick();
+    });
 
-    if (authorInfo) {
-      authorInfo.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.#_onAuthorClick();
-      });
-    }
-
-    // Add click handler for the entire post
-    const postContainer = this.querySelector('.nostr-post-container');
-    if (postContainer) {
-      postContainer.addEventListener('click', event => {
-        // Only trigger post click if the click wasn't on a child with its own handler
-        if (
-          event.target === postContainer ||
-          ((event.target as HTMLElement).closest('.post-body') &&
-            !(event.target as HTMLElement).closest(
-              'a, .nostr-mention, video, img'
-            ))
-        ) {
-          this.#_onPostClick();
-        }
-      });
-    }
-
-    // Ensure links, videos, and images don't trigger the post click
-    const clickableElements = this.querySelectorAll('a, video, img');
-    clickableElements.forEach(element => {
-      element.addEventListener('click', event => {
-        event.stopPropagation();
-      });
+    // Click on mentions
+    this.delegateEvent('click', '.nostr-mention', (e: Event) => {
+      const target = e.target as HTMLElement;
+      const username = target.getAttribute('data-username') || target.textContent?.slice(1);
+      if (username) {
+        this.onMentionClick(username);
+      }
     });
   }
 
   protected async renderContent() {
-
 
     const isLoading = this.computeOverall() == NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
@@ -369,15 +305,6 @@ export default class NostrPost extends NostrEventComponent {
 
     // Process embedded posts after rendering the main content
     await this.replaceEmbeddedPostPlaceholders();
-
-    // Add click handlers for mentions and author after rendering everything
-    this.setupMentionClickHandlers();
-
-    // Add cursor pointer to post body to indicate it's clickable
-    const postBody = this.querySelector('.post-body');
-    if (postBody) {
-      postBody.setAttribute('style', 'cursor: pointer;');
-    }
   }
 }
 

@@ -16,8 +16,8 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
     let embeddedNotes: { id: string; position: number }[] = [];
 
     // First capture embedded note references before other processing
-    // Example note1abcdef... or nostr:note1abcdef...
-    const noteRegex = /(nostr:)?(note[a-zA-Z0-9]{59,60})/g;
+    // Example note1abcdef... or nostr:note1abcdef... or nevent1abcdef...
+    const noteRegex = /(nostr:)?(note[a-zA-Z0-9]{59,60}|nevent[a-zA-Z0-9]{58,})/g;
     const noteMatches = [...textContent.matchAll(noteRegex)];
 
     for (const match of noteMatches) {
@@ -62,14 +62,16 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
         pubkey = (decordedData as ProfilePointer).pubkey;
       }
 
-      const user = nostrService.getNDK().getUser({ pubkey });
-      const profile = await user.fetchProfile();
-      const name = profile?.displayName || '';
+      if (pubkey) {
+        const user = nostrService.getNDK().getUser({ pubkey });
+        const profile = await user.fetchProfile();
+        const name = profile?.displayName || '';
 
-      textContent = textContent.replace(
-        match[0],
-        `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
-      );
+        textContent = textContent.replace(
+          match[0],
+          `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
+        );
+      }
     }
 
     // Handle Twitter-like mentions (@username)

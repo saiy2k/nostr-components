@@ -136,6 +136,13 @@ export const TEST_CASES = {
       'show-stats': "true",
     },
   },
+  mentionPost: {
+    name: 'Mention Post',
+    args: {
+      width: DEFAULT_WIDTH,
+      eventid: 'nevent1qqs8d9yr3klx02zcvst90yuc0wmhe0t6sld2gssmvas2xrpydvlf9fsze7l8h',
+    },
+  },
 
   // Types:
   // 1. Image
@@ -147,4 +154,5 @@ export const TEST_CASES = {
   // 7. Embedded Note (Nested)
   // 8. Audio
   // 9. Poll
+  // 10. Mention
 };

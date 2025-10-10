@@ -51,3 +51,8 @@ export const VideoContent: Story = {
   name: TEST_CASES.jackVideoProgramming.name,
   args: TEST_CASES.jackVideoProgramming.args,
 };
+
+export const MentionPost: Story = {
+  name: TEST_CASES.mentionPost.name,
+  args: TEST_CASES.mentionPost.args,
+};

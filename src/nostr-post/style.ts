@@ -44,6 +44,10 @@ export function getPostStyles(): string {
       border: var(--nostrc-post-hover-border);
     }
 
+    :host(.is-clickable) {
+      cursor: pointer;
+    }
+
     /* === POST HEADER PATTERN === */
     .post-header {
       display: flex;
