@@ -9,10 +9,10 @@ import { NostrEventComponent } from '../base/event-component/nostr-event-compone
 import { UserResolver } from '../base/resolvers/user-resolver';
 import { attachCopyDelegation } from '../base/copy-delegation';
 import { NCStatus } from '../base/base-component/nostr-base-component';
+import { getPostStyles } from './style';
 
 /**
  * TODO:
- *  - Click handlers to use BaseComponent::delegateEvent
  *  - Review entire code to upgrade it to the same standards as other components.
  */
 export default class NostrPost extends NostrEventComponent {
@@ -270,7 +270,7 @@ export default class NostrPost extends NostrEventComponent {
     const content = this.event?.content || '';
     const parsedContent = await parseText(content, this.event, this.embeddedPosts, this.nostrService);
     const htmlToRender = renderContent(parsedContent);
-    const errorMessage = super.renderError(this.errorMessage);
+    const errorMessage = this.errorMessage;
 
     console.log(this.event);
     console.log(parsedContent);
@@ -301,7 +301,10 @@ export default class NostrPost extends NostrEventComponent {
     };
 
     // Render the post using the new render function
-    this.shadowRoot!.innerHTML = renderPost(renderOptions);
+    this.shadowRoot!.innerHTML = `
+      ${getPostStyles()}
+      ${renderPost(renderOptions)}
+    `;
 
     // Process embedded posts after rendering the main content
     await this.replaceEmbeddedPostPlaceholders();

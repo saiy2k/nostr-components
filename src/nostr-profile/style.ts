@@ -49,6 +49,13 @@ export function getProfileStyles(): string {
       padding: 0px;
     }
 
+    :host(.is-error) .nostr-profile-container {
+      justify-content: center;
+      align-items: center;
+      color: var(--nostrc-color-error-text);
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
+    }
+
     /* Hover state */
     :host(.is-clickable:hover) {
       background: var(--nostrc-profile-hover-bg);
@@ -187,30 +194,6 @@ export function getProfileStyles(): string {
       line-height: 16px;
       text-transform: lowercase;
       color: var(--nostrc-profile-text-secondary);
-    }
-
-    .error-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--nostrc-spacing-lg);
-      min-height: 500px;
-    }
-
-    .error {
-      width: 35px;
-      height: 35px;
-      border-radius: var(--nostrc-border-radius-full);
-      background-color: var(--nostrc-color-error-text);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: var(--nostrc-color-background);
-    }
-
-    .error-text {
-      color: var(--nostrc-color-error-text);
-      font-weight: bold;
     }
 
     @media only screen and (max-width: 600px) {

@@ -195,6 +195,7 @@ export const styleUtils = {
       background-color: var(--nostrc-color-error-background);
       color: var(--nostrc-color-error-icon);
       font-size: 2em;
+      margin: auto;
     }
   `,
   

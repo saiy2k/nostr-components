@@ -35,6 +35,7 @@ export function getPostStyles(): string {
       flex-direction: column;
       gap: var(--nostrc-spacing-lg);
       padding: var(--nostrc-spacing-md);
+      min-height: 200px;
     }
 
     /* Hover state */
@@ -46,6 +47,13 @@ export function getPostStyles(): string {
 
     :host(.is-clickable) {
       cursor: pointer;
+    }
+
+    :host(.is-error) .nostr-post-container {
+      justify-content: center;
+      align-items: center;
+      color: var(--nostrc-color-error-text);
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
     }
 
     /* === POST HEADER PATTERN === */
@@ -272,9 +280,12 @@ export function getPostStyles(): string {
       border-radius: var(--nostrc-border-radius-sm);
       font-size: var(--nostrc-font-size-sm);
     }
+
+    :host(.is-error) .post-body {
+      text-align: center;
+    }
   `;
   
   // Use component styles - includes design tokens + utilities + custom styles
   return getComponentStyles(customStyles);
 }
-

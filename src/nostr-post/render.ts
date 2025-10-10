@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-import { getPostStyles } from './style';
 import { Parser } from 'htmlparser2';
 import { DomHandler } from 'domhandler';
 import * as DomUtils from 'domutils';
@@ -24,6 +23,7 @@ export function renderPost(options: RenderPostOptions): string {
   const {
     isLoading,
     isError,
+    errorMessage,
     author,
     date,
     shouldShowStats,
@@ -32,8 +32,11 @@ export function renderPost(options: RenderPostOptions): string {
     htmlToRender,
   } = options;
 
+  if (isError) {
+    return renderError(errorMessage || '');
+  }
+
   return `
-    ${getPostStyles()}
     <div class="nostr-post-container">
       ${renderPostHeader(isLoading, isError, author, date)}
       ${renderPostBody(isLoading, isError, htmlToRender)}
@@ -107,20 +110,6 @@ function renderPostBody(
         <div style="width: 100%; height: 10px; border-radius: 10px; margin-bottom: 15px;" class="skeleton"></div>
         <div style="width: 100%; height: 10px; border-radius: 10px; margin-bottom: 15px;" class="skeleton"></div>
         <div style="width: 30%; height: 10px; border-radius: 10px;" class="skeleton"></div>
-      </div>
-    `;
-  }
-
-  if (isError) {
-    return `
-      <div class="post-body">
-        <div class='error-container'>
-          <div class="error">&#9888;</div>
-          <span class="error-text">Unable to load post</span>
-        </div>
-        <div style="text-align: center; margin-top: 8px">
-          <small class="error-text" style="font-weight: normal">Please check console for more information</small>
-        </div>
       </div>
     `;
   }
@@ -281,6 +270,20 @@ export function renderEmbeddedPost(
       <div class="embedded-post-content">
         ${processedContent}
         ${mediaHtml ? `<div class="embedded-post-media">${mediaHtml}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+
+function renderError(errorMessage: string): string {
+  return `
+    <div class="nostr-post-container">
+      <div class="post-header">
+        <div class="error-icon">⚠</div>
+      </div>
+      <div class="post-body">
+        ${errorMessage}
       </div>
     </div>
   `;
