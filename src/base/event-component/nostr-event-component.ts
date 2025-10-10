@@ -33,6 +33,7 @@ export class NostrEventComponent extends NostrBaseComponent {
   protected event: NDKEvent | null = null;
   protected author: NDKUser | null = null;
   protected authorProfile: NDKUserProfile | null = null;
+  protected formattedDate: string = '';
 
   protected eventStatus = this.channel('event');
   protected authorStatus = this.channel('author');
@@ -149,6 +150,7 @@ export class NostrEventComponent extends NostrBaseComponent {
       if (seq !== this.loadSeq) return;
 
       this.event = event;
+      this.formattedDate = this.formatEventDate(event);
       this.eventStatus.set(NCStatus.Ready);
 
       this.loadAuthorProfile(event.pubkey, seq);
@@ -197,6 +199,16 @@ export class NostrEventComponent extends NostrBaseComponent {
     if (eventReady && authorReady && this.event) {
       this.onEventReady(this.event);
     }
+  }
+
+  private formatEventDate(event: NDKEvent): string {
+    if (!event.created_at) return '';
+    
+    return new Date(event.created_at * 1000).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   }
 
   protected renderContent() { }

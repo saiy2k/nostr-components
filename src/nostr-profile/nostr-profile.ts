@@ -143,24 +143,14 @@ export default class NostrProfile extends NostrUserComponent {
   private onProfileClick() {
     if (this.profileStatus.get() === NCStatus.Error) return;
 
-    const event = new CustomEvent(EVT_PROFILE, {
-      detail: this.profile,
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
+    const key =
+      this.user?.npub ||
+      this.getAttribute('npub') ||
+      this.profile?.nip05 ||
+      this.getAttribute('nip05');
 
-    const notPrevented = this.dispatchEvent(event);
-
-    if (notPrevented) {
-      // Default behavior: open profile in new tab
-      const key =
-        this.profile?.nip05 ||
-        this.getAttribute('nip05') ||
-        this.user?.npub ||
-        this.getAttribute('npub');
-
-      if (key) window.open(`https://njump.me/${encodeURIComponent(key)}`, '_blank');
+    if (key) {
+      this.handleNjumpClick(EVT_PROFILE, this.profile, encodeURIComponent(key));
     }
   }
 

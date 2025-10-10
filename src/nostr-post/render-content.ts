@@ -2,6 +2,9 @@
 
   import { ContentItem } from './parse-text';
   import { escapeHtml, isValidUrl } from '../common/utils';
+  import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
+  import { parseText } from './parse-text';
+  import { renderEmbeddedPost } from './render';
 
   export function renderContent(content: ContentItem[]): string {
     const html: string[] = [];
@@ -98,3 +101,76 @@
 
     return html.join('');
   };
+
+  export async function replaceEmbeddedPostPlaceholders(
+    shadowRoot: ShadowRoot | null,
+    embeddedPosts: Map<string, NDKEvent>,
+    event: NDKEvent | null,
+    nostrService: any
+  ) {
+    const placeholders = shadowRoot?.querySelectorAll('.embedded-post-placeholder');
+
+    if (!placeholders) return;
+
+    for (const placeholder of placeholders) {
+      const noteId = placeholder.getAttribute('data-note-id');
+      if (noteId) {
+        const embedHtml = await renderEmbeddedPostContent(noteId, embeddedPosts, event, nostrService);
+
+        const temp = document.createElement('div');
+        temp.innerHTML = embedHtml;
+
+        // Replace the placeholder with the embedded post
+        placeholder.parentNode?.replaceChild(
+          temp.firstElementChild!,
+          placeholder
+        );
+      }
+    }
+  }
+
+  export async function renderEmbeddedPostContent(
+    noteId: string,
+    embeddedPosts: Map<string, NDKEvent>,
+    event: NDKEvent | null,
+    nostrService: any
+  ): Promise<string> {
+    const post = embeddedPosts.get(noteId);
+    if (!post) return '<div class="embedded-post-error">Post not found</div>';
+
+    let authorProfile: NDKUserProfile | null = null;
+    try {
+      authorProfile = await post.author.fetchProfile();
+    } catch (error) {
+      console.error(
+        `Failed to fetch profile for embedded post ${noteId}:`,
+        error
+      );
+    }
+
+    const date = post.created_at
+      ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+      : '';
+
+    // Process the post content
+    const content = await parseText(post.content, event, embeddedPosts, nostrService);
+    const renderedContent = renderContent(content);
+
+    // Use the renderEmbeddedPost function from the render module
+    return renderEmbeddedPost(
+      noteId,
+      authorProfile
+        ? {
+          displayName: authorProfile.displayName || '',
+          image: authorProfile.picture || '',
+          nip05: authorProfile.nip05 || '',
+        }
+        : undefined,
+      date,
+      renderedContent
+    );
+  }

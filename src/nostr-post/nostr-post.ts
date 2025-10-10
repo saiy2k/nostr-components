@@ -5,7 +5,7 @@ import Glide from '@glidejs/glide';
 import { getPostStats, Stats } from '../common/utils';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
-import { renderContent } from './render-content';
+import { renderContent, replaceEmbeddedPostPlaceholders } from './render-content';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getPostStyles } from './style';
@@ -86,130 +86,28 @@ export default class NostrPost extends NostrEventComponent {
   }
 
   private onPostClick() {
-    if (this.computeOverall() !== NCStatus.Ready) return;
-
-    const event = new CustomEvent(EVT_POST, {
-      detail: this.event,
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-
-    const notPrevented = this.dispatchEvent(event);
-
-    if (notPrevented) {
-      const id = this.getAttribute('id') || this.event?.id;
-      if (id) {
-        window.open(`https://njump.me/${id}`, '_blank', 'noopener,noreferrer');
-      }
+    const id = this.getAttribute('id') || this.event?.id;
+    if (id) {
+      this.handleNjumpClick(EVT_POST, this.event, id);
     }
   }
 
   private onAuthorClick() {
-    if (this.computeOverall() !== NCStatus.Ready) return;
+    const key =
+      this.author?.npub ||
+      this.authorProfile?.nip05;
 
-    const event = new CustomEvent(EVT_AUTHOR, {
-      detail: {
+    if (key) {
+      this.handleNjumpClick(EVT_AUTHOR, {
         author: this.author,
         authorProfile: this.authorProfile,
         npub: this.author?.npub
-      },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-
-    const notPrevented = this.dispatchEvent(event);
-
-    if (notPrevented) {
-      const npub = this.author?.npub;
-      if (npub) {
-        window.open(`https://njump.me/${npub}`, '_blank', 'noopener,noreferrer');
-      }
+      }, key);
     }
   }
 
   private onMentionClick(username: string) {
-    if (this.computeOverall() !== NCStatus.Ready) return;
-
-    const event = new CustomEvent(EVT_MENTION, {
-      detail: {
-        username: username
-      },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-
-    const notPrevented = this.dispatchEvent(event);
-
-    if (notPrevented) {
-      window.open(`https://njump.me/p/${username}`, '_blank', 'noopener,noreferrer');
-    }
-  }
-
-  async renderEmbeddedPost(noteId: string): Promise<string> {
-    const post = this.embeddedPosts.get(noteId);
-    if (!post) return '<div class="embedded-post-error">Post not found</div>';
-
-    let authorProfile: NDKUserProfile | null = null;
-    try {
-      authorProfile = await post.author.fetchProfile();
-    } catch (error) {
-      console.error(
-        `Failed to fetch profile for embedded post ${noteId}:`,
-        error
-      );
-    }
-
-    const date = post.created_at
-      ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-      : '';
-
-    // Process the post content
-    const content = await parseText(post.content, this.event, this.embeddedPosts, this.nostrService);
-    const renderedContent = await renderContent(content);
-
-    // Use the renderEmbeddedPost function from the render module
-    return renderEmbeddedPost(
-      noteId,
-      authorProfile
-        ? {
-          displayName: authorProfile.displayName || '',
-          image: authorProfile.picture || '',
-          nip05: authorProfile.nip05 || '',
-        }
-        : undefined,
-      date,
-      renderedContent
-    );
-  }
-
-  async replaceEmbeddedPostPlaceholders() {
-    const placeholders = this.shadowRoot?.querySelectorAll('.embedded-post-placeholder');
-
-    if (!placeholders) return;
-
-    for (const placeholder of placeholders) {
-      const noteId = placeholder.getAttribute('data-note-id');
-      if (noteId) {
-        const embedHtml = await this.renderEmbeddedPost(noteId);
-
-        const temp = document.createElement('div');
-        temp.innerHTML = embedHtml;
-
-        // Replace the placeholder with the embedded post
-        placeholder.parentNode?.replaceChild(
-          temp.firstElementChild!,
-          placeholder
-        );
-
-      }
-    }
+    this.handleNjumpClick(EVT_MENTION, { username }, `p/${username}`);
   }
 
   private attachDelegatedListeners() {
@@ -243,26 +141,16 @@ export default class NostrPost extends NostrEventComponent {
 
   protected async renderContent() {
 
-    const isLoading = this.computeOverall() == NCStatus.Loading;
-    const isError = this.computeOverall() === NCStatus.Error;
+    const isLoading     =   this.computeOverall() == NCStatus.Loading;
+    const isError       =   this.computeOverall() === NCStatus.Error;
+    const date          =   this.formattedDate;
+    const content       =   this.event?.content || '';
+    const parsedContent =   await parseText(content, this.event, this.embeddedPosts, this.nostrService);
+    const htmlToRender  =   renderContent(parsedContent);
+    const errorMessage  =   this.errorMessage;
 
-    const content = this.event?.content || '';
-    const parsedContent = await parseText(content, this.event, this.embeddedPosts, this.nostrService);
-    const htmlToRender = renderContent(parsedContent);
-    const errorMessage = this.errorMessage;
-
-    console.log(this.event);
     console.log(parsedContent);
     console.log(htmlToRender);
-
-    let date = '';
-    if (this.event?.created_at) {
-      date = new Date(this.event.created_at * 1000).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    }
 
     const shouldShowStats = this.getAttribute('show-stats') === 'true';
 
@@ -293,7 +181,12 @@ export default class NostrPost extends NostrEventComponent {
       }, 0);
     }
 
-    await this.replaceEmbeddedPostPlaceholders();
+    await replaceEmbeddedPostPlaceholders(
+      this.shadowRoot, 
+      this.embeddedPosts, 
+      this.event, 
+      this.nostrService
+    );
   }
 }
 

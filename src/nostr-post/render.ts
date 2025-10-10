@@ -38,16 +38,15 @@ export function renderPost(options: RenderPostOptions): string {
 
   return `
     <div class="nostr-post-container">
-      ${renderPostHeader(isLoading, isError, author, date)}
-      ${renderPostBody(isLoading, isError, htmlToRender)}
-      ${shouldShowStats ? renderPostFooter(isLoading, isError, stats, statsLoading) : ''}
+      ${renderPostHeader(isLoading, author, date)}
+      ${renderPostBody(isLoading, htmlToRender)}
+      ${shouldShowStats ? renderPostFooter(isLoading, stats, statsLoading) : ''}
     </div>
   `;
 }
 
 function renderPostHeader(
   isLoading: boolean,
-  isError: boolean,
   author:
     | {
         image?: string;
@@ -77,10 +76,6 @@ function renderPostHeader(
     `;
   }
 
-  if (isError) {
-    return '';
-  }
-
   return `
     <div class="post-header">
       <div class="post-header-left">
@@ -101,7 +96,6 @@ function renderPostHeader(
 
 function renderPostBody(
   isLoading: boolean,
-  isError: boolean,
   htmlToRender: string
 ): string {
   if (isLoading) {
@@ -123,7 +117,6 @@ function renderPostBody(
 
 function renderPostFooter(
   isLoading: boolean,
-  isError: boolean,
   stats: { replies: number; likes: number } | null,
   statsLoading: boolean
 ): string {
@@ -144,26 +137,21 @@ function renderPostFooter(
     `;
   }
 
-  if (isError || !stats) {
-    return '';
-  }
-
   return `
     <div class="post-footer">
       <div class='stats-container'>
         <div class="stat">
           ${replyIcon}
-          <span>${stats.replies}</span>
+          <span>${stats?.replies}</span>
         </div>
         <div class="stat">
           ${heartIcon}
-          <span>${stats.likes}</span>
+          <span>${stats?.likes}</span>
         </div>
       </div>
     </div>
   `;
 }
-
 
 export function renderEmbeddedPost(
   noteId: string,
@@ -274,7 +262,6 @@ export function renderEmbeddedPost(
     </div>
   `;
 }
-
 
 function renderError(errorMessage: string): string {
   return `

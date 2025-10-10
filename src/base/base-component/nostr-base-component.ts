@@ -333,6 +333,30 @@ export abstract class NostrBaseComponent extends HTMLElement {
   }
 
   /**
+   * Handles click events with njump.me default action
+   * Creates custom event, dispatches it, and opens njump.me if not prevented
+   */
+  protected handleNjumpClick(
+    eventType: string,
+    detail: any,
+    njumpPath: string
+  ): void {
+    if (this.computeOverall() !== NCStatus.Ready) return;
+    
+    const event = new CustomEvent(eventType, {
+      detail,
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+    
+    const notPrevented = this.dispatchEvent(event);
+    if (notPrevented) {
+      window.open(`https://njump.me/${njumpPath}`, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  /**
    * Abstract method for component-specific rendering
    * Must be implemented by subclasses
    */

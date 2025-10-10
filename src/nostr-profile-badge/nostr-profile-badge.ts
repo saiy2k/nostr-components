@@ -69,28 +69,14 @@ export default class NostrProfileBadge extends NostrUserComponent {
 
   /** Private functions */
   private onProfileClick() {
-    if (this.computeOverall() !== NCStatus.Ready) return;
+    const key =
+      this.user?.npub ||
+      this.getAttribute('npub') ||
+      this.profile?.nip05 ||
+      this.getAttribute('nip05');
 
-    const event = new CustomEvent<NDKUserProfile | null>(EVT_BADGE, {
-      detail: this.profile,
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-
-    const notPrevented = this.dispatchEvent(event);
-
-    if (notPrevented) {
-      // Default behavior: open profile in new tab
-      const key =
-        this.profile?.nip05 ||
-        this.getAttribute('nip05') ||
-        this.user?.npub ||
-        this.getAttribute('npub');
-
-      if (key) {
-        window.open(`https://njump.me/${key}`, '_blank', 'noopener,noreferrer');
-      }
+    if (key) {
+      this.handleNjumpClick(EVT_BADGE, this.profile, key);
     }
   }
 
