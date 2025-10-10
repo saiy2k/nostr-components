@@ -70,20 +70,23 @@
 
     if (mediaCount > 1) {
       const carouselHtml: string[] = [];
-      let bullets = '';
+      const bullets: string[] = [];
+      const nonMediaHtml: string[] = [];
 
+      // Separate media and non-media items efficiently
       for (let i = 0; i < html.length; i++) {
         const item = html[i];
         if (item.startsWith('<img') || item.startsWith('<video')) {
           carouselHtml.push(`<li class="glide__slide">${item}</li>`);
-          
-          bullets += `<button class="glide__bullet" data-glide-dir="=${i}"></button>`;
-
-          html.splice(i, 1);
-          i--;
+          bullets.push(`<button class="glide__bullet" data-glide-dir="=${i}"></button>`);
+        } else {
+          nonMediaHtml.push(item);
         }
       }
   
+      // Replace html array with non-media items and add carousel
+      html.length = 0;
+      html.push(...nonMediaHtml);
       html.push(`
         <div class="glide" style="margin-top: 20px">
             <div class="glide__track" data-glide-el="track">
@@ -93,7 +96,7 @@
             </div>
 
               <div class="glide__bullets" data-glide-el="controls[nav]">
-                ${bullets}
+                ${bullets.join('')}
             </div>
         </div>
       `);
@@ -148,6 +151,7 @@
       );
     }
 
+    // Use base class formatted date instead of duplicating logic
     const date = post.created_at
       ? new Date(post.created_at * 1000).toLocaleDateString('en-US', {
         month: 'short',

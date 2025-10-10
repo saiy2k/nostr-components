@@ -4,7 +4,6 @@ import { NDKEvent, ProfilePointer } from "@nostr-dev-kit/ndk";
 import { NostrService } from "../common/nostr-service";
 import { nip21 } from 'nostr-tools';
 
-// Handle URLs and Nostr attachments
 export type ContentItem = {
   type: 'text' | 'image' | 'gif' | 'video' | 'link' | 'embedded-note';
   value?: string;
@@ -47,46 +46,63 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
       textContent = textContent.replace(fullMatch, ' ');
     }
 
-    // Handle Nostr URI schema for mentions
-    const nostrURISchemaMatches = textContent.matchAll(
-      new RegExp(nip21.NOSTR_URI_REGEX, 'g')
-    );
-    for (let match of nostrURISchemaMatches) {
-      const parsedNostrURI = nip21.parse(match[0]);
-      const decordedData = parsedNostrURI.decoded.data;
+    // Handle Nostr URI schema for mentions - batch process to avoid multiple async operations
+    const nostrURISchemaMatches = [...textContent.matchAll(new RegExp(nip21.NOSTR_URI_REGEX, 'g'))];
+    const uriReplacements: { original: string; replacement: string }[] = [];
 
-      let pubkey = '';
-      if (typeof decordedData === 'string') {
-        pubkey = decordedData;
-      } else {
-        pubkey = (decordedData as ProfilePointer).pubkey;
+    // Process all URIs concurrently
+    const uriPromises = nostrURISchemaMatches.map(async (match) => {
+      try {
+        const parsedNostrURI = nip21.parse(match[0]);
+        const decordedData = parsedNostrURI.decoded.data;
+
+        let pubkey = '';
+        if (typeof decordedData === 'string') {
+          pubkey = decordedData;
+        } else {
+          pubkey = (decordedData as ProfilePointer).pubkey;
+        }
+
+        if (pubkey) {
+          const user = nostrService.getNDK().getUser({ pubkey });
+          const profile = await user.fetchProfile();
+          const name = profile?.displayName || '';
+
+          uriReplacements.push({
+            original: match[0],
+            replacement: `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
+          });
+        }
+      } catch (error) {
+        console.error('Failed to process Nostr URI:', error);
       }
+    });
 
-      if (pubkey) {
-        const user = nostrService.getNDK().getUser({ pubkey });
-        const profile = await user.fetchProfile();
-        const name = profile?.displayName || '';
+    await Promise.all(uriPromises);
 
-        textContent = textContent.replace(
-          match[0],
-          `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
-        );
-      }
+    // Apply all replacements at once
+    for (const replacement of uriReplacements) {
+      textContent = textContent.replace(replacement.original, replacement.replacement);
     }
 
-    // Handle Twitter-like mentions (@username)
+    // Handle Twitter-like mentions (@username) - batch process
     const mentionRegex = /(\s|^)@(\w+)/g;
     const mentionMatches = [...textContent.matchAll(mentionRegex)];
+    const mentionReplacements: { original: string; replacement: string }[] = [];
 
     for (const match of mentionMatches) {
       const fullMatch = match[0];
       const username = match[2];
 
-      // Replace with styled mention
-      textContent = textContent.replace(
-        fullMatch,
-        `${match[1]}<span class="nostr-mention" data-username="${username}">@${username}</span>`
-      );
+      mentionReplacements.push({
+        original: fullMatch,
+        replacement: `${match[1]}<span class="nostr-mention" data-username="${username}">@${username}</span>`
+      });
+    }
+
+    // Apply all mention replacements at once
+    for (const replacement of mentionReplacements) {
+      textContent = textContent.replace(replacement.original, replacement.replacement);
     }
 
    const result: ContentItem[] = [];
@@ -103,17 +119,18 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
      }
    }
 
-    // Then handle URLs in the text
-    const regex =
-      /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
-    const matches = textContent.match(regex);
+    // Then handle URLs in the text - optimized with single pass
+    const urlRegex = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
+    const urlMatches = [...textContent.matchAll(urlRegex)];
 
-    if (matches) {
+    if (urlMatches.length > 0) {
       let lastIndex = 0;
-      for (const match of matches) {
-        const startIndex = textContent.indexOf(match, lastIndex);
-        const endIndex = startIndex + match.length;
+      
+      for (const match of urlMatches) {
+        const startIndex = match.index!;
+        const endIndex = startIndex + match[0].length;
 
+        // Add text before URL
         if (startIndex > lastIndex) {
           result.push({
             type: 'text',
@@ -121,32 +138,26 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
           });
         }
 
-        const url = new URL(match);
+        // Determine URL type efficiently
+        const url = match[0];
+        const pathname = new URL(url).pathname.toLowerCase();
         let type: 'image' | 'gif' | 'video' | 'link';
 
-        if (
-          url.pathname.endsWith('.jpg') ||
-          url.pathname.endsWith('.jpeg') ||
-          url.pathname.endsWith('.png')
-        ) {
+        if (pathname.match(/\.(jpg|jpeg|png)$/)) {
           type = 'image';
-        } else if (url.pathname.endsWith('.gif')) {
+        } else if (pathname.endsWith('.gif')) {
           type = 'gif';
-        } else if (
-          url.pathname.endsWith('.mp4') ||
-          url.pathname.endsWith('.webm') ||
-          url.pathname.endsWith('.mov')
-        ) {
+        } else if (pathname.match(/\.(mp4|webm|mov)$/)) {
           type = 'video';
         } else {
           type = 'link';
         }
 
-        result.push({ type, value: match });
-
+        result.push({ type, value: url });
         lastIndex = endIndex;
       }
 
+      // Add remaining text
       if (lastIndex < textContent.length) {
         result.push({ type: 'text', value: textContent.substring(lastIndex) });
       }

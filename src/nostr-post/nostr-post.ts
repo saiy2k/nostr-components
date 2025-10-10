@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { NDKEvent } from '@nostr-dev-kit/ndk';
 import Glide from '@glidejs/glide';
 import { getPostStats, Stats } from '../common/utils';
-import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
+import { renderPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
 import { renderContent, replaceEmbeddedPostPlaceholders } from './render-content';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
@@ -14,15 +14,14 @@ const EVT_POST = 'nc:post';
 const EVT_AUTHOR = 'nc:author';
 const EVT_MENTION = 'nc:mention';
 
-/**
- * TODO:
- *  - Review entire code to upgrade it to the same standards as other components.
- */
 export default class NostrPost extends NostrEventComponent {
 
   protected stats: Stats | null = null;
   protected statsLoading: boolean = false;
   protected embeddedPosts: Map<string, NDKEvent> = new Map();
+  private glideInitialized: boolean = false;
+  private cachedParsedContent: string | null = null;
+  private cachedHtmlToRender: string | null = null;
 
   async connectedCallback() {
     super.connectedCallback?.();
@@ -55,8 +54,15 @@ export default class NostrPost extends NostrEventComponent {
   }
 
   protected async onEventReady(_event: any) {
+    this.invalidateCache();
     this.getPostStats();
     this.render();
+  }
+
+  private invalidateCache() {
+    this.cachedParsedContent = null;
+    this.cachedHtmlToRender = null;
+    this.glideInitialized = false;
   }
 
   async getPostStats() {
@@ -144,13 +150,17 @@ export default class NostrPost extends NostrEventComponent {
     const isLoading     =   this.computeOverall() == NCStatus.Loading;
     const isError       =   this.computeOverall() === NCStatus.Error;
     const date          =   this.formattedDate;
-    const content       =   this.event?.content || '';
-    const parsedContent =   await parseText(content, this.event, this.embeddedPosts, this.nostrService);
-    const htmlToRender  =   renderContent(parsedContent);
-    const errorMessage  =   this.errorMessage;
-
-    console.log(parsedContent);
-    console.log(htmlToRender);
+    const content = this.event?.content || '';
+    
+    // Cache parsed content to avoid re-parsing on every render
+    if (!this.cachedParsedContent || !this.cachedHtmlToRender) {
+      const parsedContent = await parseText(content, this.event, this.embeddedPosts, this.nostrService);
+      this.cachedParsedContent = JSON.stringify(parsedContent);
+      this.cachedHtmlToRender = renderContent(parsedContent);
+    }
+    
+    const htmlToRender  = this.cachedHtmlToRender;
+    const errorMessage  = this.errorMessage;
 
     const shouldShowStats = this.getAttribute('show-stats') === 'true';
 
@@ -171,22 +181,29 @@ export default class NostrPost extends NostrEventComponent {
       ${renderPost(renderOptions)}
     `;
 
-    if(htmlToRender.includes('glide')) {
+    if(htmlToRender.includes('glide') && !this.glideInitialized) {
       // Wait for DOM to be ready
       setTimeout(() => {
         const glideElement = this.shadowRoot?.querySelector('.glide');
         if (glideElement) {
           new Glide(glideElement as HTMLElement).mount();
+          this.glideInitialized = true;
         }
       }, 0);
     }
 
-    await replaceEmbeddedPostPlaceholders(
-      this.shadowRoot, 
-      this.embeddedPosts, 
-      this.event, 
-      this.nostrService
-    );
+    // Process embedded post placeholders asynchronously after render
+    // TODO: This is super bad!
+    if (htmlToRender.includes('embedded-post-placeholder')) {
+      setTimeout(() => {
+        replaceEmbeddedPostPlaceholders(
+          this.shadowRoot, 
+          this.embeddedPosts, 
+          this.event, 
+          this.nostrService
+        );
+      }, 0);
+    }
   }
 }
 
