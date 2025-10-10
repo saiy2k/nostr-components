@@ -35,7 +35,7 @@ export function getPostStyles(): string {
       flex-direction: column;
       gap: var(--nostrc-spacing-lg);
       padding: var(--nostrc-spacing-md);
-      min-height: 200px;
+      min-height: 100px;
     }
 
     /* Hover state */
@@ -171,16 +171,64 @@ export function getPostStyles(): string {
     }
 
     /* === GLIDE CAROUSEL STYLES === */
+    .glide {
+      position: relative;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .glide * {
+      box-sizing: inherit;
+    }
+    .glide__track {
+      overflow: hidden;
+    }
+    .glide__slides {
+      position: relative;
+      width: 100%;
+      list-style: none;
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+      touch-action: pan-Y;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      white-space: nowrap;
+      display: flex;
+      flex-wrap: nowrap;
+      will-change: transform;
+    }
     .glide__slide {
       width: 100%;
+      height: 100%;
+      flex-shrink: 0;
+      white-space: normal;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
     }
-
     .glide__slide * {
       border-radius: var(--nostrc-border-radius-md);
     }
-
-    .glide__bullets button {
-      border: var(--nostrc-post-border);
+    .glide__bullets {
+      -webkit-touch-callout: none;
+      user-select: none;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .glide__bullet {
+      background-color: rgba(0, 0, 0, 0.3);
+      border: none;
+      border-radius: 50%;
+      width: 8px;
+      height: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .glide__bullet:hover,
+    .glide__bullet--active {
+      background-color: rgba(0, 0, 0, 0.7);
     }
 
     /* === MENTION STYLES === */

@@ -91,17 +91,17 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
 
    const result: ContentItem[] = [];
 
-    // First, check for Nostr attachments in the post
-    if (post) {
-      const videoTags = post.getMatchingTags('a');
-      for (const tag of videoTags) {
-        const mimeType = tag[1] as string;
-        const url = tag[2] as string;
-        if (mimeType?.startsWith('video/') && url) {
-          result.push({ type: 'video', value: url });
-        }
-      }
-    }
+   // First, check for Nostr attachments in the post
+   if (post) {
+     const videoTags = post.getMatchingTags('a');
+     for (const tag of videoTags) {
+       const mimeType = tag[1] as string;
+       const url = tag[2] as string;
+       if (mimeType?.startsWith('video/') && url) {
+         result.push({ type: 'video', value: url });
+       }
+     }
+   }
 
     // Then handle URLs in the text
     const regex =

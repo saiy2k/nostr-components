@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import Glide from '@glidejs/glide';
 import { getPostStats, Stats } from '../common/utils';
 import { renderPost, renderEmbeddedPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
 import { renderContent } from './render-content';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
-import { UserResolver } from '../base/resolvers/user-resolver';
-import { attachCopyDelegation } from '../base/copy-delegation';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getPostStyles } from './style';
+
+const EVT_POST = 'nc:post';
+const EVT_AUTHOR = 'nc:author';
+const EVT_MENTION = 'nc:mention';
 
 /**
  * TODO:
@@ -21,19 +24,9 @@ export default class NostrPost extends NostrEventComponent {
   protected statsLoading: boolean = false;
   protected embeddedPosts: Map<string, NDKEvent> = new Map();
 
-  protected author: NDKUser | null = null;
-  protected authorProfile: NDKUserProfile | null = null;
-
-  private userResolver = new UserResolver(this.nostrService);
-
   async connectedCallback() {
-
-
     super.connectedCallback?.();
     this.attachDelegatedListeners();
-    attachCopyDelegation({
-      addDelegatedListener: this.addDelegatedListener.bind(this),
-    });
     this.render();
   }
 
@@ -51,29 +44,19 @@ export default class NostrPost extends NostrEventComponent {
   ) {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
-
     if (name === 'show-stats') {
       this.render();
     }
-
-    /*
-    super.attributeChangedCallback(name, _oldValue, newValue);
-    */
-
-
-
   }
 
-  protected async onEventReady(event: any) {
-    try {
-      const { user, profile } = await this.userResolver.resolveUser({ pubkey: event.pubkey });
-      this.author = user;
-      this.authorProfile = profile;
-      this.getPostStats();
-      this.render();
-    } catch (err) {
-      console.error('[NostrPostComponent] Failed to resolve author:', err);
-    }
+  /** Base class functions */
+  protected onStatusChange(_status: NCStatus) {
+    this.render();
+  }
+
+  protected async onEventReady(_event: any) {
+    this.getPostStats();
+    this.render();
   }
 
   async getPostStats() {
@@ -82,7 +65,7 @@ export default class NostrPost extends NostrEventComponent {
 
       if (this.event && shouldShowStats) {
         this.statsLoading = true;
-        this.render(); // Show skeleton loader
+        this.render();
         
         const stats = await getPostStats(
           this.nostrService.getNDK(),
@@ -105,7 +88,7 @@ export default class NostrPost extends NostrEventComponent {
   private onPostClick() {
     if (this.computeOverall() !== NCStatus.Ready) return;
 
-    const event = new CustomEvent('nc:post', {
+    const event = new CustomEvent(EVT_POST, {
       detail: this.event,
       bubbles: true,
       composed: true,
@@ -115,7 +98,6 @@ export default class NostrPost extends NostrEventComponent {
     const notPrevented = this.dispatchEvent(event);
 
     if (notPrevented) {
-      // Default behavior: open post in new tab
       const id = this.getAttribute('id') || this.event?.id;
       if (id) {
         window.open(`https://njump.me/${id}`, '_blank', 'noopener,noreferrer');
@@ -126,7 +108,7 @@ export default class NostrPost extends NostrEventComponent {
   private onAuthorClick() {
     if (this.computeOverall() !== NCStatus.Ready) return;
 
-    const event = new CustomEvent('nc:author', {
+    const event = new CustomEvent(EVT_AUTHOR, {
       detail: {
         author: this.author,
         authorProfile: this.authorProfile,
@@ -140,7 +122,6 @@ export default class NostrPost extends NostrEventComponent {
     const notPrevented = this.dispatchEvent(event);
 
     if (notPrevented) {
-      // Default behavior: open author profile in new tab
       const npub = this.author?.npub;
       if (npub) {
         window.open(`https://njump.me/${npub}`, '_blank', 'noopener,noreferrer');
@@ -151,7 +132,7 @@ export default class NostrPost extends NostrEventComponent {
   private onMentionClick(username: string) {
     if (this.computeOverall() !== NCStatus.Ready) return;
 
-    const event = new CustomEvent('nc:mention', {
+    const event = new CustomEvent(EVT_MENTION, {
       detail: {
         username: username
       },
@@ -163,7 +144,6 @@ export default class NostrPost extends NostrEventComponent {
     const notPrevented = this.dispatchEvent(event);
 
     if (notPrevented) {
-      // Default behavior: open mention profile in new tab
       window.open(`https://njump.me/p/${username}`, '_blank', 'noopener,noreferrer');
     }
   }
@@ -219,7 +199,6 @@ export default class NostrPost extends NostrEventComponent {
       if (noteId) {
         const embedHtml = await this.renderEmbeddedPost(noteId);
 
-        // Create a temporary container
         const temp = document.createElement('div');
         temp.innerHTML = embedHtml;
 
@@ -235,20 +214,20 @@ export default class NostrPost extends NostrEventComponent {
 
   private attachDelegatedListeners() {
     // Click anywhere on the post container (except interactive elements)
-    this.delegateEvent('click', '.nostr-post-container', (e: Event) => {
-      const target = e.target as HTMLElement;
+    this.delegateEvent('click', '.nostr-post-container', (_e: Event) => {
+      const target = _e.target as HTMLElement;
       if (!target.closest('a, .nostr-mention, video, img, .nc-copy-btn, .post-header-left, .post-header-middle')) {
         this.onPostClick();
       }
     });
 
     // Click on author avatar
-    this.delegateEvent('click', '.post-header-left', (e: Event) => {
+    this.delegateEvent('click', '.post-header-left', (_e: Event) => {
       this.onAuthorClick();
     });
 
     // Click on author info (name/username area)
-    this.delegateEvent('click', '.post-header-middle', (e: Event) => {
+    this.delegateEvent('click', '.post-header-middle', (_e: Event) => {
       this.onAuthorClick();
     });
 
@@ -287,7 +266,6 @@ export default class NostrPost extends NostrEventComponent {
 
     const shouldShowStats = this.getAttribute('show-stats') === 'true';
 
-    // Prepare the options for the render function
     const renderOptions: RenderPostOptions = {
       isLoading: isLoading,
       isError: isError,
@@ -300,13 +278,21 @@ export default class NostrPost extends NostrEventComponent {
       htmlToRender,
     };
 
-    // Render the post using the new render function
     this.shadowRoot!.innerHTML = `
       ${getPostStyles()}
       ${renderPost(renderOptions)}
     `;
 
-    // Process embedded posts after rendering the main content
+    if(htmlToRender.includes('glide')) {
+      // Wait for DOM to be ready
+      setTimeout(() => {
+        const glideElement = this.shadowRoot?.querySelector('.glide');
+        if (glideElement) {
+          new Glide(glideElement as HTMLElement).mount();
+        }
+      }, 0);
+    }
+
     await this.replaceEmbeddedPostPlaceholders();
   }
 }

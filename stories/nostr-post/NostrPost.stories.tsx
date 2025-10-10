@@ -18,6 +18,10 @@ const meta: Meta = {
         transform: (code, storyContext) =>
           generateCodeWithScript(storyContext.args),
       },
+      prepend: `
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css" />
+      `,
     },
   },
 } satisfies Meta;
@@ -50,7 +54,58 @@ export const ShowStats: Story = {
   args: TEST_CASES.showStats.args,
 };
 
-export const MentionPost: Story = {
-  name: TEST_CASES.mentionPost.name,
+// Content Type Stories
+export const LongFormContent: Story = {
+  name: '[Type] Long Form Content',
+  args: TEST_CASES.longFormContent.args,
+};
+
+export const LongFormContent2: Story = {
+  name: '[Type] Long Form Content 2',
+  args: TEST_CASES.longFormContent2.args,
+};
+
+export const GifPost: Story = {
+  name: '[Type] Animated GIF',
+  args: TEST_CASES.gifPost.args,
+};
+
+export const TwoImagesPost: Story = {
+  name: '[Type] 2 Images',
+  args: TEST_CASES.twoImagesPost.args,
+};
+
+export const FourImagesPost: Story = {
+  name: '[Type] 4 Images',
+  args: TEST_CASES.fourImagesPost.args,
+};
+
+export const ImageAndLinkPost: Story = {
+  name: '[Type] Image and Link',
+  args: TEST_CASES.imageAndLinkPost.args,
+};
+
+export const VideoPost: Story = {
+  name: '[Type] Video Content',
+  args: TEST_CASES.videoPost.args,
+};
+
+export const TypeMentionPost: Story = {
+  name: '[Type] Mention and Embed',
   args: TEST_CASES.mentionPost.args,
+};
+
+export const EmbeddedNoteWithVideoPost: Story = {
+  name: '[Type] Embedded Note With Video',
+  args: TEST_CASES.embeddedNoteWithVideoPost.args,
+};
+
+export const MentionAndVideoPost: Story = {
+  name: '[Type] Mention and Video',
+  args: TEST_CASES.mentionAndVideoPost.args,
+};
+
+export const EmojisPost: Story = {
+  name: '[Type] Emojis',
+  args: TEST_CASES.emojisPost.args,
 };
