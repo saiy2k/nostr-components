@@ -10,7 +10,7 @@
  * @returns Formatted date string (e.g., "Jan 15, 2024")
  */
 export function formatEventDate(createdAt: number | undefined): string {
-  if (!createdAt) return '';
+  if (createdAt === undefined) return '';
   
   return new Date(createdAt * 1000).toLocaleDateString('en-US', {
     month: 'short',

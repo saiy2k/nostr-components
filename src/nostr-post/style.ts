@@ -137,14 +137,6 @@ export function getPostStyles(): string {
 
     /* === MEDIA STYLING === */
     .post-media-item {
-      width: 100%;
-      margin: var(--nostrc-spacing-sm) 0;
-      display: flex;
-      justify-content: center;
-    }
-
-    .post-media-item img,
-    .post-media-item video {
       max-width: 100%;
       max-height: 500px;
       width: auto;
@@ -152,6 +144,7 @@ export function getPostStyles(): string {
       object-fit: contain;
       border-radius: var(--nostrc-border-radius-md);
       display: block;
+      margin: var(--nostrc-spacing-sm) 0;
     }
 
     /* === EMBEDDED MEDIA STYLING === */

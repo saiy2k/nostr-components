@@ -19,7 +19,7 @@
         // Handle embedded note placeholder
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
           );
           textBuffer = '';
         }
@@ -30,7 +30,7 @@
       } else {
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
           );
           textBuffer = '';
         }
@@ -65,30 +65,36 @@
 
     if (textBuffer) {
       html.push(
-        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+        `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
       );
     }
 
     if (mediaCount > 1) {
       const carouselHtml: string[] = [];
       const bullets: string[] = [];
-      const nonMediaHtml: string[] = [];
+      let slideIndex = 0;
+      let firstMediaIndex = -1;
 
-      // Separate media and non-media items efficiently
+      // First pass: collect media items and track first media position
       for (let i = 0; i < html.length; i++) {
         const item = html[i];
         if (item.startsWith('<img') || item.startsWith('<video')) {
+          if (firstMediaIndex === -1) {
+            firstMediaIndex = i;
+          }
           carouselHtml.push(`<li class="glide__slide">${item}</li>`);
-          bullets.push(`<button class="glide__bullet" data-glide-dir="=${i}"></button>`);
-        } else {
-          nonMediaHtml.push(item);
+          bullets.push(`<button class="glide__bullet" data-glide-dir="=${slideIndex}"></button>`);
+          slideIndex++;
         }
       }
-  
-      // Replace html array with non-media items and add carousel
-      html.length = 0;
-      html.push(...nonMediaHtml);
-      html.push(`
+
+      // Remove media items from html array (filter in-place)
+      const filteredHtml = html.filter(item => 
+        !item.startsWith('<img') && !item.startsWith('<video')
+      );
+
+      // Build carousel string
+      const carouselString = `
         <div class="glide" style="margin-top: 20px">
             <div class="glide__track" data-glide-el="track">
                 <ul class="glide__slides">
@@ -100,7 +106,12 @@
                 ${bullets.join('')}
             </div>
         </div>
-      `);
+      `;
+
+      // Replace html with filtered content and splice carousel at first media position
+      html.length = 0;
+      html.push(...filteredHtml);
+      html.splice(firstMediaIndex, 0, carouselString);
     }
 
     return html.join('');
@@ -155,19 +166,21 @@
     const date = formatEventDate(post.created_at);
 
     // Process the post content
-    const content = await parseText(post.content, event, embeddedPosts, nostrService);
+    const content = await parseText(post.content, post, embeddedPosts, nostrService);
     const renderedContent = renderContent(content);
+
+    const sanitizedProfile = authorProfile
+      ? {
+          displayName: escapeHtml(authorProfile.displayName || ''),
+          image: isValidUrl(authorProfile.picture || '') ? authorProfile.picture : '',
+          nip05: escapeHtml(authorProfile.nip05 || ''),
+        }
+      : undefined;
 
     // Use the renderEmbeddedPost function from the render module
     return renderEmbeddedPost(
       noteId,
-      authorProfile
-        ? {
-          displayName: authorProfile.displayName || '',
-          image: authorProfile.picture || '',
-          nip05: authorProfile.nip05 || '',
-        }
-        : undefined,
+      sanitizedProfile,
       date,
       renderedContent
     );

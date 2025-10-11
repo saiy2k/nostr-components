@@ -6,6 +6,7 @@ import * as DomUtils from 'domutils';
 import { replyIcon, heartIcon } from '../common/icons';
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { escapeHtml } from '../common/utils';
 
 export interface RenderPostOptions extends IRenderOptions {
   author: NDKUserProfile | null| undefined;
@@ -142,11 +143,11 @@ function renderPostFooter(
       <div class='stats-container'>
         <div class="stat">
           ${replyIcon}
-          <span>${stats?.replies}</span>
+          <span>${stats?.replies ?? 0}</span>
         </div>
         <div class="stat">
           ${heartIcon}
-          <span>${stats?.likes}</span>
+          <span>${stats?.likes ?? 0}</span>
         </div>
       </div>
     </div>
@@ -270,7 +271,7 @@ function renderError(errorMessage: string): string {
         <div class="error-icon">⚠</div>
       </div>
       <div class="post-body">
-        ${errorMessage}
+        ${escapeHtml(errorMessage)}
       </div>
     </div>
   `;

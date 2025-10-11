@@ -76,7 +76,7 @@ export default class NostrProfileBadge extends NostrUserComponent {
       this.getAttribute('nip05');
 
     if (key) {
-      this.handleNjumpClick(EVT_BADGE, this.profile, key);
+      this.handleNjumpClick(EVT_BADGE, this.profile, encodeURIComponent(key));
     }
   }
 

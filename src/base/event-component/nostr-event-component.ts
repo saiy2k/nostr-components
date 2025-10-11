@@ -117,6 +117,7 @@ export class NostrEventComponent extends NostrBaseComponent {
   }
 
   // TODO: Parallalize loading of event and author profile
+  // and render once any of them is ready
   protected async resolveEventAndLoad(): Promise<void> {
     const seq = ++this.loadSeq; // token to prevent stale writes
 
@@ -193,6 +194,8 @@ export class NostrEventComponent extends NostrBaseComponent {
     }
   }
 
+  // TODO: Allow event to render if event is ready, regardless of author status
+  // Update post render to handle this
   private checkEventAndAuthorReady(): void {
     const eventReady = this.eventStatus.get() === NCStatus.Ready;
     const authorReady = this.authorStatus.get() === NCStatus.Ready;
