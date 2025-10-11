@@ -12,6 +12,9 @@ import {
  * Helper utilities for Nostr zap operations (adapted from the original `nostr-zap` repo).
  * These are deliberately kept self-contained so `nostr-zap` Web Component can import
  * everything from a single module without polluting the rest of the codebase.
+ * 
+ * NOTE: Some functions like `resolveNip05` and `decodeNpub` are now handled by the
+ * base component's UserResolver, but are kept here for dialog.ts usage.
  */
 
 /**

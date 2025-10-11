@@ -7,6 +7,9 @@
  * The goal is to give users a full-page modal with amount presets, QR-invoice,
  * wallet URI link, copy-to-clipboard, and success feedback – while keeping code
  * size reasonable for the component bundle.
+ * 
+ * NOTE: This dialog now receives pre-resolved npub from the component, eliminating
+ * the need for redundant validation and resolution logic.
  */
 
 import { 
