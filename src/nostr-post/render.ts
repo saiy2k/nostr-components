@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import { getPostStyles } from './style';
 import { Parser } from 'htmlparser2';
 import { DomHandler } from 'domhandler';
 import * as DomUtils from 'domutils';
 import { replyIcon, heartIcon } from '../common/icons';
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { escapeHtml } from '../common/utils';
 
 export interface RenderPostOptions extends IRenderOptions {
   author: NDKUserProfile | null| undefined;
@@ -24,6 +24,7 @@ export function renderPost(options: RenderPostOptions): string {
   const {
     isLoading,
     isError,
+    errorMessage,
     author,
     date,
     shouldShowStats,
@@ -32,19 +33,21 @@ export function renderPost(options: RenderPostOptions): string {
     htmlToRender,
   } = options;
 
+  if (isError) {
+    return renderError(errorMessage || '');
+  }
+
   return `
-    ${getPostStyles()}
-    <div class="nostrc-container nostr-post-container">
-      ${renderPostHeader(isLoading, isError, author, date)}
-      ${renderPostBody(isLoading, isError, htmlToRender)}
-      ${shouldShowStats ? renderPostFooter(isLoading, isError, stats, statsLoading) : ''}
+    <div class="nostr-post-container">
+      ${renderPostHeader(isLoading, author, date)}
+      ${renderPostBody(isLoading, htmlToRender)}
+      ${shouldShowStats ? renderPostFooter(isLoading, stats, statsLoading) : ''}
     </div>
   `;
 }
 
 function renderPostHeader(
   isLoading: boolean,
-  isError: boolean,
   author:
     | {
         image?: string;
@@ -74,10 +77,6 @@ function renderPostHeader(
     `;
   }
 
-  if (isError) {
-    return '';
-  }
-
   return `
     <div class="post-header">
       <div class="post-header-left">
@@ -98,7 +97,6 @@ function renderPostHeader(
 
 function renderPostBody(
   isLoading: boolean,
-  isError: boolean,
   htmlToRender: string
 ): string {
   if (isLoading) {
@@ -107,20 +105,6 @@ function renderPostBody(
         <div style="width: 100%; height: 10px; border-radius: 10px; margin-bottom: 15px;" class="skeleton"></div>
         <div style="width: 100%; height: 10px; border-radius: 10px; margin-bottom: 15px;" class="skeleton"></div>
         <div style="width: 30%; height: 10px; border-radius: 10px;" class="skeleton"></div>
-      </div>
-    `;
-  }
-
-  if (isError) {
-    return `
-      <div class="post-body">
-        <div class='error-container'>
-          <div class="error">&#9888;</div>
-          <span class="error-text">Unable to load post</span>
-        </div>
-        <div style="text-align: center; margin-top: 8px">
-          <small class="error-text" style="font-weight: normal">Please check console for more information</small>
-        </div>
       </div>
     `;
   }
@@ -134,7 +118,6 @@ function renderPostBody(
 
 function renderPostFooter(
   isLoading: boolean,
-  isError: boolean,
   stats: { replies: number; likes: number } | null,
   statsLoading: boolean
 ): string {
@@ -155,26 +138,21 @@ function renderPostFooter(
     `;
   }
 
-  if (isError || !stats) {
-    return '';
-  }
-
   return `
     <div class="post-footer">
       <div class='stats-container'>
         <div class="stat">
           ${replyIcon}
-          <span>${stats.replies}</span>
+          <span>${stats?.replies ?? 0}</span>
         </div>
         <div class="stat">
           ${heartIcon}
-          <span>${stats.likes}</span>
+          <span>${stats?.likes ?? 0}</span>
         </div>
       </div>
     </div>
   `;
 }
-
 
 export function renderEmbeddedPost(
   noteId: string,
@@ -281,6 +259,19 @@ export function renderEmbeddedPost(
       <div class="embedded-post-content">
         ${processedContent}
         ${mediaHtml ? `<div class="embedded-post-media">${mediaHtml}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderError(errorMessage: string): string {
+  return `
+    <div class="nostr-post-container">
+      <div class="post-header">
+        <div class="error-icon">⚠</div>
+      </div>
+      <div class="post-body">
+        ${escapeHtml(errorMessage)}
       </div>
     </div>
   `;

@@ -2,6 +2,10 @@
 
   import { ContentItem } from './parse-text';
   import { escapeHtml, isValidUrl } from '../common/utils';
+  import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
+  import { parseText } from './parse-text';
+  import { renderEmbeddedPost } from './render';
+  import { formatEventDate } from '../common/date-utils';
 
   export function renderContent(content: ContentItem[]): string {
     const html: string[] = [];
@@ -15,7 +19,7 @@
         // Handle embedded note placeholder
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
           );
           textBuffer = '';
         }
@@ -26,7 +30,7 @@
       } else {
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
           );
           textBuffer = '';
         }
@@ -36,19 +40,19 @@
         switch (item.type) {
           case 'image':
             html.push(
-              `<div class="post-media-item"><img src="${url}" alt="User uploaded image" loading="lazy"></div>`
+              `<img class="post-media-item" src="${url}" alt="User uploaded image" loading="lazy">`
             );
             mediaCount++;
             break;
           case 'gif':
             html.push(
-              `<div class="post-media-item"><img src="${url}" alt="User uploaded GIF" loading="lazy"></div>`
+              `<img class="post-media-item" src="${url}" alt="User uploaded GIF" loading="lazy">`
             );
             mediaCount++;
             break;
           case 'video':
             html.push(
-              `<div class="post-media-item"><video src="${url}" controls></video></div>`
+              `<video class="post-media-item" src="${url}" controls></video>`
             );
             mediaCount++;
             break;
@@ -61,9 +65,123 @@
 
     if (textBuffer) {
       html.push(
-        `<span class="text-content">${escapeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
+        `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
       );
+    }
+
+    if (mediaCount > 1) {
+      const carouselHtml: string[] = [];
+      const bullets: string[] = [];
+      let slideIndex = 0;
+      let firstMediaIndex = -1;
+
+      // First pass: collect media items and track first media position
+      for (let i = 0; i < html.length; i++) {
+        const item = html[i];
+        if (item.startsWith('<img') || item.startsWith('<video')) {
+          if (firstMediaIndex === -1) {
+            firstMediaIndex = i;
+          }
+          carouselHtml.push(`<li class="glide__slide">${item}</li>`);
+          bullets.push(`<button class="glide__bullet" data-glide-dir="=${slideIndex}"></button>`);
+          slideIndex++;
+        }
+      }
+
+      // Remove media items from html array (filter in-place)
+      const filteredHtml = html.filter(item => 
+        !item.startsWith('<img') && !item.startsWith('<video')
+      );
+
+      // Build carousel string
+      const carouselString = `
+        <div class="glide" style="margin-top: 20px">
+            <div class="glide__track" data-glide-el="track">
+                <ul class="glide__slides">
+                    ${carouselHtml.join('')}
+                </ul>
+            </div>
+
+              <div class="glide__bullets" data-glide-el="controls[nav]">
+                ${bullets.join('')}
+            </div>
+        </div>
+      `;
+
+      // Replace html with filtered content and splice carousel at first media position
+      html.length = 0;
+      html.push(...filteredHtml);
+      html.splice(firstMediaIndex, 0, carouselString);
     }
 
     return html.join('');
   };
+
+  export async function replaceEmbeddedPostPlaceholders(
+    shadowRoot: ShadowRoot | null,
+    embeddedPosts: Map<string, NDKEvent>,
+    event: NDKEvent | null,
+    nostrService: any
+  ) {
+    const placeholders = shadowRoot?.querySelectorAll('.embedded-post-placeholder');
+
+    if (!placeholders) return;
+
+    for (const placeholder of placeholders) {
+      const noteId = placeholder.getAttribute('data-note-id');
+      if (noteId) {
+        const embedHtml = await renderEmbeddedPostContent(noteId, embeddedPosts, event, nostrService);
+
+        const temp = document.createElement('div');
+        temp.innerHTML = embedHtml;
+
+        // Replace the placeholder with the embedded post
+        placeholder.parentNode?.replaceChild(
+          temp.firstElementChild!,
+          placeholder
+        );
+      }
+    }
+  }
+
+  export async function renderEmbeddedPostContent(
+    noteId: string,
+    embeddedPosts: Map<string, NDKEvent>,
+    event: NDKEvent | null,
+    nostrService: any
+  ): Promise<string> {
+    const post = embeddedPosts.get(noteId);
+    if (!post) return '<div class="embedded-post-error">Post not found</div>';
+
+    let authorProfile: NDKUserProfile | null = null;
+    try {
+      authorProfile = await post.author.fetchProfile();
+    } catch (error) {
+      console.error(
+        `Failed to fetch profile for embedded post ${noteId}:`,
+        error
+      );
+    }
+
+    const date = formatEventDate(post.created_at);
+
+    // Process the post content
+    const content = await parseText(post.content, post, embeddedPosts, nostrService);
+    const renderedContent = renderContent(content);
+
+    const sanitizedProfile = authorProfile
+      ? {
+          displayName: escapeHtml(authorProfile.displayName || ''),
+          image: isValidUrl(authorProfile.picture || '') ? authorProfile.picture : '',
+          nip05: escapeHtml(authorProfile.nip05 || ''),
+        }
+      : undefined;
+
+    // Use the renderEmbeddedPost function from the render module
+    return renderEmbeddedPost(
+      noteId,
+      sanitizedProfile,
+      date,
+      renderedContent
+    );
+  }

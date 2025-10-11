@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-import { NDKEvent } from '@nostr-dev-kit/ndk';
+import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
 import { EventResolver } from '../resolvers/event-resolver';
+import { UserResolver } from '../resolvers/user-resolver';
+import { formatEventDate } from '../../common/date-utils';
 
 const EVT_EVENT = 'nc:event';
 
@@ -30,18 +32,25 @@ const EVT_EVENT = 'nc:event';
 export class NostrEventComponent extends NostrBaseComponent {
 
   protected event: NDKEvent | null = null;
+  protected author: NDKUser | null = null;
+  protected authorProfile: NDKUserProfile | null = null;
+  protected formattedDate: string = '';
 
   protected eventStatus = this.channel('event');
+  protected authorStatus = this.channel('author');
 
   // guard to ignore stale event fetches
   private loadSeq = 0;
 
-  private resolver!: EventResolver;
+  private eventResolver!: EventResolver;
+  private userResolver!: UserResolver;
 
   constructor(shadow: boolean = true) {
     super(shadow);
     this.initChannelStatus('event', NCStatus.Loading, { reflectOverall: false });
-    this.resolver = new EventResolver(this.nostrService);
+    this.initChannelStatus('author', NCStatus.Loading, { reflectOverall: false });
+    this.eventResolver = new EventResolver(this.nostrService);
+    this.userResolver = new UserResolver(this.nostrService);
   }
 
   /** Lifecycle methods */
@@ -89,7 +98,7 @@ export class NostrEventComponent extends NostrBaseComponent {
     const eventid = this.getAttribute("eventid");
     const tagName = this.tagName.toLowerCase();
 
-    const err = this.resolver.validateInputs({
+    const err = this.eventResolver.validateInputs({
       hex: hex,
       noteid: noteid,
       eventid: eventid,
@@ -107,6 +116,8 @@ export class NostrEventComponent extends NostrBaseComponent {
 
   }
 
+  // TODO: Parallalize loading of event and author profile
+  // and render once any of them is ready
   protected async resolveEventAndLoad(): Promise<void> {
     const seq = ++this.loadSeq; // token to prevent stale writes
 
@@ -121,14 +132,17 @@ export class NostrEventComponent extends NostrBaseComponent {
     }
 
     this.eventStatus.set(NCStatus.Loading);
+    this.authorStatus.set(NCStatus.Loading);
     this.event = null;
+    this.author = null;
+    this.authorProfile = null;
 
     try {
       const hex     = this.getAttribute('hex');
       const noteid  = this.getAttribute('noteid');
       const eventid = this.getAttribute('eventid');
 
-      const event = await this.resolver.resolveEvent({
+      const event = await this.eventResolver.resolveEvent({
         hex: hex,
         noteid: noteid,
         eventid: eventid,
@@ -138,21 +152,61 @@ export class NostrEventComponent extends NostrBaseComponent {
       if (seq !== this.loadSeq) return;
 
       this.event = event;
+      this.formattedDate = this.formatEventDate(event);
       this.eventStatus.set(NCStatus.Ready);
 
-      // Notify listeners that event is available
+      this.loadAuthorProfile(event.pubkey, seq);
+
       this.dispatchEvent(new CustomEvent(EVT_EVENT, {
         detail: { event: this.event },
         bubbles: true,
         composed: true,
       }));
-      this.onEventReady(this.event!);
+
+      // Check if both event and author are ready
+      this.checkEventAndAuthorReady();
     } catch (err) {
       if (seq !== this.loadSeq) return; // stale
       const msg = err instanceof Error ? err.message : 'Failed to load event';
       console.error('[NostrEventComponent] ' + msg, err);
       this.eventStatus.set(NCStatus.Error, msg);
     }
+  }
+
+  private async loadAuthorProfile(pubkey: string, seq: number): Promise<void> {
+    try {
+      const { user, profile } = await this.userResolver.resolveUser({ pubkey });
+      
+      // stale call check
+      if (seq !== this.loadSeq) return;
+
+      this.author = user;
+      this.authorProfile = profile;
+      this.authorStatus.set(NCStatus.Ready);
+
+      // Check if both event and author are ready
+      this.checkEventAndAuthorReady();
+    } catch (err) {
+      if (seq !== this.loadSeq) return; // stale
+      const msg = err instanceof Error ? err.message : 'Failed to load author profile';
+      console.error('[NostrEventComponent] ' + msg, err);
+      this.authorStatus.set(NCStatus.Error, msg);
+    }
+  }
+
+  // TODO: Allow event to render if event is ready, regardless of author status
+  // Update post render to handle this
+  private checkEventAndAuthorReady(): void {
+    const eventReady = this.eventStatus.get() === NCStatus.Ready;
+    const authorReady = this.authorStatus.get() === NCStatus.Ready;
+    
+    if (eventReady && authorReady && this.event) {
+      this.onEventReady(this.event);
+    }
+  }
+
+  private formatEventDate(event: NDKEvent): string {
+    return formatEventDate(event.created_at);
   }
 
   protected renderContent() { }

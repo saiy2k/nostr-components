@@ -41,6 +41,13 @@ export function getProfileBadgeStyles(): string {
       color: var(--nostrc-profile-badge-hover-color);
       border: var(--nostrc-profile-badge-hover-border);
     }
+
+    :host(.is-error) .nostr-profile-badge-container {
+      justify-content: center;
+      align-items: center;
+      color: var(--nostrc-color-error-text);
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
+    }
     
     .nostr-profile-badge-left-container {
       width: 48px;

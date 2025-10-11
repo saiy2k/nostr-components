@@ -21,7 +21,6 @@ export function getProfileStyles(): string {
       --nostrc-profile-text-secondary: var(--nostrc-theme-text-secondary, #666666);
       --nostrc-profile-border: var(--nostrc-theme-border, var(--nostrc-border-width) solid var(--nostrc-color-border));
       --nostrc-profile-banner-placeholder: var(--nostrc-profile-border);
-      --nostrc-profile-accent: var(--nostrc-color-accent);
       --nostrc-profile-font-family: var(--nostrc-font-family-primary);
       --nostrc-profile-font-size: var(--nostrc-font-size-base);
       
@@ -49,9 +48,12 @@ export function getProfileStyles(): string {
       min-height: 500px;
       padding: 0px;
     }
-    
-    :host(.is-clickable) .nostrc-container {
-      cursor: auto;
+
+    :host(.is-error) .nostr-profile-container {
+      justify-content: center;
+      align-items: center;
+      color: var(--nostrc-color-error-text);
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
     }
 
     /* Hover state */
@@ -59,11 +61,6 @@ export function getProfileStyles(): string {
       background: var(--nostrc-profile-hover-bg);
       color: var(--nostrc-profile-hover-color);
       border: var(--nostrc-profile-hover-border);
-    }
-
-    :host(.is-error) .nostrc-container {
-      justify-content: center;
-      align-items: center;
     }
 
     .nostr-profile-top-container img {
@@ -197,30 +194,6 @@ export function getProfileStyles(): string {
       line-height: 16px;
       text-transform: lowercase;
       color: var(--nostrc-profile-text-secondary);
-    }
-
-    .error-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--nostrc-spacing-lg);
-      min-height: 500px;
-    }
-
-    .error {
-      width: 35px;
-      height: 35px;
-      border-radius: var(--nostrc-border-radius-full);
-      background-color: var(--nostrc-color-error-text);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: var(--nostrc-color-background);
-    }
-
-    .error-text {
-      color: var(--nostrc-color-error-text);
-      font-weight: bold;
     }
 
     @media only screen and (max-width: 600px) {

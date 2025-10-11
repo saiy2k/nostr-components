@@ -44,6 +44,7 @@ export const ValidCasesDashboard: Story = {
     TEST_CASES.rawHex,
     TEST_CASES.showStats,
     TEST_CASES.jackVideoProgramming,
+    TEST_CASES.mentionPost,
   ], '✅ Valid Cases Dashboard', '#16a34a'),
   parameters: {
     layout: 'fullscreen',

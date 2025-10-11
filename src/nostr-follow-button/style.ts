@@ -57,6 +57,11 @@ export function getFollowButtonStyles(): string {
       outline-offset: 2px;
     }
 
+    :host(.is-error) .nostr-follow-button-container {
+      color: var(--nostrc-color-error-text);
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
+    }
+
     .nostr-follow-button-container {
       display: flex;
       gap: var(--nostrc-spacing-md);

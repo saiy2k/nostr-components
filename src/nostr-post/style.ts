@@ -10,7 +10,6 @@ export function getPostStyles(): string {
       --nostrc-post-text-primary: var(--nostrc-theme-text-primary, #333333);
       --nostrc-post-text-secondary: var(--nostrc-theme-text-secondary, #666666);
       --nostrc-post-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
-      --nostrc-post-accent: var(--nostrc-color-accent);
       --nostrc-post-font-family: var(--nostrc-font-family-primary);
       --nostrc-post-font-size: var(--nostrc-font-size-base);
       
@@ -36,6 +35,7 @@ export function getPostStyles(): string {
       flex-direction: column;
       gap: var(--nostrc-spacing-lg);
       padding: var(--nostrc-spacing-md);
+      min-height: 100px;
     }
 
     /* Hover state */
@@ -43,6 +43,17 @@ export function getPostStyles(): string {
       background: var(--nostrc-post-hover-bg);
       color: var(--nostrc-post-hover-color);
       border: var(--nostrc-post-hover-border);
+    }
+
+    :host(.is-clickable) {
+      cursor: pointer;
+    }
+
+    :host(.is-error) .nostr-post-container {
+      justify-content: center;
+      align-items: center;
+      color: var(--nostrc-color-error-text);
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
     }
 
     /* === POST HEADER PATTERN === */
@@ -126,14 +137,6 @@ export function getPostStyles(): string {
 
     /* === MEDIA STYLING === */
     .post-media-item {
-      width: 100%;
-      margin: var(--nostrc-spacing-sm) 0;
-      display: flex;
-      justify-content: center;
-    }
-
-    .post-media-item img,
-    .post-media-item video {
       max-width: 100%;
       max-height: 500px;
       width: auto;
@@ -141,6 +144,7 @@ export function getPostStyles(): string {
       object-fit: contain;
       border-radius: var(--nostrc-border-radius-md);
       display: block;
+      margin: var(--nostrc-spacing-sm) 0;
     }
 
     /* === EMBEDDED MEDIA STYLING === */
@@ -160,16 +164,64 @@ export function getPostStyles(): string {
     }
 
     /* === GLIDE CAROUSEL STYLES === */
+    .glide {
+      position: relative;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .glide * {
+      box-sizing: inherit;
+    }
+    .glide__track {
+      overflow: hidden;
+    }
+    .glide__slides {
+      position: relative;
+      width: 100%;
+      list-style: none;
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+      touch-action: pan-Y;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      white-space: nowrap;
+      display: flex;
+      flex-wrap: nowrap;
+      will-change: transform;
+    }
     .glide__slide {
       width: 100%;
+      height: 100%;
+      flex-shrink: 0;
+      white-space: normal;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
     }
-
     .glide__slide * {
       border-radius: var(--nostrc-border-radius-md);
     }
-
-    .glide__bullets button {
-      border: var(--nostrc-post-border);
+    .glide__bullets {
+      -webkit-touch-callout: none;
+      user-select: none;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .glide__bullet {
+      background-color: rgba(0, 0, 0, 0.3);
+      border: none;
+      border-radius: 50%;
+      width: 8px;
+      height: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .glide__bullet:hover,
+    .glide__bullet--active {
+      background-color: rgba(0, 0, 0, 0.7);
     }
 
     /* === MENTION STYLES === */
@@ -269,9 +321,12 @@ export function getPostStyles(): string {
       border-radius: var(--nostrc-border-radius-sm);
       font-size: var(--nostrc-font-size-sm);
     }
+
+    :host(.is-error) .post-body {
+      text-align: center;
+    }
   `;
   
   // Use component styles - includes design tokens + utilities + custom styles
   return getComponentStyles(customStyles);
 }
-
