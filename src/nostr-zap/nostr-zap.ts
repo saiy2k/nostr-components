@@ -29,6 +29,12 @@ export default class NostrZap extends NostrUserComponent {
   private cachedAmountDialog: any = null;
   private static cssInjected = false;
 
+  constructor() {
+    super();
+    // Initialize amount status to loading so skeleton shows immediately
+    this.amountStatus.set(NCStatus.Loading);
+  }
+
   connectedCallback() {
     super.connectedCallback?.();
     if (!NostrZap.cssInjected) {
@@ -70,8 +76,8 @@ export default class NostrZap extends NostrUserComponent {
   }
 
   protected onUserReady(_user: any, _profile: any) {
-    this.updateZapCount();
-    this.render();
+    this.render(); // Show button immediately when user is ready
+    this.updateZapCount(); // Fetch zap count separately
   }
 
   /** Protected methods */
@@ -83,36 +89,30 @@ export default class NostrZap extends NostrUserComponent {
     const defaultAmtAttr= this.getAttribute("default-amount");
     const tagName       = this.tagName.toLowerCase();
 
-    if (textAttr && textAttr.length > 128) {
-      this.zapStatus.set(NCStatus.Error, "Max text length: 128 characters");
-      console.error(`Nostr-Components: ${tagName}: Max text length: 128 characters`);
-      return false;
-    }
+    let errorMessage: string | null = null;
 
-    if (amtAttr) {
+    if (textAttr && textAttr.length > 128) {
+      errorMessage = "Max text length: 128 characters";
+    } else if (amtAttr) {
       const num = Number(amtAttr);
       if (isNaN(num) || num <= 0) {
-        this.zapStatus.set(NCStatus.Error, "Invalid amount");
-        console.error(`Nostr-Components: ${tagName}: Invalid amount`);
-        return false;
+        errorMessage = "Invalid amount";
       } else if (num > 210000) {
-        this.zapStatus.set(NCStatus.Error, "Amount too high (max 210,000 sats)");
-        console.error(`Nostr-Components: ${tagName}: Amount too high (max 210,000 sats)`);
-        return false;
+        errorMessage = "Amount too high (max 210,000 sats)";
+      }
+    } else if (defaultAmtAttr) {
+      const num = Number(defaultAmtAttr);
+      if (isNaN(num) || num <= 0) {
+        errorMessage = "Invalid default-amount";
+      } else if (num > 210000) {
+        errorMessage = "Default-amount too high (max 210,000 sats)";
       }
     }
 
-    if (defaultAmtAttr) {
-      const num = Number(defaultAmtAttr);
-      if (isNaN(num) || num <= 0) {
-        this.zapStatus.set(NCStatus.Error, "Invalid default-amount");
-        console.error(`Nostr-Components: ${tagName}: Invalid default-amount`);
-        return false;
-      } else if (num > 210000) {
-        this.zapStatus.set(NCStatus.Error, "Default-amount too high (max 210,000 sats)");
-        console.error(`Nostr-Components: ${tagName}: Default-amount too high (max 210,000 sats)`);
-        return false;
-      }
+    if (errorMessage) {
+      this.zapStatus.set(NCStatus.Error, errorMessage);
+      console.error(`Nostr-Components: ${tagName}: ${errorMessage}`);
+      return false;
     }
 
     return true;
@@ -202,21 +202,21 @@ export default class NostrZap extends NostrUserComponent {
   }
 
   protected renderContent() {
-    const isLoading = this.computeOverall() == NCStatus.Loading;
+    // Check user loading and amount loading separately
+    const isUserLoading = this.userStatus.get() == NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
-    const isZapLoading = this.zapStatus.get() == NCStatus.Loading;
     const isAmountLoading = this.amountStatus.get() == NCStatus.Loading;
     const errorMessage = super.renderError(this.errorMessage);
     const buttonText = this.getAttribute('text') || 'Zap';
 
     const renderOptions: RenderZapButtonOptions = {
-      isLoading: isLoading || isZapLoading,
+      isLoading: isUserLoading, // Button shows loading when user is loading
       isError: isError,
       isSuccess: false, // TODO: Add success state handling
       errorMessage: errorMessage,
       buttonText: buttonText,
       totalZapAmount: this.totalZapAmount,
-      isAmountLoading: isAmountLoading,
+      isAmountLoading: isAmountLoading, // Skeleton shows when amount is loading
     };
 
     this.shadowRoot!.innerHTML = `

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  getLoadingNostrich,
   getSuccessAnimation,
 } from '../common/theme';
 import { escapeHtml } from '../common/utils';
@@ -25,8 +24,9 @@ export function renderZapButton({
   isAmountLoading,
 }: RenderZapButtonOptions): string {
 
+  // Only show loading state when user/profile is loading, not when zap amount is loading
   if (isLoading) {
-    return renderLoading();
+    return renderLoading(isAmountLoading); // Pass isAmountLoading to show skeleton
   }
 
   if (isError) {
@@ -40,15 +40,16 @@ export function renderZapButton({
     ? escapeHtml(buttonText)
     : `<span>${escapeHtml(buttonText)}</span>`;
 
+  // Always show the button when not in loading/error state, with skeleton for zap amount if needed
   return renderContainer(iconContent, textContent, totalZapAmount, isAmountLoading);
 }
 
-function renderLoading(): string {
+function renderLoading(isAmountLoading: boolean): string {
   return renderContainer(
-    getLoadingNostrich(),
-    '<span>Zapping...</span>',
+    getLightningIcon(), // Use lightning icon instead of nostrich
+    '<span class="button-text-skeleton"></span>', // Skeleton for button text
     null,
-    false
+    isAmountLoading // Pass the isAmountLoading parameter
   );
 }
 
@@ -79,7 +80,7 @@ function renderContainer(iconContent: string, textContent: string, totalZapAmoun
         ${iconContent}
         ${textContent}
       </button>
-      ${isAmountLoading ? `<span class="total-zap-amount">${getLoadingNostrich()}</span>` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
+      ${isAmountLoading ? `<span class="total-zap-amount skeleton"></span>` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '')}
     </div>
   `;
 }

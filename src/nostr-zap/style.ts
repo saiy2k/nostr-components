@@ -89,7 +89,7 @@ export function getZapButtonStyles(): string {
     }
 
     /* Hover state on the button */
-    :host(.is-clickable:hover) .nostr-zap-button {
+    .nostr-zap-button:hover {
       background: var(--nostrc-zap-btn-hover-bg);
       color: var(--nostrc-zap-btn-hover-color);
       border: var(--nostrc-zap-btn-hover-border);
@@ -114,6 +114,45 @@ export function getZapButtonStyles(): string {
       font-size: var(--nostrc-font-size-sm);
       color: var(--nostrc-theme-text-secondary, #666666);
       white-space: nowrap;
+    }
+
+    /* Skeleton loader for zap amount */
+    .total-zap-amount.skeleton {
+      background: linear-gradient(90deg, 
+        var(--nostrc-color-skeleton, #f0f0f0) 25%, 
+        var(--nostrc-color-skeleton-highlight, #e0e0e0) 50%, 
+        var(--nostrc-color-skeleton, #f0f0f0) 75%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: var(--nostrc-border-radius-sm);
+      width: 80px;
+      height: 1.2em;
+      display: inline-block;
+    }
+
+    /* Skeleton loader for button text */
+    .button-text-skeleton {
+      background: linear-gradient(90deg, 
+        var(--nostrc-color-skeleton, #f0f0f0) 25%, 
+        var(--nostrc-color-skeleton-highlight, #e0e0e0) 50%, 
+        var(--nostrc-color-skeleton, #f0f0f0) 75%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: var(--nostrc-border-radius-sm);
+      width: 60px;
+      height: 1em;
+      display: inline-block;
+    }
+
+    @keyframes skeleton-loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
     }
 
     /* Error message styling */
