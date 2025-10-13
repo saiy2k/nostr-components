@@ -16,8 +16,10 @@ import { fetchTotalZapAmount } from './zap-utils';
  *   - text            (optional) : custom text (default "Zap")
  *   - amount          (optional) : pre-defined zap amount in sats
  *   - default-amount  (optional) : default zap amount in sats (default 1000)
- *   - icon-width      (optional) : width of the zap icon (default 25)
- *   - icon-height     (optional) : height of the zap icon (default 25)
+ * 
+ * CSS Variables (overridable):
+ *   - --nostrc-icon-width  : width of the zap icon (default 25px)
+ *   - --nostrc-icon-height : height of the zap icon (default 25px)
  */
 export default class NostrZap extends NostrUserComponent {
   protected zapStatus = this.channel('zap');
@@ -42,19 +44,14 @@ export default class NostrZap extends NostrUserComponent {
       ...super.observedAttributes,
       'text',
       'amount',
-      'default-amount',
-      'icon-width',
-      'icon-height'
+      'default-amount'
     ];
   }
 
-  attributeChangedCallback(
-    name: string,
-    oldValue: string | null,
-    newValue: string | null
-  ) {
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
     if (oldValue === newValue) return;
     super.attributeChangedCallback(name, oldValue, newValue);
+    // TODO: To handle text, amount, and default-amount changes?
     this.render();
   }
 
@@ -81,10 +78,10 @@ export default class NostrZap extends NostrUserComponent {
   protected validateInputs(): boolean {
     if (!super.validateInputs()) return false;
 
-    const textAttr = this.getAttribute("text");
-    const amtAttr = this.getAttribute("amount");
-    const defaultAmtAttr = this.getAttribute("default-amount");
-    const tagName = this.tagName.toLowerCase();
+    const textAttr      = this.getAttribute("text");
+    const amtAttr       = this.getAttribute("amount");
+    const defaultAmtAttr= this.getAttribute("default-amount");
+    const tagName       = this.tagName.toLowerCase();
 
     if (textAttr && textAttr.length > 128) {
       this.zapStatus.set(NCStatus.Error, "Max text length: 128 characters");
@@ -211,8 +208,6 @@ export default class NostrZap extends NostrUserComponent {
     const isAmountLoading = this.amountStatus.get() == NCStatus.Loading;
     const errorMessage = super.renderError(this.errorMessage);
     const buttonText = this.getAttribute('text') || 'Zap';
-    const iconWidthAttr = this.getAttribute('icon-width');
-    const iconHeightAttr = this.getAttribute('icon-height');
 
     const renderOptions: RenderZapButtonOptions = {
       isLoading: isLoading || isZapLoading,
@@ -220,8 +215,6 @@ export default class NostrZap extends NostrUserComponent {
       isSuccess: false, // TODO: Add success state handling
       errorMessage: errorMessage,
       buttonText: buttonText,
-      iconWidth: iconWidthAttr ? Number(iconWidthAttr) : 25,
-      iconHeight: iconHeightAttr ? Number(iconHeightAttr) : 25,
       totalZapAmount: this.totalZapAmount,
       isAmountLoading: isAmountLoading,
     };

@@ -6,7 +6,7 @@ export function getZapButtonStyles(): string {
   const customStyles = `
     /* === ZAP BUTTON CONTAINER PATTERN === */
     :host {
-      /* Icon sizing (overridable) */
+      /* Icon sizing (overridable via CSS variables) */
       --nostrc-icon-height: 25px;
       --nostrc-icon-width: 25px;
 
@@ -27,28 +27,13 @@ export function getZapButtonStyles(): string {
       --nostrc-zap-btn-hover-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-zap-btn-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
 
-      /* Make the host the visual button surface */
+      /* Make the host a flex container for button + amount */
       display: inline-flex;
+      flex-direction: row;
       align-items: center;
-      justify-content: var(--nostrc-zap-btn-horizontal-alignment);
       gap: var(--nostrc-spacing-md);
-      background: var(--nostrc-zap-btn-bg);
-      color: var(--nostrc-zap-btn-color);
-      border: var(--nostrc-zap-btn-border);
-      border-radius: var(--nostrc-zap-btn-border-radius);
       font-family: var(--nostrc-zap-btn-font-family);
       font-size: var(--nostrc-zap-btn-font-size);
-      min-height: var(--nostrc-zap-btn-min-height);
-      width: var(--nostrc-zap-btn-width);
-      cursor: pointer;
-      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-    }
-
-    /* Hover state */
-    :host(.is-clickable:hover) {
-      background: var(--nostrc-zap-btn-hover-bg);
-      color: var(--nostrc-zap-btn-hover-color);
-      border: var(--nostrc-zap-btn-hover-border);
     }
 
     /* Focus state for accessibility */
@@ -58,36 +43,56 @@ export function getZapButtonStyles(): string {
     }
 
     :host(.is-error) .nostr-zap-button-container {
-      color: var(--nostrc-color-error-text);
       border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
+      border-radius: var(--nostrc-border-radius-md);
+      padding: var(--nostrc-spacing-sm);
+    }
+
+    :host(.is-error) .nostr-zap-button-left-container,
+    :host(.is-error) .nostr-zap-button-right-container {
+      color: var(--nostrc-color-error-text);
     }
 
     .nostr-zap-button-container {
       display: flex;
-      flex-direction: column;
-      gap: var(--nostrc-spacing-sm);
+      align-items: center;
+      gap: var(--nostrc-spacing-md);
       width: fit-content;
     }
 
-    .nostr-zap-button-wrapper {
+    .nostr-zap-button-left-container {
       display: flex;
       align-items: center;
-      gap: var(--nostrc-spacing-md);
-      padding: var(--nostrc-zap-btn-padding);
+    }
+
+    .nostr-zap-button-right-container {
+      display: flex;
+      align-items: center;
     }
 
     .nostr-zap-button {
       display: flex;
       align-items: center;
+      justify-content: var(--nostrc-zap-btn-horizontal-alignment);
       gap: var(--nostrc-spacing-sm);
-      background: none;
-      border: none;
-      padding: 0;
-      margin: 0;
+      background: var(--nostrc-zap-btn-bg);
+      color: var(--nostrc-zap-btn-color);
+      border: var(--nostrc-zap-btn-border);
+      border-radius: var(--nostrc-zap-btn-border-radius);
+      padding: var(--nostrc-zap-btn-padding);
+      min-height: var(--nostrc-zap-btn-min-height);
+      width: var(--nostrc-zap-btn-width);
       cursor: pointer;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
       font-family: inherit;
       font-size: inherit;
-      color: inherit;
+    }
+
+    /* Hover state on the button */
+    :host(.is-clickable:hover) .nostr-zap-button {
+      background: var(--nostrc-zap-btn-hover-bg);
+      color: var(--nostrc-zap-btn-hover-color);
+      border: var(--nostrc-zap-btn-hover-border);
     }
 
     .nostr-zap-button:disabled {

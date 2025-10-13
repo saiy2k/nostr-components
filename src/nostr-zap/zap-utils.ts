@@ -264,14 +264,14 @@ export const fetchTotalZapAmount = async ({
   let totalAmount = 0;
 
   try {
-    const events = await (pool as any).list(relays, [
-      {
-        kinds: [9735],
-        '#p': [pubkey],
-      },
-    ]);
+    // Use pool.querySync to fetch multiple zap receipt events
+    const events = await pool.querySync(relays, {
+      kinds: [9735], // Zap receipt
+      '#p': [pubkey],
+      limit: 1000,
+    });
 
-        for (const event of events) {
+    for (const event of events) {
       const descriptionTag = event.tags?.find((tag: string[]) => tag[0] === 'description');
       if (descriptionTag?.[1]) {
         try {

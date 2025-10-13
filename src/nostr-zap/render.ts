@@ -12,8 +12,6 @@ export interface RenderZapButtonOptions extends IRenderOptions {
   isAmountLoading: boolean;
   isSuccess: boolean;
   buttonText: string;
-  iconWidth: number;
-  iconHeight: number;
   totalZapAmount: number | null;
 }
 
@@ -23,8 +21,6 @@ export function renderZapButton({
   isSuccess,
   errorMessage,
   buttonText,
-  iconWidth,
-  iconHeight,
   totalZapAmount,
   isAmountLoading,
 }: RenderZapButtonOptions): string {
@@ -39,7 +35,7 @@ export function renderZapButton({
 
   const iconContent = isSuccess
     ? getSuccessAnimation('light')
-    : getLightningIcon(iconWidth, iconHeight);
+    : getLightningIcon();
   const textContent = isSuccess
     ? escapeHtml(buttonText)
     : `<span>${escapeHtml(buttonText)}</span>`;
@@ -57,14 +53,21 @@ function renderLoading(): string {
 }
 
 function renderError(errorMessage: string): string {
+  return renderErrorContainer(
+    '<div class="error-icon">&#9888;</div>',
+    escapeHtml(errorMessage)
+  );
+}
+
+function renderErrorContainer(leftContent: string, rightContent: string): string {
   return `
-    <div class="nostr-zap-button-container nostr-zap-button-error">
-      <div class="nostr-zap-button-wrapper">
-        <button class="nostr-zap-button" disabled>
-          <span style="color: red">ERROR</span>
-        </button>
+    <div class="nostr-zap-button-container">
+      <div class="nostr-zap-button-left-container">
+        ${leftContent}
       </div>
-      <small style="color: red">${escapeHtml(errorMessage)}</small>
+      <div class="nostr-zap-button-right-container">
+        ${rightContent}
+      </div>
     </div>
   `;
 }
@@ -72,18 +75,16 @@ function renderError(errorMessage: string): string {
 function renderContainer(iconContent: string, textContent: string, totalZapAmount: number | null, isAmountLoading: boolean): string {
   return `
     <div class="nostr-zap-button-container">
-      <div class="nostr-zap-button-wrapper">
-        <button class="nostr-zap-button">
-          ${iconContent}
-          ${textContent}
-        </button>
-        ${isAmountLoading ? `${getLoadingNostrich()}` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
-      </div>
+      <button class="nostr-zap-button">
+        ${iconContent}
+        ${textContent}
+      </button>
+      ${isAmountLoading ? `<span class="total-zap-amount">${getLoadingNostrich()}</span>` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡</span>` : '')}
     </div>
   `;
 }
 
-function getLightningIcon(w: number, h: number): string {
+function getLightningIcon(): string {
   // Yellow lightning regardless of text color
-  return `<svg width="${w}" height="${h}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>`;
+  return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>`;
 }
