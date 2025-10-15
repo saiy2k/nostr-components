@@ -7,6 +7,38 @@ import { nip19 } from "nostr-tools";
 import { Theme } from './types';
 import { DEFAULT_RELAYS, MILLISATS_PER_SAT } from './constants';
 
+export const decodeNpub = (npub: string): string => {
+  if (typeof npub !== 'string' || !npub.startsWith('npub1')) {
+    return '';
+  }
+
+  try {
+    const decoded = nip19.decode(npub);
+    if (decoded && typeof decoded.data === 'string') {
+      return decoded.data;
+    }
+  } catch (error) {
+    console.error('Failed to decode npub:', error);
+  }
+  
+  return '';
+};
+
+// Could be npub, note1, naddr, nsec, etc.,
+export const decodeNip19Entity = (entity: string): any => {
+  if (typeof entity !== 'string' || !/^[a-z0-9]+1[ac-hj-np-z02-9]+/.test(entity)) {
+    return null;
+  }
+
+  try {
+    const decoded = nip19.decode(entity);
+    return decoded?.data ?? null;
+  } catch (error) {
+    console.error('Failed to decode NIP-19 entity:', error);
+    return null;
+  }
+};
+
 export function maskNPub(npubString: string = '', length = 3) {
   const npubLength = npubString.length;
 

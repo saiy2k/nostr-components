@@ -25,7 +25,7 @@ const EVT_STATUS = 'nc:status';
  * - Offers small utilities useful to subclasses (event delegation, error snippet).
  *
  * Observed attributes
- * - `theme`  — "light" | "dark"
+ * - `data-theme`  — "light" | "dark"
  * - `relays` — CSV of relay URLs
  * 
  * Events
@@ -60,7 +60,7 @@ export abstract class NostrBaseComponent extends HTMLElement {
 
   /** Lifecycle methods */
   static get observedAttributes() {
-    return ['theme', 'relays'];
+    return ['data-theme', 'relays'];
   }
 
   connectedCallback() {
@@ -87,14 +87,14 @@ export abstract class NostrBaseComponent extends HTMLElement {
   ) {
     if (oldValue === newValue) return;
 
-    if (name === 'theme' || name === 'relays') {
+    if (name === 'data-theme' || name === 'relays') {
       if (this.validateInputs()) {
         if (name === 'relays') {
           this.resetNostrReadyBarrier();
           void this.connectToNostr();
         }
 
-        if (name === 'theme') {
+        if (name === 'data-theme') {
           this.getTheme();
           this.render();
         }
@@ -206,7 +206,7 @@ export abstract class NostrBaseComponent extends HTMLElement {
 
   /** Protected methods */
   protected validateInputs(): boolean {
-    const theme   = this.getAttribute('theme') || 'light';
+    const theme   = this.getAttribute('data-theme') || 'light';
     const relays  = this.getAttribute('relays');
     const tagName = this.tagName.toLowerCase();
 
@@ -259,7 +259,7 @@ export abstract class NostrBaseComponent extends HTMLElement {
   }
 
   protected getTheme() {
-    this.theme = parseTheme(this.getAttribute('theme'));
+    this.theme = parseTheme(this.getAttribute('data-theme'));
   }
 
   /**
