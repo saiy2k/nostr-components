@@ -33,4 +33,10 @@ export const ZAP_BUTTON_PARAMETERS: ParameterDefinition[] = [
     defaultValue: '1000',
     control: 'number',
   },
+  {
+    variable: 'url',
+    description: 'URL to send zap to (enables URL-based zaps)',
+    defaultValue: 'https://saiy2k.in/',
+    control: 'text',
+  },
 ];

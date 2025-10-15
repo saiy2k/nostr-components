@@ -11,7 +11,7 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: 'A web component that displays a zap button for Nostr profiles. Supports npub, nip05, and pubkey inputs with theme customization and zap amount configuration.',
+        component: 'A web component that displays a zap button for Nostr profiles. Supports npub, nip05, and pubkey inputs with theme customization, zap amount configuration, and URL-based zaps for content creators.',
       },
       source: {
         transform: (code, storyContext) =>
@@ -62,4 +62,19 @@ export const DefaultAmount: Story = {
 export const CustomIconSize: Story = {
   name: TEST_CASES.customIconSize.name,
   args: TEST_CASES.customIconSize.args,
+};
+
+export const UrlBasedZap: Story = {
+  name: TEST_CASES.urlBasedZap.name,
+  args: TEST_CASES.urlBasedZap.args,
+};
+
+export const UrlBasedZapCustomText: Story = {
+  name: TEST_CASES.urlBasedZapCustomText.name,
+  args: TEST_CASES.urlBasedZapCustomText.args,
+};
+
+export const UrlBasedZapFixedAmount: Story = {
+  name: TEST_CASES.urlBasedZapFixedAmount.name,
+  args: TEST_CASES.urlBasedZapFixedAmount.args,
 };

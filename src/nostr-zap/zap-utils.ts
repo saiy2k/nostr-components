@@ -42,6 +42,56 @@ export const getProfileMetadata = async (authorId: string) => {
   }
 };
 
+export const getBatchedProfileMetadata = async (authorIds: string[]) => {
+  console.log("Nostr-Components: Zap button: Getting batched profile metadata for", authorIds.length, "authors");
+  
+  // Filter out already cached profiles
+  const uncachedIds = authorIds.filter(id => !profileCache[id]);
+  const cachedProfiles = authorIds.filter(id => profileCache[id]).map(id => ({
+    id,
+    profile: profileCache[id]
+  }));
+
+  console.log("Nostr-Components: Zap button: Cached profiles:", cachedProfiles.length, "Uncached:", uncachedIds.length);
+
+  // If all profiles are cached, return them
+  if (uncachedIds.length === 0) {
+    return authorIds.map(id => ({ id, profile: profileCache[id] }));
+  }
+
+  const pool = new SimplePool();
+  const relays = [
+    'wss://relay.nostr.band',
+    'wss://purplepag.es',
+    'wss://relay.damus.io',
+    'wss://nostr.wine',
+  ];
+
+  try {
+    // Fetch all uncached profiles in a single query
+    const events = await pool.querySync(relays, {
+      authors: uncachedIds,
+      kinds: [0],
+    });
+
+    // Cache the fetched profiles
+    events.forEach(event => {
+      profileCache[event.pubkey] = event;
+    });
+
+    // Combine cached and newly fetched profiles
+    const allProfiles = authorIds.map(id => ({
+      id,
+      profile: profileCache[id] || null
+    }));
+
+    console.log("Nostr-Components: Zap button: Batched fetch completed. Total profiles:", allProfiles.length);
+    return allProfiles;
+  } finally {
+    pool.close(relays);
+  }
+};
+
 export const extractProfileMetadataContent = (profileMetadata: any) => {
   try {
     return JSON.parse(profileMetadata?.content || '{}');

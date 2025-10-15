@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { getZappersDialogStyles } from './dialog-zappers-style';
-import { getProfileMetadata, extractProfileMetadataContent, ZapDetails } from './zap-utils';
+import { getBatchedProfileMetadata, extractProfileMetadataContent, ZapDetails } from './zap-utils';
 
 /**
  * Modal dialog for displaying individual zap details (zappers).
@@ -197,9 +197,84 @@ async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
 }
 
 /**
- * Progressively enhance zap details with profile information
+ * Progressively enhance zap details with profile information (batched approach)
  */
 async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDetails: ZapDetails[]): Promise<void> {
+  const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
+  if (!zappersList) return;
+
+  // Get unique author IDs
+  const uniqueAuthorIds = [...new Set(zapDetails.map(zap => zap.authorPubkey))];
+  console.log("Nostr-Components: Zappers dialog: Fetching profiles for", uniqueAuthorIds.length, "unique authors");
+
+  try {
+    // Fetch all profiles in a single batched call
+    const profileResults = await getBatchedProfileMetadata(uniqueAuthorIds);
+    
+    // Create a map for quick lookup
+    const profileMap = new Map<string, any>();
+    profileResults.forEach(result => {
+      profileMap.set(result.id, result.profile);
+    });
+
+    // Convert all pubkeys to npubs for display
+    const npubPromises = uniqueAuthorIds.map(async (pubkey) => ({
+      pubkey,
+      npub: await hexToNpub(pubkey)
+    }));
+    const npubResults = await Promise.all(npubPromises);
+    const npubMap = new Map<string, string>();
+    npubResults.forEach(result => {
+      npubMap.set(result.pubkey, result.npub);
+    });
+
+    // Process each zap entry
+    for (let index = 0; index < zapDetails.length; index++) {
+      const zap = zapDetails[index];
+      const profile = profileMap.get(zap.authorPubkey);
+      const npub = npubMap.get(zap.authorPubkey) || zap.authorPubkey;
+      
+      let enhanced: EnhancedZapDetails;
+      
+      if (profile) {
+        const profileContent = extractProfileMetadataContent(profile);
+        enhanced = {
+          ...zap,
+          authorName: profileContent.display_name || profileContent.name || npub,
+          authorPicture: profileContent.picture,
+          authorNpub: npub,
+        };
+      } else {
+        // Fallback if profile not found
+        enhanced = {
+          ...zap,
+          authorName: npub,
+          authorNpub: npub,
+        };
+      }
+
+      // Find the corresponding skeleton entry by index and replace it
+      const skeletonEntry = zappersList.querySelector(`[data-zap-index="${index}"]`);
+      if (skeletonEntry) {
+        const enhancedEntry = renderZapEntry(enhanced, index);
+        skeletonEntry.outerHTML = enhancedEntry;
+      }
+    }
+
+    console.log("Nostr-Components: Zappers dialog: Progressive enhancement completed for", zapDetails.length, "zap entries");
+  } catch (error) {
+    console.error("Nostr-Components: Zappers dialog: Error in batched profile enhancement", error);
+    
+    // Fallback to individual processing if batched approach fails
+    console.log("Nostr-Components: Zappers dialog: Falling back to individual profile fetching");
+    await enhanceZapDetailsIndividually(dialog, zapDetails);
+  }
+}
+
+/**
+ * Fallback: Enhance zap details individually (original approach)
+ */
+async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetails: ZapDetails[]): Promise<void> {
   const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
   if (!zappersList) return;
 
@@ -212,7 +287,6 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
     if (profileCache.has(zap.authorPubkey)) {
       const cachedProfile = profileCache.get(zap.authorPubkey)!;
       return {
-        zap,
         index,
         enhanced: {
           ...zap,
@@ -224,6 +298,7 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
     }
 
     try {
+      const { getProfileMetadata } = await import('./zap-utils');
       const profileMetadata = await getProfileMetadata(zap.authorPubkey);
       const profileContent = extractProfileMetadataContent(profileMetadata);
       const npub = await hexToNpub(zap.authorPubkey);
@@ -239,7 +314,6 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
       profileCache.set(zap.authorPubkey, enhanced);
       
       return {
-        zap,
         index,
         enhanced
       };
@@ -258,7 +332,6 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
         profileCache.set(zap.authorPubkey, enhanced);
         
         return {
-          zap,
           index,
           enhanced
         };
@@ -274,7 +347,6 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
         profileCache.set(zap.authorPubkey, enhanced);
         
         return {
-          zap,
           index,
           enhanced
         };
