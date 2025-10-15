@@ -46,10 +46,6 @@ export function getZapButtonStyles(): string {
       border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
       border-radius: var(--nostrc-border-radius-md);
       padding: var(--nostrc-spacing-sm);
-    }
-
-    :host(.is-error) .nostr-zap-button-left-container,
-    :host(.is-error) .nostr-zap-button-right-container {
       color: var(--nostrc-color-error-text);
     }
 
@@ -193,7 +189,6 @@ export function getZapButtonStyles(): string {
     }
   `;
   
-  // Use component styles - includes design tokens + utilities + custom styles
   return getComponentStyles(customStyles);
 }
 

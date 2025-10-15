@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { getDialogStyles } from './dialog-zap-style';
+import { decodeNpub } from '../common/utils';
 
 /**
  * Modal dialog helper for <nostr-zap> component.
@@ -15,7 +16,6 @@ import { getDialogStyles } from './dialog-zap-style';
  */
 
 import { 
-  decodeNpub,
   fetchInvoice, 
   getProfileMetadata, 
   getZapEndpoint, 
@@ -46,7 +46,6 @@ export interface OpenZapModalParams {
   anon?: boolean;
 }
 
-/** Injects once – called from NostrZap.connectedCallback. */
 export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
   const shadow = ensureShadow();
   

@@ -1,62 +1,18 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  nip19,
   nip57,
   nip05,
   finalizeEvent,
   SimplePool,
 } from 'nostr-tools';
+import { decodeNip19Entity } from '../common/utils';
 
 /**
  * Helper utilities for Nostr zap operations (adapted from the original `nostr-zap` repo).
  * These are deliberately kept self-contained so `nostr-zap` Web Component can import
  * everything from a single module without polluting the rest of the codebase.
- * 
- * NOTE: Some functions like `resolveNip05` and `decodeNpub` are now handled by the
- * base component's UserResolver, but are kept here for dialog.ts usage.
  */
-
-/**
- * Safely decodes an npub string into its hex representation
- * @param npub - The npub string to decode (format: npub1...)
- * @returns The hex-encoded public key, or empty string if decoding fails
- */
-export const decodeNpub = (npub: string): string => {
-  if (typeof npub !== 'string' || !npub.startsWith('npub1')) {
-    return '';
-  }
-
-  try {
-    const decoded = nip19.decode(npub);
-    if (decoded && typeof decoded.data === 'string') {
-      return decoded.data;
-    }
-  } catch (error) {
-    console.error('Failed to decode npub:', error);
-  }
-  
-  return '';
-};
-
-/**
- * Safely decodes a NIP-19 entity (like npub, nsec, etc.)
- * @param entity - The NIP-19 encoded string
- * @returns The decoded data or null if decoding fails
- */
-const decodeNip19Entity = (entity: string): any => {
-  if (typeof entity !== 'string' || !/^[a-z0-9]+1[ac-hj-np-z02-9]+/.test(entity)) {
-    return null;
-  }
-
-  try {
-    const decoded = nip19.decode(entity);
-    return decoded?.data ?? null;
-  } catch (error) {
-    console.error('Failed to decode NIP-19 entity:', error);
-    return null;
-  }
-};
 
 // Basic in-memory cache – sufficient for component lifetime.
 const profileCache: Record<string, any> = {};
@@ -142,7 +98,7 @@ const makeZapEvent = async ({
     event:
       nip19Target?.startsWith('note')
         ? decodeNip19Entity(nip19Target)
-        : undefined,
+        : null,
     amount,
     relays,
     comment: comment || '',

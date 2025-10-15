@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-import {
-  getSuccessAnimation,
-} from '../common/theme';
+import { getSuccessAnimation } from '../common/theme';
 import { escapeHtml } from '../common/utils';
 import { IRenderOptions } from '../base/render-options';
 
 export interface RenderZapButtonOptions extends IRenderOptions {
-  /** Shows loader next to zap count while fetching */
   isAmountLoading: boolean;
   isSuccess: boolean;
   buttonText: string;
@@ -24,9 +21,8 @@ export function renderZapButton({
   isAmountLoading,
 }: RenderZapButtonOptions): string {
 
-  // Only show loading state when user/profile is loading, not when zap amount is loading
   if (isLoading) {
-    return renderLoading(isAmountLoading); // Pass isAmountLoading to show skeleton
+    return renderLoading(isAmountLoading);
   }
 
   if (isError) {
@@ -37,19 +33,18 @@ export function renderZapButton({
     ? getSuccessAnimation('light')
     : getLightningIcon();
   const textContent = isSuccess
-    ? escapeHtml(buttonText)
+    ? `<span>Zapped</span>`
     : `<span>${escapeHtml(buttonText)}</span>`;
 
-  // Always show the button when not in loading/error state, with skeleton for zap amount if needed
   return renderContainer(iconContent, textContent, totalZapAmount, isAmountLoading);
 }
 
 function renderLoading(isAmountLoading: boolean): string {
   return renderContainer(
-    getLightningIcon(), // Use lightning icon instead of nostrich
-    '<span class="button-text-skeleton"></span>', // Skeleton for button text
+    getLightningIcon(),
+    '<span class="button-text-skeleton"></span>',
     null,
-    isAmountLoading // Pass the isAmountLoading parameter
+    isAmountLoading
   );
 }
 

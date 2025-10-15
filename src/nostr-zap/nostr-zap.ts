@@ -25,6 +25,11 @@ export default class NostrZap extends NostrUserComponent {
   private totalZapAmount: number | null = null;
   private cachedAmountDialog: any = null;
 
+  constructor() {
+    super();
+    this.amountStatus.set(NCStatus.Loading);
+  }
+
   connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
@@ -198,21 +203,20 @@ export default class NostrZap extends NostrUserComponent {
   }
 
   protected renderContent() {
-    // Check user loading and amount loading separately
     const isUserLoading = this.userStatus.get() == NCStatus.Loading;
-    const isError = this.computeOverall() === NCStatus.Error;
     const isAmountLoading = this.amountStatus.get() == NCStatus.Loading;
+    const isError = this.computeOverall() === NCStatus.Error;
     const errorMessage = super.renderError(this.errorMessage);
     const buttonText = this.getAttribute('text') || 'Zap';
 
     const renderOptions: RenderZapButtonOptions = {
-      isLoading: isUserLoading, // Button shows loading when user is loading
+      isLoading: isUserLoading,
+      isAmountLoading: isAmountLoading,
       isError: isError,
       isSuccess: false, // TODO: Add success state handling
       errorMessage: errorMessage,
       buttonText: buttonText,
       totalZapAmount: this.totalZapAmount,
-      isAmountLoading: isAmountLoading, // Skeleton shows when amount is loading
     };
 
     this.shadowRoot!.innerHTML = `
