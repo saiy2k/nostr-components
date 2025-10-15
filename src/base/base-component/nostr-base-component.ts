@@ -259,7 +259,7 @@ export abstract class NostrBaseComponent extends HTMLElement {
   }
 
   protected getTheme() {
-    this.theme = parseTheme(this.getAttribute('theme'));
+    this.theme = parseTheme(this.getAttribute('data-theme'));
   }
 
   /**

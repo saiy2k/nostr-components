@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { getDialogStyles } from './dialog-style';
+
 /**
  * Modal dialog helper for <nostr-zap> component.
  *
@@ -45,50 +47,18 @@ export interface OpenZapModalParams {
 }
 
 /** Injects once – called from NostrZap.connectedCallback. */
-export const injectCSS = (() => {
-  let injected = false;
-  return () => {
-    if (injected) return;
-    injected = true;
-
-    const style = document.createElement('style');
-    style.textContent = `
-      .nostr-zap-dialog{width:424px;max-width:90vw;border:none;border-radius:10px;padding:24px 32px;background:#fff;color:#000;position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;text-align:center}
-      .nostr-zap-dialog[open]{display:block}
-      /* Dark mode overrides */
-      .nostr-zap-dialog.dark{background:#141414;color:#fff}
-      .nostr-zap-dialog.dark .amount-buttons button{background:#262626;border:1px solid #3a3a3a;color:#fff}
-      .nostr-zap-dialog.dark .amount-buttons button.active{background:#7f00ff;color:#fff}
-      .nostr-zap-dialog.dark .close-btn{background:#262626;color:#fff}
-      .nostr-zap-dialog.dark .cta-btn{background:#7f00ff;color:#fff}
-      .nostr-zap-dialog.dark .copy-btn{color:#7f00ff}
-    
-      .nostr-zap-dialog h2{font-size:1.25rem;font-weight:700;margin:4px 0}
-      .nostr-zap-dialog p{margin:4px 0;word-break:break-word}
-      .nostr-zap-dialog .amount-buttons{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 8px}
-      .nostr-zap-dialog .amount-buttons button{flex:1 1 30%;min-width:72px;padding:8px 0;border:1px solid #e2e8f0;border-radius:6px;background:#f7fafc;cursor:pointer;font-size:14px}
-      .nostr-zap-dialog .amount-buttons button.active{background:#7f00ff;color:#fff}
-      .nostr-zap-dialog .cta-btn{width:100%;padding:10px 0;border:none;border-radius:6px;font-size:16px;margin-top:16px;cursor:pointer;background:#7f00ff;color:#fff}
-      .nostr-zap-dialog .close-btn{position:absolute;top:8px;right:8px;border:none;background:#f7fafc;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer}
-      .nostr-zap-dialog img.qr{margin-top:16px;border:1px solid #e2e8f0;border-radius:8px}
-      .nostr-zap-dialog .copy-btn{margin-top:12px;cursor:pointer;font-size:14px;background:none;border:none;color:#7f00ff}
-      .nostr-zap-dialog .update-zap-container{display:flex;gap:8px;align-items:center;margin-top:8px}
-      .nostr-zap-dialog .update-zap-container .custom-amount{flex-grow:1;}
-      .nostr-zap-dialog .comment-container{display:flex;gap:8px;align-items:center;margin-top:8px}
-      .nostr-zap-dialog .comment-container .comment-input{flex-grow:1;}
-      .nostr-zap-dialog.dark input{background:#262626;border:1px solid #3a3a3a;color:#fff}
-      .nostr-zap-dialog.dark .update-zap-btn{background:#7f00ff;color:#fff}
-      .nostr-zap-dialog .loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.7);display:flex;justify-content:center;align-items:center;border-radius:10px;opacity:0;transition:opacity .2s ease;pointer-events:none}
-      .nostr-zap-dialog.dark .loading-overlay{background:rgba(0,0,0,.7)}
-      .nostr-zap-dialog.loading .loading-overlay{opacity:1;pointer-events:auto}
-      @keyframes nstrc-spin{to{transform:rotate(360deg)}}
-      .nostr-zap-dialog .loading-overlay .loader{width:40px;height:40px;border:4px solid #ccc;border-top-color:#7f00ff;border-radius:50%;animation:nstrc-spin 1s linear infinite}
-      .nostr-zap-dialog .success-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;justify-content:center;align-items:center;color:#fff;font-size:24px;border-radius:10px;opacity:0;transition:opacity .3s ease;pointer-events:none}
-      .nostr-zap-dialog.success .success-overlay{opacity:1;pointer-events:auto}
-    `;
-    ensureShadow().appendChild(style);
-  };
-})();
+export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
+  const shadow = ensureShadow();
+  
+  // Remove existing dialog styles
+  const existingStyles = shadow.querySelectorAll('style[data-dialog-styles]');
+  existingStyles.forEach(style => style.remove());
+  
+  const style = document.createElement('style');
+  style.setAttribute('data-dialog-styles', 'true');
+  style.textContent = getDialogStyles(theme);
+  shadow.appendChild(style);
+};
 
 let _shadowRoot: ShadowRoot | null = null;
 function ensureShadow() {
@@ -221,7 +191,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   // Build dialog DOM
   // ---------------------------------------------------------------------------
 
-  injectCSS();
+  injectCSS(params.theme || 'light');
   const shadow = ensureShadow();
 
   const dialog = document.createElement('dialog');

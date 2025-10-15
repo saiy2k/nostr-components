@@ -2,7 +2,7 @@
 
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
-import { injectCSS as injectCSSIntoBody, init as openZapModal } from './dialog';
+import { init as openZapModal } from './dialog';
 import { renderZapButton, RenderZapButtonOptions } from './render';
 import { getZapButtonStyles } from './style';
 import { fetchTotalZapAmount } from './zap-utils';
@@ -23,7 +23,6 @@ export default class NostrZap extends NostrUserComponent {
   
   private totalZapAmount: number | null = null;
   private cachedAmountDialog: any = null;
-  private static cssInjected = false;
 
   constructor() {
     super();
@@ -33,10 +32,6 @@ export default class NostrZap extends NostrUserComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
-    if (!NostrZap.cssInjected) {
-      injectCSSIntoBody();
-      NostrZap.cssInjected = true;
-    }
     this.attachDelegatedListeners();
     this.render();
   }
