@@ -29,8 +29,12 @@ This document contains the technical implementation details for the `nostr-zap` 
 - Separation of Concerns: 
   - `nostr-zap.ts`: Component logic and lifecycle
   - `render.ts`: Rendering functions and HTML generation
-  - `style.ts`: CSS styles and theming
-  - `dialog.ts`: Modal dialog implementation
+  - `style.ts`: CSS styles and theming (component-specific only)
+  - `dialog-zap.ts`: Zap modal dialog implementation
+  - `dialog-zap-style.ts`: Zap modal dialog styles
+  - `dialog-help.ts`: Help dialog implementation
+  - `dialog-help-style.ts`: Help dialog styles
+  - `zap-utils.ts`: Zap-specific utility functions
 
 ## Dependencies
 
@@ -49,6 +53,7 @@ This document contains the technical implementation details for the `nostr-zap` 
 - UserResolver: User identity validation and resolution
 - NostrService: Relay connection management
 - getComponentStyles(): Utility for CSS injection with design tokens
+- Common Utils: `decodeNpub()` and `decodeNip19Entity()` for NIP-19 decoding
 
 ## Component Lifecycle
 
@@ -74,14 +79,15 @@ amountStatus: Loading → Ready/Error
 computeOverall(): Reflects the most critical status
 ```
 
-## Modal Dialog Implementation
+## Dialog Implementation
 
 ### Global Shadow DOM
 - Purpose: Ensures proper z-index layering above all content
 - Implementation: `ensureShadow()` creates global shadow root
-- CSS Injection: One-time CSS injection via `injectCSS()`
+- CSS Injection: Dynamic CSS injection via `injectCSS()` with theme support
+- Style Management: Prevents style accumulation with cleanup logic
 
-### Dialog Features
+### Zap Dialog Features
 - Amount Presets: 21, 100, 1000 sats with custom input
 - Comment Field: Optional comment with 200 character limit
 - QR Code: Generated via `qrcode` library
@@ -89,6 +95,12 @@ computeOverall(): Reflects the most critical status
 - Copy Functionality: Clipboard API for invoice copying
 - Payment Confirmation: Uses `listenForZapReceipt()` to detect successful payments
 - Success State: Shows "⚡ Thank you!" overlay and hides controls
+
+### Help Dialog Features
+- Educational Content: Explains what zaps are
+- YouTube Link: Hardcoded tutorial URL
+- Simple Layout: Clean, centered design
+- Easy Dismissal: Click outside or close button
 
 ### Payment Confirmation (Active)
 - Function: `listenForZapReceipt()` in `zap-utils.ts`
@@ -103,9 +115,26 @@ computeOverall(): Reflects the most critical status
 - Cleanup: Receipt listener cleanup on dialog close event
 
 ### CSS Management
-- Inline Styles: Compact CSS injected into global shadow DOM
-- Theme Support: Light/dark mode via CSS classes
+- Style Files: Separate files for each dialog type
+- Theme Support: Dynamic theme injection with CSS variables
 - Responsive: Mobile-optimized layout (max-width: 90vw)
+- Cleanup: Prevents style accumulation in global shadow DOM
+
+## Utility Functions Organization
+
+### Common Utilities (`src/common/utils.ts`)
+- `decodeNpub()`: Decodes npub strings to hex pubkeys
+- `decodeNip19Entity()`: General NIP-19 entity decoder
+- Purpose: Shared utilities across all components
+- Benefits: Reusability, consistency, single source of truth
+
+### Zap-Specific Utilities (`src/nostr-zap/zap-utils.ts`)
+- `fetchTotalZapAmount()`: Fetches and calculates total zap amounts
+- `getProfileMetadata()`: Caches and retrieves user profile data
+- `getZapEndpoint()`: Resolves Lightning zap endpoints
+- `fetchInvoice()`: Generates Lightning invoices
+- `listenForZapReceipt()`: Monitors for zap payment confirmations
+- Purpose: Zap-specific functionality only
 
 ## Zap Count Implementation
 

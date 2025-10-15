@@ -93,6 +93,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       successOverlay.style.pointerEvents = 'none';
     }
 
+    void refreshUI(cachedAmountDialog);
     cachedAmountDialog.showModal();
     return cachedAmountDialog;
   }
@@ -118,7 +119,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   // ---------------------------------------------------------------------------
 
   async function loadInvoice(amountSats: number, comment: string) {
-    const authorId = decodeNpub(npub);
+    const authorId = npubHex;
     const meta = await getProfileMetadata(authorId);
     const endpoint = await getZapEndpoint(meta);
     const invoice = await fetchInvoice({
@@ -134,7 +135,14 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
 
     // Zap receipt listener
     const relaysArr = relays.split(',');
-    cleanupReceipt = listenForZapReceipt({ relays: relaysArr, receiversPubKey: npubHex, invoice: invoice, onSuccess: markSuccess });
+    // Dispose previous listener before creating a new one
+    if (cleanupReceipt) cleanupReceipt();
+    cleanupReceipt = listenForZapReceipt({
+      relays: relaysArr,
+      receiversPubKey: npubHex,
+      invoice,
+      onSuccess: markSuccess
+    });
   }
 
   async function qrImgSrc(invoice: string): Promise<string> {
@@ -337,17 +345,6 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
 
   // Load first invoice & show
   await refreshUI(dialog);
-  
-  // Now that we have an invoice, set up the receipt listener
-  if (currentInvoice) {
-    const relaysArr = relays.split(',');
-    cleanupReceipt = listenForZapReceipt({
-      relays: relaysArr,
-      receiversPubKey: npubHex,
-      invoice: currentInvoice,
-      onSuccess: markSuccess
-    });
-  }
   
   if (amountContainer && presets.includes(selectedAmount)) {
     setActiveAmountButtons(amountContainer, selectedAmount);

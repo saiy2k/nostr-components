@@ -93,16 +93,16 @@ const makeZapEvent = async ({
   comment?: string;
   anon?: boolean;
 }) => {
-  const event = nip57.makeZapRequest({
+  const req: any = {
     profile,
-    event:
-      nip19Target?.startsWith('note')
-        ? decodeNip19Entity(nip19Target)
-        : null,
     amount,
     relays,
     comment: comment || '',
-  });
+  };
+  if (nip19Target?.startsWith('note')) {
+    req.event = decodeNip19Entity(nip19Target);
+  }
+  const event = nip57.makeZapRequest(req);
 
   if (nip19Target?.startsWith('naddr')) {
     const naddrData: any = decodeNip19Entity(nip19Target);
@@ -149,9 +149,17 @@ export const fetchInvoice = async ({
   )}`;
   if (comment) url += `&comment=${encodeURIComponent(comment ?? '')}`;
 
-  const res = await fetch(url);
-  const json = await res.json();
-  const { pr: invoice, reason, status } = json;
+  const res = await fetch(url, { method: 'GET' });
+  if (!res.ok) {
+    throw new Error(`LNURL request failed: ${res.status} ${res.statusText}`);
+  }
+  let json: any;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error('Invalid JSON from LNURL endpoint');
+  }
+  const { pr: invoice, reason, status } = json || {};
   if (invoice) return invoice;
   if (status === 'ERROR') throw new Error(reason ?? 'Unable to fetch invoice');
   throw new Error('Unable to fetch invoice');

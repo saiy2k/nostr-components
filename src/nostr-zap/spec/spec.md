@@ -122,7 +122,7 @@ Visual wireframes showing all component states and behaviors:
 ### Layout States
 
 #### Default State
-```
+```text
 ┌─────────────┐ 1,234 ⚡ (?)
 │ [⚡ Zap]    │
 └─────────────┘
@@ -133,7 +133,7 @@ Visual wireframes showing all component states and behaviors:
 - Horizontal alignment
 
 #### Loading State
-```
+```text
 ┌─────────────────┐ [skeleton-loader]
 │ [⚡ skeleton-loader...] │
 └─────────────────┘
@@ -144,7 +144,7 @@ Visual wireframes showing all component states and behaviors:
 - Both load independently (button ready before amount)
 
 #### Error State
-```
+```text
 ┌─────────────────────────────────┐
 │ ⚠️  Error message here          │
 └─────────────────────────────────┘
@@ -155,7 +155,7 @@ Visual wireframes showing all component states and behaviors:
 - Similar to profile-badge error pattern
 
 #### Success State
-```
+```text
 ┌─────────────┐ 1,234 ⚡
 │ [✓ Zap Sent!] │
 └─────────────┘
@@ -167,7 +167,7 @@ Visual wireframes showing all component states and behaviors:
 ### Interactive States
 
 #### Hover State
-```
+```text
 ┌─────────────┐ 1,234 ⚡
 │ [⚡ Zap]    │ ← Hovered (background changes)
 └─────────────┘
@@ -183,7 +183,7 @@ Visual wireframes showing all component states and behaviors:
 
 ### Modal Dialog Layout
 
-```
+```text
 ┌─────────────────────────────────────┐
 │            Send a Zap           [×] │
 ├─────────────────────────────────────┤
@@ -207,7 +207,7 @@ Visual wireframes showing all component states and behaviors:
 
 ### Help Dialog Layout
 
-```
+```text
 ┌─────────────────────────────────────┐
 │            What is a Zap?        [×] │
 ├─────────────────────────────────────┤

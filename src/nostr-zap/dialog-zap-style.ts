@@ -26,47 +26,6 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       display: block;
     }
 
-    /* === DARK MODE OVERRIDES === */
-    .nostr-zap-dialog.dark .amount-buttons button {
-      background: ${isDark ? '#262626' : '#f7fafc'};
-      border: 1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'};
-      color: ${isDark ? '#ffffff' : '#000000'};
-    }
-
-    .nostr-zap-dialog.dark .amount-buttons button.active {
-      background: #7f00ff;
-      color: #ffffff;
-    }
-
-    .nostr-zap-dialog.dark .close-btn {
-      background: ${isDark ? '#262626' : '#f7fafc'};
-      color: ${isDark ? '#ffffff' : '#000000'};
-    }
-
-    .nostr-zap-dialog.dark .cta-btn {
-      background: #7f00ff;
-      color: #ffffff;
-    }
-
-    .nostr-zap-dialog.dark .copy-btn {
-      color: #7f00ff;
-    }
-
-    .nostr-zap-dialog.dark input {
-      background: ${isDark ? '#262626' : '#ffffff'};
-      border: 1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'};
-      color: ${isDark ? '#ffffff' : '#000000'};
-    }
-
-    .nostr-zap-dialog.dark .update-zap-btn {
-      background: #7f00ff;
-      color: #ffffff;
-    }
-
-    .nostr-zap-dialog.dark .loading-overlay {
-      background: ${isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)'};
-    }
-
     /* === TYPOGRAPHY === */
     .nostr-zap-dialog h2 {
       font-size: 1.25rem;
@@ -140,6 +99,11 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       color: #7f00ff;
     }
 
+    .nostr-zap-dialog .update-zap-btn {
+      background: #7f00ff;
+      color: #ffffff;
+    }
+
     /* === QR CODE === */
     .nostr-zap-dialog img.qr {
       margin-top: 16px;
@@ -168,6 +132,12 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
 
     .nostr-zap-dialog .comment-container .comment-input {
       flex-grow: 1;
+    }
+
+    .nostr-zap-dialog input {
+      background: ${isDark ? '#262626' : '#ffffff'};
+      border: 1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'};
+      color: ${isDark ? '#ffffff' : '#000000'};
     }
 
     /* === LOADING OVERLAY === */

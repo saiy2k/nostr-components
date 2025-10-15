@@ -45,7 +45,7 @@ export const showHelpDialog = (): void => {
           <li>Show appreciation for posts</li>
         </ul>
         <p>Learn more about zaps:</p>
-        <a href="${YOUTUBE_URL}" target="_blank" class="youtube-link">
+        <a href="${YOUTUBE_URL}" target="_blank" rel="noopener noreferrer" class="youtube-link">
           Watch YouTube Tutorial
         </a>
       </div>
@@ -67,5 +67,14 @@ export const showHelpDialog = (): void => {
       dialog.close();
       document.body.removeChild(dialog);
     }
+  });
+
+  // Ensure ESC key also closes and cleans up
+  dialog.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    dialog.close();
+  });
+  dialog.addEventListener('close', () => {
+    if (dialog.isConnected) document.body.removeChild(dialog);
   });
 };

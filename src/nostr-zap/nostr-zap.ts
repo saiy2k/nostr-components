@@ -23,7 +23,7 @@ export default class NostrZap extends NostrUserComponent {
   protected amountStatus  =   this.channel('amount');
   
   private totalZapAmount: number | null = null;
-  private cachedAmountDialog: any = null;
+  private cachedAmountDialog: HTMLDialogElement | null = null;
 
   constructor() {
     super();
@@ -206,7 +206,7 @@ export default class NostrZap extends NostrUserComponent {
     const isUserLoading = this.userStatus.get() == NCStatus.Loading;
     const isAmountLoading = this.amountStatus.get() == NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
-    const errorMessage = super.renderError(this.errorMessage);
+    const errorMessage = this.errorMessage;
     const buttonText = this.getAttribute('text') || 'Zap';
 
     const renderOptions: RenderZapButtonOptions = {
