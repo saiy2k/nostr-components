@@ -34,6 +34,8 @@ This document contains the technical implementation details for the `nostr-zap` 
   - `dialog-zap-style.ts`: Zap modal dialog styles
   - `dialog-help.ts`: Help dialog implementation
   - `dialog-help-style.ts`: Help dialog styles
+  - `dialog-zappers.ts`: Zappers dialog implementation
+  - `dialog-zappers-style.ts`: Zappers dialog styles
   - `zap-utils.ts`: Zap-specific utility functions
 
 ## Dependencies
@@ -103,6 +105,15 @@ computeOverall(): Reflects the most critical status
 - Simple Layout: Clean, centered design
 - Easy Dismissal: Click outside or close button
 
+### Zappers Dialog Features
+- Individual Zap Details: Shows each zap with amount, date, author name, and profile picture
+- Progressive Loading: Initial display with npubs in skeleton loaders, then async profile enhancement
+- Author Profile Links: Clicking on zap author opens njump.me profile link
+- Chronological Order: Zaps sorted by date (newest first)
+- Profile Picture Fallback: Default avatar for users without profile pictures
+- Responsive Layout: Adapts to different screen sizes
+- Async Profile Enhancement: Profile metadata fetched in parallel, entries updated individually
+
 ### Payment Confirmation (Active)
 - Function: `listenForZapReceipt()` in `zap-utils.ts`
 - Purpose: Listen for zap receipt events (kind 9735) matching the invoice
@@ -130,13 +141,13 @@ computeOverall(): Reflects the most critical status
 - Benefits: Reusability, consistency, single source of truth
 
 ### Zap-Specific Utilities (`src/nostr-zap/zap-utils.ts`)
-- `fetchTotalZapAmount()`: Fetches and calculates total zap amounts with optional URL filtering
+- `fetchTotalZapAmount()`: Fetches and calculates total zap amounts with optional URL filtering, returns both total and individual zap data
 - `getProfileMetadata()`: Caches and retrieves user profile data
 - `getZapEndpoint()`: Resolves Lightning zap endpoints
 - `fetchInvoice()`: Generates Lightning invoices with optional URL-based zap tags
 - `makeZapEvent()`: Creates zap request events with optional URL tags (NIP-73 compliance)
 - `listenForZapReceipt()`: Monitors for zap payment confirmations
-- Purpose: Zap-specific functionality including URL-based zaps
+- Purpose: Zap-specific functionality including URL-based zaps and individual zap tracking
 
 ## Zap Count Implementation
 
@@ -153,6 +164,44 @@ computeOverall(): Reflects the most critical status
 - Aggregation: Sum all amounts and convert msats to sats
 - URL Filtering: Only includes zaps matching specific URL when provided (follows NIP-73)
 - Caching: No caching - real-time data
+
+### Interactive Zap Count
+- Clickable: Total zap amount becomes clickable when zaps are available
+- Event Handler: Delegated click handler for `.total-zap-amount` class
+- Dialog Trigger: Opens zappers dialog on click
+- Visual Feedback: Cursor changes to pointer on hover
+
+## Individual Zaps Implementation
+
+### Data Reuse Strategy
+- Method: Reuse data from `fetchTotalZapAmount()` 
+- Efficiency: Single query fetches both total amount and individual zap details
+- Data Structure: `fetchTotalZapAmount()` returns both total and individual zap events
+- URL Filtering: Same URL filtering logic as total amount
+- Limit: 1000 events for comprehensive data (same as total amount)
+
+### Progressive Loading Implementation
+- Initial Display: Dialog opens immediately showing skeleton loaders with npubs
+- Immediate Context: Users see who zapped them right away (npubs are available instantly)
+- Async Enhancement: Profile metadata fetched in parallel for all zappers
+- Individual Updates: Each zap entry updated independently as profile data loads
+- Smooth Transitions: Skeleton loaders replaced with profile data seamlessly
+
+### Zap Details Extraction
+- Zap Amount: Extracted from zap request description tags
+- Zap Date: Uses event `created_at` timestamp
+- Zap Author: Extracted from zap request `pubkey` field
+- Profile Data: Fetched via `getProfileMetadata()` for author name and picture
+- Sorting: Chronological order (newest first)
+
+### Profile Integration
+- Initial Display: Shows npubs in skeleton loaders for immediate context
+- Progressive Enhancement: Each profile metadata loads independently
+- Author Names: Display name from profile metadata, fallback to npub
+- Profile Pictures: Avatar from profile metadata, fallback to default
+- Profile Links: njump.me URLs for author profiles
+- Parallel Fetching: All profile metadata fetched simultaneously
+- Individual Updates: Each zap entry updated as its profile data becomes available
 
 ### Error Handling
 - Network Errors: Graceful fallback, no error state

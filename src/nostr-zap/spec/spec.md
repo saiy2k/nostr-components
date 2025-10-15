@@ -16,7 +16,8 @@
 - Open modal dialog for amount selection and payment
 - Open help dialog explaining what zaps are with YouTube link
 - Generate Lightning invoice via NIP-57
-- Display total zap amount received by the user
+- Display total zap amount received by the user (clickable)
+- Open zappers dialog showing individual zap details
 - Handle payment success/failure states
 - Support both fixed amounts and custom amount selection
 
@@ -56,6 +57,7 @@ When the `url` attribute is provided:
 - Purpose: Display total sats received by the user
 - Display: Shows outside button, horizontally aligned
 - Loading: Shows skeleton loader while fetching
+- Interactive: Clickable to open zappers dialog
 
 ## API Specification
 
@@ -242,6 +244,56 @@ Visual wireframes showing all component states and behaviors:
 └─────────────────────────────────────┘
 ```
 
+### Zappers Dialog Layout
+
+#### Initial State (with npubs in skeleton loaders)
+```text
+┌─────────────────────────────────────┐
+│              Zappers             [×] │
+├─────────────────────────────────────┤
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ [skeleton] npub1abc123...        │ │
+│ │     500 ⚡ • 2 hours ago         │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ [skeleton] npub1def456...        │ │
+│ │     1,000 ⚡ • 1 day ago          │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ [skeleton] npub1ghi789...        │ │
+│ │     250 ⚡ • 3 days ago           │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+#### Progressive Enhancement (as profiles load)
+```text
+┌─────────────────────────────────────┐
+│              Zappers             [×] │
+├─────────────────────────────────────┤
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ [👤] Alice Smith                │ │
+│ │     500 ⚡ • 2 hours ago         │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ [skeleton] npub1def456...        │ │
+│ │     1,000 ⚡ • 1 day ago          │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ [👤] Charlie Brown               │ │
+│ │     250 ⚡ • 3 days ago           │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+└─────────────────────────────────────┘
+```
+
 ### Responsive Behavior
 
 - Desktop: Full modal dialog (424px width)
@@ -310,3 +362,38 @@ Visual wireframes showing all component states and behaviors:
 ```html
 <nostr-zap npub="npub1..." data-theme="dark"></nostr-zap>
 ```
+
+## Zappers Dialog
+
+### Features
+- **Title**: "Zappers" with close button (×)
+- **Individual Zap Details**: Each zap shows:
+  1. Zap amount (in sats with ⚡ symbol)
+  2. Zap date (relative time, e.g., "2 hours ago")
+  3. Zap author's name (from profile metadata)
+  4. Zap author's profile picture (with fallback)
+- **Progressive Loading**: Shows npubs immediately in skeleton loaders, then enhances with profile data
+- **Interactive Elements**:
+  - Clicking on zap author opens njump.me profile link
+  - Close button dismisses dialog
+  - Click outside dialog dismisses dialog
+- **Data Source**: Fetches individual zap receipt events (kind 9735)
+- **URL Filtering**: Respects URL attribute for URL-based zaps
+- **Sorting**: Chronological order (newest first)
+- **Loading States**: Skeleton loaders with npubs, then progressive profile enhancement
+
+### Dialog Behavior
+- **Trigger**: Clicking on total zap amount when zaps are available
+- **Immediate Display**: Dialog opens instantly showing skeleton loaders with npubs
+- **Progressive Enhancement**: Profile metadata loads in background, updates entries individually
+- **Responsive**: Adapts to screen size (max-width: 90vw on mobile)
+- **Theme Support**: Inherits component theme (light/dark)
+- **Accessibility**: Keyboard navigation and screen reader support
+
+### Profile Integration
+- **Initial Display**: Shows npubs in skeleton loaders for immediate context
+- **Progressive Loading**: Each profile metadata loads independently and updates its entry
+- **Author Names**: Uses display name from profile metadata, falls back to npub
+- **Profile Pictures**: Uses avatar from profile metadata, falls back to default avatar
+- **Profile Links**: njump.me URLs format: `https://njump.me/npub1...`
+- **Async Enhancement**: Profile data fetched in parallel, entries updated individually
