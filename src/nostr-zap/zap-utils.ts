@@ -85,6 +85,7 @@ const makeZapEvent = async ({
   relays,
   comment,
   anon,
+  url,
 }: {
   profile: string;
   nip19Target?: string;
@@ -92,6 +93,7 @@ const makeZapEvent = async ({
   relays: string[];
   comment?: string;
   anon?: boolean;
+  url?: string;
 }) => {
   const req: any = {
     profile,
@@ -110,6 +112,12 @@ const makeZapEvent = async ({
     event.tags.push(['a', `${naddrData.kind}:${naddrData.pubkey}:${naddrData.identifier}`, relayTag]);
   }
 
+  // Add URL-based zap tags if URL is provided
+  if (url) {
+    event.tags.push(['k', 'web']);
+    event.tags.push(['i', normalizeURL(url)]);
+  }
+
   if (!isNip07ExtAvailable() || anon) {
     event.tags.push(['anon']);
   }
@@ -125,6 +133,7 @@ export const fetchInvoice = async ({
   nip19Target,
   normalizedRelays,
   anon,
+  url,
 }: {
   zapEndpoint: string;
   amount: number;
@@ -133,6 +142,7 @@ export const fetchInvoice = async ({
   nip19Target?: string;
   normalizedRelays: string[];
   anon?: boolean;
+  url?: string;
 }): Promise<string> => {
   const zapEvent = await makeZapEvent({
     profile: authorId,
@@ -141,15 +151,16 @@ export const fetchInvoice = async ({
     relays: normalizedRelays,
     comment: comment ?? '',
     anon,
+    url,
   });
 
 
-  let url = `${zapEndpoint}?amount=${amount}&nostr=${encodeURIComponent(
+  let invoiceUrl = `${zapEndpoint}?amount=${amount}&nostr=${encodeURIComponent(
     JSON.stringify(zapEvent)
   )}`;
-  if (comment) url += `&comment=${encodeURIComponent(comment ?? '')}`;
+  if (comment) invoiceUrl += `&comment=${encodeURIComponent(comment ?? '')}`;
 
-  const res = await fetch(url, { method: 'GET' });
+  const res = await fetch(invoiceUrl, { method: 'GET' });
   if (!res.ok) {
     throw new Error(`LNURL request failed: ${res.status} ${res.statusText}`);
   }
@@ -197,6 +208,7 @@ export async function resolveNip05(nip05Identifier: string): Promise<string | nu
 
 // Import necessary types from nostr-tools
 import type { Filter, Event } from 'nostr-tools';
+import { normalizeURL } from 'nostr-tools/utils';
 
 // Augment the SimplePool type to include our usage
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -220,20 +232,35 @@ declare module 'nostr-tools' {
 export const fetchTotalZapAmount = async ({
   pubkey,
   relays,
+  url,
 }: {
   pubkey: string;
   relays: string[];
+  url?: string;
 }): Promise<number> => {
   const pool = new SimplePool();
   let totalAmount = 0;
 
   try {
-    // Use pool.querySync to fetch multiple zap receipt events
-    const events = await pool.querySync(relays, {
+    // Build filter for zap receipt events
+    const filter: any = {
       kinds: [9735], // Zap receipt
       '#p': [pubkey],
       limit: 1000,
-    });
+    };
+
+    // Add URL-based filtering if URL is provided
+    // TODO: These tags doesn't appear in zap receipt event.
+    // They goes into the description tag, which has the zap request JSON.
+    /*
+    if (url) {
+      filter['#k'] = ['web'];
+      filter['#i'] = [url];
+    }
+    */
+
+    // Use pool.querySync to fetch multiple zap receipt events
+    const events = await pool.querySync(relays, filter);
 
     for (const event of events) {
       const descriptionTag = event.tags?.find((tag: string[]) => tag[0] === 'description');
@@ -241,8 +268,23 @@ export const fetchTotalZapAmount = async ({
         try {
           const zapRequest = JSON.parse(descriptionTag[1]);
           const amountTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'amount');
-          if (amountTag?.[1]) {
-            totalAmount += parseInt(amountTag[1], 10);
+          
+          // If URL is provided, check for URL-based zap tags
+          // TODO: Too much work, since #k and #i tags doesn't appear in zap receipt event.
+          // This is not a practical solution, but it's working for now!
+          if (url) {
+            const kTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'k');
+            const iTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'i');
+            
+            // Only count if k=web and i=url match
+            if (kTag?.[1] === 'web' && iTag?.[1] === url && amountTag?.[1]) {
+              totalAmount += parseInt(amountTag[1], 10);
+            }
+          } else {
+            // No URL filtering - count all zaps
+            if (amountTag?.[1]) {
+              totalAmount += parseInt(amountTag[1], 10);
+            }
           }
         } catch (e) {
           console.error("Nostr-Components: Zap button: Could not parse zap request from description tag", e);

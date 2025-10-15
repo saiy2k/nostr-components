@@ -44,6 +44,7 @@ export interface OpenZapModalParams {
   defaultAmount?: number; // preselect but allow change
   initialAmount?: number; // legacy support
   anon?: boolean;
+  url?: string; // URL to send zap to (enables URL-based zaps)
 }
 
 export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
@@ -73,7 +74,7 @@ function ensureShadow() {
  * can cache it between clicks.
  */
 export async function init(params: OpenZapModalParams): Promise<HTMLDialogElement> {
-  const { npub, relays, cachedAmountDialog, buttonColor, fixedAmount, defaultAmount, initialAmount } = params;
+  const { npub, relays, cachedAmountDialog, buttonColor, fixedAmount, defaultAmount, initialAmount, url } = params;
   const npubHex = decodeNpub(npub);
   if (cachedAmountDialog) {
     // remove success class if it exists
@@ -130,6 +131,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       nip19Target: undefined,
       normalizedRelays: relays.split(','),
       anon: params.anon ?? false,
+      url: url,
     });
     currentInvoice = invoice;
 

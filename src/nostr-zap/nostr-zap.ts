@@ -17,6 +17,7 @@ import { fetchTotalZapAmount } from './zap-utils';
  *   - text            (optional) : custom text (default "Zap")
  *   - amount          (optional) : pre-defined zap amount in sats
  *   - default-amount  (optional) : default zap amount in sats (default 21)
+ *   - url             (optional) : URL to send zap to (enables URL-based zaps)
  */
 export default class NostrZap extends NostrUserComponent {
   protected zapStatus     =   this.channel('zap');
@@ -41,7 +42,8 @@ export default class NostrZap extends NostrUserComponent {
       ...super.observedAttributes,
       'text',
       'amount',
-      'default-amount'
+      'default-amount',
+      'url'
     ];
   }
 
@@ -78,6 +80,7 @@ export default class NostrZap extends NostrUserComponent {
     const textAttr      = this.getAttribute("text");
     const amtAttr       = this.getAttribute("amount");
     const defaultAmtAttr= this.getAttribute("default-amount");
+    const urlAttr       = this.getAttribute("url");
     const tagName       = this.tagName.toLowerCase();
 
     let errorMessage: string | null = null;
@@ -97,6 +100,12 @@ export default class NostrZap extends NostrUserComponent {
         errorMessage = "Invalid default-amount";
       } else if (num > 210000) {
         errorMessage = "Default-amount too high (max 210,000 sats)";
+      }
+    } else if (urlAttr) {
+      try {
+        new URL(urlAttr);
+      } catch {
+        errorMessage = "Invalid URL format";
       }
     }
 
@@ -151,6 +160,7 @@ export default class NostrZap extends NostrUserComponent {
           }
           return num;
         })(),
+        url: this.getAttribute("url") || undefined,
         anon: false,
       });
       this.zapStatus.set(NCStatus.Ready);
@@ -189,7 +199,8 @@ export default class NostrZap extends NostrUserComponent {
       await this.ensureNostrConnected();
       const count = await fetchTotalZapAmount({ 
         pubkey: this.user.pubkey, 
-        relays: this.getRelays() 
+        relays: this.getRelays(),
+        url: this.getAttribute("url") || undefined
       });
       this.totalZapAmount = count;
       this.amountStatus.set(NCStatus.Ready);
