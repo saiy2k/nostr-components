@@ -74,13 +74,19 @@ function renderErrorContainer(leftContent: string, rightContent: string): string
 }
 
 function renderContainer(iconContent: string, textContent: string, totalZapAmount: number | null, isAmountLoading: boolean): string {
+  const zapAmountHtml = isAmountLoading 
+    ? `<span class="total-zap-amount skeleton"></span>` 
+    : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '');
+  
+  const helpIconHtml = `<button class="help-icon" title="What is a zap?">?</button>`;
+  
   return `
     <div class="nostr-zap-button-container">
       <button class="nostr-zap-button">
         ${iconContent}
         ${textContent}
       </button>
-      ${isAmountLoading ? `<span class="total-zap-amount skeleton"></span>` : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '')}
+      ${zapAmountHtml} ${helpIconHtml}
     </div>
   `;
 }

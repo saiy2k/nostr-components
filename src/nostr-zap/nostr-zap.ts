@@ -4,7 +4,7 @@ import { NostrUserComponent } from '../base/user-component/nostr-user-component'
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { init as openZapModal } from './dialog';
 import { renderZapButton, RenderZapButtonOptions } from './render';
-import { getZapButtonStyles } from './style';
+import { getZapButtonStyles, getHelpDialogStyles } from './style';
 import { fetchTotalZapAmount } from './zap-utils';
 
 /**
@@ -161,11 +161,75 @@ export default class NostrZap extends NostrUserComponent {
     }
   }
 
+  private handleHelpClick() {
+    // Hardcoded YouTube URL for zap tutorial
+    const YOUTUBE_URL = "https://youtube.com/watch?v=zap-tutorial";
+    
+    // Inject help dialog styles
+    this.injectHelpDialogStyles();
+    
+    // Create help dialog
+    const dialog = document.createElement('dialog');
+    dialog.className = 'nostr-zap-help-dialog';
+    dialog.innerHTML = `
+      <div class="help-dialog-content">
+        <button class="close-btn">✕</button>
+        <h2>What is a Zap? (Under construction)</h2>
+        <div class="help-content">
+          <p>A zap is a Lightning Network payment sent to a Nostr user.</p>
+          <p>Zaps allow you to:</p>
+          <ul>
+            <li>Send micropayments instantly</li>
+            <li>Support content creators</li>
+            <li>Show appreciation for posts</li>
+          </ul>
+          <p>Learn more about zaps:</p>
+          <a href="${YOUTUBE_URL}" target="_blank" class="youtube-link">
+            Watch YouTube Tutorial
+          </a>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    dialog.showModal();
+    
+    // Close dialog handlers
+    const closeBtn = dialog.querySelector('.close-btn');
+    closeBtn?.addEventListener('click', () => {
+      dialog.close();
+      document.body.removeChild(dialog);
+    });
+    
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) {
+        dialog.close();
+        document.body.removeChild(dialog);
+      }
+    });
+  }
+
+  private injectHelpDialogStyles() {
+    // Check if styles are already injected
+    if (document.querySelector('style[data-help-dialog-styles]')) return;
+    
+    const style = document.createElement('style');
+    style.setAttribute('data-help-dialog-styles', 'true');
+    style.textContent = getHelpDialogStyles();
+    document.head.appendChild(style);
+  }
+
   private attachDelegatedListeners() {
     this.delegateEvent('click', '.nostr-zap-button', (e) => {
       e.preventDefault?.();
       e.stopPropagation?.();
       void this.handleZapClick();
+    });
+
+    this.delegateEvent('click', '.help-icon', (e) => {
+      e.preventDefault?.();
+      e.stopPropagation?.();
+      this.handleHelpClick();
     });
   }
 

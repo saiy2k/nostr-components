@@ -12,7 +12,9 @@
 ### Core Features
 - Resolve user identity from npub/nip05/pubkey attributes
 - Display zap button with Lightning icon and custom text
+- Show help icon (?) with outlined style next to zap amount
 - Open modal dialog for amount selection and payment
+- Open help dialog explaining what zaps are with YouTube link
 - Generate Lightning invoice via NIP-57
 - Display total zap amount received by the user
 - Handle payment success/failure states
@@ -100,6 +102,7 @@ At least one user identifier must be provided:
 #### Icon Sizing
 - `--nostrc-icon-width`: Width of Lightning icon (default: 25px)
 - `--nostrc-icon-height`: Height of Lightning icon (default: 25px)
+- `--nostrc-help-icon-size`: Size of help icon (default: 16px)
 
 #### Button Styling
 - `--nostrc-zap-btn-padding`: Button padding
@@ -120,12 +123,13 @@ Visual wireframes showing all component states and behaviors:
 
 #### Default State
 ```
-┌─────────────┐ 1,234 ⚡
+┌─────────────┐ 1,234 ⚡ (?)
 │ [⚡ Zap]    │
 └─────────────┘
 ```
 - Lightning icon + custom text
 - Zap amount displayed outside button
+- Help icon (?) with outlined style
 - Horizontal alignment
 
 #### Loading State
@@ -201,6 +205,29 @@ Visual wireframes showing all component states and behaviors:
 └─────────────────────────────────────┘
 ```
 
+### Help Dialog Layout
+
+```
+┌─────────────────────────────────────┐
+│            What is a Zap?        [×] │
+├─────────────────────────────────────┤
+│                                     │
+│ A zap is a Lightning Network        │
+│ payment sent to a Nostr user.      │
+│                                     │
+│ Zaps allow you to:                  │
+│ • Send micropayments instantly      │
+│ • Support content creators          │
+│ • Show appreciation for posts      │
+│                                     │
+│ Learn more about zaps:              │
+│ ┌─────────────────────────────────┐ │
+│ │    [Watch YouTube Tutorial]      │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+└─────────────────────────────────────┘
+```
+
 ### Responsive Behavior
 
 - Desktop: Full modal dialog (424px width)
@@ -228,6 +255,14 @@ Visual wireframes showing all component states and behaviors:
 ### NIP-05
 ```html
 <nostr-zap nip05="user@domain.com"></nostr-zap>
+```
+
+### With Help Icon
+```html
+<nostr-zap 
+  npub="npub1..." 
+  text="Send Zap">
+</nostr-zap>
 ```
 
 ### Custom Styling
