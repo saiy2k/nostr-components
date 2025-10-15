@@ -15,11 +15,7 @@ import { fetchTotalZapAmount } from './zap-utils';
  *   - theme           (optional) : "light" | "dark" (default light)
  *   - text            (optional) : custom text (default "Zap")
  *   - amount          (optional) : pre-defined zap amount in sats
- *   - default-amount  (optional) : default zap amount in sats (default 1000)
- * 
- * CSS Variables (overridable):
- *   - --nostrc-icon-width  : width of the zap icon (default 25px)
- *   - --nostrc-icon-height : height of the zap icon (default 25px)
+ *   - default-amount  (optional) : default zap amount in sats (default 21)
  */
 export default class NostrZap extends NostrUserComponent {
   protected zapStatus = this.channel('zap');
@@ -120,7 +116,7 @@ export default class NostrZap extends NostrUserComponent {
 
   /** Private functions */
   private async handleZapClick() {
-    if (this.computeOverall() !== NCStatus.Ready) return;
+    if (this.userStatus.get() !== NCStatus.Ready) return;
 
     this.zapStatus.set(NCStatus.Loading);
     this.render();
@@ -152,11 +148,11 @@ export default class NostrZap extends NostrUserComponent {
         })(),
         defaultAmount: (() => {
           const defAttr = this.getAttribute("default-amount");
-          if (!defAttr) return undefined;
+          if (!defAttr) return 21;
           const num = Number(defAttr);
           if (isNaN(num) || num <= 0 || num > 210000) {
             console.error("Nostr-Components: Zap button: Max zap amount: 210,000 sats");
-            return undefined;
+            return 21;
           }
           return num;
         })(),
