@@ -4,9 +4,10 @@ import { NostrUserComponent } from '../base/user-component/nostr-user-component'
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { init as openZapModal } from './dialog-zap';
 import { showHelpDialog } from './dialog-help';
+import { openZappersDialog } from './dialog-zappers';
 import { renderZapButton, RenderZapButtonOptions } from './render';
 import { getZapButtonStyles } from './style';
-import { fetchTotalZapAmount } from './zap-utils';
+import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
 
 /**
  * <nostr-zap>
@@ -24,6 +25,7 @@ export default class NostrZap extends NostrUserComponent {
   protected amountStatus  =   this.channel('amount');
   
   private totalZapAmount: number | null = null;
+  private cachedZapDetails: ZapDetails[] = [];
   private cachedAmountDialog: HTMLDialogElement | null = null;
 
   constructor() {
@@ -175,6 +177,21 @@ export default class NostrZap extends NostrUserComponent {
     showHelpDialog();
   }
 
+  private async handleZappersClick() {
+    if (this.cachedZapDetails.length === 0) {
+      return; // No zaps to show
+    }
+
+    try {
+      await openZappersDialog({
+        zapDetails: this.cachedZapDetails,
+        theme: this.theme === 'dark' ? 'dark' : 'light',
+      });
+    } catch (error) {
+      console.error("Nostr-Components: Zap button: Error opening zappers dialog", error);
+    }
+  }
+
   private attachDelegatedListeners() {
     this.delegateEvent('click', '.nostr-zap-button', (e) => {
       e.preventDefault?.();
@@ -187,6 +204,12 @@ export default class NostrZap extends NostrUserComponent {
       e.stopPropagation?.();
       this.handleHelpClick();
     });
+
+    this.delegateEvent('click', '.total-zap-amount', (e) => {
+      e.preventDefault?.();
+      e.stopPropagation?.();
+      void this.handleZappersClick();
+    });
   }
 
   private async updateZapCount() {
@@ -197,12 +220,13 @@ export default class NostrZap extends NostrUserComponent {
       this.render();
       
       await this.ensureNostrConnected();
-      const count = await fetchTotalZapAmount({ 
+      const result = await fetchTotalZapAmount({ 
         pubkey: this.user.pubkey, 
         relays: this.getRelays(),
         url: this.getAttribute("url") || undefined
       });
-      this.totalZapAmount = count;
+      this.totalZapAmount = result.totalAmount;
+      this.cachedZapDetails = result.zapDetails;
       this.amountStatus.set(NCStatus.Ready);
     } catch (e) {
       console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
@@ -228,6 +252,7 @@ export default class NostrZap extends NostrUserComponent {
       errorMessage: errorMessage,
       buttonText: buttonText,
       totalZapAmount: this.totalZapAmount,
+      hasZaps: this.cachedZapDetails.length > 0,
     };
 
     this.shadowRoot!.innerHTML = `

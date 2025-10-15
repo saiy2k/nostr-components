@@ -1,0 +1,329 @@
+// SPDX-License-Identifier: MIT
+
+import { getZappersDialogStyles } from './dialog-zappers-style';
+import { getProfileMetadata, extractProfileMetadataContent, ZapDetails } from './zap-utils';
+
+/**
+ * Modal dialog for displaying individual zap details (zappers).
+ * 
+ * Shows a list of all zaps received by a user with:
+ * - Zap amount
+ * - Zap date (relative time)
+ * - Zap author's name
+ * - Zap author's profile picture
+ * - Clickable links to author profiles via njump.me
+ */
+
+export interface OpenZappersModalParams {
+  zapDetails: ZapDetails[];
+  theme?: 'light' | 'dark';
+}
+
+/**
+ * Inject zappers dialog styles into global shadow DOM
+ */
+export const injectZappersDialogStyles = (theme: 'light' | 'dark' = 'light') => {
+  const shadow = ensureShadow();
+  
+  // Remove existing zappers dialog styles
+  const existingStyles = shadow.querySelectorAll('style[data-zappers-dialog-styles]');
+  existingStyles.forEach(style => style.remove());
+  
+  const style = document.createElement('style');
+  style.setAttribute('data-zappers-dialog-styles', 'true');
+  style.textContent = getZappersDialogStyles(theme);
+  shadow.appendChild(style);
+};
+
+let _shadowRoot: ShadowRoot | null = null;
+function ensureShadow() {
+  if (_shadowRoot) return _shadowRoot;
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  _shadowRoot = host.attachShadow({ mode: 'open' });
+  return _shadowRoot;
+}
+
+/**
+ * Format relative time (e.g., "2 hours ago", "1 day ago")
+ */
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) {
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  } else if (diffHours > 0) {
+    return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  } else if (diffMinutes > 0) {
+    return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+  } else {
+    return 'Just now';
+  }
+}
+
+/**
+ * Convert hex pubkey to npub
+ */
+async function hexToNpub(hex: string): Promise<string> {
+  const { nip19 } = await import('nostr-tools');
+  return nip19.npubEncode(hex);
+}
+
+interface EnhancedZapDetails extends ZapDetails {
+  authorName?: string;
+  authorPicture?: string;
+  authorNpub?: string;
+}
+
+/**
+ * Render individual zap entry HTML (with profile data)
+ */
+function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
+  const profilePicture = zap.authorPicture 
+    ? `<img src="${zap.authorPicture}" alt="${zap.authorName}" class="zap-author-picture" />`
+    : `<div class="zap-author-picture-default">👤</div>`;
+  
+  const njumpUrl = `https://njump.me/${zap.authorNpub}`;
+  
+  return `
+    <div class="zap-entry" data-zap-index="${index}" data-author-pubkey="${zap.authorPubkey}">
+      <div class="zap-author-info">
+        ${profilePicture}
+        <div class="zap-author-details">
+          <a href="${njumpUrl}" target="_blank" rel="noopener noreferrer" class="zap-author-link">
+            ${zap.authorName}
+          </a>
+          <div class="zap-amount-date">
+            ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(zap.date)}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render skeleton zap entry HTML (with npub)
+ */
+function renderSkeletonZapEntry(zap: ZapDetails, npub: string, index: number): string {
+  return `
+    <div class="zap-entry skeleton-entry" data-zap-index="${index}" data-author-pubkey="${zap.authorPubkey}">
+      <div class="zap-author-info">
+        <div class="skeleton-picture"></div>
+        <div class="zap-author-details">
+          <div class="zap-author-link skeleton-name">
+            ${npub}
+          </div>
+          <div class="zap-amount-date">
+            ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(zap.date)}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Opens the zappers dialog showing individual zap details
+ */
+export async function openZappersDialog(params: OpenZappersModalParams): Promise<HTMLDialogElement> {
+  const { zapDetails, theme = 'light' } = params;
+  
+  // Inject styles
+  injectZappersDialogStyles(theme);
+  
+  // Create dialog
+  const dialog = document.createElement('dialog');
+  dialog.className = 'nostr-zap-zappers-dialog';
+  
+  // Initial content with skeleton loaders showing npubs
+  const initialContent = await renderInitialContent(zapDetails);
+  dialog.innerHTML = initialContent;
+
+  const shadow = ensureShadow();
+  shadow.appendChild(dialog);
+  dialog.showModal();
+
+  // Start progressive enhancement
+  if (zapDetails.length > 0) {
+    enhanceZapDetailsProgressively(dialog, zapDetails);
+  }
+
+  // Event listeners
+  setupDialogEventListeners(dialog);
+
+  return dialog;
+}
+
+/**
+ * Render initial dialog content with skeleton loaders showing npubs
+ */
+async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
+  if (zapDetails.length === 0) {
+    return `
+      <div class="zappers-dialog-content">
+        <button class="close-btn">✕</button>
+        <h2>Zappers</h2>
+        <div class="zappers-list">
+          <div class="no-zaps">No zaps received yet</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Convert all pubkeys to npubs for immediate display
+  const npubs = await Promise.all(
+    zapDetails.map(zap => hexToNpub(zap.authorPubkey))
+  );
+
+  const skeletonEntries = zapDetails.map((zap, index) => 
+    renderSkeletonZapEntry(zap, npubs[index], index)
+  ).join('');
+
+  return `
+    <div class="zappers-dialog-content">
+      <button class="close-btn">✕</button>
+      <h2>Zappers</h2>
+      <div class="zappers-list">
+        ${skeletonEntries}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Progressively enhance zap details with profile information
+ */
+async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDetails: ZapDetails[]): Promise<void> {
+  const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
+  if (!zappersList) return;
+
+  // Create a map to track which profiles we've already fetched
+  const profileCache = new Map<string, EnhancedZapDetails>();
+  
+  // Fetch all profile metadata in parallel
+  const profilePromises = zapDetails.map(async (zap, index) => {
+    // Check if we already have this profile cached
+    if (profileCache.has(zap.authorPubkey)) {
+      const cachedProfile = profileCache.get(zap.authorPubkey)!;
+      return {
+        zap,
+        index,
+        enhanced: {
+          ...zap,
+          authorName: cachedProfile.authorName,
+          authorPicture: cachedProfile.authorPicture,
+          authorNpub: cachedProfile.authorNpub,
+        }
+      };
+    }
+
+    try {
+      const profileMetadata = await getProfileMetadata(zap.authorPubkey);
+      const profileContent = extractProfileMetadataContent(profileMetadata);
+      const npub = await hexToNpub(zap.authorPubkey);
+      
+      const enhanced = {
+        ...zap,
+        authorName: profileContent.display_name || profileContent.name || npub,
+        authorPicture: profileContent.picture,
+        authorNpub: npub,
+      };
+
+      // Cache the profile for other entries from the same author
+      profileCache.set(zap.authorPubkey, enhanced);
+      
+      return {
+        zap,
+        index,
+        enhanced
+      };
+    } catch (error) {
+      console.error("Nostr-Components: Zappers dialog: Error fetching profile for", zap.authorPubkey, error);
+      // Fallback with just pubkey converted to npub
+      try {
+        const npub = await hexToNpub(zap.authorPubkey);
+        const enhanced = {
+          ...zap,
+          authorName: npub,
+          authorNpub: npub,
+        };
+        
+        // Cache the fallback profile
+        profileCache.set(zap.authorPubkey, enhanced);
+        
+        return {
+          zap,
+          index,
+          enhanced
+        };
+      } catch (npubError) {
+        console.error("Nostr-Components: Zappers dialog: Error converting pubkey to npub", npubError);
+        const enhanced = {
+          ...zap,
+          authorName: zap.authorPubkey,
+          authorNpub: zap.authorPubkey,
+        };
+        
+        // Cache the final fallback
+        profileCache.set(zap.authorPubkey, enhanced);
+        
+        return {
+          zap,
+          index,
+          enhanced
+        };
+      }
+    }
+  });
+
+  // Process each profile as it becomes available
+  for (const promise of profilePromises) {
+    try {
+      const { index, enhanced } = await promise;
+      
+      // Find the corresponding skeleton entry by index and replace it
+      const skeletonEntry = zappersList.querySelector(`[data-zap-index="${index}"]`);
+      if (skeletonEntry) {
+        const enhancedEntry = renderZapEntry(enhanced, index);
+        skeletonEntry.outerHTML = enhancedEntry;
+      }
+    } catch (error) {
+      console.error("Nostr-Components: Zappers dialog: Error processing profile enhancement", error);
+    }
+  }
+}
+
+/**
+ * Setup dialog event listeners
+ */
+function setupDialogEventListeners(dialog: HTMLDialogElement): void {
+  const closeBtn = dialog.querySelector('.close-btn') as HTMLButtonElement;
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      dialog.close();
+      dialog.remove();
+    });
+  }
+
+  // Close on backdrop click
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) {
+      dialog.close();
+      dialog.remove();
+    }
+  });
+
+  // Close on Escape key
+  dialog.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      dialog.close();
+      dialog.remove();
+    }
+  });
+}

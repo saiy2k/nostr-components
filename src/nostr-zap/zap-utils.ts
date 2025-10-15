@@ -18,6 +18,8 @@ import { decodeNip19Entity } from '../common/utils';
 const profileCache: Record<string, any> = {};
 
 export const getProfileMetadata = async (authorId: string) => {
+  console.log("Nostr-Components: Zap button: Getting profile metadata for", authorId);
+  console.log("Nostr-Components: Zap button: Profile cache:", profileCache);
   if (profileCache[authorId]) return profileCache[authorId];
 
   const pool = new SimplePool();
@@ -229,6 +231,17 @@ declare module 'nostr-tools' {
   }
 }
 
+export interface ZapDetails {
+  amount: number;
+  date: Date;
+  authorPubkey: string;
+}
+
+export interface ZapAmountResult {
+  totalAmount: number;
+  zapDetails: ZapDetails[];
+}
+
 export const fetchTotalZapAmount = async ({
   pubkey,
   relays,
@@ -237,9 +250,10 @@ export const fetchTotalZapAmount = async ({
   pubkey: string;
   relays: string[];
   url?: string;
-}): Promise<number> => {
+}): Promise<ZapAmountResult> => {
   const pool = new SimplePool();
   let totalAmount = 0;
+  const zapDetails: ZapDetails[] = [];
 
   try {
     // Build filter for zap receipt events
@@ -278,12 +292,28 @@ export const fetchTotalZapAmount = async ({
             
             // Only count if k=web and i=url match
             if (kTag?.[1] === 'web' && iTag?.[1] === url && amountTag?.[1]) {
-              totalAmount += parseInt(amountTag[1], 10);
+              const amount = parseInt(amountTag[1], 10);
+              if (amount > 0) {
+                totalAmount += amount;
+                zapDetails.push({
+                  amount: amount / 1000, // convert from msats to sats
+                  date: new Date(event.created_at * 1000),
+                  authorPubkey: zapRequest.pubkey,
+                });
+              }
             }
           } else {
             // No URL filtering - count all zaps
             if (amountTag?.[1]) {
-              totalAmount += parseInt(amountTag[1], 10);
+              const amount = parseInt(amountTag[1], 10);
+              if (amount > 0) {
+                totalAmount += amount;
+                zapDetails.push({
+                  amount: amount / 1000, // convert from msats to sats
+                  date: new Date(event.created_at * 1000),
+                  authorPubkey: zapRequest.pubkey,
+                });
+              }
             }
           }
         } catch (e) {
@@ -297,7 +327,13 @@ export const fetchTotalZapAmount = async ({
     pool.close(relays);
   }
 
-  return totalAmount / 1000; // convert from msats to sats
+  // Sort zap details by date (newest first)
+  zapDetails.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  return {
+    totalAmount: totalAmount / 1000, // convert from msats to sats
+    zapDetails,
+  };
 };
 
 export const listenForZapReceipt = ({

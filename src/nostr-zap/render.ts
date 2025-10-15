@@ -9,6 +9,7 @@ export interface RenderZapButtonOptions extends IRenderOptions {
   isSuccess: boolean;
   buttonText: string;
   totalZapAmount: number | null;
+  hasZaps?: boolean;
 }
 
 export function renderZapButton({
@@ -19,6 +20,7 @@ export function renderZapButton({
   buttonText,
   totalZapAmount,
   isAmountLoading,
+  hasZaps = false,
 }: RenderZapButtonOptions): string {
 
   if (isLoading) {
@@ -36,7 +38,7 @@ export function renderZapButton({
     ? `<span>Zapped</span>`
     : `<span>${escapeHtml(buttonText)}</span>`;
 
-  return renderContainer(iconContent, textContent, totalZapAmount, isAmountLoading);
+  return renderContainer(iconContent, textContent, totalZapAmount, isAmountLoading, hasZaps);
 }
 
 function renderLoading(isAmountLoading: boolean): string {
@@ -68,10 +70,10 @@ function renderErrorContainer(leftContent: string, rightContent: string): string
   `;
 }
 
-function renderContainer(iconContent: string, textContent: string, totalZapAmount: number | null, isAmountLoading: boolean): string {
+function renderContainer(iconContent: string, textContent: string, totalZapAmount: number | null, isAmountLoading: boolean, hasZaps: boolean = false): string {
   const zapAmountHtml = isAmountLoading 
     ? `<span class="total-zap-amount skeleton"></span>` 
-    : (totalZapAmount !== null ? `<span class="total-zap-amount">${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '');
+    : (totalZapAmount !== null ? `<span class="total-zap-amount${hasZaps ? ' clickable' : ''}">${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '');
   
   const helpIconHtml = `<button class="help-icon" title="What is a zap?">?</button>`;
   
