@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+// Import for side effects to register the custom element
+import '../base/dialog-component/dialog-component';
+import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getZappersDialogStyles } from './dialog-zappers-style';
 import { getBatchedProfileMetadata, extractProfileMetadataContent, ZapDetails } from './zap-utils';
 
@@ -20,28 +23,18 @@ export interface OpenZappersModalParams {
 }
 
 /**
- * Inject zappers dialog styles into global shadow DOM
+ * Inject zappers dialog content styles into document head
+ * Prevents duplicate injection by checking for existing styles
  */
 export const injectZappersDialogStyles = (theme: 'light' | 'dark' = 'light') => {
-  const shadow = ensureShadow();
-  
   // Remove existing zappers dialog styles
-  const existingStyles = shadow.querySelectorAll('style[data-zappers-dialog-styles]');
+  const existingStyles = document.querySelectorAll('style[data-zappers-dialog-styles]');
   existingStyles.forEach(style => style.remove());
   
   const style = document.createElement('style');
   style.setAttribute('data-zappers-dialog-styles', 'true');
   style.textContent = getZappersDialogStyles(theme);
-  shadow.appendChild(style);
-};
-
-let _shadowRoot: ShadowRoot | null = null;
-function ensureShadow() {
-  if (_shadowRoot) return _shadowRoot;
-  const host = document.createElement('div');
-  document.body.appendChild(host);
-  _shadowRoot = host.attachShadow({ mode: 'open' });
-  return _shadowRoot;
+  document.head.appendChild(style);
 }
 
 /**
@@ -131,33 +124,41 @@ function renderSkeletonZapEntry(zap: ZapDetails, npub: string, index: number): s
 /**
  * Opens the zappers dialog showing individual zap details
  */
-export async function openZappersDialog(params: OpenZappersModalParams): Promise<HTMLDialogElement> {
+export async function openZappersDialog(params: OpenZappersModalParams): Promise<DialogComponent> {
   const { zapDetails, theme = 'light' } = params;
   
   // Inject styles
   injectZappersDialogStyles(theme);
   
-  // Create dialog
-  const dialog = document.createElement('dialog');
-  dialog.className = 'nostr-zap-zappers-dialog';
+  // Ensure custom element is defined
+  if (!customElements.get('dialog-component')) {
+    await customElements.whenDefined('dialog-component');
+  }
+  
+  // Create dialog component (not added to DOM)
+  const dialogComponent = document.createElement('dialog-component') as DialogComponent;
+  dialogComponent.setAttribute('header', 'Zappers');
   
   // Initial content with skeleton loaders showing npubs
   const initialContent = await renderInitialContent(zapDetails);
-  dialog.innerHTML = initialContent;
-
-  const shadow = ensureShadow();
-  shadow.appendChild(dialog);
-  dialog.showModal();
-
+  dialogComponent.innerHTML = initialContent;
+  
+  // Show the dialog (this will create and append the actual dialog element)
+  dialogComponent.showModal();
+  
+  // Get the actual dialog element for progressive enhancement
+  // We need to wait a tick for the dialog to be created
+  await new Promise(resolve => setTimeout(resolve, 0));
+  
+  // Find the dialog element that was created
+  const dialog = document.querySelector('.nostr-base-dialog') as HTMLDialogElement;
+  
   // Start progressive enhancement
-  if (zapDetails.length > 0) {
+  if (dialog && zapDetails.length > 0) {
     enhanceZapDetailsProgressively(dialog, zapDetails);
   }
 
-  // Event listeners
-  setupDialogEventListeners(dialog);
-
-  return dialog;
+  return dialogComponent;
 }
 
 /**
@@ -167,8 +168,6 @@ async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
   if (zapDetails.length === 0) {
     return `
       <div class="zappers-dialog-content">
-        <button class="close-btn">✕</button>
-        <h2>Zappers</h2>
         <div class="zappers-list">
           <div class="no-zaps">No zaps received yet</div>
         </div>
@@ -187,8 +186,6 @@ async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
 
   return `
     <div class="zappers-dialog-content">
-      <button class="close-btn">✕</button>
-      <h2>Zappers</h2>
       <div class="zappers-list">
         ${skeletonEntries}
       </div>
@@ -371,31 +368,3 @@ async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetai
   }
 }
 
-/**
- * Setup dialog event listeners
- */
-function setupDialogEventListeners(dialog: HTMLDialogElement): void {
-  const closeBtn = dialog.querySelector('.close-btn') as HTMLButtonElement;
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      dialog.close();
-      dialog.remove();
-    });
-  }
-
-  // Close on backdrop click
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) {
-      dialog.close();
-      dialog.remove();
-    }
-  });
-
-  // Close on Escape key
-  dialog.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      dialog.close();
-      dialog.remove();
-    }
-  });
-}

@@ -8,6 +8,7 @@ import { openZappersDialog } from './dialog-zappers';
 import { renderZapButton, RenderZapButtonOptions } from './render';
 import { getZapButtonStyles } from './style';
 import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
+import type { DialogComponent } from '../base/dialog-component/dialog-component';
 
 /**
  * <nostr-zap>
@@ -26,7 +27,7 @@ export default class NostrZap extends NostrUserComponent {
   
   private totalZapAmount: number | null = null;
   private cachedZapDetails: ZapDetails[] = [];
-  private cachedAmountDialog: HTMLDialogElement | null = null;
+  private cachedAmountDialog: DialogComponent | null = null;
 
   constructor() {
     super();
@@ -140,7 +141,7 @@ export default class NostrZap extends NostrUserComponent {
       this.cachedAmountDialog = await openZapModal({
         npub,
         relays,
-        cachedAmountDialog: this.cachedAmountDialog,
+        cachedDialogComponent: this.cachedAmountDialog,
         theme: this.theme === 'dark' ? 'dark' : 'light',
         fixedAmount: (() => {
           const amtAttr = this.getAttribute("amount");
@@ -173,8 +174,12 @@ export default class NostrZap extends NostrUserComponent {
     }
   }
 
-  private handleHelpClick() {
-    showHelpDialog();
+  private async handleHelpClick() {
+    try {
+      await showHelpDialog();
+    } catch (error) {
+      console.error('Error showing help dialog:', error);
+    }
   }
 
   private async handleZappersClick() {

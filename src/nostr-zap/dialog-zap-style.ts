@@ -8,45 +8,26 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
   const isDark = theme === 'dark';
   
   return `
-    /* === DIALOG BASE STYLES === */
-    .nostr-zap-dialog {
-      width: 424px;
-      max-width: 90vw;
-      border: none;
-      border-radius: 10px;
-      padding: 20px 20px;
-      background: ${isDark ? '#141414' : '#ffffff'};
-      color: ${isDark ? '#ffffff' : '#000000'};
-      position: relative;
-      font-family: ui-sans-serif, system-ui, sans-serif;
+    /* === ZAP DIALOG CONTENT STYLES === */
+    .zap-dialog-content {
       text-align: center;
+      color: ${isDark ? '#ffffff' : '#000000'};
     }
 
-    .nostr-zap-dialog[open] {
-      display: block;
-    }
-
-    /* === TYPOGRAPHY === */
-    .nostr-zap-dialog h2 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin: 4px 0;
-    }
-
-    .nostr-zap-dialog p {
+    .zap-dialog-content p {
       margin: 4px 0;
       word-break: break-word;
     }
 
     /* === AMOUNT BUTTONS === */
-    .nostr-zap-dialog .amount-buttons {
+    .zap-dialog-content .amount-buttons {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       margin: 16px 0 8px;
     }
 
-    .nostr-zap-dialog .amount-buttons button {
+    .zap-dialog-content .amount-buttons button {
       flex: 1 1 30%;
       min-width: 72px;
       padding: 8px 0;
@@ -58,13 +39,13 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       color: ${isDark ? '#ffffff' : '#000000'};
     }
 
-    .nostr-zap-dialog .amount-buttons button.active {
+    .zap-dialog-content .amount-buttons button.active {
       background: #7f00ff;
       color: #ffffff;
     }
 
     /* === ACTION BUTTONS === */
-    .nostr-zap-dialog .cta-btn {
+    .zap-dialog-content .cta-btn {
       width: 100%;
       padding: 12px 0;
       border: none;
@@ -76,21 +57,7 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       color: #ffffff;
     }
 
-    .nostr-zap-dialog .close-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      border: none;
-      background: ${isDark ? '#262626' : '#f7fafc'};
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
-      font-size: 18px;
-      cursor: pointer;
-      color: ${isDark ? '#ffffff' : '#000000'};
-    }
-
-    .nostr-zap-dialog .copy-btn {
+    .zap-dialog-content .copy-btn {
       margin-top: 12px;
       cursor: pointer;
       font-size: 14px;
@@ -99,49 +66,49 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       color: #7f00ff;
     }
 
-    .nostr-zap-dialog .update-zap-btn {
+    .zap-dialog-content .update-zap-btn {
       background: #7f00ff;
       color: #ffffff;
     }
 
     /* === QR CODE === */
-    .nostr-zap-dialog img.qr {
+    .zap-dialog-content img.qr {
       margin-top: 16px;
       border: 1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'};
       border-radius: 8px;
     }
 
     /* === INPUT CONTAINERS === */
-    .nostr-zap-dialog .update-zap-container {
+    .zap-dialog-content .update-zap-container {
       display: flex;
       gap: 8px;
       align-items: center;
       margin-top: 8px;
     }
 
-    .nostr-zap-dialog .update-zap-container .custom-amount {
+    .zap-dialog-content .update-zap-container .custom-amount {
       flex-grow: 1;
     }
 
-    .nostr-zap-dialog .comment-container {
+    .zap-dialog-content .comment-container {
       display: flex;
       gap: 8px;
       align-items: center;
       margin-top: 8px;
     }
 
-    .nostr-zap-dialog .comment-container .comment-input {
+    .zap-dialog-content .comment-container .comment-input {
       flex-grow: 1;
     }
 
-    .nostr-zap-dialog input {
+    .zap-dialog-content input {
       background: ${isDark ? '#262626' : '#ffffff'};
       border: 1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'};
       color: ${isDark ? '#ffffff' : '#000000'};
     }
 
     /* === LOADING OVERLAY === */
-    .nostr-zap-dialog .loading-overlay {
+    .nostr-base-dialog .loading-overlay {
       position: absolute;
       inset: 0;
       background: ${isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)'};
@@ -154,12 +121,12 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       pointer-events: none;
     }
 
-    .nostr-zap-dialog.loading .loading-overlay {
+    .nostr-base-dialog.loading .loading-overlay {
       opacity: 1;
       pointer-events: auto;
     }
 
-    .nostr-zap-dialog .loading-overlay .loader {
+    .nostr-base-dialog .loading-overlay .loader {
       width: 40px;
       height: 40px;
       border: 4px solid ${isDark ? '#3a3a3a' : '#ccc'};
@@ -169,7 +136,7 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
     }
 
     /* === SUCCESS OVERLAY === */
-    .nostr-zap-dialog .success-overlay {
+    .nostr-base-dialog .success-overlay {
       position: absolute;
       inset: 0;
       background: rgba(0, 0, 0, 0.65);
@@ -184,7 +151,7 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       pointer-events: none;
     }
 
-    .nostr-zap-dialog.success .success-overlay {
+    .nostr-base-dialog.success .success-overlay {
       opacity: 1;
       pointer-events: auto;
     }

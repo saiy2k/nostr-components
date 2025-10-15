@@ -6,72 +6,12 @@ export function getZappersDialogStyles(theme: 'light' | 'dark' = 'light'): strin
   const isDark = theme === 'dark';
   
   const customStyles = `
-    /* === ZAPPERS DIALOG STYLES === */
-    .nostr-zap-zappers-dialog {
-      /* Dialog backdrop */
-      background: rgba(0, 0, 0, 0.5);
-      border: none;
-      padding: 0;
-      margin: 0;
-      width: 100vw;
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 10000;
-      
-      /* Center dialog */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
+    /* === ZAPPERS DIALOG CONTENT STYLES === */
     .zappers-dialog-content {
-      background: ${isDark ? '#1a1a1a' : '#ffffff'};
-      border-radius: var(--nostrc-border-radius-lg, 12px);
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      max-width: 500px;
-      width: 90vw;
-      max-height: 80vh;
       overflow: hidden;
-      position: relative;
-    }
-
-    .zappers-dialog-content h2 {
-      margin: 0;
-      padding: var(--nostrc-spacing-lg, 24px) var(--nostrc-spacing-lg, 24px) var(--nostrc-spacing-md, 16px);
-      font-size: var(--nostrc-font-size-xl, 20px);
-      font-weight: 600;
-      color: ${isDark ? '#ffffff' : '#1a1a1a'};
-      border-bottom: 1px solid ${isDark ? '#333333' : '#e5e7eb'};
-    }
-
-    .close-btn {
-      position: absolute;
-      top: var(--nostrc-spacing-md, 16px);
-      right: var(--nostrc-spacing-md, 16px);
-      background: none;
-      border: none;
-      font-size: var(--nostrc-font-size-lg, 18px);
-      color: ${isDark ? '#9ca3af' : '#6b7280'};
-      cursor: pointer;
-      padding: var(--nostrc-spacing-xs, 4px);
-      border-radius: var(--nostrc-border-radius-sm, 4px);
-      transition: all 0.2s ease;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .close-btn:hover {
-      background: ${isDark ? '#374151' : '#f3f4f6'};
-      color: ${isDark ? '#ffffff' : '#1a1a1a'};
     }
 
     .zappers-list {
-      padding: var(--nostrc-spacing-md, 16px);
       max-height: 60vh;
       overflow-y: auto;
     }
@@ -146,10 +86,6 @@ export function getZappersDialogStyles(theme: 'light' | 'dark' = 'light'): strin
     }
 
     /* Loading skeleton with npub */
-    .loading-skeleton {
-      padding: var(--nostrc-spacing-md, 16px);
-    }
-
     .skeleton-entry {
       display: flex;
       align-items: center;
@@ -193,26 +129,16 @@ export function getZappersDialogStyles(theme: 'light' | 'dark' = 'light'): strin
       }
     }
 
-    /* Empty and error states */
-    .no-zaps,
-    .error-message {
+    /* Empty state */
+    .no-zaps {
       text-align: center;
       padding: var(--nostrc-spacing-xl, 32px);
       color: ${isDark ? '#9ca3af' : '#6b7280'};
       font-size: var(--nostrc-font-size-base, 16px);
     }
 
-    .error-message {
-      color: var(--nostrc-color-error-text, #dc2626);
-    }
-
     /* Responsive design */
     @media (max-width: 640px) {
-      .zappers-dialog-content {
-        width: 95vw;
-        max-height: 85vh;
-      }
-      
       .zap-author-picture,
       .zap-author-picture-default,
       .skeleton-picture {
