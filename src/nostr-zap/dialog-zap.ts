@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { getDialogStyles } from './dialog-style';
+import { getDialogStyles } from './dialog-zap-style';
 
 /**
  * Modal dialog helper for <nostr-zap> component.
