@@ -60,7 +60,7 @@ This document contains the technical implementation details for the `nostr-zap` 
 ### Initialization Flow
 1. Constructor: Initialize `amountStatus` to Loading
 2. Connected Callback: Inherited from base classes
-3. Attribute Changed: Handle attribute updates
+3. Attribute Changed: Handle attribute updates including URL validation
 4. Status Change: React to status updates via `onStatusChange()`
 5. User Ready: Handle user resolution via `onUserReady()`
 
@@ -94,6 +94,7 @@ computeOverall(): Reflects the most critical status
 - WebLN Integration: Direct wallet connection
 - Copy Functionality: Clipboard API for invoice copying
 - Payment Confirmation: Uses `listenForZapReceipt()` to detect successful payments
+- URL-Based Zaps: Passes URL parameter through `OpenZapModalParams` for NIP-73 compliance
 - Success State: Shows "⚡ Thank you!" overlay and hides controls
 
 ### Help Dialog Features
@@ -129,12 +130,13 @@ computeOverall(): Reflects the most critical status
 - Benefits: Reusability, consistency, single source of truth
 
 ### Zap-Specific Utilities (`src/nostr-zap/zap-utils.ts`)
-- `fetchTotalZapAmount()`: Fetches and calculates total zap amounts
+- `fetchTotalZapAmount()`: Fetches and calculates total zap amounts with optional URL filtering
 - `getProfileMetadata()`: Caches and retrieves user profile data
 - `getZapEndpoint()`: Resolves Lightning zap endpoints
-- `fetchInvoice()`: Generates Lightning invoices
+- `fetchInvoice()`: Generates Lightning invoices with optional URL-based zap tags
+- `makeZapEvent()`: Creates zap request events with optional URL tags (NIP-73 compliance)
 - `listenForZapReceipt()`: Monitors for zap payment confirmations
-- Purpose: Zap-specific functionality only
+- Purpose: Zap-specific functionality including URL-based zaps
 
 ## Zap Count Implementation
 
@@ -142,15 +144,18 @@ computeOverall(): Reflects the most critical status
 - Method: `fetchTotalZapAmount()` in `zap-utils.ts`
 - Query: `pool.querySync()` for kind 9735 events
 - Filter: `#p` tag matching user's pubkey
+- URL Filtering: When URL provided, adds `#k: ["web"]` and `#i: [url]` filters for granular tracking
 - Limit: 1000 events for performance
 
 ### Amount Calculation
 - Source: Zap receipt events (kind 9735)
 - Parsing: Extract amount from zap request description tags
 - Aggregation: Sum all amounts and convert msats to sats
+- URL Filtering: Only includes zaps matching specific URL when provided (follows NIP-73)
 - Caching: No caching - real-time data
 
 ### Error Handling
 - Network Errors: Graceful fallback, no error state
 - Parse Errors: Logged but don't break functionality
+- URL Validation: Invalid URLs show error state in component
 - Pool Management: Proper cleanup with `pool.close()`

@@ -36,6 +36,12 @@
 8. Success State: Show "⚡ Thank you!" overlay
 9. Close: User clicks close button (×) or modal closes automatically after WebLN payment
 
+### URL-Based Zaps
+When the `url` attribute is provided:
+- Zap requests include additional tags: `["k", "web"]` and `["i", url]`
+- Total zap amount filtering includes these tags to show only zaps sent to the specific URL
+- Enables content creators to receive zaps for specific articles, posts, or URLs
+
 ### Modal Features
 - Amount presets with custom input
 - Optional comment field (max 200 chars)
@@ -82,6 +88,14 @@ At least one user identifier must be provided:
 - Description: Default amount shown in modal (user can change)
 - Validation: 1-210,000 sats
 - Example: `default-amount="100"`
+
+#### `url`
+- Type: string
+- Default: undefined
+- Description: URL to send zap to (enables URL-based zaps)
+- Validation: Valid URL format
+- Example: `url="https://example.com/article"`
+- Behavior: When provided, zap requests include `["k", "web"]` and `["i", url]` tags
 
 #### `theme`
 - Type: string
@@ -255,6 +269,20 @@ Visual wireframes showing all component states and behaviors:
 ### NIP-05
 ```html
 <nostr-zap nip05="user@domain.com"></nostr-zap>
+```
+
+### URL-Based Zap
+```html
+<nostr-zap npub="npub1..." url="https://example.com/article"></nostr-zap>
+```
+
+### URL-Based Zap with Custom Text
+```html
+<nostr-zap 
+  npub="npub1..." 
+  url="https://example.com/article"
+  text="Support this article">
+</nostr-zap>
 ```
 
 ### With Help Icon
