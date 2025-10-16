@@ -207,6 +207,9 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   // Create dialog component (not added to DOM)
   const dialogComponent = document.createElement('dialog-component') as DialogComponent;
   dialogComponent.setAttribute('header', 'Send a Zap');
+  if (params.theme) {
+    dialogComponent.setAttribute('data-theme', params.theme);
+  }
   
   const amountButtonsHtml = presets
     .map(a => `<button type="button" data-val="${a}">${a} ⚡</button>`) // show sat symbol

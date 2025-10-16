@@ -109,6 +109,9 @@ export async function openZappersDialog(params: OpenZappersModalParams): Promise
   // Create dialog component (not added to DOM)
   const dialogComponent = document.createElement('dialog-component') as DialogComponent;
   dialogComponent.setAttribute('header', 'Zappers');
+  if (params.theme) {
+    dialogComponent.setAttribute('data-theme', params.theme);
+  }
   
   // Initial content with skeleton loaders showing npubs
   const initialContent = await renderInitialContent(zapDetails);

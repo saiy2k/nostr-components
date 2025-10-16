@@ -13,8 +13,8 @@ export const getDialogComponentStyles = (): string => {
       border: none;
       border-radius: var(--nostrc-border-radius-lg, 10px);
       padding: var(--nostrc-spacing-xl, 20px);
-      background: var(--nostrc-color-background, #ffffff);
-      color: var(--nostrc-color-text-primary, #000000);
+      background: var(--nostrc-theme-bg, #ffffff);
+      color: var(--nostrc-theme-text-primary, #000000);
       position: relative;
       font-family: var(--nostrc-font-family-primary, ui-sans-serif, system-ui, sans-serif);
     }
@@ -42,30 +42,32 @@ export const getDialogComponentStyles = (): string => {
       flex: 1;
       text-align: left;
       padding-top: 2px;
+      color: var(--nostrc-theme-text-primary, #000000);
     }
 
     .dialog-close-btn {
       border: none;
-      background: var(--nostrc-color-background-secondary, #f7fafc);
+      background: var(--nostrc-theme-hover-bg, #f7fafc);
       border-radius: var(--nostrc-border-radius-full, 50%);
       width: 32px;
       height: 32px;
       min-width: 32px;
       font-size: var(--nostrc-font-size-base, 16px);
       cursor: pointer;
-      color: var(--nostrc-color-text-secondary, #666666);
+      color: var(--nostrc-theme-text-secondary, #666666);
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
     .dialog-close-btn:hover {
-      background: var(--nostrc-color-hover-background, rgba(0, 0, 0, 0.05));
-      color: var(--nostrc-color-text-primary, #000000);
+      background: var(--nostrc-theme-border, rgba(0, 0, 0, 0.05));
+      color: var(--nostrc-theme-text-primary, #000000);
     }
 
     .dialog-content {
       line-height: 1.6;
+      color: var(--nostrc-theme-text-primary, #000000);
     }
   `;
 };

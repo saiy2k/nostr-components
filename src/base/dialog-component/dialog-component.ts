@@ -32,7 +32,7 @@ export class DialogComponent extends HTMLElement {
    * Observed attributes for the component
    */
   static get observedAttributes() {
-    return ['header'];
+    return ['header', 'data-theme'];
   }
 
   /**
@@ -57,10 +57,14 @@ export class DialogComponent extends HTMLElement {
     // Get content before creating dialog
     const contentHTML = this.innerHTML;
     const headerText = this.getAttribute('header') || 'Dialog';
+    const theme = this.getAttribute('data-theme');
 
     // Create dialog element
     this.dialog = document.createElement('dialog');
     this.dialog.className = 'nostr-base-dialog';
+    if (theme) {
+      this.dialog.setAttribute('data-theme', theme);
+    }
     this.dialog.innerHTML = `
       <div class="dialog-header">
         <h2>${headerText}</h2>
@@ -161,6 +165,12 @@ export class DialogComponent extends HTMLElement {
       const heading = this.dialog.querySelector('.dialog-header h2');
       if (heading) {
         heading.textContent = newValue || 'Dialog';
+      }
+    } else if (name === 'data-theme' && this.dialog) {
+      if (newValue) {
+        this.dialog.setAttribute('data-theme', newValue);
+      } else {
+        this.dialog.removeAttribute('data-theme');
       }
     }
   }

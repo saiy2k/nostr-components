@@ -17,7 +17,7 @@ export const injectHelpDialogStyles = (): void => {
   document.head.appendChild(style);
 };
 
-export const showHelpDialog = async (): Promise<void> => {
+export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> => {
   injectHelpDialogStyles();
   
   if (!customElements.get('dialog-component')) {
@@ -26,6 +26,9 @@ export const showHelpDialog = async (): Promise<void> => {
   
   const dialogComponent = document.createElement('dialog-component') as DialogComponent;
   dialogComponent.setAttribute('header', 'What is a Zap? (Under construction)');
+  if (theme) {
+    dialogComponent.setAttribute('data-theme', theme);
+  }
   
   // Set dialog content
   dialogComponent.innerHTML = `

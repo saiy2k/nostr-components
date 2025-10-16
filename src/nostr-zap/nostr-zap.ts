@@ -184,7 +184,7 @@ export default class NostrZap extends NostrUserComponent {
 
   private async handleHelpClick() {
     try {
-      await showHelpDialog();
+      await showHelpDialog(this.theme === 'dark' ? 'dark' : 'light');
     } catch (error) {
       console.error('Error showing help dialog:', error);
     }
