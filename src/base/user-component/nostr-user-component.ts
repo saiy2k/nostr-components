@@ -83,7 +83,10 @@ export class NostrUserComponent extends NostrBaseComponent {
   /** Protected methods */
   protected validateInputs(): boolean {
 
-    if (!super.validateInputs()) return false;
+    if (!super.validateInputs()) {
+      this.userStatus.set(NCStatus.Idle);
+      return false;
+    }
 
     const npub    = this.getAttribute("npub");
     const pubkey  = this.getAttribute("pubkey");

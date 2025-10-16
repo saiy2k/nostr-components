@@ -91,7 +91,11 @@ export class NostrEventComponent extends NostrBaseComponent {
   /** Protected methods */
   protected validateInputs(): boolean {
 
-    if (!super.validateInputs()) return false;
+    if (!super.validateInputs()) {
+      this.eventStatus.set(NCStatus.Idle);
+      this.authorStatus.set(NCStatus.Idle);
+      return false;
+    }
 
     const hex     = this.getAttribute("hex");
     const noteid  = this.getAttribute("noteid");
@@ -106,6 +110,7 @@ export class NostrEventComponent extends NostrBaseComponent {
 
     if (err) {
       this.eventStatus.set(NCStatus.Error, err);
+      this.authorStatus.set(NCStatus.Error, err);
       console.error(`Nostr-Components: ${tagName}: ${err}`);
       this.errorMessage = err;
       return false;

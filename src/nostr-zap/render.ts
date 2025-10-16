@@ -23,12 +23,12 @@ export function renderZapButton({
   hasZaps = false,
 }: RenderZapButtonOptions): string {
 
-  if (isLoading) {
-    return renderLoading(isAmountLoading);
-  }
-
   if (isError) {
     return renderError(errorMessage || '');
+  }
+
+  if (isLoading) {
+    return renderLoading(isAmountLoading);
   }
 
   const iconContent = isSuccess
