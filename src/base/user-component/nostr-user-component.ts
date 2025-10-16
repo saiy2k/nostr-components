@@ -135,6 +135,11 @@ export class NostrUserComponent extends NostrBaseComponent {
       // stale call check
       if (seq !== this.loadSeq) return;
 
+      if (profile == null) {
+        this.userStatus.set(NCStatus.Error, "Profile not found");
+        return;
+      }
+
       this.user = user;
       this.profile = profile;
       this.userStatus.set(NCStatus.Ready);

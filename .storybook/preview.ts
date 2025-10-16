@@ -13,6 +13,21 @@ const preview: Preview = {
       brandUrl: 'https://nostr-components.web.app/',
     },
   },
+  decorators: [
+    (story, context) => {
+      // Check if story has dark theme
+      const isDarkTheme = context.args?.['data-theme'] === 'dark';
+      
+      // Apply background to body
+      if (isDarkTheme) {
+        document.body.style.backgroundColor = '#000000';
+      } else {
+        document.body.style.backgroundColor = '';
+      }
+      
+      return story();
+    },
+  ],
 };
 
 export default preview;
