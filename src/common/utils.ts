@@ -24,6 +24,13 @@ export const decodeNpub = (npub: string): string => {
   return '';
 };
 
+/**
+ * Convert hex pubkey to npub
+ */
+export function hexToNpub(hex: string): string {
+  return nip19.npubEncode(hex);
+}
+
 // Could be npub, note1, naddr, nsec, etc.,
 export const decodeNip19Entity = (entity: string): any => {
   if (typeof entity !== 'string' || !/^[a-z0-9]+1[ac-hj-np-z02-9]+/.test(entity)) {
@@ -245,4 +252,55 @@ export function validateEventId(eventId: string): boolean {
 
 export function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text)
+}
+
+/**
+ * Format timestamp as relative time (e.g., "2 mins ago", "1 month ago")
+ * @param ts Timestamp in seconds
+ * @returns Formatted relative time string
+ */
+export function formatRelativeTime(ts: number): string {
+  try {
+    const now = Date.now();
+    const messageTime = ts * 1000;
+    const diffMs = now - messageTime;
+
+    // Convert to seconds
+    const diffSec = Math.floor(diffMs / 1000);
+
+    if (diffSec < 60) {
+      return 'just now';
+    }
+
+    // Minutes
+    if (diffSec < 3600) {
+      const mins = Math.floor(diffSec / 60);
+      return `${mins} ${mins === 1 ? 'min' : 'mins'} ago`;
+    }
+
+    // Hours
+    if (diffSec < 86400) {
+      const hours = Math.floor(diffSec / 3600);
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    }
+
+    // Days
+    if (diffSec < 2592000) { // ~30 days
+      const days = Math.floor(diffSec / 86400);
+      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    }
+
+    // Months
+    if (diffSec < 31536000) { // ~365 days
+      const months = Math.floor(diffSec / 2592000);
+      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+    }
+
+    // Years
+    const years = Math.floor(diffSec / 31536000);
+    return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  } catch (error) {
+    console.error('Error formatting relative time:', error);
+    return 'unknown';
+  }
 }

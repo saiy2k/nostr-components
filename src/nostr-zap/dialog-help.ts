@@ -5,15 +5,8 @@ import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getHelpDialogStyles } from './dialog-help-style';
 
-/**
- * Hardcoded YouTube URL for zap tutorial
- */
-const YOUTUBE_URL = "https://youtube.com/watch?v=zap-tutorial";
+const YOUTUBE_URL = "https://www.youtube.com/shorts/PDnrh8pkF3g";
 
-/**
- * Inject help dialog content styles into document head
- * Prevents duplicate injection by checking for existing styles
- */
 export const injectHelpDialogStyles = (): void => {
   // Check if styles are already injected
   if (document.querySelector('style[data-help-dialog-styles]')) return;
@@ -24,20 +17,13 @@ export const injectHelpDialogStyles = (): void => {
   document.head.appendChild(style);
 };
 
-/**
- * Create and show help dialog using DialogComponent
- * Handles dialog creation and content styling
- */
 export const showHelpDialog = async (): Promise<void> => {
-  // Inject help dialog content styles
   injectHelpDialogStyles();
   
-  // Ensure custom element is defined
   if (!customElements.get('dialog-component')) {
     await customElements.whenDefined('dialog-component');
   }
   
-  // Create dialog component (not added to DOM)
   const dialogComponent = document.createElement('dialog-component') as DialogComponent;
   dialogComponent.setAttribute('header', 'What is a Zap? (Under construction)');
   
@@ -58,6 +44,5 @@ export const showHelpDialog = async (): Promise<void> => {
     </div>
   `;
   
-  // Show the dialog (this will create and append the actual dialog element)
   dialogComponent.showModal();
 };

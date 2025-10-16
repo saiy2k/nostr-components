@@ -20,6 +20,8 @@ import type { DialogComponent } from '../base/dialog-component/dialog-component'
  *   - amount          (optional) : pre-defined zap amount in sats
  *   - default-amount  (optional) : default zap amount in sats (default 21)
  *   - url             (optional) : URL to send zap to (enables URL-based zaps)
+ * 
+ *  TODO: Doesn't yet support dynamic updates of attributes.
  */
 export default class NostrZap extends NostrUserComponent {
   protected zapActionStatus=   this.channel('zapAction');

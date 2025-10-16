@@ -5,6 +5,7 @@ import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getZappersDialogStyles } from './dialog-zappers-style';
 import { getBatchedProfileMetadata, extractProfileMetadataContent, ZapDetails } from './zap-utils';
+import { formatRelativeTime, hexToNpub } from '../common/utils';
 
 /**
  * Modal dialog for displaying individual zap details (zappers).
@@ -37,36 +38,6 @@ export const injectZappersDialogStyles = (theme: 'light' | 'dark' = 'light') => 
   document.head.appendChild(style);
 }
 
-/**
- * Format relative time (e.g., "2 hours ago", "1 day ago")
- */
-function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays > 0) {
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-  } else if (diffHours > 0) {
-    return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  } else if (diffMinutes > 0) {
-    return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-  } else {
-    return 'Just now';
-  }
-}
-
-/**
- * Convert hex pubkey to npub
- */
-async function hexToNpub(hex: string): Promise<string> {
-  const { nip19 } = await import('nostr-tools');
-  return nip19.npubEncode(hex);
-}
-
 interface EnhancedZapDetails extends ZapDetails {
   authorName?: string;
   authorPicture?: string;
@@ -92,7 +63,7 @@ function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
             ${zap.authorName}
           </a>
           <div class="zap-amount-date">
-            ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(zap.date)}
+            ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(Math.floor(zap.date.getTime() / 1000))}
           </div>
         </div>
       </div>
@@ -113,7 +84,7 @@ function renderSkeletonZapEntry(zap: ZapDetails, npub: string, index: number): s
             ${npub}
           </div>
           <div class="zap-amount-date">
-            ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(zap.date)}
+            ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(Math.floor(zap.date.getTime() / 1000))}
           </div>
         </div>
       </div>
@@ -176,9 +147,7 @@ async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
   }
 
   // Convert all pubkeys to npubs for immediate display
-  const npubs = await Promise.all(
-    zapDetails.map(zap => hexToNpub(zap.authorPubkey))
-  );
+  const npubs = zapDetails.map(zap => hexToNpub(zap.authorPubkey));
 
   const skeletonEntries = zapDetails.map((zap, index) => 
     renderSkeletonZapEntry(zap, npubs[index], index)
@@ -215,14 +184,9 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
     });
 
     // Convert all pubkeys to npubs for display
-    const npubPromises = uniqueAuthorIds.map(async (pubkey) => ({
-      pubkey,
-      npub: await hexToNpub(pubkey)
-    }));
-    const npubResults = await Promise.all(npubPromises);
     const npubMap = new Map<string, string>();
-    npubResults.forEach(result => {
-      npubMap.set(result.pubkey, result.npub);
+    uniqueAuthorIds.forEach(pubkey => {
+      npubMap.set(pubkey, hexToNpub(pubkey));
     });
 
     // Process each zap entry
@@ -298,7 +262,7 @@ async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetai
       const { getProfileMetadata } = await import('./zap-utils');
       const profileMetadata = await getProfileMetadata(zap.authorPubkey);
       const profileContent = extractProfileMetadataContent(profileMetadata);
-      const npub = await hexToNpub(zap.authorPubkey);
+      const npub = hexToNpub(zap.authorPubkey);
       
       const enhanced = {
         ...zap,
@@ -317,37 +281,20 @@ async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetai
     } catch (error) {
       console.error("Nostr-Components: Zappers dialog: Error fetching profile for", zap.authorPubkey, error);
       // Fallback with just pubkey converted to npub
-      try {
-        const npub = await hexToNpub(zap.authorPubkey);
-        const enhanced = {
-          ...zap,
-          authorName: npub,
-          authorNpub: npub,
-        };
-        
-        // Cache the fallback profile
-        profileCache.set(zap.authorPubkey, enhanced);
-        
-        return {
-          index,
-          enhanced
-        };
-      } catch (npubError) {
-        console.error("Nostr-Components: Zappers dialog: Error converting pubkey to npub", npubError);
-        const enhanced = {
-          ...zap,
-          authorName: zap.authorPubkey,
-          authorNpub: zap.authorPubkey,
-        };
-        
-        // Cache the final fallback
-        profileCache.set(zap.authorPubkey, enhanced);
-        
-        return {
-          index,
-          enhanced
-        };
-      }
+      const npub = hexToNpub(zap.authorPubkey);
+      const enhanced = {
+        ...zap,
+        authorName: npub,
+        authorNpub: npub,
+      };
+      
+      // Cache the fallback profile
+      profileCache.set(zap.authorPubkey, enhanced);
+      
+      return {
+        index,
+        enhanced
+      };
     }
   });
 
