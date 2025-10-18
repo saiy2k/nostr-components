@@ -1,21 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
+import { generateCode, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'Zap Button',
-  tags: ['autodocs'],
+  title: 'Zap Button/Testing/Valid',
+  tags: ['test', 'valid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
   parameters: {
-    docs: {
-      description: {
-        component: 'A web component that displays a zap button for Nostr profiles. Supports npub, nip05, and pubkey inputs with theme customization, zap amount configuration, and URL-based zaps for content creators.',
-      },
-      source: {
-        transform: (code, storyContext) =>
-          generateCodeWithScript(storyContext.args),
+    test: {
+      enabled: true,
+      a11y: {
+        element: 'nostr-zap',
+        config: {
+          rules: {
+            'color-contrast': { enabled: true },
+            'keyboard-navigation': { enabled: true },
+          },
+        },
       },
     },
   },
@@ -23,11 +26,6 @@ const meta: Meta = {
 
 export default meta;
 type Story = StoryObj<any>;
-
-export const Default: Story = {
-  name: TEST_CASES.default.name,
-  args: TEST_CASES.default.args,
-};
 
 export const DarkTheme: Story = {
   name: TEST_CASES.darkTheme.name,
@@ -62,19 +60,4 @@ export const DefaultAmount: Story = {
 export const CustomIconSize: Story = {
   name: TEST_CASES.customIconSize.name,
   args: TEST_CASES.customIconSize.args,
-};
-
-export const UrlBasedZap: Story = {
-  name: TEST_CASES.urlBasedZap.name,
-  args: TEST_CASES.urlBasedZap.args,
-};
-
-export const UrlBasedZapCustomText: Story = {
-  name: TEST_CASES.urlBasedZapCustomText.name,
-  args: TEST_CASES.urlBasedZapCustomText.args,
-};
-
-export const UrlBasedZapFixedAmount: Story = {
-  name: TEST_CASES.urlBasedZapFixedAmount.name,
-  args: TEST_CASES.urlBasedZapFixedAmount.args,
 };

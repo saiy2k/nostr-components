@@ -5,6 +5,7 @@ addons.setConfig({
   storySort: {
     order: [
       'Introduction', 
+      'Zap Button',
       'Follow Button', 
       'Post', 
       'Profile', 

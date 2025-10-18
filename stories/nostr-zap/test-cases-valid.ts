@@ -6,14 +6,15 @@ export const TEST_CASES = {
     name: 'Default',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.fiatjaf.npub,
+      npub: PROFILE_DATA.saiy2k.npub,
+      url: 'https://saiy2k.in/',
     },
   },
   darkTheme: {
     name: 'Dark Theme',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.odell.npub,
+      npub: PROFILE_DATA.saiy2k.npub,
       'data-theme': 'dark',
     },
   },
@@ -64,6 +65,33 @@ export const TEST_CASES = {
     cssVariables: {
       '--nostrc-icon-width': '30px',
       '--nostrc-icon-height': '30px',
+    },
+  },
+  urlBasedZap: {
+    name: 'URL-Based Zap',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.saiy2k.npub,
+      url: 'https://saiy2k.in/',
+    },
+  },
+  urlBasedZapCustomText: {
+    name: 'URL-Based Zap with Custom Text',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.fiatjaf.npub,
+      url: 'https://saiy2k.in/',
+      text: 'Support this article',
+    },
+  },
+  urlBasedZapFixedAmount: {
+    name: 'URL-Based Zap with Fixed Amount',
+    args: {
+      width: DEFAULT_WIDTH,
+      npub: PROFILE_DATA.fiatjaf.npub,
+      url: 'https://saiy2k.in/',
+      amount: '5000',
+      text: 'Support this article',
     },
   },
 

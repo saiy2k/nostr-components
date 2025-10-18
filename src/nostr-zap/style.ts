@@ -116,6 +116,16 @@ export function getZapButtonStyles(): string {
       white-space: nowrap;
     }
 
+    /* Clickable zap amount */
+    .total-zap-amount.clickable {
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .total-zap-amount.clickable:hover {
+      color: var(--nostrc-color-primary, #7f00ff);
+    }
+
     /* Help icon */
     .help-icon {
       background: none;

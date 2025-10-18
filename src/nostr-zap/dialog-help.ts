@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: MIT
 
+// Import for side effects to register the custom element
+import '../base/dialog-component/dialog-component';
+import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getHelpDialogStyles } from './dialog-help-style';
 
-/**
- * Hardcoded YouTube URL for zap tutorial
- */
-const YOUTUBE_URL = "https://youtube.com/watch?v=zap-tutorial";
+const YOUTUBE_URL = "https://www.youtube.com/shorts/PDnrh8pkF3g";
 
-/**
- * Inject help dialog styles into document head
- * Prevents duplicate injection by checking for existing styles
- */
 export const injectHelpDialogStyles = (): void => {
   // Check if styles are already injected
   if (document.querySelector('style[data-help-dialog-styles]')) return;
@@ -21,60 +17,35 @@ export const injectHelpDialogStyles = (): void => {
   document.head.appendChild(style);
 };
 
-/**
- * Create and show help dialog
- * Handles dialog creation, styling, and event listeners
- */
-export const showHelpDialog = (): void => {
-  // Inject help dialog styles
+export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> => {
   injectHelpDialogStyles();
   
-  // Create help dialog
-  const dialog = document.createElement('dialog');
-  dialog.className = 'nostr-zap-help-dialog';
-  dialog.innerHTML = `
-    <div class="help-dialog-content">
-      <button class="close-btn">✕</button>
-      <h2>What is a Zap? (Under construction)</h2>
-      <div class="help-content">
-        <p>A zap is a Lightning Network payment sent to a Nostr user.</p>
-        <p>Zaps allow you to:</p>
-        <ul>
-          <li>Send micropayments instantly</li>
-          <li>Support content creators</li>
-          <li>Show appreciation for posts</li>
-        </ul>
-        <p>Learn more about zaps:</p>
-        <a href="${YOUTUBE_URL}" target="_blank" rel="noopener noreferrer" class="youtube-link">
-          Watch YouTube Tutorial
-        </a>
-      </div>
+  if (!customElements.get('dialog-component')) {
+    await customElements.whenDefined('dialog-component');
+  }
+  
+  const dialogComponent = document.createElement('dialog-component') as DialogComponent;
+  dialogComponent.setAttribute('header', 'What is a Zap? (Under construction)');
+  if (theme) {
+    dialogComponent.setAttribute('data-theme', theme);
+  }
+  
+  // Set dialog content
+  dialogComponent.innerHTML = `
+    <div class="help-content">
+      <p>A zap is a Lightning Network payment sent to a Nostr user.</p>
+      <p>Zaps allow you to:</p>
+      <ul>
+        <li>Send micropayments instantly</li>
+        <li>Support content creators</li>
+        <li>Show appreciation for posts</li>
+      </ul>
+      <p>Learn more about zaps:</p>
+      <a href="${YOUTUBE_URL}" target="_blank" rel="noopener noreferrer" class="youtube-link">
+        Watch YouTube Tutorial
+      </a>
     </div>
   `;
   
-  document.body.appendChild(dialog);
-  dialog.showModal();
-  
-  // Close dialog handlers
-  const closeBtn = dialog.querySelector('.close-btn');
-  closeBtn?.addEventListener('click', () => {
-    dialog.close();
-    document.body.removeChild(dialog);
-  });
-  
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) {
-      dialog.close();
-      document.body.removeChild(dialog);
-    }
-  });
-
-  // Ensure ESC key also closes and cleans up
-  dialog.addEventListener('cancel', (e) => {
-    e.preventDefault();
-    dialog.close();
-  });
-  dialog.addEventListener('close', () => {
-    if (dialog.isConnected) document.body.removeChild(dialog);
-  });
+  dialogComponent.showModal();
 };
