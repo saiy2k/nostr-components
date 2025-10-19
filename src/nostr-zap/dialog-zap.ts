@@ -242,11 +242,20 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   dialogComponent.showModal();
   
   // Get the actual dialog element for event listeners
-  // We need to wait a tick for the dialog to be created
-  await new Promise(resolve => setTimeout(resolve, 0));
+  // The dialog is created synchronously by showModal() and appended to document.body
+  // Try both shadow root and light DOM, then fall back to document.body
+  const dialogElement: HTMLDialogElement | null = 
+    dialogComponent.querySelector('.nostr-base-dialog') ||
+    dialogComponent.shadowRoot?.querySelector('.nostr-base-dialog') ||
+    document.body.querySelector('.nostr-base-dialog');
   
-  // Find the dialog element that was created
-  const dialog = document.querySelector('.nostr-base-dialog') as HTMLDialogElement;
+  if (!dialogElement) {
+    console.error('[showZapDialog] Failed to find dialog element after showModal()');
+    throw new Error('Dialog element not found. The dialog may not have been created properly.');
+  }
+  
+  // Type assertion: dialog is guaranteed to be non-null after the check above
+  const dialog = dialogElement as HTMLDialogElement;
 
   // Event wiring - moved listener setup to after initial invoice load
   const amountContainer = dialog.querySelector('.amount-buttons') as HTMLElement | null;

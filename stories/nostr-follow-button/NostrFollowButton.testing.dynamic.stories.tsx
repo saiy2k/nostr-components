@@ -20,7 +20,6 @@ const meta: Meta = {
         config: {
           rules: {
             'color-contrast': { enabled: true },
-            'keyboard-navigation': { enabled: true },
           },
         },
       },

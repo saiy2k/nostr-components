@@ -18,8 +18,6 @@ import { decodeNip19Entity } from '../common/utils';
 const profileCache: Record<string, any> = {};
 
 export const getProfileMetadata = async (authorId: string) => {
-  console.log("Nostr-Components: Zap button: Getting profile metadata for", authorId);
-  console.log("Nostr-Components: Zap button: Profile cache:", profileCache);
   if (profileCache[authorId]) return profileCache[authorId];
 
   const pool = new SimplePool();
@@ -43,16 +41,8 @@ export const getProfileMetadata = async (authorId: string) => {
 };
 
 export const getBatchedProfileMetadata = async (authorIds: string[]) => {
-  console.log("Nostr-Components: Zap button: Getting batched profile metadata for", authorIds.length, "authors");
-  
   // Filter out already cached profiles
   const uncachedIds = authorIds.filter(id => !profileCache[id]);
-  const cachedProfiles = authorIds.filter(id => profileCache[id]).map(id => ({
-    id,
-    profile: profileCache[id]
-  }));
-
-  console.log("Nostr-Components: Zap button: Cached profiles:", cachedProfiles.length, "Uncached:", uncachedIds.length);
 
   // If all profiles are cached, return them
   if (uncachedIds.length === 0) {
@@ -85,7 +75,6 @@ export const getBatchedProfileMetadata = async (authorIds: string[]) => {
       profile: profileCache[id] || null
     }));
 
-    console.log("Nostr-Components: Zap button: Batched fetch completed. Total profiles:", allProfiles.length);
     return allProfiles;
   } finally {
     pool.close(relays);
@@ -260,7 +249,7 @@ export async function resolveNip05(nip05Identifier: string): Promise<string | nu
 
 // Import necessary types from nostr-tools
 import type { Filter, Event } from 'nostr-tools';
-import { normalizeURL } from 'nostr-tools/utils';
+import { normalizeURL } from '../nostr-comment/utils';
 
 // Augment the SimplePool type to include our usage
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -301,6 +290,9 @@ export const fetchTotalZapAmount = async ({
   relays: string[];
   url?: string;
 }): Promise<ZapAmountResult> => {
+  // Normalize URL at the beginning for consistent comparison with tags
+  const normalizedUrl = url ? normalizeURL(url) : undefined;
+  
   const pool = new SimplePool();
   let totalAmount = 0;
   const zapDetails: ZapDetails[] = [];
@@ -317,9 +309,9 @@ export const fetchTotalZapAmount = async ({
     // TODO: These tags doesn't appear in zap receipt event.
     // They goes into the description tag, which has the zap request JSON.
     /*
-    if (url) {
+    if (normalizedUrl) {
       filter['#k'] = ['web'];
-      filter['#i'] = [url];
+      filter['#i'] = [normalizedUrl];
     }
     */
 
@@ -336,12 +328,12 @@ export const fetchTotalZapAmount = async ({
           // If URL is provided, check for URL-based zap tags
           // TODO: Too much work, since #k and #i tags doesn't appear in zap receipt event.
           // This is not a practical solution, but it's working for now!
-          if (url) {
+          if (normalizedUrl) {
             const kTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'k');
             const iTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'i');
             
-            // Only count if k=web and i=url match
-            if (kTag?.[1] === 'web' && iTag?.[1] === url && amountTag?.[1]) {
+            const iTagNormalized = iTag?.[1] ? normalizeURL(iTag[1]) : '';
+            if (kTag?.[1] === 'web' && iTagNormalized === normalizedUrl && amountTag?.[1]) {
               const amount = parseInt(amountTag[1], 10);
               if (amount > 0) {
                 totalAmount += amount;

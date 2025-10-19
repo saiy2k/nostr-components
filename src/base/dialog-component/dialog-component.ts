@@ -20,6 +20,9 @@ import { getDialogComponentStyles } from './style';
  * - Click outside to close
  * - ESC key to close
  * - Automatic cleanup on close
+ * 
+ * Important: Only one instance of this component should be added to the DOM at any time.
+ * Multiple instances may cause conflicts with event listeners and cleanup behavior.
  */
 export class DialogComponent extends HTMLElement {
   private dialog: HTMLDialogElement | null = null;
@@ -54,31 +57,43 @@ export class DialogComponent extends HTMLElement {
   private render(): void {
     this.injectStyles();
 
-    // Get content before creating dialog
-    const contentHTML = this.innerHTML;
     const headerText = this.getAttribute('header') || 'Dialog';
     const theme = this.getAttribute('data-theme');
 
-    // Create dialog element
     this.dialog = document.createElement('dialog');
     this.dialog.className = 'nostr-base-dialog';
     if (theme) {
       this.dialog.setAttribute('data-theme', theme);
     }
-    this.dialog.innerHTML = `
-      <div class="dialog-header">
-        <h2>${headerText}</h2>
-        <button class="dialog-close-btn" aria-label="Close dialog">✕</button>
-      </div>
-      <div class="dialog-content">
-        ${contentHTML}
-      </div>
-    `;
 
-    // Append dialog to body
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'dialog-header';
+    
+    const headerH2 = document.createElement('h2');
+    headerH2.textContent = headerText;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'dialog-close-btn';
+    closeBtn.setAttribute('aria-label', 'Close dialog');
+    closeBtn.textContent = '✕';
+    
+    headerDiv.appendChild(headerH2);
+    headerDiv.appendChild(closeBtn);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'dialog-content';
+    
+    // Safely move child nodes from component to dialog content
+    // This preserves any existing DOM nodes without using innerHTML
+    while (this.firstChild) {
+      contentDiv.appendChild(this.firstChild);
+    }
+
+    this.dialog.appendChild(headerDiv);
+    this.dialog.appendChild(contentDiv);
+
     document.body.appendChild(this.dialog);
 
-    // Setup event listeners
     this.setupEventListeners();
   }
 
@@ -142,10 +157,10 @@ export class DialogComponent extends HTMLElement {
    */
   private cleanup(): void {
     if (this.dialog && this.dialog.isConnected) {
-      document.body.removeChild(this.dialog);
+      this.dialog.remove();
     }
     if (this.isConnected) {
-      document.body.removeChild(this);
+      this.remove();
     }
     this.dialog = null;
   }

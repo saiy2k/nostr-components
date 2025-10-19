@@ -40,6 +40,7 @@ export const showMyDialog = async (): Promise<void> => {
 
 ### Attributes
 - `header` (string) - Text displayed in dialog header (default: "Dialog")
+- `data-theme` (string) - Theme variant ('light' or 'dark')
 
 ### Methods
 - `showModal()` - Opens dialog as modal

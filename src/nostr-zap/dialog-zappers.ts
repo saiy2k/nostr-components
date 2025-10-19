@@ -5,7 +5,8 @@ import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getZappersDialogStyles } from './dialog-zappers-style';
 import { getBatchedProfileMetadata, extractProfileMetadataContent, ZapDetails } from './zap-utils';
-import { formatRelativeTime, hexToNpub } from '../common/utils';
+import { escapeHtml, formatRelativeTime, hexToNpub, isValidUrl } from '../common/utils';
+import { isValidPublicKey } from '../nostr-comment/utils';
 
 /**
  * Modal dialog for displaying individual zap details (zappers).
@@ -48,11 +49,15 @@ interface EnhancedZapDetails extends ZapDetails {
  * Render individual zap entry HTML (with profile data)
  */
 function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
-  const profilePicture = zap.authorPicture 
-    ? `<img src="${zap.authorPicture}" alt="${zap.authorName}" class="zap-author-picture" />`
-    : `<div class="zap-author-picture-default">👤</div>`;
+  const authorNameSafe = escapeHtml(zap.authorName || 'Unknown zapper');
+  const npubSafe = isValidPublicKey(zap.authorNpub || '') ? zap.authorNpub : '';
+  const njumpUrl = `https://njump.me/${npubSafe}`;
+  const profilePictureSafe = isValidUrl(zap.authorPicture || '') ? zap.authorPicture || '' : '';
   
-  const njumpUrl = `https://njump.me/${zap.authorNpub}`;
+
+  const profilePicture = zap.authorPicture 
+    ? `<img src="${profilePictureSafe}" alt="${authorNameSafe}" class="zap-author-picture" />`
+    : `<div class="zap-author-picture-default">👤</div>`;
   
   return `
     <div class="zap-entry" data-zap-index="${index}" data-author-pubkey="${zap.authorPubkey}">
@@ -60,7 +65,7 @@ function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
         ${profilePicture}
         <div class="zap-author-details">
           <a href="${njumpUrl}" target="_blank" rel="noopener noreferrer" class="zap-author-link">
-            ${zap.authorName}
+            ${authorNameSafe}
           </a>
           <div class="zap-amount-date">
             ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(Math.floor(zap.date.getTime() / 1000))}
@@ -81,7 +86,7 @@ function renderSkeletonZapEntry(zap: ZapDetails, npub: string, index: number): s
         <div class="skeleton-picture"></div>
         <div class="zap-author-details">
           <div class="zap-author-link skeleton-name">
-            ${npub}
+            ${escapeHtml(npub)}
           </div>
           <div class="zap-amount-date">
             ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(Math.floor(zap.date.getTime() / 1000))}
@@ -121,11 +126,20 @@ export async function openZappersDialog(params: OpenZappersModalParams): Promise
   dialogComponent.showModal();
   
   // Get the actual dialog element for progressive enhancement
-  // We need to wait a tick for the dialog to be created
-  await new Promise(resolve => setTimeout(resolve, 0));
+  // The dialog is created synchronously by showModal() and appended to document.body
+  // Try both shadow root and light DOM, then fall back to document.body
+  const dialogElement: HTMLDialogElement | null = 
+    dialogComponent.querySelector('.nostr-base-dialog') ||
+    dialogComponent.shadowRoot?.querySelector('.nostr-base-dialog') ||
+    document.body.querySelector('.nostr-base-dialog');
   
-  // Find the dialog element that was created
-  const dialog = document.querySelector('.nostr-base-dialog') as HTMLDialogElement;
+  if (!dialogElement) {
+    console.error('[showZappersDialog] Failed to find dialog element after showModal()');
+    throw new Error('Dialog element not found. The dialog may not have been created properly.');
+  }
+  
+  // Type assertion: dialog is guaranteed to be non-null after the check above
+  const dialog = dialogElement as HTMLDialogElement;
   
   // Start progressive enhancement
   if (dialog && zapDetails.length > 0) {

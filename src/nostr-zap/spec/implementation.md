@@ -154,8 +154,8 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 
 ### Data Fetching
 - Queries kind 9735 events with `#p` tag matching user's pubkey
-- URL filtering adds `#k: ["web"]` and `#i: [url]` filters when URL provided
 - Limit: 1000 events
+- URL filtering is done post-fetch by parsing each event's `description` JSON to check that the wrapped zap request contains `k="web"` and `i=url` (when URL provided), rather than relying on `#k`/`#i` tags on the receipt itself (This works, but bad!)
 
 ### Amount Calculation
 - Extracts amounts from zap request description tags

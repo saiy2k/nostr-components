@@ -38,6 +38,16 @@ When `url` attribute is provided:
 - Total zap amount filters to show only URL-specific zaps
 - Enables content creators to track zaps per article/post
 
+## Limitations
+
+### Zap Count Scalability
+⚠️ **1000-Event Cap**: The component queries up to 1000 zap receipt events (kind 9735) per user. For high-traffic creators, this may result in undercounting total zaps.
+
+**Impact:**
+- Total zap amount may not reflect all zaps received
+- Zappers list may not show all contributors
+- URL-specific totals may be incomplete
+
 ## API
 
 ### Required Attributes
@@ -53,7 +63,7 @@ At least one:
 - `amount` (string) - Fixed zap amount in sats (1-210,000), hides amount selection
 - `default-amount` (string, default: 21) - Default amount in modal (1-210,000)
 - `url` (string) - URL for URL-based zaps, includes `["k", "web"]` and `["i", url]` tags
-- `theme` (string, default: "light") - light or dark
+- `data-theme` (string, default: "light") - Allowed values: "light" or "dark"
 - `relays` (string) - Comma-separated relay URLs
 
 ### CSS Variables
@@ -262,3 +272,7 @@ Data:
 - Fetches kind 9735 events
 - Respects URL filtering for URL-based zaps
 - Sorted chronologically (newest first)
+
+TODO:
+- Handle dynamic change of attributes.
+- Refresh totals after successful zap.

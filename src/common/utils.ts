@@ -28,7 +28,13 @@ export const decodeNpub = (npub: string): string => {
  * Convert hex pubkey to npub
  */
 export function hexToNpub(hex: string): string {
-  return nip19.npubEncode(hex);
+  if (!hex || !isValidHex(hex)) return '';
+  try {
+    return nip19.npubEncode(hex.toLowerCase());
+  } catch (error) {
+    console.error('Failed to encode hex to npub:', error);
+    return '';
+  }
 }
 
 // Could be npub, note1, naddr, nsec, etc.,
