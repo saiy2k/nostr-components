@@ -30,10 +30,12 @@ This document contains the technical implementation details for the `nostr-zap` 
   - `nostr-zap.ts`: Component logic and lifecycle
   - `render.ts`: Rendering functions and HTML generation
   - `style.ts`: CSS styles and theming (component-specific only)
-  - `dialog-zap.ts`: Zap modal dialog implementation
-  - `dialog-zap-style.ts`: Zap modal dialog styles
-  - `dialog-help.ts`: Help dialog implementation
-  - `dialog-help-style.ts`: Help dialog styles
+  - `dialog-zap.ts`: Zap modal dialog implementation (uses DialogComponent)
+  - `dialog-zap-style.ts`: Zap modal content styles
+  - `dialog-help.ts`: Help dialog implementation (uses DialogComponent)
+  - `dialog-help-style.ts`: Help dialog content styles
+  - `dialog-zappers.ts`: Zappers dialog implementation (uses DialogComponent)
+  - `dialog-zappers-style.ts`: Zappers dialog content styles
   - `zap-utils.ts`: Zap-specific utility functions
 
 ## Dependencies
@@ -45,8 +47,8 @@ This document contains the technical implementation details for the `nostr-zap` 
   - `nip19`: Bech32 encoding/decoding
   - `nip57`: Lightning zap utilities
   - `nip05`: Identity verification
-- **qrcode**: QR code generation for Lightning invoices
-- **WebLN**: Browser Lightning wallet integration
+- qrcode: QR code generation for Lightning invoices
+- WebLN: Browser Lightning wallet integration
 
 ### Internal Dependencies
 - NostrUserComponent: Base class for user-specific components
@@ -60,7 +62,7 @@ This document contains the technical implementation details for the `nostr-zap` 
 ### Initialization Flow
 1. Constructor: Initialize `amountStatus` to Loading
 2. Connected Callback: Inherited from base classes
-3. Attribute Changed: Handle attribute updates
+3. Attribute Changed: Handle attribute updates including URL validation
 4. Status Change: React to status updates via `onStatusChange()`
 5. User Ready: Handle user resolution via `onUserReady()`
 
@@ -81,11 +83,12 @@ computeOverall(): Reflects the most critical status
 
 ## Dialog Implementation
 
-### Global Shadow DOM
-- Purpose: Ensures proper z-index layering above all content
-- Implementation: `ensureShadow()` creates global shadow root
-- CSS Injection: Dynamic CSS injection via `injectCSS()` with theme support
-- Style Management: Prevents style accumulation with cleanup logic
+### DialogComponent
+All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-component/README.md` for details).
+
+- Purpose: Provides reusable dialog foundation with header, close button, and consistent behavior
+- Benefits: Code reuse, consistent UX, automatic cleanup
+- Usage: Each dialog creates a DialogComponent instance and sets content via innerHTML
 
 ### Zap Dialog Features
 - Amount Presets: 21, 100, 1000 sats with custom input
@@ -94,13 +97,22 @@ computeOverall(): Reflects the most critical status
 - WebLN Integration: Direct wallet connection
 - Copy Functionality: Clipboard API for invoice copying
 - Payment Confirmation: Uses `listenForZapReceipt()` to detect successful payments
+- URL-Based Zaps: Passes URL parameter through `OpenZapModalParams` for NIP-73 compliance
 - Success State: Shows "⚡ Thank you!" overlay and hides controls
 
 ### Help Dialog Features
 - Educational Content: Explains what zaps are
 - YouTube Link: Hardcoded tutorial URL
 - Simple Layout: Clean, centered design
-- Easy Dismissal: Click outside or close button
+
+### Zappers Dialog Features
+- Individual Zap Details: Shows each zap with amount, date, author name, and profile picture
+- Progressive Loading: Initial display with npubs in skeleton loaders, then async profile enhancement
+- Author Profile Links: Clicking on zap author opens njump.me profile link
+- Chronological Order: Zaps sorted by date (newest first)
+- Profile Picture Fallback: Default avatar for users without profile pictures
+- Responsive Layout: Adapts to different screen sizes
+- Async Profile Enhancement: Profile metadata fetched in parallel, entries updated individually
 
 ### Payment Confirmation (Active)
 - Function: `listenForZapReceipt()` in `zap-utils.ts`
@@ -109,48 +121,71 @@ computeOverall(): Reflects the most critical status
 - Behavior: Shows success overlay when payment is detected
 
 ### Close Behavior
-- Manual Close: User clicks close button (×) - `dialog.close()`
+- ESC Key: Closes dialog
+- Click Outside: Closes dialog
+- Close Button (×): Closes dialog
 - WebLN Success: Modal closes automatically after successful WebLN payment
 - WebLN Failure: Modal closes automatically after failed WebLN payment
 - Cleanup: Receipt listener cleanup on dialog close event
 
 ### CSS Management
-- Style Files: Separate files for each dialog type
+- Content Styles: Separate files for each dialog type
+  - `dialog-zap-style.ts`: Zap-specific content styles
+  - `dialog-help-style.ts`: Help-specific content styles  
+  - `dialog-zappers-style.ts`: Zappers-specific content styles
 - Theme Support: Dynamic theme injection with CSS variables
 - Responsive: Mobile-optimized layout (max-width: 90vw)
-- Cleanup: Prevents style accumulation in global shadow DOM
 
-## Utility Functions Organization
+## Utility Functions
 
 ### Common Utilities (`src/common/utils.ts`)
 - `decodeNpub()`: Decodes npub strings to hex pubkeys
 - `decodeNip19Entity()`: General NIP-19 entity decoder
-- Purpose: Shared utilities across all components
-- Benefits: Reusability, consistency, single source of truth
 
 ### Zap-Specific Utilities (`src/nostr-zap/zap-utils.ts`)
-- `fetchTotalZapAmount()`: Fetches and calculates total zap amounts
-- `getProfileMetadata()`: Caches and retrieves user profile data
+- `fetchTotalZapAmount()`: Fetches total and individual zap data with URL filtering
+- `getProfileMetadata()`: Caches user profile data
 - `getZapEndpoint()`: Resolves Lightning zap endpoints
-- `fetchInvoice()`: Generates Lightning invoices
+- `fetchInvoice()`: Generates Lightning invoices with URL-based zap tags
+- `makeZapEvent()`: Creates zap request events (NIP-73 compliance)
 - `listenForZapReceipt()`: Monitors for zap payment confirmations
-- Purpose: Zap-specific functionality only
 
-## Zap Count Implementation
+## Zap Count
 
 ### Data Fetching
-- Method: `fetchTotalZapAmount()` in `zap-utils.ts`
-- Query: `pool.querySync()` for kind 9735 events
-- Filter: `#p` tag matching user's pubkey
-- Limit: 1000 events for performance
+- Queries kind 9735 events with `#p` tag matching user's pubkey
+- Limit: 1000 events
+- URL filtering is done post-fetch by parsing each event's `description` JSON to check that the wrapped zap request contains `k="web"` and `i=url` (when URL provided), rather than relying on `#k`/`#i` tags on the receipt itself (This works, but bad!)
 
 ### Amount Calculation
-- Source: Zap receipt events (kind 9735)
-- Parsing: Extract amount from zap request description tags
-- Aggregation: Sum all amounts and convert msats to sats
-- Caching: No caching - real-time data
+- Extracts amounts from zap request description tags
+- Aggregates and converts msats to sats
+- Real-time data (no caching)
 
-### Error Handling
-- Network Errors: Graceful fallback, no error state
-- Parse Errors: Logged but don't break functionality
-- Pool Management: Proper cleanup with `pool.close()`
+### Interactivity
+- Clickable total opens zappers dialog
+- Delegated click handler on `.total-zap-amount` class
+
+## Individual Zaps
+
+### Data Strategy
+- Reuses data from `fetchTotalZapAmount()` (single query)
+- Returns both total and individual zap details
+- Same URL filtering as total amount
+
+### Progressive Loading
+- Dialog shows skeleton loaders with npubs immediately
+- Profile metadata fetched in parallel
+- Each entry updates independently as profile data loads
+
+### Zap Details
+- Amount from zap request description tags
+- Date from event `created_at` timestamp
+- Author from zap request `pubkey` field
+- Sorted chronologically (newest first)
+
+### Profile Display
+- Initial: npubs in skeleton loaders
+- Enhanced: Display name and profile picture from metadata
+- Fallback: npub for name, default avatar for picture
+- Links: njump.me URLs for author profiles

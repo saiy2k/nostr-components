@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+// Import for side effects to register the custom element
+import '../base/dialog-component/dialog-component';
+import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getDialogStyles } from './dialog-zap-style';
 import { decodeNpub } from '../common/utils';
 
@@ -37,65 +40,65 @@ declare global {
 export interface OpenZapModalParams {
   npub: string;
   relays: string;
-  cachedAmountDialog?: HTMLDialogElement | null;
+  cachedDialogComponent?: DialogComponent | null;
   buttonColor?: string;
   theme?: 'light' | 'dark';
   fixedAmount?: number; // if supplied, hide amount UI
   defaultAmount?: number; // preselect but allow change
   initialAmount?: number; // legacy support
   anon?: boolean;
+  url?: string; // URL to send zap to (enables URL-based zaps)
 }
 
 export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
-  const shadow = ensureShadow();
-  
   // Remove existing dialog styles
-  const existingStyles = shadow.querySelectorAll('style[data-dialog-styles]');
+  const existingStyles = document.querySelectorAll('style[data-zap-dialog-styles]');
   existingStyles.forEach(style => style.remove());
   
   const style = document.createElement('style');
-  style.setAttribute('data-dialog-styles', 'true');
+  style.setAttribute('data-zap-dialog-styles', 'true');
   style.textContent = getDialogStyles(theme);
-  shadow.appendChild(style);
+  document.head.appendChild(style);
 };
 
-let _shadowRoot: ShadowRoot | null = null;
-function ensureShadow() {
-  if (_shadowRoot) return _shadowRoot;
-  const host = document.createElement('div');
-  document.body.appendChild(host);
-  _shadowRoot = host.attachShadow({ mode: 'open' });
-  return _shadowRoot;
-}
-
 /**
- * Opens (or re-opens) the zap modal. Returns the dialog element so the caller
+ * Opens (or re-opens) the zap modal. Returns the DialogComponent so the caller
  * can cache it between clicks.
  */
-export async function init(params: OpenZapModalParams): Promise<HTMLDialogElement> {
-  const { npub, relays, cachedAmountDialog, buttonColor, fixedAmount, defaultAmount, initialAmount } = params;
+export async function init(params: OpenZapModalParams): Promise<DialogComponent> {
+  const { npub, relays, cachedDialogComponent, buttonColor, fixedAmount, defaultAmount, initialAmount, url } = params;
   const npubHex = decodeNpub(npub);
-  if (cachedAmountDialog) {
-    // remove success class if it exists
-    cachedAmountDialog.classList.remove('success');
-    // show all controls that might have been hidden
-    const controls = cachedAmountDialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn');
-    controls.forEach(el => {
-      if (el instanceof HTMLElement) el.style.display = '';
-    });
-    // reset the update button
-    const updateZapBtn = cachedAmountDialog.querySelector('.update-zap-btn') as HTMLButtonElement | null;
-    if (updateZapBtn) updateZapBtn.style.display = '';
-    // reset success overlay opacity if it was previously shown
-    const successOverlay = cachedAmountDialog.querySelector('.success-overlay') as HTMLElement | null;
-    if (successOverlay) {
-      successOverlay.style.opacity = '0';
-      successOverlay.style.pointerEvents = 'none';
-    }
+  
+  // Ensure custom element is defined
+  if (!customElements.get('dialog-component')) {
+    await customElements.whenDefined('dialog-component');
+  }
+  
+  if (cachedDialogComponent) {
+    // Find the actual dialog element
+    const cachedDialog = document.querySelector('.nostr-base-dialog') as HTMLDialogElement | null;
+    if (cachedDialog) {
+      // remove success class if it exists
+      cachedDialog.classList.remove('success');
+      // show all controls that might have been hidden
+      const controls = cachedDialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn');
+      controls.forEach(el => {
+        if (el instanceof HTMLElement) el.style.display = '';
+      });
+      // reset the update button
+      const updateZapBtn = cachedDialog.querySelector('.update-zap-btn') as HTMLButtonElement | null;
+      if (updateZapBtn) updateZapBtn.style.display = '';
+      // reset success overlay opacity if it was previously shown
+      const successOverlay = cachedDialog.querySelector('.success-overlay') as HTMLElement | null;
+      if (successOverlay) {
+        successOverlay.style.opacity = '0';
+        successOverlay.style.pointerEvents = 'none';
+      }
 
-    void refreshUI(cachedAmountDialog);
-    cachedAmountDialog.showModal();
-    return cachedAmountDialog;
+      void refreshUI(cachedDialog);
+      cachedDialogComponent.showModal();
+      return cachedDialogComponent;
+    }
   }
 
   // Minimal amount presets – feel free to tweak / add more later.
@@ -130,6 +133,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
       nip19Target: undefined,
       normalizedRelays: relays.split(','),
       anon: params.anon ?? false,
+      url: url,
     });
     currentInvoice = invoice;
 
@@ -199,39 +203,59 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   // ---------------------------------------------------------------------------
 
   injectCSS(params.theme || 'light');
-  const shadow = ensureShadow();
 
-  const dialog = document.createElement('dialog');
-  dialog.className = 'nostr-zap-dialog' + (params.theme === 'dark' ? ' dark' : '');
-
+  // Create dialog component (not added to DOM)
+  const dialogComponent = document.createElement('dialog-component') as DialogComponent;
+  dialogComponent.setAttribute('header', 'Send a Zap');
+  if (params.theme) {
+    dialogComponent.setAttribute('data-theme', params.theme);
+  }
+  
   const amountButtonsHtml = presets
     .map(a => `<button type="button" data-val="${a}">${a} ⚡</button>`) // show sat symbol
     .join('');
 
   const hideAmountUI = typeof fixedAmount === 'number' && fixedAmount > 0;
 
-  dialog.innerHTML = `
-      <button class="close-btn">✕</button>
-      <h2>Send a Zap</h2>
-      ${hideAmountUI ? '' : `<div class="amount-buttons">${amountButtonsHtml}</div>`}
-      ${hideAmountUI ? `<p class="zapping-amount">Zapping ${fixedAmount} sats</p>` : ''}
-      ${hideAmountUI ? '' : `<div class="update-zap-container">
-        <input type="number" min="1" placeholder="Custom sats" class="custom-amount" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
-        <button type="button" class="update-zap-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Update Zap</button>
-      </div>`}
-      ${hideAmountUI ? '' : `<div class="comment-container">
-        <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
-        <button type="button" class="add-comment-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Add</button>
-      </div>`}
-      <img class="qr" width="240" height="240" alt="QR" style="cursor:pointer" />
-      <br />
-      <button type="button" class="copy-btn">Copy invoice</button>
-      <button type="button" class="cta-btn" disabled>Open in wallet</button>
-      <div class="loading-overlay"><div class="loader"></div></div>
-      <div class="success-overlay">⚡ Thank you!</div>
+  dialogComponent.innerHTML = `
+      <div class="zap-dialog-content">
+        ${hideAmountUI ? '' : `<div class="amount-buttons">${amountButtonsHtml}</div>`}
+        ${hideAmountUI ? `<p class="zapping-amount">Zapping ${fixedAmount} sats</p>` : ''}
+        ${hideAmountUI ? '' : `<div class="update-zap-container">
+          <input type="number" min="1" placeholder="Custom sats" class="custom-amount" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
+          <button type="button" class="update-zap-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Update Zap</button>
+        </div>`}
+        ${hideAmountUI ? '' : `<div class="comment-container">
+          <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
+          <button type="button" class="add-comment-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Add</button>
+        </div>`}
+        <img class="qr" width="240" height="240" alt="QR" style="cursor:pointer" />
+        <br />
+        <button type="button" class="copy-btn">Copy invoice</button>
+        <button type="button" class="cta-btn" disabled>Open in wallet</button>
+        <div class="loading-overlay"><div class="loader"></div></div>
+        <div class="success-overlay">⚡ Thank you!</div>
+      </div>
   `;
 
-  shadow.appendChild(dialog);
+  // Show the dialog (this will create and append the actual dialog element)
+  dialogComponent.showModal();
+  
+  // Get the actual dialog element for event listeners
+  // The dialog is created synchronously by showModal() and appended to document.body
+  // Try both shadow root and light DOM, then fall back to document.body
+  const dialogElement: HTMLDialogElement | null = 
+    dialogComponent.querySelector('.nostr-base-dialog') ||
+    dialogComponent.shadowRoot?.querySelector('.nostr-base-dialog') ||
+    document.body.querySelector('.nostr-base-dialog');
+  
+  if (!dialogElement) {
+    console.error('[showZapDialog] Failed to find dialog element after showModal()');
+    throw new Error('Dialog element not found. The dialog may not have been created properly.');
+  }
+  
+  // Type assertion: dialog is guaranteed to be non-null after the check above
+  const dialog = dialogElement as HTMLDialogElement;
 
   // Event wiring - moved listener setup to after initial invoice load
   const amountContainer = dialog.querySelector('.amount-buttons') as HTMLElement | null;
@@ -266,8 +290,6 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
   if (commentInput) commentInput.addEventListener('input', e => {
     customComment = (e.target as HTMLInputElement).value.slice(0, 200);
   });
-
-  (dialog.querySelector('.close-btn') as HTMLButtonElement).onclick = () => dialog.close();
 
   const copyInvoice = async () => {
     if (!currentInvoice) return;
@@ -327,9 +349,7 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     controls.forEach(el => {
       if (el instanceof HTMLElement) el.style.display = 'none';
     });
-    // ensure close button is still clickable
-    const closeBtn = dialog.querySelector('.close-btn') as HTMLElement;
-    if (closeBtn) closeBtn.style.pointerEvents = 'auto';
+    // DialogComponent close button is always clickable
   }
 
   dialog.addEventListener('close', () => {
@@ -353,9 +373,8 @@ export async function init(params: OpenZapModalParams): Promise<HTMLDialogElemen
     if (input) input.value = String(selectedAmount);
     if (amountContainer) setActiveAmountButtons(amountContainer, -1);
   }
-  dialog.showModal();
 
-  return dialog;
+  return dialogComponent;
 }
 
 // -----------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'Follow Button/Testing/Valid',
+  title: 'Zap Button/Testing/Valid',
   tags: ['test', 'valid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -12,7 +12,7 @@ const meta: Meta = {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-follow-button',
+        element: 'nostr-zap',
         config: {
           rules: {
             'color-contrast': { enabled: true },
@@ -41,13 +41,22 @@ export const RawPubkey: Story = {
   args: TEST_CASES.rawPubkey.args,
 };
 
-export const ShowAvatar: Story = {
-  name: TEST_CASES.showAvatar.name,
-  args: TEST_CASES.showAvatar.args,
-};
-
 export const CustomText: Story = {
   name: TEST_CASES.customText.name,
   args: TEST_CASES.customText.args,
 };
 
+export const FixedAmount: Story = {
+  name: TEST_CASES.fixedAmount.name,
+  args: TEST_CASES.fixedAmount.args,
+};
+
+export const DefaultAmount: Story = {
+  name: TEST_CASES.defaultAmount.name,
+  args: TEST_CASES.defaultAmount.args,
+};
+
+export const CustomIconSize: Story = {
+  name: TEST_CASES.customIconSize.name,
+  args: TEST_CASES.customIconSize.args,
+};

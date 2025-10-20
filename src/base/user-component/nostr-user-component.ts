@@ -83,7 +83,10 @@ export class NostrUserComponent extends NostrBaseComponent {
   /** Protected methods */
   protected validateInputs(): boolean {
 
-    if (!super.validateInputs()) return false;
+    if (!super.validateInputs()) {
+      this.userStatus.set(NCStatus.Idle);
+      return false;
+    }
 
     const npub    = this.getAttribute("npub");
     const pubkey  = this.getAttribute("pubkey");
@@ -131,6 +134,11 @@ export class NostrUserComponent extends NostrBaseComponent {
 
       // stale call check
       if (seq !== this.loadSeq) return;
+
+      if (profile == null) {
+        this.userStatus.set(NCStatus.Error, "Profile not found");
+        return;
+      }
 
       this.user = user;
       this.profile = profile;
