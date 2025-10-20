@@ -116,12 +116,18 @@ class Blocks {
         $attrs = [];
 
         foreach ($merged_attributes as $key => $value) {
-            if ($value !== '' && $value !== null && $value !== false) {
-                if (is_bool($value)) {
-                    $attrs[] = $key . '="' . ($value ? 'true' : 'false') . '"';
-                } else {
-                    $attrs[] = $key . '="' . esc_attr($value) . '"';
-                }
+            // Skip empty values, null, false, numeric zero, and empty strings
+            if ($value === '' || $value === null || $value === false || $value === 0) {
+                continue;
+            }
+            
+            // Map 'theme' to 'data-theme' for web components
+            $attr_name = ($key === 'theme') ? 'data-theme' : $key;
+            
+            if (is_bool($value)) {
+                $attrs[] = $attr_name . '="' . ($value ? 'true' : 'false') . '"';
+            } else {
+                $attrs[] = $attr_name . '="' . esc_attr($value) . '"';
             }
         }
 

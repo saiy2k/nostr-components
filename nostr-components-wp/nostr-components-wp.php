@@ -60,7 +60,7 @@ add_action('plugins_loaded', function() {
 register_activation_hook(__FILE__, function() {
     // Set default enabled components only if option doesn't exist
     if (get_option('nostr_wp_enabled_components') === false) {
-        add_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button']);
+        add_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button', 'nostr-zap']);
     }
     
     // Set default shared settings only if option doesn't exist

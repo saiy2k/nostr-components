@@ -1,7 +1,7 @@
 (function() {
 	const { registerBlockType } = wp.blocks;
 	const { useBlockProps, InspectorControls } = wp.blockEditor || wp.editor;
-	const { PanelBody, TextControl, SelectControl } = wp.components;
+	const { PanelBody, TextControl, SelectControl, ToggleControl } = wp.components;
 	const { Fragment } = wp.element;
 
 	registerBlockType('nostr/nostr-follow-button', {
@@ -13,7 +13,9 @@
 			pubkey: { type: 'string', default: '' },
 			nip05: { type: 'string', default: '' },
 			theme: { type: 'string', enum: ['light', 'dark'], default: 'light' },
-			relays: { type: 'string', default: '' }
+			relays: { type: 'string', default: '' },
+			'show-avatar': { type: 'boolean', default: false },
+			text: { type: 'string', default: 'Follow me on nostr' }
 		},
 		edit: function Edit({ attributes, setAttributes }) {
 			const props = useBlockProps ? useBlockProps() : {};
@@ -46,6 +48,13 @@
 							placeholder: 'wss://relay.example.com,wss://relay2.example.com',
 							help: 'Comma-separated list of Nostr relay URLs'
 						}),
+						wp.element.createElement(TextControl, {
+							label: 'Button Text',
+							value: attributes.text,
+							onChange: (value) => setAttributes({ text: value }),
+							placeholder: 'Follow me on nostr',
+							help: 'Custom text for the follow button'
+						}),
 						wp.element.createElement(SelectControl, {
 							label: 'Theme',
 							value: attributes.theme,
@@ -54,6 +63,12 @@
 								{ label: 'Dark', value: 'dark' }
 							],
 							onChange: (value) => setAttributes({ theme: value })
+						}),
+						wp.element.createElement(ToggleControl, {
+							label: 'Show Avatar',
+							checked: attributes['show-avatar'],
+							onChange: (value) => setAttributes({ 'show-avatar': value }),
+							help: 'Show user avatar instead of Nostr logo'
 						})
 					)
 				),

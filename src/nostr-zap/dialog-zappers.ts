@@ -59,6 +59,10 @@ function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
     ? `<img src="${profilePictureSafe}" alt="${authorNameSafe}" class="zap-author-picture" />`
     : `<div class="zap-author-picture-default">👤</div>`;
   
+  const commentHtml = zap.comment 
+    ? `<div class="zap-comment">${zap.comment}</div>`
+    : '';
+  
   return `
     <div class="zap-entry" data-zap-index="${index}" data-author-pubkey="${zap.authorPubkey}">
       <div class="zap-author-info">
@@ -67,6 +71,7 @@ function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
           <a href="${njumpUrl}" target="_blank" rel="noopener noreferrer" class="zap-author-link">
             ${authorNameSafe}
           </a>
+          ${commentHtml}
           <div class="zap-amount-date">
             ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(Math.floor(zap.date.getTime() / 1000))}
           </div>

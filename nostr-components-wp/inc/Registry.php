@@ -15,7 +15,9 @@ class Registry {
                 'esm'         => 'assets/nostr-post.es.js',
                 'dependencies' => [],
                 'attributes'  => [
-                    'eventid' => ['type' => 'string', 'required' => true],
+                    'eventid' => ['type' => 'string'],
+                    'hex'     => ['type' => 'string'],
+                    'noteid'  => ['type' => 'string'],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
                     'relays'  => ['type' => 'string'],
                     'show-stats' => ['type' => 'boolean', 'default' => false],
@@ -70,6 +72,30 @@ class Registry {
                     'nip05'   => ['type' => 'string'],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
                     'relays'  => ['type' => 'string'],
+                    // Component-specific attributes
+                    'show-avatar' => ['type' => 'boolean', 'default' => false],
+                    'text'    => ['type' => 'string', 'default' => 'Follow me on nostr'],
+                ],
+            ],
+            'nostr-zap' => [
+                'title'       => 'Nostr Zap Button',
+                'description' => 'Send Bitcoin tips (zaps) to Nostr users',
+                'shortcode'   => 'nostr_zap',
+                'block'       => 'nostr/nostr-zap',
+                'esm'         => 'assets/nostr-zap.es.js',
+                'dependencies' => [],
+                'attributes'  => [
+                    // From NostrUserComponent (base)
+                    'npub'    => ['type' => 'string'], // bech32 npub
+                    'pubkey'  => ['type' => 'string'],
+                    'nip05'   => ['type' => 'string'],
+                    'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
+                    'relays'  => ['type' => 'string'],
+                    // Component-specific attributes
+                    'text'    => ['type' => 'string', 'default' => 'Zap'],
+                    'amount'  => ['type' => 'number', 'minimum' => 0, 'maximum' => 210000], // Pre-defined zap amount in sats
+                    'default-amount' => ['type' => 'number', 'minimum' => 1, 'maximum' => 210000], // Default zap amount in sats (component default: 21)
+                    'url'     => ['type' => 'string'], // URL to send zap to (enables URL-based zaps)
                 ],
             ],
         ];

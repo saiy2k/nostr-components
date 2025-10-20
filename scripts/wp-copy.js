@@ -13,7 +13,8 @@ const components = [
     'nostr-post',
     'nostr-profile', 
     'nostr-profile-badge',
-    'nostr-follow-button'
+    'nostr-follow-button',
+    'nostr-zap'
 ];
 
 console.log('🚀 Starting WordPress plugin build...');
@@ -91,6 +92,50 @@ if (fs.existsSync(assetsDir)) {
     }
 } else {
     console.warn(`⚠️  Assets directory not found: ${assetsDir}`);
+}
+
+// Copy themes.css
+console.log('🎨 Copying themes CSS...');
+const themesCssSource = './dist/themes.css';
+const themesCssTarget = path.join(targetDir, 'themes.css');
+
+if (fs.existsSync(themesCssSource)) {
+    fs.copyFileSync(themesCssSource, themesCssTarget);
+    const stats = fs.statSync(themesCssTarget);
+    const fileSize = stats.size;
+    totalSize += fileSize;
+    console.log(`✅ Copied: themes.css (${formatBytes(fileSize)})`);
+    copiedFiles++;
+} else {
+    console.warn(`⚠️  themes.css not found. Run 'npm run build:themes' first.`);
+}
+
+// Copy individual theme files
+const themesDir = './dist/themes';
+const targetThemesDir = path.join(targetDir, 'themes');
+
+if (fs.existsSync(themesDir)) {
+    // Ensure target themes directory exists
+    if (!fs.existsSync(targetThemesDir)) {
+        fs.mkdirSync(targetThemesDir, { recursive: true });
+    }
+    
+    const themeFiles = fs.readdirSync(themesDir).filter(file => file.endsWith('.css'));
+    
+    for (const file of themeFiles) {
+        const sourceFile = path.join(themesDir, file);
+        const targetFile = path.join(targetThemesDir, file);
+        
+        fs.copyFileSync(sourceFile, targetFile);
+        const stats = fs.statSync(targetFile);
+        const fileSize = stats.size;
+        totalSize += fileSize;
+        
+        console.log(`✅ Copied: themes/${file} (${formatBytes(fileSize)})`);
+        copiedFiles++;
+    }
+} else {
+    console.warn(`⚠️  themes directory not found.`);
 }
 
 // Write manifest.json

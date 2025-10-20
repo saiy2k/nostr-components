@@ -45,14 +45,42 @@ class Shortcodes {
                         }
                     }
                 }
+                
+                // Validate and sanitize numeric attributes with constraints
+                foreach ($component_attrs as $attr_key => $attr_config) {
+                    if (isset($atts[$attr_key]) && isset($attr_config['type']) && $attr_config['type'] === 'number') {
+                        $value = $atts[$attr_key];
+                        if (is_numeric($value)) {
+                            $num_value = floatval($value);
+                            // Clamp to minimum
+                            if (isset($attr_config['minimum'])) {
+                                $num_value = max($attr_config['minimum'], $num_value);
+                            }
+                            // Clamp to maximum
+                            if (isset($attr_config['maximum'])) {
+                                $num_value = min($attr_config['maximum'], $num_value);
+                            }
+                            $atts[$attr_key] = $num_value;
+                        }
+                    }
+                }
 
                 // Convert attribute names from underscore to kebab-case
                 $kebab_attrs = [];
                 foreach ($atts as $key => $value) {
-                    if ($value !== '' && $value !== null) {
-                        $kebab_key = str_replace('_', '-', $key);
-                        $kebab_attrs[] = sprintf('%s="%s"', esc_attr($kebab_key), esc_attr($value));
+                    // Skip only truly empty values (null, false, and empty strings); numeric zero is a valid value
+                    if ($value === '' || $value === null || $value === false) {
+                        continue;
                     }
+                    
+                    $kebab_key = str_replace('_', '-', $key);
+                    
+                    // Map 'theme' to 'data-theme' for web components
+                    if ($kebab_key === 'theme') {
+                        $kebab_key = 'data-theme';
+                    }
+                    
+                    $kebab_attrs[] = sprintf('%s="%s"', esc_attr($kebab_key), esc_attr($value));
                 }
 
                 // Generate the custom element HTML
@@ -146,6 +174,9 @@ class Shortcodes {
     private static function get_example_value(string $attr, array $config): string {
         switch ($attr) {
             case 'eventid':
+            case 'noteid':
+                return 'note1abc123...';
+            case 'hex':
                 return 'abc123def456...';
             case 'npub':
                 return 'npub1abc123...';
@@ -157,9 +188,18 @@ class Shortcodes {
                 return 'wss://relay.example.com';
             case 'theme':
                 return 'light';
+            case 'text':
+                return 'Follow me on nostr';
+            case 'amount':
+                return '1000';
+            case 'default-amount':
+                return '21';
+            case 'url':
+                return 'https://example.com';
             case 'show-stats':
             case 'show-npub':
             case 'show-follow':
+            case 'show-avatar':
                 return 'true';
             default:
                 return 'example';
@@ -207,6 +247,21 @@ class Shortcodes {
                     case 'string':
                         if (!is_string($value)) {
                             $errors[] = sprintf('Attribute "%s" must be a string', $attr);
+                        }
+                        break;
+                    case 'number':
+                        if (!is_numeric($value)) {
+                            $errors[] = sprintf('Attribute "%s" must be a number', $attr);
+                        } else {
+                            $num_value = floatval($value);
+                            // Check minimum constraint
+                            if (isset($config['minimum']) && $num_value < $config['minimum']) {
+                                $errors[] = sprintf('Attribute "%s" must be at least %s', $attr, $config['minimum']);
+                            }
+                            // Check maximum constraint
+                            if (isset($config['maximum']) && $num_value > $config['maximum']) {
+                                $errors[] = sprintf('Attribute "%s" must be at most %s', $attr, $config['maximum']);
+                            }
                         }
                         break;
                 }

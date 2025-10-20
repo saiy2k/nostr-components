@@ -10,6 +10,8 @@
 		category: 'nostr',
 		attributes: {
 			eventid: { type: 'string', default: '' },
+			hex: { type: 'string', default: '' },
+			noteid: { type: 'string', default: '' },
 			theme: { type: 'string', enum: ['light', 'dark'], default: 'light' },
 			relays: { type: 'string', default: '' },
 			'show-stats': { type: 'boolean', default: false }
@@ -21,10 +23,24 @@
 				wp.element.createElement(InspectorControls, null,
 					wp.element.createElement(PanelBody, { title: 'Post Settings' },
 						wp.element.createElement(TextControl, {
-							label: 'Event ID (Note ID)',
+							label: 'Event ID',
 							value: attributes.eventid,
 							onChange: (value) => setAttributes({ eventid: value }),
-							help: 'The Nostr note ID to display',
+							help: 'Event ID as nevent1...',
+							placeholder: 'nevent1'
+						}),
+						wp.element.createElement(TextControl, {
+							label: 'Hex',
+							value: attributes.hex,
+							onChange: (value) => setAttributes({ hex: value }),
+							help: 'Alternative: Event ID in hex format',
+							placeholder: '64 character hex string'
+						}),
+						wp.element.createElement(TextControl, {
+							label: 'Note ID',
+							value: attributes.noteid,
+							onChange: (value) => setAttributes({ noteid: value }),
+							help: 'Note ID in note1... format',
 							placeholder: 'note1...'
 						}),
 						wp.element.createElement(TextControl, {

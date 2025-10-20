@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
   import { ContentItem } from './parse-text';
-  import { escapeHtml, isValidUrl } from '../common/utils';
+  import { isValidUrl } from '../common/utils';
   import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { parseText } from './parse-text';
   import { renderEmbeddedPost } from './render';
@@ -19,7 +19,7 @@
         // Handle embedded note placeholder
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
+            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
@@ -30,7 +30,7 @@
       } else {
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
+            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
@@ -57,7 +57,7 @@
             mediaCount++;
             break;
           case 'link':
-            html.push(`<a href="${url}">${escapeHtml(url)}</a>`);
+            html.push(`<a href="${url}">${url}</a>`);
             break;
         }
       }
@@ -65,7 +65,7 @@
 
     if (textBuffer) {
       html.push(
-        `<span class="text-content">${escapeHtml(textBuffer.replace(/\n/g, '<br />'))}</span>`
+        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
       );
     }
 
@@ -171,9 +171,9 @@
 
     const sanitizedProfile = authorProfile
       ? {
-          displayName: escapeHtml(authorProfile.displayName || ''),
+          displayName: authorProfile.displayName || '',
           image: isValidUrl(authorProfile.picture || '') ? authorProfile.picture : '',
-          nip05: escapeHtml(authorProfile.nip05 || ''),
+          nip05: authorProfile.nip05 || '',
         }
       : undefined;
 
