@@ -22,6 +22,24 @@
 		edit: function Edit({ attributes, setAttributes }) {
 			const props = useBlockProps ? useBlockProps() : {};
 			
+			// Validation helpers
+			const validateAmount = (value) => {
+				if (!value) return undefined;
+				const num = parseInt(value, 10);
+				if (isNaN(num)) return undefined;
+				return Math.max(0, Math.min(210000, num));
+			};
+			
+			const validateDefaultAmount = (value) => {
+				if (!value) return undefined;
+				const num = parseInt(value, 10);
+				if (isNaN(num)) return undefined;
+				return Math.max(1, Math.min(210000, num));
+			};
+			
+			const hasAmountError = attributes.amount && (attributes.amount < 0 || attributes.amount > 210000);
+			const hasDefaultAmountError = attributes['default-amount'] && (attributes['default-amount'] < 1 || attributes['default-amount'] > 210000);
+			
 			return wp.element.createElement(Fragment, null,
 				wp.element.createElement(InspectorControls, null,
 					wp.element.createElement(PanelBody, { title: 'Zap Button Settings' },
@@ -57,21 +75,33 @@
 							placeholder: 'Zap',
 							help: 'Custom text for the zap button'
 						}),
+						hasAmountError && wp.element.createElement(Notice, {
+							status: 'error',
+							isDismissible: false
+						}, 'Fixed amount must be between 0 and 210,000 sats'),
 						wp.element.createElement(TextControl, {
 							label: 'Fixed Amount (sats)',
 							type: 'number',
 							value: attributes.amount || '',
-							onChange: (value) => setAttributes({ amount: value ? parseInt(value, 10) : undefined }),
+							onChange: (value) => setAttributes({ amount: validateAmount(value) }),
 							placeholder: 'Leave empty for user to choose',
-							help: 'Pre-defined zap amount in sats (empty = user chooses). Max: 210,000'
+							help: 'Pre-defined zap amount in sats (empty = user chooses). Max: 210,000',
+							min: 0,
+							max: 210000
 						}),
+						hasDefaultAmountError && wp.element.createElement(Notice, {
+							status: 'error',
+							isDismissible: false
+						}, 'Default amount must be between 1 and 210,000 sats'),
 						wp.element.createElement(TextControl, {
 							label: 'Default Amount (sats)',
 							type: 'number',
 							value: attributes['default-amount'] || '',
-							onChange: (value) => setAttributes({ 'default-amount': value ? parseInt(value, 10) : undefined }),
+							onChange: (value) => setAttributes({ 'default-amount': validateDefaultAmount(value) }),
 							placeholder: '21 (component default)',
-							help: 'Default amount shown in zap dialog (empty = 21 sats). Max: 210,000'
+							help: 'Default amount shown in zap dialog (empty = 21 sats). Min: 1, Max: 210,000',
+							min: 1,
+							max: 210000
 						}),
 						wp.element.createElement(TextControl, {
 							label: 'URL (optional)',

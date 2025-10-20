@@ -93,8 +93,8 @@ class Registry {
                     'relays'  => ['type' => 'string'],
                     // Component-specific attributes
                     'text'    => ['type' => 'string', 'default' => 'Zap'],
-                    'amount'  => ['type' => 'number'], // Pre-defined zap amount in sats
-                    'default-amount' => ['type' => 'number'], // Default zap amount in sats (component default: 21)
+                    'amount'  => ['type' => 'number', 'minimum' => 0, 'maximum' => 210000], // Pre-defined zap amount in sats
+                    'default-amount' => ['type' => 'number', 'minimum' => 1, 'maximum' => 210000], // Default zap amount in sats (component default: 21)
                     'url'     => ['type' => 'string'], // URL to send zap to (enables URL-based zaps)
                 ],
             ],

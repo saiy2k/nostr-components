@@ -37,10 +37,14 @@
       "default": "Zap"
     },
     "amount": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0,
+      "maximum": 210000
     },
     "default-amount": {
-      "type": "number"
+      "type": "number",
+      "minimum": 1,
+      "maximum": 210000
     },
     "url": {
       "type": "string",

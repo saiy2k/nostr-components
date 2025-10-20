@@ -45,12 +45,31 @@ class Shortcodes {
                         }
                     }
                 }
+                
+                // Validate and sanitize numeric attributes with constraints
+                foreach ($component_attrs as $attr_key => $attr_config) {
+                    if (isset($atts[$attr_key]) && isset($attr_config['type']) && $attr_config['type'] === 'number') {
+                        $value = $atts[$attr_key];
+                        if (is_numeric($value)) {
+                            $num_value = floatval($value);
+                            // Clamp to minimum
+                            if (isset($attr_config['minimum'])) {
+                                $num_value = max($attr_config['minimum'], $num_value);
+                            }
+                            // Clamp to maximum
+                            if (isset($attr_config['maximum'])) {
+                                $num_value = min($attr_config['maximum'], $num_value);
+                            }
+                            $atts[$attr_key] = $num_value;
+                        }
+                    }
+                }
 
                 // Convert attribute names from underscore to kebab-case
                 $kebab_attrs = [];
                 foreach ($atts as $key => $value) {
-                    // Skip empty values, null, false, numeric zero, and empty strings
-                    if ($value === '' || $value === null || $value === false || $value === 0) {
+                    // Skip only truly empty values (null, false, and empty strings); numeric zero is a valid value
+                    if ($value === '' || $value === null || $value === false) {
                         continue;
                     }
                     
@@ -228,6 +247,21 @@ class Shortcodes {
                     case 'string':
                         if (!is_string($value)) {
                             $errors[] = sprintf('Attribute "%s" must be a string', $attr);
+                        }
+                        break;
+                    case 'number':
+                        if (!is_numeric($value)) {
+                            $errors[] = sprintf('Attribute "%s" must be a number', $attr);
+                        } else {
+                            $num_value = floatval($value);
+                            // Check minimum constraint
+                            if (isset($config['minimum']) && $num_value < $config['minimum']) {
+                                $errors[] = sprintf('Attribute "%s" must be at least %s', $attr, $config['minimum']);
+                            }
+                            // Check maximum constraint
+                            if (isset($config['maximum']) && $num_value > $config['maximum']) {
+                                $errors[] = sprintf('Attribute "%s" must be at most %s', $attr, $config['maximum']);
+                            }
                         }
                         break;
                 }

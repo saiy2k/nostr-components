@@ -342,7 +342,7 @@ export const fetchTotalZapAmount = async ({
                   amount: amount / 1000, // convert from msats to sats
                   date: new Date(event.created_at * 1000),
                   authorPubkey: zapRequest.pubkey,
-                  comment: zapRequest.content || undefined,
+                  comment: zapRequest.content,
                 });
               }
             }
@@ -356,7 +356,7 @@ export const fetchTotalZapAmount = async ({
                   amount: amount / 1000, // convert from msats to sats
                   date: new Date(event.created_at * 1000),
                   authorPubkey: zapRequest.pubkey,
-                  comment: zapRequest.content || undefined,
+                  comment: zapRequest.content,
                 });
               }
             }
