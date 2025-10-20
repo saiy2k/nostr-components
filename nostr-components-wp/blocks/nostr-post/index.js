@@ -23,24 +23,24 @@
 				wp.element.createElement(InspectorControls, null,
 					wp.element.createElement(PanelBody, { title: 'Post Settings' },
 						wp.element.createElement(TextControl, {
-							label: 'Event ID (Note ID)',
+							label: 'Event ID',
 							value: attributes.eventid,
 							onChange: (value) => setAttributes({ eventid: value }),
-							help: 'The Nostr note ID to display (note1...)',
-							placeholder: 'note1...'
+							help: 'Event ID as nevent1...',
+							placeholder: 'nevent1'
 						}),
 						wp.element.createElement(TextControl, {
-							label: 'Hex Event ID',
+							label: 'Hex',
 							value: attributes.hex,
 							onChange: (value) => setAttributes({ hex: value }),
 							help: 'Alternative: Event ID in hex format',
 							placeholder: '64 character hex string'
 						}),
 						wp.element.createElement(TextControl, {
-							label: 'Note ID (alternative)',
+							label: 'Note ID',
 							value: attributes.noteid,
 							onChange: (value) => setAttributes({ noteid: value }),
-							help: 'Alternative: Note ID in note1... format',
+							help: 'Note ID in note1... format',
 							placeholder: 'note1...'
 						}),
 						wp.element.createElement(TextControl, {

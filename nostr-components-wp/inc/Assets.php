@@ -4,6 +4,7 @@ namespace NostrComponentsWP;
 class Assets {
     public static function boot() {
         add_action('init', [__CLASS__, 'register_component_scripts']);
+        add_action('init', [__CLASS__, 'register_theme_styles']);
         add_filter('script_loader_tag', [__CLASS__, 'as_module'], 10, 3);
     }
 
@@ -25,6 +26,22 @@ class Assets {
                     true // Load in footer
                 );
             }
+        }
+    }
+
+    /**
+     * Register themes CSS file
+     */
+    public static function register_theme_styles() {
+        $themes_css_path = NOSTR_WP_DIR . 'assets/themes.css';
+        
+        if (file_exists($themes_css_path)) {
+            wp_register_style(
+                'nostr-components-themes',
+                plugins_url('assets/themes.css', NOSTR_WP_FILE),
+                [],
+                NOSTR_WP_VERSION
+            );
         }
     }
 
@@ -58,6 +75,11 @@ class Assets {
             foreach ($meta['dependencies'] as $dep) {
                 self::ensure_component_loaded($dep);
             }
+        }
+
+        // Enqueue themes CSS if not already enqueued
+        if (!wp_style_is('nostr-components-themes', 'enqueued')) {
+            wp_enqueue_style('nostr-components-themes');
         }
 
         // Load the component script

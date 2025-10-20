@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "nostr/nostr-zap",
+  "version": "0.1.0",
+  "title": "Nostr Zap Button",
+  "category": "nostr",
+  "icon": "money-alt",
+  "description": "Send Bitcoin tips (zaps) to Nostr users",
+  "supports": {
+    "html": false
+  },
+  "attributes": {
+    "npub": {
+      "type": "string",
+      "default": ""
+    },
+    "pubkey": {
+      "type": "string",
+      "default": ""
+    },
+    "nip05": {
+      "type": "string",
+      "default": ""
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["light", "dark"],
+      "default": "light"
+    },
+    "relays": {
+      "type": "string",
+      "default": ""
+    },
+    "text": {
+      "type": "string",
+      "default": "Zap"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "default-amount": {
+      "type": "number"
+    },
+    "url": {
+      "type": "string",
+      "default": ""
+    }
+  }
+}
+

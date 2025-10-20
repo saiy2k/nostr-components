@@ -49,10 +49,19 @@ class Shortcodes {
                 // Convert attribute names from underscore to kebab-case
                 $kebab_attrs = [];
                 foreach ($atts as $key => $value) {
-                    if ($value !== '' && $value !== null) {
-                        $kebab_key = str_replace('_', '-', $key);
-                        $kebab_attrs[] = sprintf('%s="%s"', esc_attr($kebab_key), esc_attr($value));
+                    // Skip empty values, null, false, numeric zero, and empty strings
+                    if ($value === '' || $value === null || $value === false || $value === 0) {
+                        continue;
                     }
+                    
+                    $kebab_key = str_replace('_', '-', $key);
+                    
+                    // Map 'theme' to 'data-theme' for web components
+                    if ($kebab_key === 'theme') {
+                        $kebab_key = 'data-theme';
+                    }
+                    
+                    $kebab_attrs[] = sprintf('%s="%s"', esc_attr($kebab_key), esc_attr($value));
                 }
 
                 // Generate the custom element HTML
@@ -162,6 +171,12 @@ class Shortcodes {
                 return 'light';
             case 'text':
                 return 'Follow me on nostr';
+            case 'amount':
+                return '1000';
+            case 'default-amount':
+                return '21';
+            case 'url':
+                return 'https://example.com';
             case 'show-stats':
             case 'show-npub':
             case 'show-follow':

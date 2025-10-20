@@ -3,7 +3,6 @@
 import { NDKEvent, ProfilePointer } from "@nostr-dev-kit/ndk";
 import { NostrService } from "../common/nostr-service";
 import { nip21 } from 'nostr-tools';
-import { escapeHtml } from "../common/utils";
 
 export type ContentItem = {
   type: 'text' | 'image' | 'gif' | 'video' | 'link' | 'embedded-note';
@@ -71,7 +70,7 @@ export async function parseText(text: string, post: NDKEvent | null, embeddedPos
 
           uriReplacements.push({
             original: match[0],
-            replacement: `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${escapeHtml(name)}</a>`
+            replacement: `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
           });
         }
       } catch (error) {

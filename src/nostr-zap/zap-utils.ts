@@ -274,6 +274,7 @@ export interface ZapDetails {
   amount: number;
   date: Date;
   authorPubkey: string;
+  comment?: string;
 }
 
 export interface ZapAmountResult {
@@ -341,6 +342,7 @@ export const fetchTotalZapAmount = async ({
                   amount: amount / 1000, // convert from msats to sats
                   date: new Date(event.created_at * 1000),
                   authorPubkey: zapRequest.pubkey,
+                  comment: zapRequest.content || undefined,
                 });
               }
             }
@@ -354,6 +356,7 @@ export const fetchTotalZapAmount = async ({
                   amount: amount / 1000, // convert from msats to sats
                   date: new Date(event.created_at * 1000),
                   authorPubkey: zapRequest.pubkey,
+                  comment: zapRequest.content || undefined,
                 });
               }
             }
