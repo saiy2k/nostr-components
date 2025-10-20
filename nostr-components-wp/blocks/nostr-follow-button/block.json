@@ -31,6 +31,14 @@
     "relays": {
       "type": "string",
       "default": ""
+    },
+    "show-avatar": {
+      "type": "boolean",
+      "default": false
+    },
+    "text": {
+      "type": "string",
+      "default": "Follow me on nostr"
     }
   }
 }

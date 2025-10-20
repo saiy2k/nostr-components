@@ -15,7 +15,9 @@ class Registry {
                 'esm'         => 'assets/nostr-post.es.js',
                 'dependencies' => [],
                 'attributes'  => [
-                    'eventid' => ['type' => 'string', 'required' => true],
+                    'eventid' => ['type' => 'string'],
+                    'hex'     => ['type' => 'string'],
+                    'noteid'  => ['type' => 'string'],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
                     'relays'  => ['type' => 'string'],
                     'show-stats' => ['type' => 'boolean', 'default' => false],
@@ -70,6 +72,9 @@ class Registry {
                     'nip05'   => ['type' => 'string'],
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
                     'relays'  => ['type' => 'string'],
+                    // Component-specific attributes
+                    'show-avatar' => ['type' => 'boolean', 'default' => false],
+                    'text'    => ['type' => 'string', 'default' => 'Follow me on nostr'],
                 ],
             ],
         ];

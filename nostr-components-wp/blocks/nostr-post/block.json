@@ -15,6 +15,14 @@
       "type": "string",
       "default": ""
     },
+    "hex": {
+      "type": "string",
+      "default": ""
+    },
+    "noteid": {
+      "type": "string",
+      "default": ""
+    },
     "theme": {
       "type": "string",
       "enum": ["light", "dark"],

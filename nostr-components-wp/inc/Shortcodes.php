@@ -146,6 +146,9 @@ class Shortcodes {
     private static function get_example_value(string $attr, array $config): string {
         switch ($attr) {
             case 'eventid':
+            case 'noteid':
+                return 'note1abc123...';
+            case 'hex':
                 return 'abc123def456...';
             case 'npub':
                 return 'npub1abc123...';
@@ -157,9 +160,12 @@ class Shortcodes {
                 return 'wss://relay.example.com';
             case 'theme':
                 return 'light';
+            case 'text':
+                return 'Follow me on nostr';
             case 'show-stats':
             case 'show-npub':
             case 'show-follow':
+            case 'show-avatar':
                 return 'true';
             default:
                 return 'example';
