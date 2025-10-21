@@ -1,14 +1,14 @@
 === Nostr Components ===
-Contributors: akapazmon, saiy2k
-Tags: nostr, social, blocks, gutenberg, shortcodes, web components
+Contributors: saiy2k
+Tags: nostr, social, blocks, gutenberg, shortcodes
 Requires at least: 6.0
-Tested up to: 6.4
+Tested up to: 6.8
 Requires PHP: 7.4
 Stable tag: 0.2.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
-Gutenberg blocks and shortcodes for Nostr web components. Display Nostr posts, profiles, and follow buttons with selective component loading for optimal performance.
+Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zap buttons, follow buttons, posts, profiles.
 
 == Description ==
 
@@ -16,7 +16,7 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 
 = Key Features =
 
-* **Gutenberg Blocks**: Modern block editor integration for Nostr Post, Profile, Profile Badge, and Follow Button
+* **Gutenberg Blocks**: Modern block editor integration for Nostr Zap button, Post, Profile, Profile Badge, and Follow Button
 * **Shortcodes**: Classic editor support with simple shortcode syntax
 * **Selective Loading**: Enable only the components you need for optimal performance
 * **Customizable**: Configure relays, themes, and component settings
@@ -25,10 +25,11 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 
 = Available Components =
 
+* **Nostr Zap button**: Allows your readers to zap to your posts and pages
+* **Nostr Follow Button**: Interactive follow/unfollow buttons for Nostr users
 * **Nostr Post**: Display Nostr notes/posts with full content and metadata
 * **Nostr Profile**: Show complete Nostr user profiles with bio, stats, and social links
 * **Nostr Profile Badge**: Compact profile display perfect for sidebars and footers
-* **Nostr Follow Button**: Interactive follow/unfollow buttons for Nostr users
 
 = How It Works =
 
@@ -44,18 +45,11 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 Simply add the Nostr blocks from the block inserter and configure them in the block settings.
 
 **Shortcodes:**
+`[nostr_zap pubkey="npub1abc..." url=""]`
 `[nostr_post eventid="note1abc..."]`
 `[nostr_profile pubkey="npub1abc..."]`
 `[nostr_profile_badge pubkey="npub1abc..."]`
 `[nostr_follow_button pubkey="npub1abc..."]`
-
-== Installation ==
-
-1. Upload the plugin files to the `/wp-content/plugins/nostr-components-wp/` directory, or install the plugin through the WordPress plugins screen directly.
-2. Activate the plugin through the 'Plugins' screen in WordPress
-3. Go to Settings → Nostr Components to configure the plugin
-4. Enable the components you want to use
-5. Start adding Nostr blocks or shortcodes to your content
 
 == Frequently Asked Questions ==
 
@@ -81,12 +75,14 @@ Yes, the components are designed to work with any WordPress theme. They use mode
 
 == Screenshots ==
 
-1. Nostr Post block in the Gutenberg editor
-2. Nostr Profile block showing user information
-3. Nostr Profile Badge in a sidebar
-4. Nostr Follow Button with interactive states
-5. Plugin settings page for configuration
-6. Shortcode examples in the classic editor
+== Screenshots ==
+
+1. Nostr Zap button in admin (left) and zap button on website (right)
+2. Nostr Follow Button in admin (left) and interactive button on frontend (right)
+3. Nostr Post in admin (left) and rendered post on frontend (right)
+4. Nostr Profile in admin (left) and displayed profile on website (right)
+5. Nostr Profile in admin (left) and compact badge in sidebar (right)
+6. Plugin settings page
 
 == Changelog ==
 
@@ -94,15 +90,15 @@ Yes, the components are designed to work with any WordPress theme. They use mode
 * Initial release
 * Gutenberg blocks for Nostr Post, Profile, Profile Badge, and Follow Button
 * Shortcode support for all components
-* Selective component loading
-* Admin settings page
+* Selective component loading for optimal performance
+* Admin settings page for configuration
 * Security features with KSES integration
-* Performance optimizations
-
-== Upgrade Notice ==
-
-= 0.2.0 =
-Initial release of Nostr Components.
+* Performance optimizations with conditional asset loading
+* Support for custom relay configuration
+* Light and dark theme support
+* Responsive design for all components
+* WordPress 6.0+ compatibility
+* PHP 7.4+ compatibility
 
 == Development ==
 

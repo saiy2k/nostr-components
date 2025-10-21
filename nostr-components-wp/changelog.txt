@@ -1,7 +1,7 @@
-= 0.2.0 - 2025-09-23 =
+= 0.2.0 - 2025-10-23 =
 
 * Initial release
-* Gutenberg blocks for Nostr Post, Profile, Profile Badge, and Follow Button
+* Gutenberg blocks for Nostr Zap button, Follow button, Post, Profile and Profile Badge
 * Shortcode support for all components
 * Selective component loading for optimal performance
 * Admin settings page for configuration

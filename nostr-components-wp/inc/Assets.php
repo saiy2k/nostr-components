@@ -50,7 +50,10 @@ class Assets {
      */
     public static function as_module($tag, $handle, $src) {
         if (substr($handle, -4) === '-esm') {
-            $tag = sprintf('<script type="module" src="%s"></script>'."\n", esc_url($src));
+            $tag = wp_get_script_tag([
+                'type' => 'module',
+                'src' => $src,
+            ]) . "\n";
         }
         return $tag;
     }

@@ -6,8 +6,8 @@ This WordPress plugin provides Gutenberg blocks and shortcodes for Nostr web com
 
 ```text
 wp-plugin/
-├── nostr-components-wp.php    # Main plugin file
-├── inc/                       # Core plugin classes
+├── nostr-components-wp.php   # Main plugin file
+├── inc/                      # Core plugin classes
 │   ├── Registry.php          # Component registry & metadata
 │   ├── Settings.php          # Admin settings page
 │   ├── Assets.php            # Script/style management
@@ -15,10 +15,11 @@ wp-plugin/
 │   ├── Blocks.php            # Block registration
 │   └── Kses.php              # Security (custom elements)
 ├── blocks/                   # Gutenberg block definitions
+│   ├── nostr-zap
+│   ├── nostr-follow-button/
 │   ├── nostr-post/
 │   ├── nostr-profile/
-│   ├── nostr-profile-badge/
-│   └── nostr-follow-button/
+│   └── nostr-profile-badge/
 ├── assets/                   # All component bundles and dependencies
 │   ├── manifest.json         # Asset manifest
 │   ├── nostr-post.es.js
@@ -39,12 +40,6 @@ wp-plugin/
 - **Shortcodes**: Classic editor support
 - **Security**: Custom element allowlist via KSES
 - **Performance**: Conditional asset loading
-
-## Installation
-
-1. Copy the `wp-plugin` directory to your WordPress plugins folder
-2. Activate the plugin in WordPress admin
-3. Go to Settings → Nostr Components to configure
 
 ## Development
 
