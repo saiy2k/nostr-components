@@ -2,18 +2,16 @@
 /**
  * Plugin Name: Nostr Components
  * Plugin URI:  https://github.com/saiy2k/nostr-components
- * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr posts, profiles, and follow buttons with selective component loading for optimal performance.
+ * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zaps button, follow button, posts, profiles with selective component loading for optimal performance.
  * Version:     0.2.0
- * Author:      Akap Azmon, saiy2k
- * Author URI:  https://github.com/casyazmon, https://github.com/saiy2k
+ * Author:      saiy2k
+ * Author URI:  https://github.com/saiy2k
  * License:     MIT
  * License URI: https://opensource.org/licenses/MIT
  * Text Domain: nostr-components-wp
- * Domain Path: /languages
  * Requires at least: 6.0
- * Tested up to: 6.4
+ * Tested up to: 6.8
  * Requires PHP: 7.4
- * Network:     false
  * 
  * @package NostrComponentsWP
  */
