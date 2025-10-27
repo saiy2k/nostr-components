@@ -24,6 +24,7 @@ export default defineConfig({
         'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
         'nostr-dm': resolve(__dirname, 'src/nostr-dm/nostr-dm.ts'),
         'nostr-live-chat': resolve(__dirname, 'src/nostr-live-chat/nostr-live-chat.ts'),
+        'nostr-like': resolve(__dirname, 'src/nostr-like/nostr-like.ts'),
       },
       external: [],
       output: [
