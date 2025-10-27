@@ -5,6 +5,7 @@ import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { renderLikeButton, RenderLikeButtonOptions } from './render';
 import { getLikeButtonStyles } from './style';
+import { showHelpDialog } from './dialog-help';
 import { 
   fetchLikesForUrl, 
   createLikeEvent, 
@@ -229,6 +230,14 @@ export default class NostrLike extends NostrBaseComponent {
     }
   }
 
+  private async handleHelpClick() {
+    try {
+      await showHelpDialog(this.theme === 'dark' ? 'dark' : 'light');
+    } catch (error) {
+      console.error('[NostrLike] Error showing help dialog:', error);
+    }
+  }
+
   private attachDelegatedListeners() {
     this.delegateEvent('click', '.nostr-like-button', (e) => {
       e.preventDefault?.();
@@ -241,6 +250,12 @@ export default class NostrLike extends NostrBaseComponent {
       e.stopPropagation?.();
       void this.handleCountClick();
     });
+
+    this.delegateEvent('click', '.help-icon', (e) => {
+      e.preventDefault?.();
+      e.stopPropagation?.();
+      this.handleHelpClick();
+    });
   }
 
   protected renderContent() {
@@ -248,6 +263,7 @@ export default class NostrLike extends NostrBaseComponent {
     const isError = this.computeOverall() === NCStatus.Error;
     const errorMessage = this.errorMessage;
     const buttonText = this.getAttribute('text') || 'Like';
+    const isCountLoading = this.likeListStatus.get() === NCStatus.Loading;
 
     const renderOptions: RenderLikeButtonOptions = {
       isLoading,
@@ -257,6 +273,8 @@ export default class NostrLike extends NostrBaseComponent {
       isLiked: this.isLiked,
       likeCount: this.likeCount,
       hasLikes: this.likeCount > 0,
+      isCountLoading,
+      theme: this.theme as 'light' | 'dark',
     };
 
     this.shadowRoot!.innerHTML = `

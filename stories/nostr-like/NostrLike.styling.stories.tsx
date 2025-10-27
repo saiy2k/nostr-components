@@ -2,6 +2,8 @@
 
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
+import { LIKE_BUTTON_THEMES } from './theme';
+import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
   title: 'Like Button/Styling',
@@ -28,34 +30,34 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj<any>;
 
-export const CustomColors: Story = {
-  name: 'Custom Colors',
+export const OceanGlass: Story = {
+  name: TEST_CASES.oceanGlass.name,
   args: {
-    text: 'Like',
-    url: 'https://example.com/article',
-    '--nostrc-like-btn-bg': '#ff6b35',
-    '--nostrc-like-btn-color': '#ffffff',
-    '--nostrc-like-btn-liked-bg': '#ff8c5a',
-    '--nostrc-like-btn-liked-color': '#ffffff',
+    ...TEST_CASES.oceanGlass.args,
+    ...LIKE_BUTTON_THEMES['ocean-glass'],
   },
 };
 
-export const CustomSize: Story = {
-  name: 'Custom Size',
+export const Holographic: Story = {
+  name: TEST_CASES.holographic.name,
   args: {
-    text: 'Like',
-    url: 'https://example.com/article',
-    '--nostrc-icon-width': '24px',
-    '--nostrc-icon-height': '24px',
-    '--nostrc-like-btn-padding': '12px 20px',
+    ...TEST_CASES.holographic.args,
+    ...LIKE_BUTTON_THEMES['holographic'],
   },
 };
 
-export const CustomBorderRadius: Story = {
-  name: 'Custom Border Radius',
+export const NeoMatrix: Story = {
+  name: TEST_CASES.neoMatrix.name,
   args: {
-    text: 'Like',
-    url: 'https://example.com/article',
-    '--nostrc-like-btn-border-radius': '20px',
+    ...TEST_CASES.neoMatrix.args,
+    ...LIKE_BUTTON_THEMES['neo-matrix'],
+  },
+};
+
+export const BitcoinOrange: Story = {
+  name: TEST_CASES.bitcoinOrange.name,
+  args: {
+    ...TEST_CASES.bitcoinOrange.args,
+    ...LIKE_BUTTON_THEMES['bitcoin-orange'],
   },
 };

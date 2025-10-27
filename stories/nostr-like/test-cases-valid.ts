@@ -52,4 +52,38 @@ export const TEST_CASES = {
       text: 'Like',
     },
   },
+
+  // Theme Variations
+  oceanGlass: {
+    name: 'Ocean Glass Theme',
+    args: {
+      text: 'Like',
+      url: 'https://example.com/article',
+    },
+    wrapperDataTheme: 'ocean-glass',
+  },
+  holographic: {
+    name: 'Holographic Theme',
+    args: {
+      text: 'Like',
+      url: 'https://example.com/article',
+    },
+    wrapperDataTheme: 'holographic',
+  },
+  neoMatrix: {
+    name: 'Neo Matrix Theme',
+    args: {
+      text: 'Like',
+      url: 'https://example.com/article',
+    },
+    wrapperDataTheme: 'neo-matrix',
+  },
+  bitcoinOrange: {
+    name: 'Bitcoin Orange Theme',
+    args: {
+      text: 'Like',
+      url: 'https://example.com/article',
+    },
+    wrapperDataTheme: 'bitcoin-orange',
+  },
 };
