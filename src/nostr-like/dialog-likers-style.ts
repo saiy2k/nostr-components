@@ -82,6 +82,26 @@ export function getLikersDialogStyles(theme: 'light' | 'dark' = 'light'): string
       color: ${isDark ? '#b0b0b0' : '#65676b'};
       font-size: 12px;
       font-weight: 400;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .like-status {
+      font-weight: 500;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .like-status.liked {
+      color: ${isDark ? '#4a9eff' : '#1877f2'};
+      background: ${isDark ? 'rgba(74, 158, 255, 0.1)' : 'rgba(24, 119, 242, 0.1)'};
+    }
+
+    .like-status.disliked {
+      color: #d32f2f;
+      background: rgba(211, 47, 47, 0.1);
     }
 
     .no-likes {

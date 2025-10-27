@@ -58,6 +58,10 @@ function renderLikeEntry(like: EnhancedLikeDetails, index: number): string {
     ? `<img src="${profilePictureSafe}" alt="${authorNameSafe}" class="like-author-picture" />`
     : `<div class="like-author-picture-default">👤</div>`;
   
+  const isDislike = like.content === '-';
+  const statusText = isDislike ? 'Disliked' : 'Liked';
+  const statusClass = isDislike ? 'disliked' : 'liked';
+  
   return `
     <div class="like-entry" data-like-index="${index}" data-author-pubkey="${like.authorPubkey}">
       <div class="like-author-info">
@@ -68,6 +72,7 @@ function renderLikeEntry(like: EnhancedLikeDetails, index: number): string {
           </a>
           <div class="like-date">
             ${formatRelativeTime(Math.floor(like.date.getTime() / 1000))}
+            <span class="like-status ${statusClass}">${statusText}</span>
           </div>
         </div>
       </div>
@@ -79,6 +84,10 @@ function renderLikeEntry(like: EnhancedLikeDetails, index: number): string {
  * Render skeleton like entry HTML (with npub)
  */
 function renderSkeletonLikeEntry(like: LikeDetails, npub: string, index: number): string {
+  const isDislike = like.content === '-';
+  const statusText = isDislike ? 'Disliked' : 'Liked';
+  const statusClass = isDislike ? 'disliked' : 'liked';
+  
   return `
     <div class="like-entry skeleton-entry" data-like-index="${index}" data-author-pubkey="${like.authorPubkey}">
       <div class="like-author-info">
@@ -89,6 +98,7 @@ function renderSkeletonLikeEntry(like: LikeDetails, npub: string, index: number)
           </div>
           <div class="like-date">
             ${formatRelativeTime(Math.floor(like.date.getTime() / 1000))}
+            <span class="like-status ${statusClass}">${statusText}</span>
           </div>
         </div>
       </div>

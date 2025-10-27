@@ -19,6 +19,8 @@ export interface LikeDetails {
 export interface LikeCountResult {
   totalCount: number;
   likeDetails: LikeDetails[];
+  likedCount: number;
+  dislikedCount: number;
 }
 
 /**
@@ -32,7 +34,7 @@ export async function fetchLikesForUrl(
   const normalizedUrl = normalizeURL(url);
   
   try {
-    // Query kind 17 events
+    // Query kind 17 events (both likes and unlikes)
     const events = await pool.querySync(relays, {
       kinds: [17],
       '#k': ['web'],
@@ -49,30 +51,48 @@ export async function fetchLikesForUrl(
       }
     }
     
-    // Filter out unlikes (content === "-") - not needed for one-way likes
+    // Process likes and unlikes - count separately
     const likes: LikeDetails[] = [];
+    let likedCount = 0;
+    let dislikedCount = 0;
+    
     for (const [pubkey, event] of latestByAuthor.entries()) {
-      if (event.content === '+' || event.content === '') {
-        likes.push({
-          authorPubkey: pubkey,
-          date: new Date(event.created_at * 1000),
-          content: event.content
-        });
+      // Add to list regardless (shows both likes and unlikes in dialog)
+      likes.push({
+        authorPubkey: pubkey,
+        date: new Date(event.created_at * 1000),
+        content: event.content
+      });
+      
+      // Count separately
+      if (event.content === '-') {
+        // Latest reaction is an unlike
+        dislikedCount++;
+      } else {
+        // Latest reaction is a like ('+' or empty string)
+        likedCount++;
       }
     }
     
     // Sort by date (newest first)
     likes.sort((a, b) => b.date.getTime() - a.date.getTime());
     
+    // Calculate net count: likes minus unlikes
+    const totalCount = likedCount - dislikedCount;
+    
     return {
-      totalCount: likes.length,
-      likeDetails: likes
+      totalCount: totalCount,
+      likeDetails: likes,
+      likedCount: likedCount,
+      dislikedCount: dislikedCount
     };
   } catch (error) {
     console.error("Nostr-Components: Like button: Error fetching likes", error);
     return {
       totalCount: 0,
-      likeDetails: []
+      likeDetails: [],
+      likedCount: 0,
+      dislikedCount: 0
     };
   } finally {
     pool.close(relays);
@@ -86,6 +106,21 @@ export function createLikeEvent(url: string): any {
   return {
     kind: 17,
     content: '+',
+    tags: [
+      ['k', 'web'],
+      ['i', normalizeURL(url)]
+    ],
+    created_at: Math.floor(Date.now() / 1000)
+  };
+}
+
+/**
+ * Create unlike event (kind 17 with '-' content)
+ */
+export function createUnlikeEvent(url: string): any {
+  return {
+    kind: 17,
+    content: '-',
     tags: [
       ['k', 'web'],
       ['i', normalizeURL(url)]
@@ -117,7 +152,7 @@ export async function hasUserLiked(
     
     if (events.length === 0) return false;
     
-    // Check if latest reaction is a like
+    // Check if latest reaction is a like (not an unlike)
     const latest = events[0];
     return latest.content === '+' || latest.content === '';
   } catch (error) {

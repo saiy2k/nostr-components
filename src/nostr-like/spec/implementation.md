@@ -118,7 +118,7 @@ async checkIfUserLiked() {
     limit: 1
   });
   
-  // Check if user has liked
+  // Check if user's latest reaction is a like (not an unlike)
   if (userReactions.length > 0) {
     const latest = userReactions[0]; // Most recent
     this.isLiked = latest.content === '+' || latest.content === '';
@@ -126,40 +126,36 @@ async checkIfUserLiked() {
 }
 ```
 
-### Like Action (One-Way)
+### Like/Unlike Action Flow
 ```typescript
 async handleLikeClick() {
-  if (this.isLiked) {
-    // Already liked - do nothing or show message
-    return;
+  // Check if user has already liked
+  const userPubkey = await getUserPubkey();
+  if (userPubkey) {
+    this.isLiked = await hasUserLiked(this.currentUrl, userPubkey, this.getRelays());
   }
   
-  await this.likeUrl();
+  if (this.isLiked) {
+    // Already liked - show confirmation dialog
+    const confirmed = window.confirm('You have already liked this. Do you want to unlike it?');
+    if (!confirmed) return;
+    await this.handleUnlike();
+  } else {
+    // Not liked - proceed with like
+    await this.handleLike();
+  }
 }
 
-async likeUrl() {
-  // Create kind 17 event with content "+"
-  const event = {
-    kind: 17,
-    content: '+',
-    tags: [
-      ['k', 'web'],
-      ['i', this.currentUrl]
-    ],
-    created_at: Math.floor(Date.now() / 1000)
-  };
-  
-  // Sign with NIP-07
-  const nip07signer = new NDKNip07Signer();
-  const signedEvent = await nip07signer.sign(event);
-  
-  // Broadcast
-  await this.nostrService.getNDK().publish(signedEvent);
-  
-  // Update state
-  this.isLiked = true;
-  this.likeCount++;
-  this.render();
+async handleLike() {
+  const event = createLikeEvent(this.currentUrl); // content: '+'
+  const signedEvent = await signEvent(event);
+  // Broadcast and update UI
+}
+
+async handleUnlike() {
+  const event = createUnlikeEvent(this.currentUrl); // content: '-'
+  const signedEvent = await signEvent(event);
+  // Broadcast and update UI
 }
 ```
 
@@ -173,16 +169,17 @@ Uses the shared `DialogComponent` base class for the likers modal. See `src/base
 
 ```typescript
 /**
- * Fetch all likes for a URL
+ * Fetch all likes/unlikes for a URL
+ * Returns: { totalCount, likedCount, dislikedCount, likeDetails }
  */
 async function fetchLikesForUrl(
   url: string, 
   relays: string[]
-): Promise<LikeDetails[]> {
+): Promise<LikeCountResult> {
   const pool = new SimplePool();
   const normalizedUrl = normalizeURL(url);
   
-  // Query kind 17 events
+  // Query all kind 17 events (both likes and unlikes)
   const events = await pool.querySync(relays, {
     kinds: [17],
     '#k': ['web'],
@@ -199,22 +196,40 @@ async function fetchLikesForUrl(
     }
   }
   
-  // Filter out unlikes (content === "-") - not needed for one-way likes
+  // Count likes and unlikes separately
   const likes: LikeDetails[] = [];
+  let likedCount = 0;
+  let dislikedCount = 0;
+  
   for (const [pubkey, event] of latestByAuthor.entries()) {
-    if (event.content === '+' || event.content === '') {
-      likes.push({
-        authorPubkey: pubkey,
-        date: new Date(event.created_at * 1000),
-        content: event.content
-      });
+    // Add to list regardless (shows both likes and unlikes)
+    likes.push({
+      authorPubkey: pubkey,
+      date: new Date(event.created_at * 1000),
+      content: event.content
+    });
+    
+    // Count separately
+    if (event.content === '-') {
+      dislikedCount++;
+    } else {
+      // '+' or empty string is a like
+      likedCount++;
     }
   }
   
   // Sort by date (newest first)
   likes.sort((a, b) => b.date.getTime() - a.date.getTime());
   
-  return likes;
+  // Calculate net count: likes minus unlikes
+  const totalCount = likedCount - dislikedCount;
+  
+  return {
+    totalCount,
+    likedCount,
+    dislikedCount,
+    likeDetails: likes
+  };
 }
 
 /**
@@ -233,7 +248,22 @@ function createLikeEvent(url: string): any {
 }
 
 /**
- * Check if user has liked a URL
+ * Create unlike event
+ */
+function createUnlikeEvent(url: string): any {
+  return {
+    kind: 17,
+    content: '-',
+    tags: [
+      ['k', 'web'],
+      ['i', normalizeURL(url)]
+    ],
+    created_at: Math.floor(Date.now() / 1000)
+  };
+}
+
+/**
+ * Check if user's latest reaction is a like (not an unlike)
  */
 async function hasUserLiked(
   url: string,
@@ -254,7 +284,7 @@ async function hasUserLiked(
   
   if (events.length === 0) return false;
   
-  // Check if latest reaction is a like
+  // Check if latest reaction is a like (not an unlike)
   const latest = events[0];
   return latest.content === '+' || latest.content === '';
 }
@@ -262,7 +292,14 @@ async function hasUserLiked(
 interface LikeDetails {
   authorPubkey: string;
   date: Date;
-  content: string;
+  content: string; // '+' for like, '-' for unlike, '' for like
+}
+
+interface LikeCountResult {
+  totalCount: number;    // Net count: likedCount - dislikedCount
+  likedCount: number;    // Number of likes
+  dislikedCount: number; // Number of unlikes
+  likeDetails: LikeDetails[];
 }
 ```
 
@@ -278,15 +315,23 @@ interface LikeDetails {
 - Queries kind 17 events with `#k=web` and `#i=<url>` tags
 - Limit: 1000 events
 - Deduplication: Count only latest reaction per author
-- Filtering: Exclude unlikes (content === "-")
+- Includes both likes (content = '+' or '') and unlikes (content = '-')
 
 ### Count Calculation
 ```typescript
 async function getLikeCount(url: string, relays: string[]): Promise<number> {
-  const likes = await fetchLikesForUrl(url, relays);
-  return likes.length;
+  const result = await fetchLikesForUrl(url, relays);
+  return result.totalCount; // Net count: likes - unlikes
 }
 ```
+
+**Count Logic:**
+- Query all kind 17 events for the URL
+- Deduplicate by author (keep latest reaction per user)
+- Count `likedCount`: Events where `content === '+'` or `content === ''`
+- Count `dislikedCount`: Events where `content === '-'`
+- Calculate `totalCount = likedCount - dislikedCount`
+- Note: `totalCount` can be negative if unlikes exceed likes
 
 ### Interactivity
 - Clickable count opens likers dialog
@@ -297,8 +342,9 @@ async function getLikeCount(url: string, relays: string[]): Promise<number> {
 
 ### Data Strategy
 - Reuses data from `fetchLikesForUrl()` (single query)
-- Returns deduplicated list of likes
+- Returns deduplicated list of reactions (both likes and unlikes)
 - Sorted chronologically (newest first)
+- Each entry includes `content` field to distinguish like vs unlike
 
 ### Progressive Loading
 - Dialog shows skeleton loaders with npubs immediately
@@ -309,14 +355,16 @@ async function getLikeCount(url: string, relays: string[]): Promise<number> {
 ### Like Details
 - Author from event `pubkey` field
 - Date from event `created_at` timestamp
-- Content from event `content` field (usually "+")
+- Content from event `content` field ('+' or '' for like, '-' for unlike)
 - Profile from kind 0 metadata events
+- Status badge: "Liked" (blue) or "Disliked" (red) based on content
 
 ### Profile Display
 - Initial: npubs in skeleton loaders
 - Enhanced: Display name and profile picture from metadata
 - Fallback: npub for name, 👤 emoji for picture
 - Links: njump.me URLs for author profiles
+- Status: Badge showing "Liked" or "Disliked" next to timestamp
 
 ## Error Handling
 
@@ -397,13 +445,17 @@ src/nostr-like/
 ## Testing Considerations
 
 - Test like action with NIP-07
+- Test unlike action with confirmation dialog
 - Test without NIP-07 (error state)
 - Test with 0 likes
 - Test with 1 like
 - Test with many likes (100+)
+- Test with unlikes (negative or zero net count)
+- Test count calculation (likes - unlikes)
 - Test URL normalization edge cases
 - Test profile loading in dialog
-- Test deduplication logic (prevent duplicate likes)
+- Test reaction badges in likers dialog ("Liked" vs "Disliked")
+- Test deduplication logic (latest reaction per user)
 - Test error states (network, signature)
 - Test theme switching
 - Test custom URL attribute

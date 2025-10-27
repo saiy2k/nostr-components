@@ -8,7 +8,8 @@ import { getLikeButtonStyles } from './style';
 import { showHelpDialog } from './dialog-help';
 import { 
   fetchLikesForUrl, 
-  createLikeEvent, 
+  createLikeEvent,
+  createUnlikeEvent,
   hasUserLiked, 
   getUserPubkey, 
   signEvent, 
@@ -152,24 +153,6 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   private async handleLikeClick() {
-    // Check user like status on first interaction
-    if (!this.isLiked && isNip07Available()) {
-      try {
-        const userPubkey = await getUserPubkey();
-        if (userPubkey) {
-          this.isLiked = await hasUserLiked(this.currentUrl, userPubkey, this.getRelays());
-          this.render(); // Update UI to show current state
-        }
-      } catch (error) {
-        console.error('[NostrLike] Failed to check user like status:', error);
-      }
-    }
-
-    if (this.isLiked) {
-      // Already liked - do nothing
-      return;
-    }
-
     if (!isNip07Available()) {
       this.likeActionStatus.set(NCStatus.Error, 
         'Please install a Nostr browser extension (Alby, nos2x, etc.)'
@@ -178,6 +161,33 @@ export default class NostrLike extends NostrBaseComponent {
       return;
     }
 
+    // Check user like status
+    try {
+      const userPubkey = await getUserPubkey();
+      if (userPubkey) {
+        this.isLiked = await hasUserLiked(this.currentUrl, userPubkey, this.getRelays());
+        this.render(); // Update UI to show current state
+      }
+    } catch (error) {
+      console.error('[NostrLike] Failed to check user like status:', error);
+    }
+
+    // If already liked, show confirmation dialog
+    if (this.isLiked) {
+      const confirmed = window.confirm('You have already liked this. Do you want to unlike it?');
+      if (!confirmed) {
+        return;
+      }
+      
+      // Proceed with unlike
+      await this.handleUnlike();
+    } else {
+      // Proceed with like
+      await this.handleLike();
+    }
+  }
+
+  private async handleLike() {
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
 
@@ -207,6 +217,44 @@ export default class NostrLike extends NostrBaseComponent {
       this.likeCount--;
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to like';
+      this.likeActionStatus.set(NCStatus.Error, errorMessage);
+    } finally {
+      this.render();
+    }
+  }
+
+  private async handleUnlike() {
+    this.likeActionStatus.set(NCStatus.Loading);
+    this.render();
+
+    try {
+      // Create unlike event
+      const event = createUnlikeEvent(this.currentUrl);
+      
+      // Sign with NIP-07
+      const signedEvent = await signEvent(event);
+      
+      // Create NDKEvent and publish
+      const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
+      await ndkEvent.publish();
+      
+      // Update state optimistically
+      this.isLiked = false;
+      if (this.likeCount > 0) {
+        this.likeCount--;
+      }
+      this.likeActionStatus.set(NCStatus.Ready);
+      
+      // Refresh like count to get accurate data
+      await this.updateLikeCount();
+    } catch (error) {
+      console.error('[NostrLike] Failed to unlike:', error);
+      
+      // Rollback optimistic update
+      this.isLiked = true;
+      this.likeCount++;
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to unlike';
       this.likeActionStatus.set(NCStatus.Error, errorMessage);
     } finally {
       this.render();

@@ -10,23 +10,37 @@
 ## Features
 
 - Display like button with thumbs-up icon and like count
-- Show total likes for current or specified URL
-- Click button to like (one-way action)
-- Click count to view individual likers in modal
+- Show net like count (likes minus unlikes) for current or specified URL
+- Click button to like (one-way action initially)
+- If already liked, show confirmation dialog to unlike
+- Unlike publishes kind 17 event with '-' content
+- Click count to view individual likers/dislikers in modal
 - URL-based reactions using NIP-25 kind 17 events
 - Automatic URL detection from current page
 - NIP-07 signing support
 - Progressive profile loading in likers dialog
 
-## Like Flow
+## Like/Unlike Flow
 
+### Like
 1. User clicks like button
 2. Check for NIP-07 extension (browser signer)
-3. Create kind 17 reaction event with URL tags
-4. Request user signature
-5. Broadcast to relays
-6. Update button state to liked
-7. Refresh like count
+3. Check current user's like status
+4. If not liked, create kind 17 reaction event with '+' content
+5. Request user signature
+6. Broadcast to relays
+7. Update button state to liked
+8. Refresh like count
+
+### Unlike
+1. User clicks like button (when already liked)
+2. Check current user's like status
+3. Show confirmation dialog: "You have already liked this. Do you want to unlike it?"
+4. If confirmed, create kind 17 reaction event with '-' content
+5. Request user signature
+6. Broadcast to relays
+7. Update button state to not liked
+8. Refresh like count
 
 ## URL-Based Reactions
 
@@ -46,9 +60,9 @@ With URL attribute:
 ⚠️ **1000-Event Cap**: The component queries up to 1000 reaction events (kind 17) per URL. For viral content, this may result in undercounting total likes.
 
 **Impact:**
-- Total like count may not reflect all likes received
-- Likers list may not show all contributors
-- Performance degrades with many likes (fetching 1000+ profiles)
+- Total net like count (likes minus unlikes) may not reflect all reactions
+- Likers/dislikers list may not show all contributors
+- Performance degrades with many reactions (fetching 1000+ profiles)
 
 ## API
 
@@ -88,17 +102,19 @@ Count:
 Default (Not Liked):
 ```text
 ┌──────────┐
-│ 👍 Like  │ 42 likes
+│ 👍 Like  │ 3 likes
 └──────────┘
 ```
 
 Liked:
 ```text
 ┌──────────┐
-│ 👍 Liked │ 43 likes
+│ 👍 Liked │ 4 likes
 └──────────┘
 (button has blue background/text, text changes to "Liked")
 ```
+
+Note: Count shows net likes (likes - unlikes). Negative counts are possible.
 
 Loading:
 ```text
@@ -221,16 +237,18 @@ Shows individual like details with progressive loading:
 - Profile metadata loads in background
 - Each entry updates independently as data loads
 
-Each like entry shows:
+Each reaction entry shows:
 - Author name (from profile metadata, fallback to npub)
 - Profile picture (from metadata, fallback to default emoji)
-- Time of like (relative time)
+- Time of reaction (relative time)
+- Reaction type badge: "Liked" (blue) or "Disliked" (red)
 - Clickable link to njump.me profile
 
 Data:
 - Fetches kind 17 events with `#k=web` and `#i=<url>` tags
 - Sorted chronologically (newest first)
-- Deduplicates by author (latest like per user)
+- Deduplicates by author (latest reaction per user)
+- Shows both likes and unlikes in dialog
 
 ## NIP-25 Event Structure
 
@@ -248,15 +266,30 @@ Data:
 }
 ```
 
+### Unlike Event (kind 17)
+```json
+{
+  "kind": 17,
+  "content": "-",
+  "tags": [
+    ["k", "web"],
+    ["i", "https://example.com/article"]
+  ],
+  "created_at": 1234567890,
+  "pubkey": "user_pubkey_hex"
+}
+```
+
 
 ## Implementation Notes
 
 - URL normalization is critical for consistency
-- Deduplication: Show only latest reaction per user (prevent duplicate likes)
+- Deduplication: Show only latest reaction per user (prevents duplicate counts)
+- Count calculation: net likes = likedCount - dislikedCount
 - Anonymous likes: Not supported (requires NIP-07 signer)
 - Relay selection: Uses provided relays or defaults from NostrService
 - Error handling: Clear messages for missing NIP-07, failed signatures, network errors
-- One-way action: No unlike functionality - once liked, always liked
+- Unlike functionality: Confirmation dialog before unlike to prevent accidental unliking
 
 ## Future Enhancements
 
@@ -266,5 +299,4 @@ Data:
 - Pagination for 1000+ likes
 - Real-time updates via subscriptions
 - Like notifications for content creators
-- Unlike functionality (if needed in future)
 
