@@ -35,3 +35,8 @@ export const LongText: Story = {
   name: TEST_CASES.longText.name,
   args: TEST_CASES.longText.args,
 };
+
+export const InvalidRelay: Story = {
+  name: TEST_CASES.invalidRelay.name,
+  args: TEST_CASES.invalidRelay.args,
+};

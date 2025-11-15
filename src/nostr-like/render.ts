@@ -28,31 +28,12 @@ export function renderLikeButton({
     return renderError(errorMessage || '');
   }
 
-  if (isLoading) {
-    return renderLoading(theme);
-  }
-
   const iconContent = getThumbsUpIcon(isLiked, theme);
   const textContent = isLiked 
     ? `<span>Liked</span>`
     : `<span>${escapeHtml(buttonText)}</span>`;
 
-  return renderContainer(iconContent, textContent, likeCount, hasLikes, isLiked, isCountLoading);
-}
-
-function renderLoading(theme: 'light' | 'dark' = 'light'): string {
-  const helpIconHtml = `<button class="help-icon" title="What is a like?">?</button>`;
-  // Separate skeletons for button and count
-  return `
-    <div class="nostr-like-button-container">
-      <button class="nostr-like-button">
-        ${getThumbsUpIcon(false, theme)}
-        <span class="button-text-skeleton"></span>
-      </button>
-      <span class="like-count skeleton"></span>
-      ${helpIconHtml}
-    </div>
-  `;
+  return renderContainer(iconContent, textContent, likeCount, hasLikes, isLiked, isLoading, isCountLoading);
 }
 
 function renderError(errorMessage: string): string {
@@ -81,6 +62,7 @@ function renderContainer(
   likeCount: number, 
   hasLikes: boolean = false,
   isLiked: boolean = false,
+  isLoading: boolean = false,
   isCountLoading: boolean = false
 ): string {
   let countHtml = '';
@@ -98,7 +80,7 @@ function renderContainer(
     <div class="nostr-like-button-container">
       <button class="${buttonClass}">
         ${iconContent}
-        ${textContent}
+        ${isLoading ? '<span class="button-text-skeleton"></span>' : textContent}
       </button>
       ${countHtml} ${helpIconHtml}
     </div>

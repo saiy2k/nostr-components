@@ -19,7 +19,14 @@ export const TEST_CASES = {
   longText: {
     name: 'Text Too Long',
     args: {
-      text: 'This is a very long text that exceeds the maximum length of 128 characters and should trigger validation error',
+      text: 'This is a very long text that exceeds the maximum length of 32 characters',
+    },
+  },
+  invalidRelay: {
+    name: 'Invalid Relay',
+    args: {
+      text: 'Like',
+      relays: 'not-a-valid-relay-url',
     },
   },
 };

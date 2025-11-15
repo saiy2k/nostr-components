@@ -31,7 +31,7 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
   // Set dialog content
   dialogComponent.innerHTML = `
     <div class="help-content">
-      <p>A like is a reaction stored on Nostr using NIP-25 kind 7 events. This component uses URL-based likes with kind 17 events.</p>
+      <p>A like is a reaction stored on Nostr using NIP-25 kind 17 events. This component uses URL-based likes with kind 17 events.</p>
       <p>Features:</p>
       <ul>
         <li>One-click liking of any URL</li>

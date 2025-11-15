@@ -1,6 +1,6 @@
 # Nostr Components
 
-**Embed Nostr anywhere on the internet, a Zap Button for every website.**
+**Embed Nostr anywhere on the internet, a Zap Button for every webpage.**
 
 ## 🚀 About the Project
 

@@ -29,45 +29,36 @@ export async function fetchLikesForUrl(
   relays: string[]
 ): Promise<LikeCountResult> {
   const pool = new SimplePool();
-  const normalizedUrl = url;
   
   try {
     // Query kind 17 events (both likes and unlikes)
-    console.log("Like: Fetching likes for url", url);
     const events = await pool.querySync(relays, {
       kinds: [17],
       '#k': ['web'],
-      '#i': [normalizedUrl],
+      '#i': [url],
       limit: 1000
     });
     
-    // Process likes and unlikes - count separately
     const likes: LikeDetails[] = [];
     let likedCount = 0;
     let dislikedCount = 0;
     
     for (const event of events) {
-      // Add to list regardless (shows both likes and unlikes in dialog)
       likes.push({
         authorPubkey: event.pubkey,
         date: new Date(event.created_at * 1000),
         content: event.content
       });
       
-      // Count separately
       if (event.content === '-') {
-        // Latest reaction is an unlike
         dislikedCount++;
       } else {
-        // Latest reaction is a like ('+' or empty string)
         likedCount++;
       }
     }
     
-    // Sort by date (newest first)
     likes.sort((a, b) => b.date.getTime() - a.date.getTime());
     
-    // Calculate net count: likes minus unlikes
     const totalCount = likedCount - dislikedCount;
     
     return {
@@ -77,7 +68,6 @@ export async function fetchLikesForUrl(
       dislikedCount: dislikedCount
     };
   } catch (error) {
-    console.error("Nostr-Components: Like button: Error fetching likes", error);
     return {
       totalCount: 0,
       likeDetails: [],
@@ -90,12 +80,14 @@ export async function fetchLikesForUrl(
 }
 
 /**
- * Create like event (kind 17)
+ * Create reaction event (kind 17)
+ * @param url - URL to react to
+ * @param content - '+' for like, '-' for unlike
  */
-export function createLikeEvent(url: string): any {
+export function createReactionEvent(url: string, content: '+' | '-'): any {
   return {
     kind: 17,
-    content: '+',
+    content,
     tags: [
       ['k', 'web'],
       ['i', url]
@@ -105,18 +97,19 @@ export function createLikeEvent(url: string): any {
 }
 
 /**
+ * Create like event (kind 17)
+ * @deprecated Use createReactionEvent(url, '+') instead
+ */
+export function createLikeEvent(url: string): any {
+  return createReactionEvent(url, '+');
+}
+
+/**
  * Create unlike event (kind 17 with '-' content)
+ * @deprecated Use createReactionEvent(url, '-') instead
  */
 export function createUnlikeEvent(url: string): any {
-  return {
-    kind: 17,
-    content: '-',
-    tags: [
-      ['k', 'web'],
-      ['i', url]
-    ],
-    created_at: Math.floor(Date.now() / 1000)
-  };
+  return createReactionEvent(url, '-');
 }
 
 /**

@@ -23,23 +23,21 @@ import { normalizeURL } from 'nostr-tools/utils';
  * <nostr-like>
  * Attributes:
  *   - url          (optional) : URL to like (default: current page URL)
+ *   - text         (optional) : custom text (default "Like") (Max 32 characters)
  *   - relays       (optional) : comma-separated relay URLs
  *   - data-theme   (optional) : "light" | "dark" (default light)
- *   - text         (optional) : custom text (default "Like") (Max 128 characters)
  * 
  * Features:
  *   - URL-based likes using NIP-25 kind 17 events
- *   - One-way like action (no unlike)
  *   - Click count to view likers
- *   - NIP-07 signing support
  */
 export default class NostrLike extends NostrBaseComponent {
-  protected likeActionStatus = this.channel('likeAction');
-  protected likeListStatus = this.channel('likeList');
+  protected likeActionStatus  = this.channel('likeAction');
+  protected likeListStatus    = this.channel('likeList');
   
-  private currentUrl: string = '';
-  private isLiked: boolean = false;
-  private likeCount: number = 0;
+  private currentUrl: string  = '';
+  private isLiked: boolean    = false;
+  private likeCount: number   = 0;
   private cachedLikeDetails: LikeCountResult | null = null;
 
   constructor() {
@@ -80,9 +78,9 @@ export default class NostrLike extends NostrBaseComponent {
       return false;
     }
 
-    const urlAttr = this.getAttribute('url');
-    const textAttr = this.getAttribute('text');
-    const tagName = this.tagName.toLowerCase();
+    const urlAttr   = this.getAttribute('url');
+    const textAttr  = this.getAttribute('text');
+    const tagName   = this.tagName.toLowerCase();
 
     let errorMessage: string | null = null;
 
@@ -92,8 +90,8 @@ export default class NostrLike extends NostrBaseComponent {
       }
     }
 
-    if (textAttr && textAttr.length > 128) {
-      errorMessage = 'Max text length: 128 characters';
+    if (textAttr && textAttr.length > 32) {
+      errorMessage = 'Max text length: 32 characters';
     }
 
     if (errorMessage) {
@@ -296,7 +294,7 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   protected renderContent() {
-    console.log(`Like: Render: conn: ${this.conn.get()}, likeActionStatus: ${this.likeActionStatus.get()}, likeListStatus: ${this.likeListStatus.get()}`);
+    // console.log(`Like: Render: conn: ${this.conn.get()}, likeActionStatus: ${this.likeActionStatus.get()}, likeListStatus: ${this.likeListStatus.get()}`);
     const isLoading = this.likeActionStatus.get() === NCStatus.Loading || this.conn.get() === NCStatus.Loading;
     const isCountLoading = this.likeListStatus.get() === NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
