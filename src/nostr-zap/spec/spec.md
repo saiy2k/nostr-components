@@ -237,7 +237,7 @@ Fixed amount:
 
 URL-based:
 ```html
-<nostr-zap npub="npub1..." url="https://example.com/article"></nostr-zap>
+<nostr-zap npub="npub1..." url="https://saiy2k.in/2025/02/17/nostr-components/"></nostr-zap>
 ```
 
 Custom styling:

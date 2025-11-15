@@ -32,7 +32,7 @@ export const TEST_CASES = {
     name: 'Custom URL',
     args: {
       text: 'Like',
-      url: 'https://github.com/nostr-protocol/nips',
+      url: 'https://saiy2k.in/2025/02/17/nostr-components/',
     },
   },
   customRelays: {

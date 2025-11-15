@@ -39,6 +39,7 @@ export default class NostrLike extends NostrBaseComponent {
   private isLiked: boolean    = false;
   private likeCount: number   = 0;
   private cachedLikeDetails: LikeCountResult | null = null;
+  private loadSeq = 0;
 
   constructor() {
     super();
@@ -67,7 +68,14 @@ export default class NostrLike extends NostrBaseComponent {
     if (oldValue === newValue) return;
     super.attributeChangedCallback(name, oldValue, newValue);
     
-    // TODO: To handle url, text changes?
+    if (name === 'url' || name === 'text') {
+      this.likeActionStatus.set(NCStatus.Ready);
+      this.likeListStatus.set(NCStatus.Loading);
+      this.isLiked = false;
+      this.errorMessage = '';
+      this.updateLikeCount();
+      this.render();
+    }
   }
 
   /** Base class functions */
@@ -115,6 +123,7 @@ export default class NostrLike extends NostrBaseComponent {
 
   /** Private functions */
   private async updateLikeCount() {
+    const seq = ++this.loadSeq;
     try {
       await this.ensureNostrConnected();
       this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
@@ -122,6 +131,7 @@ export default class NostrLike extends NostrBaseComponent {
       this.render();
      
       const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
+      if (seq !== this.loadSeq) return; // stale
       this.likeCount = result.totalCount;
       this.cachedLikeDetails = result;
       this.likeListStatus.set(NCStatus.Ready);
