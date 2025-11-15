@@ -13,14 +13,12 @@ export const TEST_CASES = {
     name: 'Default',
     args: {
       text: 'Like',
-      url: 'https://example.com/article',
     },
   },
   darkTheme: {
     name: 'Dark Theme',
     args: {
       text: 'Like',
-      url: 'https://example.com/article',
       'data-theme': 'dark',
     },
   },
@@ -28,7 +26,6 @@ export const TEST_CASES = {
     name: 'Custom Text',
     args: {
       text: 'Love it!',
-      url: 'https://example.com/article',
     },
   },
   customUrl: {
@@ -42,7 +39,6 @@ export const TEST_CASES = {
     name: 'Custom Relays',
     args: {
       text: 'Like',
-      url: 'https://example.com/article',
       relays: 'wss://relay.damus.io,wss://nostr.wine',
     },
   },
@@ -58,7 +54,6 @@ export const TEST_CASES = {
     name: 'Ocean Glass Theme',
     args: {
       text: 'Like',
-      url: 'https://example.com/article',
     },
     wrapperDataTheme: 'ocean-glass',
   },
@@ -66,7 +61,6 @@ export const TEST_CASES = {
     name: 'Holographic Theme',
     args: {
       text: 'Like',
-      url: 'https://example.com/article',
     },
     wrapperDataTheme: 'holographic',
   },
@@ -74,7 +68,6 @@ export const TEST_CASES = {
     name: 'Neo Matrix Theme',
     args: {
       text: 'Like',
-      url: 'https://example.com/article',
     },
     wrapperDataTheme: 'neo-matrix',
   },
@@ -82,7 +75,6 @@ export const TEST_CASES = {
     name: 'Bitcoin Orange Theme',
     args: {
       text: 'Like',
-      url: 'https://example.com/article',
     },
     wrapperDataTheme: 'bitcoin-orange',
   },

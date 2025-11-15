@@ -12,7 +12,6 @@ const meta: Meta = {
   argTypes: getArgTypes(),
   args: {
     text: 'Like',
-    url: 'https://example.com/article',
   },
   parameters: {
     docs: {

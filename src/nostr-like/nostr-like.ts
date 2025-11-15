@@ -6,6 +6,7 @@ import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { renderLikeButton, RenderLikeButtonOptions } from './render';
 import { getLikeButtonStyles } from './style';
 import { showHelpDialog } from './dialog-help';
+import { isValidUrl } from '../common/utils';
 import { 
   fetchLikesForUrl, 
   createLikeEvent,
@@ -16,6 +17,7 @@ import {
   isNip07Available,
   LikeCountResult 
 } from './like-utils';
+import { normalizeURL } from 'nostr-tools/utils';
 
 /**
  * <nostr-like>
@@ -23,7 +25,7 @@ import {
  *   - url          (optional) : URL to like (default: current page URL)
  *   - relays       (optional) : comma-separated relay URLs
  *   - data-theme   (optional) : "light" | "dark" (default light)
- *   - text         (optional) : custom text (default "Like")
+ *   - text         (optional) : custom text (default "Like") (Max 128 characters)
  * 
  * Features:
  *   - URL-based likes using NIP-25 kind 17 events
@@ -47,7 +49,8 @@ export default class NostrLike extends NostrBaseComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
-    this.initializeComponent();
+    this.attachDelegatedListeners();
+    this.render();
   }
 
   static get observedAttributes() {
@@ -66,49 +69,17 @@ export default class NostrLike extends NostrBaseComponent {
     if (oldValue === newValue) return;
     super.attributeChangedCallback(name, oldValue, newValue);
     
-    if (name === 'url' || name === 'text') {
-      this.initializeComponent();
-    }
+    // TODO: To handle url, text changes?
   }
 
   /** Base class functions */
-  protected onStatusChange(_status: NCStatus) {
-    this.render();
-  }
-
-  /** Private functions */
-  private async initializeComponent() {
-    try {
-      // Get URL
-      this.currentUrl = this.getAttribute('url') || window.location.href;
-      
-      // Validate inputs
-      if (!this.validateInputs()) {
-        return;
-      }
-
-      // Connect to relays
-      await this.ensureNostrConnected();
-      
-      // Attach event listeners
-      this.attachDelegatedListeners();
-      
-      // Fetch like count
-      await this.updateLikeCount();
-      
-      // Don't check user like status during initialization
-      // This will be done when user first interacts with the component
-      
-      // Render
-      this.render();
-    } catch (error) {
-      console.error('[NostrLike] Initialization failed:', error);
-      this.likeListStatus.set(NCStatus.Error, 'Failed to initialize');
-      this.render();
-    }
-  }
-
   protected validateInputs(): boolean {
+    if (!super.validateInputs()) {
+      this.likeActionStatus.set(NCStatus.Idle);
+      this.likeListStatus.set(NCStatus.Idle);
+      return false;
+    }
+
     const urlAttr = this.getAttribute('url');
     const textAttr = this.getAttribute('text');
     const tagName = this.tagName.toLowerCase();
@@ -116,9 +87,7 @@ export default class NostrLike extends NostrBaseComponent {
     let errorMessage: string | null = null;
 
     if (urlAttr) {
-      try {
-        new URL(urlAttr);
-      } catch {
+      if (!isValidUrl(urlAttr)) {
         errorMessage = 'Invalid URL format';
       }
     }
@@ -137,11 +106,23 @@ export default class NostrLike extends NostrBaseComponent {
     return true;
   }
 
+  protected onStatusChange(_status: NCStatus) {
+    this.render();
+  }
+
+  protected onNostrRelaysConnected() {
+    this.updateLikeCount();
+    this.render();
+  }
+
+  /** Private functions */
   private async updateLikeCount() {
     try {
+      await this.ensureNostrConnected();
+      this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
       this.likeListStatus.set(NCStatus.Loading);
       this.render();
-      
+     
       const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
       this.likeCount = result.totalCount;
       this.cachedLikeDetails = result;
@@ -149,10 +130,14 @@ export default class NostrLike extends NostrBaseComponent {
     } catch (error) {
       console.error('[NostrLike] Failed to fetch like count:', error);
       this.likeListStatus.set(NCStatus.Error, 'Failed to load likes');
+    } finally {
+      this.render();
     }
   }
 
+  // TODO: Do onboarding logic here
   private async handleLikeClick() {
+    this.likeActionStatus.set(NCStatus.Loading);
     if (!isNip07Available()) {
       this.likeActionStatus.set(NCStatus.Error, 
         'Please install a Nostr browser extension (Alby, nos2x, etc.)'
@@ -166,16 +151,20 @@ export default class NostrLike extends NostrBaseComponent {
       const userPubkey = await getUserPubkey();
       if (userPubkey) {
         this.isLiked = await hasUserLiked(this.currentUrl, userPubkey, this.getRelays());
-        this.render(); // Update UI to show current state
       }
     } catch (error) {
       console.error('[NostrLike] Failed to check user like status:', error);
+      this.likeActionStatus.set(NCStatus.Error, 'Failed to check user like status');
+    } finally {
+      this.render();
     }
 
     // If already liked, show confirmation dialog
     if (this.isLiked) {
       const confirmed = window.confirm('You have already liked this. Do you want to unlike it?');
       if (!confirmed) {
+        this.likeActionStatus.set(NCStatus.Ready);
+        this.render();
         return;
       }
       
@@ -226,7 +215,7 @@ export default class NostrLike extends NostrBaseComponent {
   private async handleUnlike() {
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
-
+    
     try {
       // Create unlike event
       const event = createUnlikeEvent(this.currentUrl);
@@ -263,7 +252,7 @@ export default class NostrLike extends NostrBaseComponent {
 
   private async handleCountClick() {
     if (this.likeCount === 0 || !this.cachedLikeDetails) {
-      return; // No likes to show
+      return;
     }
 
     try {
@@ -307,11 +296,12 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   protected renderContent() {
-    const isLoading = this.computeOverall() === NCStatus.Loading;
+    console.log(`Like: Render: conn: ${this.conn.get()}, likeActionStatus: ${this.likeActionStatus.get()}, likeListStatus: ${this.likeListStatus.get()}`);
+    const isLoading = this.likeActionStatus.get() === NCStatus.Loading || this.conn.get() === NCStatus.Loading;
+    const isCountLoading = this.likeListStatus.get() === NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
     const errorMessage = this.errorMessage;
     const buttonText = this.getAttribute('text') || 'Like';
-    const isCountLoading = this.likeListStatus.get() === NCStatus.Loading;
 
     const renderOptions: RenderLikeButtonOptions = {
       isLoading,

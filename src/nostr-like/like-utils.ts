@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 import { SimplePool } from 'nostr-tools';
-import { normalizeURL } from '../nostr-comment/utils';
-import { hexToNpub } from '../common/utils';
 
 /**
  * Helper utilities for Nostr like operations using NIP-25 External Content Reactions.
@@ -31,10 +29,11 @@ export async function fetchLikesForUrl(
   relays: string[]
 ): Promise<LikeCountResult> {
   const pool = new SimplePool();
-  const normalizedUrl = normalizeURL(url);
+  const normalizedUrl = url;
   
   try {
     // Query kind 17 events (both likes and unlikes)
+    console.log("Like: Fetching likes for url", url);
     const events = await pool.querySync(relays, {
       kinds: [17],
       '#k': ['web'],
@@ -42,24 +41,15 @@ export async function fetchLikesForUrl(
       limit: 1000
     });
     
-    // Deduplicate by author (keep latest only)
-    const latestByAuthor = new Map<string, any>();
-    for (const event of events) {
-      const existing = latestByAuthor.get(event.pubkey);
-      if (!existing || event.created_at > existing.created_at) {
-        latestByAuthor.set(event.pubkey, event);
-      }
-    }
-    
     // Process likes and unlikes - count separately
     const likes: LikeDetails[] = [];
     let likedCount = 0;
     let dislikedCount = 0;
     
-    for (const [pubkey, event] of latestByAuthor.entries()) {
+    for (const event of events) {
       // Add to list regardless (shows both likes and unlikes in dialog)
       likes.push({
-        authorPubkey: pubkey,
+        authorPubkey: event.pubkey,
         date: new Date(event.created_at * 1000),
         content: event.content
       });
@@ -108,7 +98,7 @@ export function createLikeEvent(url: string): any {
     content: '+',
     tags: [
       ['k', 'web'],
-      ['i', normalizeURL(url)]
+      ['i', url]
     ],
     created_at: Math.floor(Date.now() / 1000)
   };
@@ -123,7 +113,7 @@ export function createUnlikeEvent(url: string): any {
     content: '-',
     tags: [
       ['k', 'web'],
-      ['i', normalizeURL(url)]
+      ['i', url]
     ],
     created_at: Math.floor(Date.now() / 1000)
   };
@@ -138,7 +128,7 @@ export async function hasUserLiked(
   relays: string[]
 ): Promise<boolean> {
   const pool = new SimplePool();
-  const normalizedUrl = normalizeURL(url);
+  const normalizedUrl = url;
   
   try {
     // Get user's latest reaction for this URL

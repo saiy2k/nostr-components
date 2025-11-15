@@ -13,14 +13,12 @@ export const TEST_CASES = {
     name: 'No Likes',
     args: {
       text: 'Like',
-      url: 'https://example.com/new-article',
     },
   },
   noLikesDark: {
     name: 'No Likes (Dark)',
     args: {
       text: 'Like',
-      url: 'https://example.com/new-article',
       'data-theme': 'dark',
     },
   },

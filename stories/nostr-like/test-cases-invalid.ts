@@ -20,7 +20,6 @@ export const TEST_CASES = {
     name: 'Text Too Long',
     args: {
       text: 'This is a very long text that exceeds the maximum length of 128 characters and should trigger validation error',
-      url: 'https://example.com/article',
     },
   },
 };

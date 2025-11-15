@@ -163,6 +163,10 @@ export abstract class NostrBaseComponent extends HTMLElement {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected onStatusChange(_overall: NCStatus) { }
 
+  /** Hook for subclasses to react when relays are connected */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected onNostrRelaysConnected() { }
+
   protected computeOverall(): NCStatus {
     const vals = [...this._statuses.values()];
     if (vals.includes(NCStatus.Error))   return NCStatus.Error;
@@ -242,6 +246,7 @@ export abstract class NostrBaseComponent extends HTMLElement {
       if (seq !== this.connectSeq) return; // stale attempt
       this.conn.set(NCStatus.Ready);
       this.nostrReadyResolve?.();
+      this.onNostrRelaysConnected();
     } catch (error) {
       if (seq !== this.connectSeq) return; // stale attempt
       console.error('Failed to connect to Nostr relays:', error);

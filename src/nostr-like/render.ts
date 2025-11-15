@@ -41,6 +41,7 @@ export function renderLikeButton({
 }
 
 function renderLoading(theme: 'light' | 'dark' = 'light'): string {
+  const helpIconHtml = `<button class="help-icon" title="What is a like?">?</button>`;
   // Separate skeletons for button and count
   return `
     <div class="nostr-like-button-container">
@@ -49,6 +50,7 @@ function renderLoading(theme: 'light' | 'dark' = 'light'): string {
         <span class="button-text-skeleton"></span>
       </button>
       <span class="like-count skeleton"></span>
+      ${helpIconHtml}
     </div>
   `;
 }
