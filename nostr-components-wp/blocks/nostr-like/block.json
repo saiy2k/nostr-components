@@ -13,6 +13,7 @@
   "attributes": {
     "url": {
       "type": "string",
+      "format": "uri",
       "default": ""
     },
     "theme": {
@@ -26,6 +27,7 @@
     },
     "text": {
       "type": "string",
+      "maxLength": 32,
       "default": "Like"
     }
   }

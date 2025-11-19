@@ -9,6 +9,7 @@
  */
 
 import { ParameterDefinition } from '../common/parameters';
+import { DEFAULT_RELAYS } from '../../src/common/constants';
 
 /**
  * Like button parameters used by nostr-like component
@@ -28,15 +29,14 @@ export const LIKE_BUTTON_PARAMETERS: ParameterDefinition[] = [
   },
   {
     variable: 'relays',
-    description: 'Comma-separated relay URLs',
-    defaultValue: 'wss://relay.nostr.band,wss://purplepag.es',
+    description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
+    defaultValue: DEFAULT_RELAYS.join(',\n'),
     control: 'text',
   },
   {
     variable: 'data-theme',
-    description: 'Theme for the like button',
-    defaultValue: 'light',
-    control: 'select',
-    options: ['light', 'dark'],
+    description: 'Theme for the component (light, dark)',
+    defaultValue: '',
+    control: 'text',
   },
 ];

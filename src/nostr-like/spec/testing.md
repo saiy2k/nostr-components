@@ -1,4 +1,4 @@
-# Nostr Like Component - Testing Considerations
+# Nostr-like Component – Testing Considerations
 
 ## Functional Tests
 

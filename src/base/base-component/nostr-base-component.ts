@@ -246,7 +246,11 @@ export abstract class NostrBaseComponent extends HTMLElement {
       if (seq !== this.connectSeq) return; // stale attempt
       this.conn.set(NCStatus.Ready);
       this.nostrReadyResolve?.();
-      this.onNostrRelaysConnected();
+      try {
+        this.onNostrRelaysConnected();
+      } catch (hookError) {
+        console.error('Error in onNostrRelaysConnected hook:', hookError);
+      }
     } catch (error) {
       if (seq !== this.connectSeq) return; // stale attempt
       console.error('Failed to connect to Nostr relays:', error);

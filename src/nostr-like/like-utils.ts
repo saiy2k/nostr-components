@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SimplePool } from 'nostr-tools';
+import { normalizeURL } from 'nostr-tools/utils';
 
 /**
  * Helper utilities for Nostr like operations using NIP-25 External Content Reactions.
@@ -28,6 +29,9 @@ export async function fetchLikesForUrl(
   url: string, 
   relays: string[]
 ): Promise<LikeCountResult> {
+  // Normalize URL at the beginning for consistent comparison with tags
+  const normalizedUrl = normalizeURL(url);
+  
   const pool = new SimplePool();
   
   try {
@@ -35,7 +39,7 @@ export async function fetchLikesForUrl(
     const events = await pool.querySync(relays, {
       kinds: [17],
       '#k': ['web'],
-      '#i': [url],
+      '#i': [normalizedUrl],
       limit: 1000
     });
     
@@ -68,12 +72,8 @@ export async function fetchLikesForUrl(
       dislikedCount: dislikedCount
     };
   } catch (error) {
-    return {
-      totalCount: 0,
-      likeDetails: [],
-      likedCount: 0,
-      dislikedCount: 0
-    };
+    // Rethrow error so callers can handle relay/network failures appropriately
+    throw error instanceof Error ? error : new Error(String(error));
   } finally {
     pool.close(relays);
   }

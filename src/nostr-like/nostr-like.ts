@@ -122,6 +122,15 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   /** Private functions */
+  /**
+   * Lazy initializer for currentUrl - ensures it's set before like/unlike operations
+   */
+  private ensureCurrentUrl(): void {
+    if (!this.currentUrl) {
+      this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
+    }
+  }
+
   private async updateLikeCount() {
     const seq = ++this.loadSeq;
     try {
@@ -145,6 +154,15 @@ export default class NostrLike extends NostrBaseComponent {
 
   // TODO: Do onboarding logic here
   private async handleLikeClick() {
+    // Ensure currentUrl is set before proceeding
+    this.ensureCurrentUrl();
+    
+    if (!this.currentUrl) {
+      this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
+      this.render();
+      return;
+    }
+
     this.likeActionStatus.set(NCStatus.Loading);
     if (!isNip07Available()) {
       this.likeActionStatus.set(NCStatus.Error, 
@@ -185,6 +203,15 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   private async handleLike() {
+    // Ensure currentUrl is set before proceeding
+    this.ensureCurrentUrl();
+    
+    if (!this.currentUrl) {
+      this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
+      this.render();
+      return;
+    }
+
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
 
@@ -221,6 +248,15 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   private async handleUnlike() {
+    // Ensure currentUrl is set before proceeding
+    this.ensureCurrentUrl();
+    
+    if (!this.currentUrl) {
+      this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
+      this.render();
+      return;
+    }
+
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
     

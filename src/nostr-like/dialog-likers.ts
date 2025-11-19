@@ -6,7 +6,6 @@ import type { DialogComponent } from '../base/dialog-component/dialog-component'
 import { getLikersDialogStyles } from './dialog-likers-style';
 import { getBatchedProfileMetadata, extractProfileMetadataContent } from '../nostr-zap/zap-utils';
 import { escapeHtml, formatRelativeTime, hexToNpub, isValidUrl } from '../common/utils';
-import { isValidPublicKey } from '../nostr-comment/utils';
 import { LikeDetails } from './like-utils';
 
 /**
@@ -50,11 +49,11 @@ interface EnhancedLikeDetails extends LikeDetails {
  */
 function renderLikeEntry(like: EnhancedLikeDetails, index: number): string {
   const authorNameSafe = escapeHtml(like.authorName || 'Unknown liker');
-  const npubSafe = isValidPublicKey(like.authorNpub || '') ? like.authorNpub : '';
+  const npubSafe = like.authorNpub || hexToNpub(like.authorPubkey);
   const njumpUrl = `https://njump.me/${npubSafe}`;
   const profilePictureSafe = isValidUrl(like.authorPicture || '') ? like.authorPicture || '' : '';
   
-  const profilePicture = like.authorPicture 
+  const profilePicture = profilePictureSafe 
     ? `<img src="${profilePictureSafe}" alt="${authorNameSafe}" class="like-author-picture" />`
     : `<div class="like-author-picture-default">👤</div>`;
   

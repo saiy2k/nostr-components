@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { getComponentStyles } from '../common/base-styles';
-
 export function getHelpDialogStyles(): string {
-  const customStyles = `
+  return `
     .help-content {
       padding: var(--nostrc-spacing-md, 12px);
     }
@@ -47,7 +45,5 @@ export function getHelpDialogStyles(): string {
       color: var(--nostrc-theme-primary-hover, #0052a3);
     }
   `;
-  
-  return getComponentStyles(customStyles);
 }
 
