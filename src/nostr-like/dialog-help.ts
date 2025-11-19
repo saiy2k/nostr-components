@@ -31,15 +31,12 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
   // Set dialog content
   dialogComponent.innerHTML = `
     <div class="help-content">
-      <p>A like is a reaction stored on Nostr using NIP-25 kind 17 events. This component uses URL-based likes with kind 17 events.</p>
-      <p>Features:</p>
+      <p>Like any webpage to show your appreciation! Your likes are stored on Nostr, a decentralized network you control—no accounts needed.</p>
       <ul>
-        <li>One-click liking of any URL</li>
-        <li>View who liked your content</li>
-        <li>See total like counts</li>
-        <li>All data stored on Nostr relays</li>
+        <li>Like any webpage or article</li>
+        <li>See who liked the content</li>
+        <li>Works with a browser extension like <a href="https://getalby.com" target="_blank" rel="noopener noreferrer">Alby</a> or nos2x</li>
       </ul>
-      <p>Requires a Nostr browser extension (Alby, nos2x, etc.) to sign and publish likes.</p>
     </div>
   `;
   

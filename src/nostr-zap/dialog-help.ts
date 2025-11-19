@@ -25,7 +25,7 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
   }
   
   const dialogComponent = document.createElement('dialog-component') as DialogComponent;
-  dialogComponent.setAttribute('header', 'What is a Zap? (Under construction)');
+  dialogComponent.setAttribute('header', 'What is a Zap?');
   if (theme) {
     dialogComponent.setAttribute('data-theme', theme);
   }
@@ -33,16 +33,15 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
   // Set dialog content
   dialogComponent.innerHTML = `
     <div class="help-content">
-      <p>A zap is a Lightning Network payment sent to a Nostr user.</p>
-      <p>Zaps allow you to:</p>
+      <p>Send instant tips to support content creators! Zaps are small Bitcoin Lightning payments that go directly to creators—no middleman.</p>
       <ul>
-        <li>Send micropayments instantly</li>
-        <li>Support content creators</li>
-        <li>Show appreciation for posts</li>
+        <li>Send any amount instantly</li>
+        <li>Money goes straight to the creator</li>
+        <li>Powered by Bitcoin Lightning Network</li>
       </ul>
-      <p>Learn more about zaps:</p>
+      <p><strong>How it works:</strong> Click zap, choose amount, scan QR code with a Lightning wallet, done!</p>
       <a href="${YOUTUBE_URL}" target="_blank" rel="noopener noreferrer" class="youtube-link">
-        Watch YouTube Tutorial
+        Watch Tutorial
       </a>
     </div>
   `;

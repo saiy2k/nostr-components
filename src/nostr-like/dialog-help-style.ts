@@ -32,6 +32,20 @@ export function getHelpDialogStyles(): string {
     .help-content li:last-child {
       margin-bottom: 0;
     }
+
+    .help-content strong {
+      font-weight: 600;
+      color: var(--nostrc-theme-text-primary, #333333);
+    }
+
+    .help-content a {
+      color: var(--nostrc-theme-primary, #0066cc);
+      text-decoration: underline;
+    }
+
+    .help-content a:hover {
+      color: var(--nostrc-theme-primary-hover, #0052a3);
+    }
   `;
   
   return getComponentStyles(customStyles);
