@@ -98,6 +98,20 @@ class Registry {
                     'url'     => ['type' => 'string'], // URL to send zap to (enables URL-based zaps)
                 ],
             ],
+            'nostr-like' => [
+                'title'       => 'Nostr Like Button',
+                'description' => 'Like URLs using Nostr reactions',
+                'shortcode'   => 'nostr_like',
+                'block'       => 'nostr/nostr-like',
+                'esm'         => 'assets/nostr-like.es.js',
+                'dependencies' => [],
+                'attributes'  => [
+                    'url'     => ['type' => 'string'], // URL to like (default: current page)
+                    'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
+                    'relays'  => ['type' => 'string'],
+                    'text'    => ['type' => 'string', 'default' => 'Like'],
+                ],
+            ],
         ];
     }
 

@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-/**
- * Help dialog content styles for nostr-zap component
- * Contains only content-specific styles (base dialog styles in DialogComponent)
- */
-export const getHelpDialogStyles = (): string => {
+export function getHelpDialogStyles(): string {
   return `
-    /* Help Dialog Content Styles */
     .help-content {
       padding: var(--nostrc-spacing-md, 12px);
     }
@@ -41,29 +36,14 @@ export const getHelpDialogStyles = (): string => {
       color: var(--nostrc-theme-text-primary, #333333);
     }
 
-    .help-content a:not(.youtube-link) {
+    .help-content a {
       color: var(--nostrc-theme-primary, #0066cc);
       text-decoration: underline;
     }
 
-    .help-content a:not(.youtube-link):hover {
+    .help-content a:hover {
       color: var(--nostrc-theme-primary-hover, #0052a3);
     }
-
-    .youtube-link {
-      display: inline-block;
-      background: var(--nostrc-color-primary, #7f00ff);
-      color: var(--nostrc-color-text-on-primary, #ffffff);
-      padding: var(--nostrc-spacing-sm, 8px) var(--nostrc-spacing-md, 12px);
-      border-radius: var(--nostrc-border-radius-md, 6px);
-      text-decoration: none;
-      font-weight: var(--nostrc-font-weight-medium, 500);
-      margin-top: var(--nostrc-spacing-md, 12px);
-      transition: background-color 0.2s ease;
-    }
-
-    .youtube-link:hover {
-      background: var(--nostrc-color-primary-hover, #6b00d9);
-    }
   `;
-};
+}
+

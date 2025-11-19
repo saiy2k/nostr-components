@@ -8,6 +8,7 @@ import { openZappersDialog } from './dialog-zappers';
 import { renderZapButton, RenderZapButtonOptions } from './render';
 import { getZapButtonStyles } from './style';
 import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
+import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 
 /**
@@ -111,9 +112,7 @@ export default class NostrZap extends NostrUserComponent {
         errorMessage = "Default-amount too high (max 210,000 sats)";
       }
     } else if (urlAttr) {
-      try {
-        new URL(urlAttr);
-      } catch {
+      if (!isValidUrl(urlAttr)) {
         errorMessage = "Invalid URL format";
       }
     }
