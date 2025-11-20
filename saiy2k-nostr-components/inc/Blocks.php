@@ -62,7 +62,11 @@ class Blocks {
             [
                 [
                     'slug'  => 'nostr',
+<<<<<<<< HEAD:saiy2k-nostr-components/inc/Blocks.php
                     'title' => __('Saiy2k Nostr Components', 'saiy2k-nostr-components'),
+========
+                    'title' => __('Nostr Components (by saiy2k)', 'nostr-components-by-saiy2k'),
+>>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/inc/Blocks.php
                     'icon'  => 'admin-users',
                 ],
             ]

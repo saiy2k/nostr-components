@@ -38,8 +38,13 @@ class Settings {
 
     public static function menu() {
         add_options_page(
+<<<<<<<< HEAD:saiy2k-nostr-components/inc/Settings.php
             'Saiy2k Nostr Components', 'Saiy2k Nostr Components', 'manage_options',
             'saiy2k-nostr-components', [__CLASS__, 'render']
+========
+            'Nostr Components (by saiy2k)', 'Nostr Components (by saiy2k)', 'manage_options',
+            'nostr-components-by-saiy2k', [__CLASS__, 'render']
+>>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/inc/Settings.php
         );
     }
 
@@ -55,6 +60,7 @@ class Settings {
         }
         ?>
         <div class="wrap">
+<<<<<<<< HEAD:saiy2k-nostr-components/inc/Settings.php
             <h1>Saiy2k Nostr Components</h1>
             
             <!-- Tab Navigation -->
@@ -64,6 +70,17 @@ class Settings {
                     Settings
                 </a>
                 <a href="<?php echo esc_url(wp_nonce_url('?page=saiy2k-nostr-components&tab=usage', 'nostr_tab_nonce')); ?>" 
+========
+            <h1>Nostr Components (by saiy2k)</h1>
+            
+            <!-- Tab Navigation -->
+            <nav class="nav-tab-wrapper">
+                <a href="<?php echo esc_url(wp_nonce_url('?page=nostr-components-by-saiy2k&tab=settings', 'nostr_tab_nonce')); ?>" 
+                   class="nav-tab <?php echo $current_tab === 'settings' ? 'nav-tab-active' : ''; ?>">
+                    Settings
+                </a>
+                <a href="<?php echo esc_url(wp_nonce_url('?page=nostr-components-by-saiy2k&tab=usage', 'nostr_tab_nonce')); ?>" 
+>>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/inc/Settings.php
                    class="nav-tab <?php echo $current_tab === 'usage' ? 'nav-tab-active' : ''; ?>">
                     Usage Examples
                 </a>
@@ -152,7 +169,11 @@ class Settings {
             <div style="margin-top: 20px;">
                 <?php if (empty($enabled)): ?>
                     <div class="notice notice-warning inline">
+<<<<<<<< HEAD:saiy2k-nostr-components/inc/Settings.php
                         <p>No components are currently enabled. Please enable components in the <a href="?page=saiy2k-nostr-components&tab=settings">Settings</a> tab to see usage examples.</p>
+========
+                        <p>No components are currently enabled. Please enable components in the <a href="?page=nostr-components-by-saiy2k&tab=settings">Settings</a> tab to see usage examples.</p>
+>>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/inc/Settings.php
                     </div>
                 <?php else: ?>
                     <p>Below are detailed usage examples for all enabled components. You can use these as shortcodes in posts/pages or as Gutenberg blocks in the block editor.</p>
