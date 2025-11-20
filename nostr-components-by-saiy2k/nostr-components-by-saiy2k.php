@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name: Nostr Components
+ * Plugin Name: Nostr Components (by saiy2k)
  * Plugin URI:  https://github.com/saiy2k/nostr-components
  * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zaps button, follow button, posts, profiles with selective component loading for optimal performance.
- * Version:     0.2.0
+ * Version:     0.3.0
  * Author:      saiy2k
  * Author URI:  https://github.com/saiy2k
  * License:     MIT
  * License URI: https://opensource.org/licenses/MIT
- * Text Domain: nostr-components-wp
+ * Text Domain: nostr-components-by-saiy2k
  * Requires at least: 6.0
  * Tested up to: 6.8
  * Requires PHP: 7.4
@@ -31,7 +31,7 @@ define('NOSTR_WP_URL', plugin_dir_url(__FILE__));
 if (version_compare(get_bloginfo('version'), '6.0', '<')) {
     add_action('admin_notices', function() {
         echo '<div class="notice notice-error"><p>';
-        echo esc_html__('Nostr Components requires WordPress 6.0 or higher.', 'nostr-components-wp');
+        echo esc_html__('Nostr Components (by saiy2k) requires WordPress 6.0 or higher.', 'nostr-components-by-saiy2k');
         echo '</p></div>';
     });
     return;

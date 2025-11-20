@@ -21,7 +21,7 @@ class NostrWPReleasePrep {
     constructor(pluginDir = null) {
         this.pluginDir = pluginDir || __dirname;
         this.requiredFiles = [
-            'nostr-components-wp.php',
+            'nostr-components-by-saiy2k.php',
             'README.txt',
             'LICENSE',
             'changelog.txt',
@@ -99,7 +99,7 @@ class NostrWPReleasePrep {
     }
     
     validatePluginHeader() {
-        const mainFile = path.join(this.pluginDir, 'nostr-components-wp.php');
+        const mainFile = path.join(this.pluginDir, 'nostr-components-by-saiy2k.php');
         if (!fs.existsSync(mainFile)) {
             return;
         }
@@ -126,7 +126,7 @@ class NostrWPReleasePrep {
     
     createZip(outputPath = null) {
         // Extract version from plugin file
-        const mainFile = path.join(this.pluginDir, 'nostr-components-wp.php');
+        const mainFile = path.join(this.pluginDir, 'nostr-components-by-saiy2k.php');
         let version = '0.2.0'; // fallback
         if (fs.existsSync(mainFile)) {
             const content = fs.readFileSync(mainFile, 'utf8');
@@ -137,7 +137,7 @@ class NostrWPReleasePrep {
         }
         
         if (!outputPath) {
-            outputPath = path.join(path.dirname(this.pluginDir), `nostr-components-wp-v${version}.zip`);
+            outputPath = path.join(path.dirname(this.pluginDir), `nostr-components-by-saiy2k-v${version}.zip`);
         }
         
         console.log('\n📦 Creating release zip...');
@@ -160,7 +160,7 @@ class NostrWPReleasePrep {
             return outputPath;
         } catch (error) {
             console.log('❌ Failed to create zip file. Make sure you have the "zip" command available.');
-            console.log('💡 Alternative: You can manually zip the nostr-components-wp directory');
+            console.log('💡 Alternative: You can manually zip the nostr-components-by-saiy2k directory');
             return false;
         }
     }
@@ -180,7 +180,7 @@ class NostrWPReleasePrep {
     }
     
     run() {
-        console.log('🚀 Nostr Components WordPress Plugin - Release Preparation');
+        console.log('🚀 Nostr Components (by saiy2k) WordPress Plugin - Release Preparation');
         console.log('========================================================\n');
         
         if (this.validate()) {

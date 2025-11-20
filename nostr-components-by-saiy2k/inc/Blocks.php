@@ -62,7 +62,7 @@ class Blocks {
             [
                 [
                     'slug'  => 'nostr',
-                    'title' => __('Nostr Components', 'nostr-components-wp'),
+                    'title' => __('Nostr Components (by saiy2k)', 'nostr-components-by-saiy2k'),
                     'icon'  => 'admin-users',
                 ],
             ]

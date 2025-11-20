@@ -1,4 +1,4 @@
-# Nostr Components WordPress Plugin
+# Nostr Components (by saiy2k) WordPress Plugin
 
 This WordPress plugin provides Gutenberg blocks and shortcodes for Nostr web components, with the ability to enable only the components you need.
 
@@ -6,7 +6,7 @@ This WordPress plugin provides Gutenberg blocks and shortcodes for Nostr web com
 
 ```text
 wp-plugin/
-├── nostr-components-wp.php   # Main plugin file
+├── nostr-components-by-saiy2k.php   # Main plugin file
 ├── inc/                      # Core plugin classes
 │   ├── Registry.php          # Component registry & metadata
 │   ├── Settings.php          # Admin settings page

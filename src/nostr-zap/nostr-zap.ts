@@ -34,11 +34,13 @@ export default class NostrZap extends NostrUserComponent {
 
   constructor() {
     super();
-    this.zapListStatus.set(NCStatus.Loading);
   }
 
   connectedCallback() {
     super.connectedCallback?.();
+    if (this.zapListStatus.get() == NCStatus.Idle) {
+      this.initChannelStatus('zapList', NCStatus.Loading, { reflectOverall: false });
+    }
     this.attachDelegatedListeners();
     this.render();
   }

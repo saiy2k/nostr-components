@@ -38,8 +38,8 @@ class Settings {
 
     public static function menu() {
         add_options_page(
-            'Nostr Components', 'Nostr Components', 'manage_options',
-            'nostr-components', [__CLASS__, 'render']
+            'Nostr Components (by saiy2k)', 'Nostr Components (by saiy2k)', 'manage_options',
+            'nostr-components-by-saiy2k', [__CLASS__, 'render']
         );
     }
 
@@ -55,15 +55,15 @@ class Settings {
         }
         ?>
         <div class="wrap">
-            <h1>Nostr Components</h1>
+            <h1>Nostr Components (by saiy2k)</h1>
             
             <!-- Tab Navigation -->
             <nav class="nav-tab-wrapper">
-                <a href="<?php echo esc_url(wp_nonce_url('?page=nostr-components&tab=settings', 'nostr_tab_nonce')); ?>" 
+                <a href="<?php echo esc_url(wp_nonce_url('?page=nostr-components-by-saiy2k&tab=settings', 'nostr_tab_nonce')); ?>" 
                    class="nav-tab <?php echo $current_tab === 'settings' ? 'nav-tab-active' : ''; ?>">
                     Settings
                 </a>
-                <a href="<?php echo esc_url(wp_nonce_url('?page=nostr-components&tab=usage', 'nostr_tab_nonce')); ?>" 
+                <a href="<?php echo esc_url(wp_nonce_url('?page=nostr-components-by-saiy2k&tab=usage', 'nostr_tab_nonce')); ?>" 
                    class="nav-tab <?php echo $current_tab === 'usage' ? 'nav-tab-active' : ''; ?>">
                     Usage Examples
                 </a>
@@ -89,9 +89,6 @@ class Settings {
                                     style="margin-right: 10px;" />
                                 <strong><?php echo esc_html($meta['title']); ?></strong>
                             </label>
-                            <p style="margin: 5px 0 0 30px; color: #666; font-size: 14px;">
-                                <?php echo esc_html($meta['description']); ?>
-                            </p>
                             <?php if (!empty($meta['dependencies'])): ?>
                                 <p style="margin: 5px 0 0 30px; color: #d63638; font-size: 13px;">
                                     <strong>Dependencies:</strong> 
@@ -155,7 +152,7 @@ class Settings {
             <div style="margin-top: 20px;">
                 <?php if (empty($enabled)): ?>
                     <div class="notice notice-warning inline">
-                        <p>No components are currently enabled. Please enable components in the <a href="?page=nostr-components&tab=settings">Settings</a> tab to see usage examples.</p>
+                        <p>No components are currently enabled. Please enable components in the <a href="?page=nostr-components-by-saiy2k&tab=settings">Settings</a> tab to see usage examples.</p>
                     </div>
                 <?php else: ?>
                     <p>Below are detailed usage examples for all enabled components. You can use these as shortcodes in posts/pages or as Gutenberg blocks in the block editor.</p>

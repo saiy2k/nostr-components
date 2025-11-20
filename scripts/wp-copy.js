@@ -6,7 +6,7 @@ import crypto from 'crypto';
 
 const sourceDir = './dist/components';
 const assetsDir = './dist/assets';
-const targetDir = './nostr-components-wp/assets';
+const targetDir = './nostr-components-by-saiy2k/assets';
 
 // Component files to copy (only the ones we support)
 const components = [
@@ -167,7 +167,7 @@ for (const component of components) {
 }
 
 console.log('\n🎉 WordPress plugin build complete!');
-console.log('   You can now install the plugin from: nostr-components-wp/');
+console.log('   You can now install the plugin from: nostr-components-by-saiy2k/');
 
 function formatBytes(bytes) {
     if (bytes === 0) return '0 Bytes';

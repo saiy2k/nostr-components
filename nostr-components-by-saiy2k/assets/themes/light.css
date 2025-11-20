@@ -1,0 +1,10 @@
+/* SPDX-License-Identifier: MIT */
+
+/* Light Theme for Nostr Components */
+:root {
+  --nostrc-theme-bg: #ffffff;
+  --nostrc-theme-text-primary: #333333;
+  --nostrc-theme-text-secondary: #666666;
+  --nostrc-theme-border: #e0e0e0;
+  --nostrc-theme-hover-bg: rgba(0, 0, 0, 0.05);
+}

@@ -1,4 +1,4 @@
-=== Nostr Components ===
+=== Nostr Components (by saiy2k) ===
 Contributors: saiy2k
 Tags: nostr, social, blocks, gutenberg, shortcodes
 Requires at least: 6.0
@@ -34,7 +34,7 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 = How It Works =
 
 1. Install and activate the plugin
-2. Go to Settings → Nostr Components to configure
+2. Go to Settings → Nostr Components (by saiy2k) to configure
 3. Enable only the components you need
 4. Add blocks in the Gutenberg editor or use shortcodes
 5. Configure relays and theme settings as needed

@@ -2,12 +2,12 @@
 
 ## 🎉 Plugin Ready for Submission!
 
-Your Nostr Components WordPress plugin is now ready for submission to the WordPress.org plugin directory. Here's everything you need to know:
+Your Nostr Components (by saiy2k) WordPress plugin is now ready for submission to the WordPress.org plugin directory. Here's everything you need to know:
 
 ## ✅ What's Been Prepared
 
 ### Required Files Created:
-- ✅ `nostr-components-wp.php` - Main plugin file with proper headers
+- ✅ `nostr-components-by-saiy2k.php` - Main plugin file with proper headers
 - ✅ `README.txt` - WordPress.org formatted readme
 - ✅ `LICENSE` - MIT license file
 - ✅ `changelog.txt` - Version history
@@ -18,7 +18,7 @@ Your Nostr Components WordPress plugin is now ready for submission to the WordPr
 - ✅ All required files present
 - ✅ Plugin headers properly formatted
 - ✅ Screenshots directory with 4 preview images
-- ✅ Release zip created: `nostr-components-wp-v1.0.0.zip` (604.72 KB)
+- ✅ Release zip created: `nostr-components-by-saiy2k-v1.0.0.zip` (604.72 KB)
 
 ## 📋 WordPress.org Submission Process
 
@@ -29,14 +29,14 @@ Your Nostr Components WordPress plugin is now ready for submission to the WordPr
 
 ### 2. Submit Plugin for Review
 - Go to [WordPress Plugin Directory Add Page](https://wordpress.org/plugins/developers/add/)
-- Upload the zip file: `nostr-components-wp-v0.2.0.zip`
+- Upload the zip file: `nostr-components-by-saiy2k-v0.2.0.zip`
 - Fill out the submission form
 - **Important**: Plugin must be under 10MB (yours is 606KB ✅)
 
 ### 3. Required Information for Submission
 
 **Plugin Details:**
-- **Name**: Nostr Components
+- **Name**: Nostr Components (by saiy2k)
 - **Description**: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr posts, profiles, and follow buttons with selective component loading for optimal performance.
 - **Version**: 0.2.0
 - **License**: MIT
@@ -110,7 +110,7 @@ Your Nostr Components WordPress plugin is now ready for submission to the WordPr
 - Support forum
 - Screenshots and documentation
 - Automatic updates for users
-- **Plugin Slug**: `nostr-components` (cannot be changed after approval)
+- **Plugin Slug**: `nostr-components-by-saiy2k` (cannot be changed after approval)
 
 ### Important Notes:
 - **Plugin Name**: Can be changed after approval
@@ -141,7 +141,7 @@ Your Nostr Components WordPress plugin is now ready for submission to the WordPr
 
 ## 🎯 Next Steps
 
-1. **Submit the plugin** using the zip file: `nostr-components-wp-v0.2.0.zip`
+1. **Submit the plugin** using the zip file: `nostr-components-by-saiy2k-v0.2.0.zip`
 2. **Monitor your email** for review feedback (add plugins@wordpress.org to whitelist)
 3. **Create banner and icon images** while waiting for review
 4. **Prepare screenshots** showing the plugin in action
