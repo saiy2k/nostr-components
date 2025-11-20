@@ -1,6 +1,10 @@
 <?php
 /**
+<<<<<<<< HEAD:saiy2k-nostr-components/saiy2k-nostr-components.php
  * Plugin Name: Saiy2k Nostr Components
+========
+ * Plugin Name: Nostr Components (by saiy2k)
+>>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/nostr-components-by-saiy2k.php
  * Plugin URI:  https://github.com/saiy2k/nostr-components
  * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zaps button, follow button, posts, profiles with selective component loading for optimal performance.
  * Version:     0.3.0
@@ -8,7 +12,11 @@
  * Author URI:  https://github.com/saiy2k
  * License:     MIT
  * License URI: https://opensource.org/licenses/MIT
+<<<<<<<< HEAD:saiy2k-nostr-components/saiy2k-nostr-components.php
  * Text Domain: saiy2k-nostr-components
+========
+ * Text Domain: nostr-components-by-saiy2k
+>>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/nostr-components-by-saiy2k.php
  * Requires at least: 6.0
  * Tested up to: 6.8
  * Requires PHP: 7.4
@@ -31,7 +39,11 @@ define('NOSTR_WP_URL', plugin_dir_url(__FILE__));
 if (version_compare(get_bloginfo('version'), '6.0', '<')) {
     add_action('admin_notices', function() {
         echo '<div class="notice notice-error"><p>';
+<<<<<<<< HEAD:saiy2k-nostr-components/saiy2k-nostr-components.php
         echo esc_html__('Saiy2k Nostr Components requires WordPress 6.0 or higher.', 'saiy2k-nostr-components');
+========
+        echo esc_html__('Nostr Components (by saiy2k) requires WordPress 6.0 or higher.', 'nostr-components-by-saiy2k');
+>>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/nostr-components-by-saiy2k.php
         echo '</p></div>';
     });
     return;
