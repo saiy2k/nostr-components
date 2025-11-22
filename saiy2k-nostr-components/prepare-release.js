@@ -21,11 +21,7 @@ class NostrWPReleasePrep {
     constructor(pluginDir = null) {
         this.pluginDir = pluginDir || __dirname;
         this.requiredFiles = [
-<<<<<<<< HEAD:saiy2k-nostr-components/prepare-release.js
             'saiy2k-nostr-components.php',
-========
-            'nostr-components-by-saiy2k.php',
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/prepare-release.js
             'README.txt',
             'LICENSE',
             'changelog.txt',
@@ -103,11 +99,7 @@ class NostrWPReleasePrep {
     }
     
     validatePluginHeader() {
-<<<<<<<< HEAD:saiy2k-nostr-components/prepare-release.js
         const mainFile = path.join(this.pluginDir, 'saiy2k-nostr-components.php');
-========
-        const mainFile = path.join(this.pluginDir, 'nostr-components-by-saiy2k.php');
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/prepare-release.js
         if (!fs.existsSync(mainFile)) {
             return;
         }
@@ -134,13 +126,8 @@ class NostrWPReleasePrep {
     
     createZip(outputPath = null) {
         // Extract version from plugin file
-<<<<<<<< HEAD:saiy2k-nostr-components/prepare-release.js
         const mainFile = path.join(this.pluginDir, 'saiy2k-nostr-components.php');
         let version = '0.3.0'; // fallback
-========
-        const mainFile = path.join(this.pluginDir, 'nostr-components-by-saiy2k.php');
-        let version = '0.2.0'; // fallback
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/prepare-release.js
         if (fs.existsSync(mainFile)) {
             const content = fs.readFileSync(mainFile, 'utf8');
             const versionMatch = content.match(/Version:\s*([^\r\n]+)/);
@@ -150,11 +137,7 @@ class NostrWPReleasePrep {
         }
         
         if (!outputPath) {
-<<<<<<<< HEAD:saiy2k-nostr-components/prepare-release.js
             outputPath = path.join(path.dirname(this.pluginDir), `saiy2k-nostr-components-v${version}.zip`);
-========
-            outputPath = path.join(path.dirname(this.pluginDir), `nostr-components-by-saiy2k-v${version}.zip`);
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/prepare-release.js
         }
         
         console.log('\n📦 Creating release zip...');
@@ -177,11 +160,7 @@ class NostrWPReleasePrep {
             return outputPath;
         } catch (error) {
             console.log('❌ Failed to create zip file. Make sure you have the "zip" command available.');
-<<<<<<<< HEAD:saiy2k-nostr-components/prepare-release.js
             console.log('💡 Alternative: You can manually zip the saiy2k-nostr-components directory');
-========
-            console.log('💡 Alternative: You can manually zip the nostr-components-by-saiy2k directory');
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/prepare-release.js
             return false;
         }
     }
@@ -201,11 +180,7 @@ class NostrWPReleasePrep {
     }
     
     run() {
-<<<<<<<< HEAD:saiy2k-nostr-components/prepare-release.js
         console.log('🚀 Saiy2k Nostr Components WordPress Plugin - Release Preparation');
-========
-        console.log('🚀 Nostr Components (by saiy2k) WordPress Plugin - Release Preparation');
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/prepare-release.js
         console.log('========================================================\n');
         
         if (this.validate()) {
