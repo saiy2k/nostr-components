@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:saiy2k-nostr-components/README.txt
 === Saiy2k Nostr Components ===
-========
-=== Nostr Components (by saiy2k) ===
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/README.txt
 Contributors: saiy2k
 Tags: nostr, social, blocks, gutenberg, shortcodes, zap, like
 Requires at least: 6.0
@@ -40,11 +36,7 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 = How It Works =
 
 1. Install and activate the plugin
-<<<<<<<< HEAD:saiy2k-nostr-components/README.txt
 2. Go to Settings → Saiy2k Nostr Components to configure
-========
-2. Go to Settings → Nostr Components (by saiy2k) to configure
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/README.txt
 3. Enable only the components you need
 4. Add blocks in the Gutenberg editor or use shortcodes
 5. Configure relays and theme settings as needed
@@ -89,6 +81,10 @@ To automatically add Like and Zap buttons to the end of every post and page:
 * Replace `[YOUR-NPUB-GOES-HERE]` with your actual Nostr public key (npub format)
 * Always use a child theme when modifying theme files to preserve changes during theme updates
 * The buttons will only appear on single post and page views, not on archive pages or the homepage
+
+= Video =
+
+Watch this video to see the plugin in action: https://www.youtube.com/watch?v=jCaPlEWjeaI
 
 == Frequently Asked Questions ==
 

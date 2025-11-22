@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:saiy2k-nostr-components/README.md
 # Saiy2k Nostr Components WordPress Plugin
-========
-# Nostr Components (by saiy2k) WordPress Plugin
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/README.md
 
 This WordPress plugin provides Gutenberg blocks and shortcodes for Nostr web components, with the ability to enable only the components you need.
 
@@ -10,11 +6,7 @@ This WordPress plugin provides Gutenberg blocks and shortcodes for Nostr web com
 
 ```text
 wp-plugin/
-<<<<<<<< HEAD:saiy2k-nostr-components/README.md
 ├── saiy2k-nostr-components.php   # Main plugin file
-========
-├── nostr-components-by-saiy2k.php   # Main plugin file
->>>>>>>> 799bc64 ( - Rename WP plugin name for submission):nostr-components-by-saiy2k/README.md
 ├── inc/                      # Core plugin classes
 │   ├── Registry.php          # Component registry & metadata
 │   ├── Settings.php          # Admin settings page
