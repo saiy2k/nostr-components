@@ -12,6 +12,8 @@ Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zap butt
 
 == Description ==
 
+https://www.youtube.com/watch?v=jCaPlEWjeaI
+
 Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by Relays) to your WordPress site through modern web components. This plugin provides Gutenberg blocks and shortcodes that allow you to seamlessly integrate Nostr content into your posts and pages.
 
 = Key Features =
@@ -79,10 +81,6 @@ To automatically add Like and Zap buttons to the end of every post and page:
 * Replace `[YOUR-NPUB-GOES-HERE]` with your actual Nostr public key (npub format)
 * Always use a child theme when modifying theme files to preserve changes during theme updates
 * The buttons will only appear on single post and page views, not on archive pages or the homepage
-
-= Video =
-
-Watch this video to see the plugin in action: https://www.youtube.com/watch?v=jCaPlEWjeaI
 
 == Frequently Asked Questions ==
 
