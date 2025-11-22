@@ -99,7 +99,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes",
     "wp-build": "npm run build:esm && npm run build:themes && npm run wp-copy",
-    "wp-copy": "node scripts/wp-copy.js"
+    "wp-copy": "node scripts/wp-copy.js",
+    "wp-prepare-svn": "node scripts/prepare-svn.js",
+    "wp-release": "npm run wp-build && npm run wp-prepare-svn"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.1",

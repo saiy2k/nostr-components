@@ -25,7 +25,7 @@ Only copies existing build files to WordPress plugin directory.
 ## Build Process
 
 1. **Build Components**: Runs `npm run build:esm` to create component bundles
-2. **Copy Files**: Copies `.es.js` files from `dist/components/` to `nostr-components-by-saiy2k/assets/`
+2. **Copy Files**: Copies `.es.js` files from `dist/components/` to `saiy2k-nostr-components/assets/`
 3. **Generate Manifest**: Creates `manifest.json` with file metadata and integrity hashes
 
 ## Output
@@ -65,7 +65,7 @@ Contains metadata for each component:
 
 After building, the WordPress plugin is ready to install:
 
-1. Copy `nostr-components-by-saiy2k/` to your WordPress `wp-content/plugins/` directory
+1. Copy `saiy2k-nostr-components/` to your WordPress `wp-content/plugins/` directory
 2. Activate the plugin in WordPress admin
 3. Configure components in Settings → Nostr Components
 4. Use shortcodes in posts/pages: `[nostr_post eventid="abc123"]`
