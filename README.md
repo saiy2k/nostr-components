@@ -14,7 +14,7 @@ Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and f
 🔹 **[Nostr DM](#6-nostr-dm-)** - Send a direct message on Nostr (Under construction)
 🔹 **[Nostr Live Chat](#7-nostr-live-chat-)** - Real-time chat with message history (Under construction) 
 🔹 **[Nostr Comment](#8-nostr-comment-)** - Decentralized comment system for any website (Under construction) 
-🔹 **[Wordpress Integration](#9-wordpress-integration)** - Wordpress Integration
+🔹 **[WordPress Integration](#9-wordpress-integration)** - WordPress Integration
 
 ## 🛠️ Usage
 
@@ -81,7 +81,7 @@ For direct HTML usage without a bundler:
 - **UMD (Universal Module Definition):** Use `<script src="./dist/nostr-components.umd.js"></script>` and the initialization script.
 - **ES Module:** Use `<script type="module">import NostrComponents from './dist/nostr-components.es.js'; NostrComponents.init();</script>`.
 
-_Note: Replace `./dist/nostr-components._.js`with the actual path to the file on your server or use a CDN link if available (e.g.,`https://nostr-components.web.app/dist/nostr-components.umd.js`).\*
+_Note: Replace `./dist/nostr-components.min.js` with the actual path to the file on your server or use a CDN link if available (e.g., `https://nostr-components.web.app/dist/nostr-components.umd.js`)._
 
 ### Using the Components
 
