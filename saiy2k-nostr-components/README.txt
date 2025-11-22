@@ -82,10 +82,6 @@ To automatically add Like and Zap buttons to the end of every post and page:
 * Always use a child theme when modifying theme files to preserve changes during theme updates
 * The buttons will only appear on single post and page views, not on archive pages or the homepage
 
-= Video =
-
-Watch this video to see the plugin in action: https://www.youtube.com/watch?v=jCaPlEWjeaI
-
 == Frequently Asked Questions ==
 
 = What is Nostr? =
