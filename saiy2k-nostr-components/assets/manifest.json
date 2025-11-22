@@ -1,0 +1,42 @@
+{
+  "version": 1761646790064,
+  "buildTime": "2025-10-28T10:19:50.064Z",
+  "components": {
+    "nostr-post": {
+      "file": "nostr-post.es.js",
+      "size": 115369,
+      "hash": "e2b11bf5f07760ef2cd2eaa528a27a1272939d84ee5d1aefc96450ac2a8d22eb",
+      "url": "assets/nostr-post.es.js"
+    },
+    "nostr-profile": {
+      "file": "nostr-profile.es.js",
+      "size": 13194,
+      "hash": "7821ccf0d5a23cd5e76d3afc4a8aa3e3487ffca2935fb25eeaad78f66300927a",
+      "url": "assets/nostr-profile.es.js"
+    },
+    "nostr-profile-badge": {
+      "file": "nostr-profile-badge.es.js",
+      "size": 5848,
+      "hash": "1c8c9df9b4b6080872b59cb8af61d95e8b9124d7230cc6424982691fd75ec1db",
+      "url": "assets/nostr-profile-badge.es.js"
+    },
+    "nostr-follow-button": {
+      "file": "nostr-follow-button.es.js",
+      "size": 6792,
+      "hash": "c8c6b11ec960e2f6397d7e713fc9e94f189342c38fc3407fc10bb3d374de6835",
+      "url": "assets/nostr-follow-button.es.js"
+    },
+    "nostr-zap": {
+      "file": "nostr-zap.es.js",
+      "size": 58288,
+      "hash": "c7bc11ddeb8ca4ee486c4a6cfad1a475df025a4ae1b0acd686b017a8dd822435",
+      "url": "assets/nostr-zap.es.js"
+    },
+    "nostr-like": {
+      "file": "nostr-like.es.js",
+      "size": 19295,
+      "hash": "4f80250d79d85cafd14c13eda67347dd75af8ffa378823d62a0e6072e46176d5",
+      "url": "assets/nostr-like.es.js"
+    }
+  }
+}

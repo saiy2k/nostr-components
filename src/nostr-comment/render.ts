@@ -66,7 +66,8 @@ function getUserAvatar(comment: Comment): string {
     return imageUrl;
   }
   console.log('No image found for user:', comment.userProfile?.name || comment.pubkey, 'using default');
-  return './assets/default_dp.png';
+  // Components are in dist/components/, so assets are at ../../assets/ from component location
+  return '../../assets/default_dp.png';
 }
 
 function renderComment(comment: Comment, readonly: boolean = false, replyingToComment: string | null = null, currentUserProfile: NDKUserProfile | null = null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
@@ -111,7 +112,8 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
 
 function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUserProfile | null, identityMode: 'user' | 'anon' = 'anon', hasNip07: boolean = false): string {
   // Use the same avatar processing as getUserAvatar
-  let userAvatar = './assets/default_dp.png';
+  // Components are in dist/components/, so assets are at ../../assets/ from component location
+  let userAvatar = '../../assets/default_dp.png';
   console.log('renderInlineReplyForm - currentUserProfile:', currentUserProfile);
 
   if (currentUserProfile?.image && currentUserProfile.image.trim() !== '') {

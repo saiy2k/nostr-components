@@ -4,51 +4,88 @@
 
 ## 🚀 About the Project
 
-Nostr Components makes it easy to embed Nostr profiles, posts, and follow buttons in any website. Inspired by <a href="https://unpkg.com/nostr-web-components@0.0.15/demo.html">fiatjaf's Nostr Web Components</a>, this project adds a beautiful UI, a Storybook component generator (for webmasters), and allows embedding Nostr content anywhere on the Internet.
+Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and follow buttons in any website. Inspired by <a href="https://unpkg.com/nostr-web-components@0.0.15/demo.html">fiatjaf's Nostr Web Components</a>, this project adds a beautiful UI, a Storybook component generator (for webmasters), and allows embedding Nostr content anywhere on the Internet.
 
 🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
 🔹 **[Nostr Profile Badge](#1-nostr-profile-badge-)** - Compact badge-style profile display  
 🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
-🔹 **[Nostr DM](#6-nostr-dm-)** - Send a direct message on Nostr 
-🔹 **[Nostr Live Chat](#7-nostr-live-chat-)** - Real-time chat with message history  
-🔹 **[Nostr Comment](#8-nostr-comment-)** - Decentralized comment system for any website  
-🔹 **[Wordpress Integration](#9-wordpress-integration)** - Wordpress Integration
+🔹 **[Nostr DM](#6-nostr-dm-)** - Send a direct message on Nostr (Under construction)
+🔹 **[Nostr Live Chat](#7-nostr-live-chat-)** - Real-time chat with message history (Under construction) 
+🔹 **[Nostr Comment](#8-nostr-comment-)** - Decentralized comment system for any website (Under construction) 
+🔹 **[WordPress Integration](#9-wordpress-integration)** - WordPress Integration
 
 ## 🛠️ Usage
 
-1.  **Include the Script(s):** Add the compiled component script to your HTML's `<head>`. If using the `nostr-post` component with multiple images/videos, also include Glide.js CSS for the carousel feature.
+### Option 1: Using with Bundlers (Webpack, Vite, React, etc.)
 
-    ```html
-    <head>
-      <!-- Required: Nostr Components Script (choose UMD or ES) -->
-      <script src="./dist/nostr-components.umd.js"></script>
-      <!-- Or nostr-components.es.js -->
-      <script>
-        // Initialize components (only needed for UMD build)
-        NostrComponents.default.init();
-      </script>
+For modern bundler-based projects (React, Vue, Next.js, etc.):
 
-      <!-- Optional: Glide.js CSS for Post Carousel -->
-      <!-- Needed only if displaying posts that might contain multiple images/videos -->
-      <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css"
-      />
-      <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css"
-      />
-    </head>
-    ```
+```typescript
+// Import the main package - this automatically registers all components
+import 'nostr-components';
 
-    - **UMD (Universal Module Definition):** Use `<script src="./dist/nostr-components.umd.js"></script>` and the initialization script.
-    - **ES Module:** Use `<script type="module">import NostrComponents from './dist/nostr-components.es.js'; NostrComponents.init();</script>`.
+// Or import specific components only
+import 'nostr-components/components/nostr-like';
+import 'nostr-components/components/nostr-zap';
 
-    _Note: Replace `./dist/nostr-components._.js`with the actual path to the file on your server or use a CDN link if available (e.g.,`https://nostr-components.web.app/dist/nostr-components.umd.js`).\*
+// Import themes
+import 'nostr-components/themes/dark';
+// or
+import 'nostr-components/themes/light';
+```
 
-2.  **Use the Components:** Place the component tags anywhere in your `<body>`.
+Then use the components in your JSX/HTML:
+
+```tsx
+function MyComponent() {
+  return (
+    <>
+      <nostr-like url="https://example.com" text="Like" />
+      <nostr-zap npub="npub1..." theme="dark" />
+    </>
+  );
+}
+```
+
+**Note:** When importing from the main package (`import 'nostr-components'`), all components are automatically registered. Individual component imports also work and register only that component.
+
+### Option 2: Direct Script Tag Usage
+
+For direct HTML usage without a bundler:
+
+```html
+<head>
+  <!-- Required: Nostr Components Script (choose UMD or ES) -->
+  <script src="./dist/nostr-components.umd.js"></script>
+  <!-- Or nostr-components.es.js -->
+  <script>
+    // Initialize components (only needed for UMD build)
+    NostrComponents.default.init();
+  </script>
+
+  <!-- Optional: Glide.js CSS for Post Carousel -->
+  <!-- Needed only if displaying posts that might contain multiple images/videos -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css"
+  />
+</head>
+```
+
+- **UMD (Universal Module Definition):** Use `<script src="./dist/nostr-components.umd.js"></script>` and the initialization script.
+- **ES Module:** Use `<script type="module">import NostrComponents from './dist/nostr-components.es.js'; NostrComponents.init();</script>`.
+
+_Note: Replace `./dist/nostr-components.min.js` with the actual path to the file on your server or use a CDN link if available (e.g., `https://nostr-components.web.app/dist/nostr-components.umd.js`)._
+
+### Using the Components
+
+Place the component tags anywhere in your HTML/JSX:
 
 ---
 

@@ -1,7 +1,14 @@
 import { defineConfig } from 'vite';
+import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 
 export default defineConfig({
+  plugins: [
+    dts({
+      insertTypesEntry: true, // Creates a single index.d.ts entry file
+      outDir: 'dist',
+    })
+  ],
   build: {
     sourcemap: true,
     rollupOptions: {
@@ -27,6 +34,7 @@ export default defineConfig({
         'nostr-like': resolve(__dirname, 'src/nostr-like/nostr-like.ts'),
       },
       external: [],
+      preserveEntrySignatures: 'exports-only',
       output: [
         {
           entryFileNames: (chunkInfo) => 
@@ -35,6 +43,7 @@ export default defineConfig({
             : `components/[name].es.js`,
           format: 'es',
           inlineDynamicImports: false,
+          exports: 'auto',
         },
       ],
     },

@@ -41,7 +41,6 @@ export class NostrUserComponent extends NostrBaseComponent {
 
   constructor(shadow: boolean = true) {
     super(shadow);
-    this.initChannelStatus('user', NCStatus.Loading, { reflectOverall: false });
   }
 
   /** Lifecycle methods */
@@ -56,6 +55,10 @@ export class NostrUserComponent extends NostrBaseComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
+
+    if (this.userStatus.get() == NCStatus.Idle) {
+      this.initChannelStatus('user', NCStatus.Loading, { reflectOverall: false });
+    }
 
     if (this.validateInputs()) {
       this.resolveUserAndProfile().catch(e => {

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "nostr/nostr-profile",
+  "version": "0.1.0",
+  "title": "Nostr Profile",
+  "category": "nostr",
+  "icon": "admin-users",
+  "description": "Display Nostr user profiles",
+  "supports": {
+    "html": false
+  },
+  "attributes": {
+    "npub": {
+      "type": "string",
+      "default": ""
+    },
+    "pubkey": {
+      "type": "string",
+      "default": ""
+    },
+    "nip05": {
+      "type": "string",
+      "default": ""
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["", "light", "dark"],
+      "default": ""
+    },
+    "relays": {
+      "type": "string",
+      "default": ""
+    },
+    "show-npub": {
+      "type": "boolean",
+      "default": true
+    },
+    "show-follow": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

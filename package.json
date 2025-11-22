@@ -1,11 +1,91 @@
 {
   "name": "nostr-components",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.2.7",
   "type": "module",
+  "description": "Embed Nostr anywhere on the internet, a Zap Button for every webpage",
+  "keywords": [
+    "nostr",
+    "web-components",
+    "lightning",
+    "zap",
+    "decentralized",
+    "social-network",
+    "nostr-profile",
+    "nostr-post",
+    "nostr-zap"
+  ],
+  "author": "saiy2k",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saiy2k/nostr-components.git"
+  },
+  "homepage": "https://nostr-components.web.app",
+  "bugs": {
+    "url": "https://github.com/saiy2k/nostr-components/issues"
+  },
+  "readme": "README.md",
+  "main": "./dist/nostr-components.umd.js",
+  "module": "./dist/nostr-components.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/nostr-components.es.js",
+      "require": "./dist/nostr-components.umd.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./themes": {
+      "import": "./dist/themes.css",
+      "default": "./dist/themes.css"
+    },
+    "./themes/dark": {
+      "import": "./dist/themes/dark.css",
+      "default": "./dist/themes/dark.css"
+    },
+    "./themes/light": {
+      "import": "./dist/themes/light.css",
+      "default": "./dist/themes/light.css"
+    },
+    "./components/nostr-like": {
+      "import": "./dist/components/nostr-like.es.js",
+      "types": "./dist/components/nostr-like.d.ts"
+    },
+    "./components/nostr-zap": {
+      "import": "./dist/components/nostr-zap.es.js",
+      "types": "./dist/components/nostr-zap.d.ts"
+    },
+    "./components/nostr-profile": {
+      "import": "./dist/components/nostr-profile.es.js",
+      "types": "./dist/components/nostr-profile.d.ts"
+    },
+    "./components/nostr-profile-badge": {
+      "import": "./dist/components/nostr-profile-badge.es.js",
+      "types": "./dist/components/nostr-profile-badge.d.ts"
+    },
+    "./components/nostr-post": {
+      "import": "./dist/components/nostr-post.es.js",
+      "types": "./dist/components/nostr-post.d.ts"
+    },
+    "./components/nostr-follow-button": {
+      "import": "./dist/components/nostr-follow-button.es.js",
+      "types": "./dist/components/nostr-follow-button.d.ts"
+    },
+    "./components/nostr-comment": {
+      "import": "./dist/components/nostr-comment.es.js",
+      "types": "./dist/components/nostr-comment.d.ts"
+    },
+    "./components/nostr-dm": {
+      "import": "./dist/components/nostr-dm.es.js",
+      "types": "./dist/components/nostr-dm.d.ts"
+    },
+    "./components/nostr-live-chat": {
+      "import": "./dist/components/nostr-live-chat.es.js",
+      "types": "./dist/components/nostr-live-chat.d.ts"
+    }
+  },
   "files": [
     "LICENSE",
+    "README.md",
     "dist"
   ],
   "scripts": {
@@ -13,12 +93,15 @@
     "build:esm": "vite build --config vite.config.esm.ts",
     "build:umd": "vite build --config vite.config.umd.ts",
     "build:themes": "node scripts/build-themes.js",
-    "build": "npm run build:esm && npm run build:umd && npm run build:themes",
+    "build:assets": "node scripts/copy-assets.js",
+    "build": "npm run build:esm && npm run build:umd && npm run build:themes && npm run build:assets",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes",
     "wp-build": "npm run build:esm && npm run build:themes && npm run wp-copy",
-    "wp-copy": "node scripts/wp-copy.js"
+    "wp-copy": "node scripts/wp-copy.js",
+    "wp-prepare-svn": "node scripts/prepare-svn.js",
+    "wp-release": "npm run wp-build && npm run wp-prepare-svn"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.1",

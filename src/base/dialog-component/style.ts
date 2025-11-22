@@ -15,8 +15,13 @@ export const getDialogComponentStyles = (): string => {
       padding: var(--nostrc-spacing-xl, 20px);
       background: var(--nostrc-theme-bg, #ffffff);
       color: var(--nostrc-theme-text-primary, #000000);
-      position: relative;
+      margin: auto;
       font-family: var(--nostrc-font-family-primary, ui-sans-serif, system-ui, sans-serif);
+      /* Ensure dialog is centered when opened */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
 
     .nostr-base-dialog[open] {

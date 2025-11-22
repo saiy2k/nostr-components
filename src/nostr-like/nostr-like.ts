@@ -43,11 +43,13 @@ export default class NostrLike extends NostrBaseComponent {
 
   constructor() {
     super();
-    this.likeListStatus.set(NCStatus.Loading);
   }
 
   connectedCallback() {
     super.connectedCallback?.();
+    if (this.likeListStatus.get() === NCStatus.Idle) {
+      this.initChannelStatus('likeList', NCStatus.Loading, { reflectOverall: false });
+    }
     this.attachDelegatedListeners();
     this.render();
   }

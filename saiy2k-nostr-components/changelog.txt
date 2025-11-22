@@ -1,0 +1,14 @@
+= 0.3.0 - 2025-11-22 =
+
+* Initial release
+* Gutenberg blocks for Nostr Zap button, Follow button, Post, Profile and Profile Badge
+* Shortcode support for all components
+* Selective component loading for optimal performance
+* Admin settings page for configuration
+* Security features with KSES integration
+* Performance optimizations with conditional asset loading
+* Support for custom relay configuration
+* Light and dark theme support
+* Responsive design for all components
+* WordPress 6.0+ compatibility
+* PHP 7.4+ compatibility
