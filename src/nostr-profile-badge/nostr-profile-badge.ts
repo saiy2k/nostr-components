@@ -83,12 +83,20 @@ export default class NostrProfileBadge extends NostrUserComponent {
   private attachDelegatedListeners() {
 
     // Click anywhere on the profile badge (except follow button, copy buttons)
-    this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button')) {
-        this.onProfileClick();
-      }
-    });
+this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
+  const target = e.target as HTMLElement
+  if (!target.closest('.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button')) {
+    this.onProfileClick()
+  }
+})
+
+// Keyboard accessibility (Enter key)
+this.delegateEvent('keydown', '.nostr-profile-badge-container', (e: KeyboardEvent) => {
+  if (e.key === 'Enter') {
+    this.onProfileClick()
+  }
+});
+
 
     // Copy is handled via attachCopyDelegation() using `.nc-copy-btn`
   }

@@ -70,7 +70,13 @@ function renderError(errorMessage: string): string {
 
 function renderContainer(leftContent: string, rightContent: string): string {
   return `
-    <div class='nostr-profile-badge-container'>
+  <div
+      class="nostr-profile-badge-container"
+      tabindex="0"
+      role="button"
+      aria-label="Open Nostr profile"
+    >
+
       <div class='nostr-profile-badge-left-container'>
         ${leftContent}
       </div>
