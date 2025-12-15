@@ -12,8 +12,8 @@ Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and f
 🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
 🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
 🔹 **[Nostr DM](#6-nostr-dm-)** - Send a direct message on Nostr (Under construction)
-🔹 **[Nostr Live Chat](#7-nostr-live-chat-)** - Real-time chat with message history (Under construction) 
-🔹 **[Nostr Comment](#8-nostr-comment-)** - Decentralized comment system for any website (Under construction) 
+🔹 **[Nostr Live Chat](#7-nostr-live-chat-)** - Real-time chat with message history (Under construction)
+🔹 **[Nostr Comment](#8-nostr-comment-)** - Decentralized comment system for any website (Under construction)
 🔹 **[WordPress Integration](#9-wordpress-integration)** - WordPress Integration
 
 ## 🛠️ Usage
@@ -24,16 +24,16 @@ For modern bundler-based projects (React, Vue, Next.js, etc.):
 
 ```typescript
 // Import the main package - this automatically registers all components
-import 'nostr-components';
+import "nostr-components";
 
 // Or import specific components only
-import 'nostr-components/components/nostr-like';
-import 'nostr-components/components/nostr-zap';
+import "nostr-components/components/nostr-like";
+import "nostr-components/components/nostr-zap";
 
 // Import themes
-import 'nostr-components/themes/dark';
+import "nostr-components/themes/dark";
 // or
-import 'nostr-components/themes/light';
+import "nostr-components/themes/light";
 ```
 
 Then use the components in your JSX/HTML:
@@ -197,7 +197,7 @@ A Lightning Network zap button that allows users to send sats to any Nostr user 
   <script type="module" src="./dist/components/nostr-zap.es.js"></script>
 </head>
 <body>
-  <nostr-zap 
+  <nostr-zap
     npub="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
     theme="dark"
     button-text="⚡ Zap Me"
@@ -228,20 +228,16 @@ A simple direct message composer for sending one-time messages to any Nostr user
   <nostr-dm theme="light"></nostr-dm>
 
   <!-- Pre-configured recipient with npub -->
-  <nostr-dm 
+  <nostr-dm
     recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
     theme="light"
     relays="wss://relay.damus.io,wss://relay.primal.net"
   ></nostr-dm>
 
   <!-- Using NIP-05 identifier -->
-  <nostr-dm 
-    nip05="user@domain.com"
-    theme="dark"
-  ></nostr-dm>
+  <nostr-dm nip05="user@domain.com" theme="dark"></nostr-dm>
 </body>
 ```
-
 
 **Preview:**
 
@@ -264,21 +260,16 @@ Real-time chat component with persistent message history and live updates.
   <nostr-live-chat theme="light"></nostr-live-chat>
 
   <!-- Pre-configured recipient with npub -->
-  <nostr-live-chat 
+  <nostr-live-chat
     recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
     theme="light"
     relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
   ></nostr-live-chat>
 
   <!-- Using NIP-05 identifier -->
-  <nostr-live-chat 
-    nip05="user@domain.com"
-    theme="dark"
-  ></nostr-live-chat>
+  <nostr-live-chat nip05="user@domain.com" theme="dark"></nostr-live-chat>
 </body>
 ```
-
-
 
 **Preview:**
 
@@ -295,17 +286,17 @@ A complete decentralized comment system that stores comments on the Nostr networ
 ```html
 <head>
   <script type="importmap">
-  {
-    "imports": {
-      "lit": "https://unpkg.com/lit@3.1.0/index.js?module",
-      "dayjs": "https://unpkg.com/dayjs@1.11.10/dayjs.min.js?module"
+    {
+      "imports": {
+        "lit": "https://unpkg.com/lit@3.1.0/index.js?module",
+        "dayjs": "https://unpkg.com/dayjs@1.11.10/dayjs.min.js?module"
+      }
     }
-  }
   </script>
   <script type="module" src="./dist/components/nostr-comment.es.js"></script>
 </head>
 <body>
-  <nostr-comment 
+  <nostr-comment
     theme="light"
     placeholder="Write a comment..."
     relays="wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net"
@@ -333,6 +324,15 @@ Check out our full documentation [here](https://nostr-components.web.app).
 
 ## 🛠️ Development
 
+### npm Installation Notes (Windows / newer npm versions)
+
+If you encounter dependency resolution errors (`ERESOLVE`) when running `npm install`
+with newer versions of npm, use:
+
+````bash
+npm install --legacy-peer-deps
+
+
 ### Storybook Setup
 
 This project uses Storybook for component development and testing. The setup includes both public showcase stories and private testing stories.
@@ -345,9 +345,10 @@ npm run storybook
 
 # Build Storybook for production (excludes testing stories)
 STORYBOOK_ENV=production npm run build-storybook
-```
+````
 
 **Story Organization:**
+
 - **Public Stories**: Showcase stories for component demos and documentation
 - **Testing Stories**: Private stories for development testing (excluded from production builds)
 
