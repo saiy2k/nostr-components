@@ -17,32 +17,9 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
-    this.addEventListener('click', this.onClick);
-    this.addEventListener('keydown', this.onKeyDown);
+    this.attachDelegatedListeners();
     this.render();
   }
-
-  disconnectedCallback() {
-    this.removeEventListener('click', this.onClick);
-    this.removeEventListener('keydown', this.onKeyDown);
-  }
-
-  private onClick = (e: Event) => {
-    if (this.hasAttribute('disabled')) return;
-    e.preventDefault();
-    e.stopPropagation();
-    void this.handleFollowClick();
-  };
-
-  private onKeyDown = (e: KeyboardEvent) => {
-    if (this.hasAttribute('disabled')) return;
-
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      e.stopPropagation();
-      void this.handleFollowClick();
-    }
-  };
 
   protected onStatusChange() {
     this.render();
@@ -52,18 +29,46 @@ export default class NostrFollowButton extends NostrUserComponent {
     this.render();
   }
 
+  /** Event delegation (required by BaseComponent design) */
+  private attachDelegatedListeners() {
+    // Mouse click
+    this.delegateEvent(
+      'click',
+      '.nostr-follow-button-container',
+      (e) => {
+        if (this.hasAttribute('disabled')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void this.handleFollowClick();
+      }
+    );
+
+    // Keyboard support (Enter / Space)
+    this.delegateEvent(
+      'keydown',
+      '.nostr-follow-button-container',
+      (e: KeyboardEvent) => {
+        if (this.hasAttribute('disabled')) return;
+
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          void this.handleFollowClick();
+        }
+      }
+    );
+  }
+
   private async handleFollowClick() {
     if (this.computeOverall() !== NCStatus.Ready) return;
 
-    const nip07signer = new NDKNip07Signer();
     this.followStatus.set(NCStatus.Loading);
     this.render();
 
     try {
-      // Ensure NostrLogin is initialized (sets up window.nostr)
+      // Ensure NostrLogin is initialized
       await ensureInitialized();
 
-      // Use NDKNip07Signer which works with window.nostr from NostrLogin
       const signer = new NDKNip07Signer();
       const ndk = this.nostrService.getNDK();
       ndk.signer = signer;
@@ -85,9 +90,10 @@ export default class NostrFollowButton extends NostrUserComponent {
       this.followStatus.set(NCStatus.Ready);
     } catch (err) {
       const error = err as Error;
-      // Generic error message - NostrLogin handles its own UI/errors
-      const errorMessage = error.message || 'Please authorize, click the button to try again!';
-      this.followStatus.set(NCStatus.Error, errorMessage);
+      this.followStatus.set(
+        NCStatus.Error,
+        error.message || 'Please authorize, click the button to try again!'
+      );
     } finally {
       this.render();
     }
@@ -113,7 +119,7 @@ export default class NostrFollowButton extends NostrUserComponent {
       ${renderFollowButton(renderOptions)}
     `;
 
-    /* Accessibility: follow profile-badge pattern */
+    // Accessibility (profile-badge pattern)
     this.setAttribute('role', 'button');
     this.setAttribute('aria-pressed', String(this.isFollowed));
 
