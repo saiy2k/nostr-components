@@ -86,40 +86,64 @@ export default class NostrFollowButton extends NostrUserComponent {
   }
 
   private attachDelegatedListeners() {
-    this.delegateEvent('click', '.nostr-follow-button-container', (e) => {
-      e.preventDefault?.();
-      e.stopPropagation?.();
-      void this.handleFollowClick();
-    });
-  }
+  // Mouse click support
+  this.delegateEvent('click', '.nostr-follow-button-container', (e) => {
+    e.preventDefault?.();
+    e.stopPropagation?.();
+    void this.handleFollowClick();
+  });
+//for keyboard accessibility(space/enter)
+  this.delegateEvent(
+    'keydown',
+    '.nostr-follow-button-container',
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        void this.handleFollowClick();
+      }
+    }
+  );
+}
+
 
   protected renderContent() {
-    const isLoading           = this.computeOverall() == NCStatus.Loading;
-    const isFollowing         = this.followStatus.get() == NCStatus.Loading;
-    const isError             = this.computeOverall() === NCStatus.Error;
-    const errorMessage        = super.renderError(this.errorMessage);
-    const showAvatar          = this.hasAttribute('show-avatar');
-    const customText          = this.getAttribute('text') || 'Follow me on nostr';
+  const isLoading           = this.computeOverall() == NCStatus.Loading;
+  const isFollowing         = this.followStatus.get() == NCStatus.Loading;
+  const isError             = this.computeOverall() === NCStatus.Error;
+  const errorMessage        = super.renderError(this.errorMessage);
+  const showAvatar          = this.hasAttribute('show-avatar');
+  const customText          = this.getAttribute('text') || 'Follow me on nostr';
 
-    const renderOptions: RenderFollowButtonOptions = {
-      isLoading   : isLoading,
-      isError     : isError,
-      errorMessage: errorMessage,
-      isFollowed  : this.isFollowed,
-      isFollowing : isFollowing,
-      showAvatar  : showAvatar,
-      user        : this.user,
-      profile     : this.profile,
-      customText  : customText,
-    };
+  const renderOptions: RenderFollowButtonOptions = {
+    isLoading   : isLoading,
+    isError     : isError,
+    errorMessage: errorMessage,
+    isFollowed  : this.isFollowed,
+    isFollowing : isFollowing,
+    showAvatar  : showAvatar,
+    user        : this.user,
+    profile     : this.profile,
+    customText  : customText,
+  };
 
-    this.shadowRoot!.innerHTML = `
-      ${getFollowButtonStyles()}
-      ${renderFollowButton(renderOptions)}
-    `
+  this.shadowRoot!.innerHTML = `
+    ${getFollowButtonStyles()}
+    ${renderFollowButton(renderOptions)}
+  `;
+
+  const container = this.shadowRoot?.querySelector(
+    '.nostr-follow-button-container'
+  ) as HTMLElement | null;
+
+  if (container) {
+    container.setAttribute('role', 'button');
+    container.setAttribute('tabindex', '0');
+    container.setAttribute('aria-pressed', String(this.isFollowed));
   }
 }
 
 if (!customElements.get('nostr-follow-button')) {
   customElements.define('nostr-follow-button', NostrFollowButton);
 }
+
