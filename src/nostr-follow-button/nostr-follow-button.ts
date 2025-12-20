@@ -5,6 +5,7 @@ import { NostrUserComponent } from '../base/user-component/nostr-user-component'
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
+import { ensureInitialized } from '../common/nostr-login-service';
 
 /**
  * TODO:
@@ -48,26 +49,25 @@ export default class NostrFollowButton extends NostrUserComponent {
   /** Private functions */
   private async handleFollowClick() {
     if (this.computeOverall() !== NCStatus.Ready) return;
-    const nip07signer = new NDKNip07Signer();
 
     this.followStatus.set(NCStatus.Loading);
     this.render();
 
     try {
+      // Ensure NostrLogin is initialized (sets up window.nostr)
+      await ensureInitialized();
+
+      // Use NDKNip07Signer which works with window.nostr from NostrLogin
+      const signer = new NDKNip07Signer();
       const ndk = this.nostrService.getNDK();
-      ndk.signer = nip07signer;
+      ndk.signer = signer;
 
       if (!this.user) {
         this.followStatus.set(NCStatus.Error, "Could not resolve user to follow.");
         this.render();
         return;
-
       }
 
-      const signer = ndk.signer;
-      if (!signer) {
-        throw new Error('No signer available');
-      }
       const signedUser = await signer.user();
       if (signedUser) {
         await signedUser.follow(this.user);
@@ -76,15 +76,9 @@ export default class NostrFollowButton extends NostrUserComponent {
       this.isFollowed = true;
       this.followStatus.set(NCStatus.Ready);
     } catch (err) {
-
       const error = err as Error;
-      let errorMessage;
-      if (error.message?.includes('NIP-07')) {
-        errorMessage = `Looks like you don't have any nostr signing browser extension.
-                          Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
-      } else {
-        errorMessage = 'Please authorize, click the button to try again!';
-      }
+      // Generic error message - NostrLogin handles its own UI/errors
+      const errorMessage = error.message || 'Please authorize, click the button to try again!';
       this.followStatus.set(NCStatus.Error, errorMessage);
     } finally {
       this.render();
