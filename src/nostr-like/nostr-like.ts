@@ -14,9 +14,9 @@ import {
   hasUserLiked, 
   getUserPubkey, 
   signEvent, 
-  isNip07Available,
   LikeCountResult 
 } from './like-utils';
+import { ensureInitialized } from '../common/nostr-login-service';
 import { normalizeURL } from 'nostr-tools/utils';
 
 /**
@@ -154,7 +154,6 @@ export default class NostrLike extends NostrBaseComponent {
     }
   }
 
-  // TODO: Do onboarding logic here
   private async handleLikeClick() {
     // Ensure currentUrl is set before proceeding
     this.ensureCurrentUrl();
@@ -166,41 +165,38 @@ export default class NostrLike extends NostrBaseComponent {
     }
 
     this.likeActionStatus.set(NCStatus.Loading);
-    if (!isNip07Available()) {
-      this.likeActionStatus.set(NCStatus.Error, 
-        'Please install a Nostr browser extension (Alby, nos2x, etc.)'
-      );
-      this.render();
-      return;
-    }
+    this.render();
 
-    // Check user like status
     try {
+      // Ensure NostrLogin is initialized (sets up window.nostr)
+      await ensureInitialized();
+
+      // Check user like status
       const userPubkey = await getUserPubkey();
       if (userPubkey) {
         this.isLiked = await hasUserLiked(this.currentUrl, userPubkey, this.getRelays());
       }
+
+      // If already liked, show confirmation dialog
+      if (this.isLiked) {
+        const confirmed = window.confirm('You have already liked this. Do you want to unlike it?');
+        if (!confirmed) {
+          this.likeActionStatus.set(NCStatus.Ready);
+          this.render();
+          return;
+        }
+        
+        // Proceed with unlike
+        await this.handleUnlike();
+      } else {
+        // Proceed with like
+        await this.handleLike();
+      }
     } catch (error) {
       console.error('[NostrLike] Failed to check user like status:', error);
-      this.likeActionStatus.set(NCStatus.Error, 'Failed to check user like status');
-    } finally {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to check user like status';
+      this.likeActionStatus.set(NCStatus.Error, errorMessage);
       this.render();
-    }
-
-    // If already liked, show confirmation dialog
-    if (this.isLiked) {
-      const confirmed = window.confirm('You have already liked this. Do you want to unlike it?');
-      if (!confirmed) {
-        this.likeActionStatus.set(NCStatus.Ready);
-        this.render();
-        return;
-      }
-      
-      // Proceed with unlike
-      await this.handleUnlike();
-    } else {
-      // Proceed with like
-      await this.handleLike();
     }
   }
 

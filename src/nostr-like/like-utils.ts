@@ -2,6 +2,7 @@
 
 import { SimplePool } from 'nostr-tools';
 import { normalizeURL } from 'nostr-tools/utils';
+import { ensureInitialized, getPublicKey, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 
 /**
  * Helper utilities for Nostr like operations using NIP-25 External Content Reactions.
@@ -147,41 +148,27 @@ export async function hasUserLiked(
 }
 
 /**
- * Get user's pubkey from NIP-07 signer
+ * Get user's pubkey from NostrLogin
  */
 export async function getUserPubkey(): Promise<string | null> {
   try {
-    if (typeof window !== 'undefined' && (window as any).nostr) {
-      const nip07signer = (window as any).nostr;
-      const user = await nip07signer.getPublicKey();
-      return user;
-    }
+    await ensureInitialized();
+    return await getPublicKey();
   } catch (error) {
     console.error("Nostr-Components: Like button: Error getting user pubkey", error);
+    return null;
   }
-  return null;
 }
 
 /**
- * Sign event with NIP-07
+ * Sign event with NostrLogin
  */
 export async function signEvent(event: any): Promise<any> {
   try {
-    if (typeof window !== 'undefined' && (window as any).nostr) {
-      const nip07signer = (window as any).nostr;
-      const signedEvent = await nip07signer.signEvent(event);
-      return signedEvent;
-    }
-    throw new Error('NIP-07 extension not available');
+    await ensureInitialized();
+    return await signEventWithNostrLogin(event);
   } catch (error) {
     console.error("Nostr-Components: Like button: Error signing event", error);
     throw error;
   }
-}
-
-/**
- * Check if NIP-07 extension is available
- */
-export function isNip07Available(): boolean {
-  return typeof window !== 'undefined' && !!(window as any).nostr;
 }
