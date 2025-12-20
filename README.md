@@ -6,13 +6,13 @@
 
 Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and follow buttons in any website. Inspired by <a href="https://unpkg.com/nostr-web-components@0.0.15/demo.html">fiatjaf's Nostr Web Components</a>, this project adds a beautiful UI, a Storybook component generator (for webmasters), and allows embedding Nostr content anywhere on the Internet.
 
-🔹 **[Zap button](#1-nostr-zap-)**
-🔹 **[Follow button](#2-nostr-follow-)**
-🔹 **[Like button](#3-nostr-like-)**
-🔹 **[Profile Badge](#4-nostr-profile-badge-)**
-🔹 **[Profile](#5-nostr-profile-)** 
-🔹 **[Post](#6-nostr-post-)**
-🔹 **[WordPress Integration](#7-wordpress-integration)** - WordPress Integration
+ * **[Zap button](#1-nostr-zap)**
+ * **[Follow button](#2-nostr-follow)**
+ * **[Like button](#3-nostr-like)**
+ * **[Profile Badge](#4-nostr-profile-badge)**
+ * **[Profile](#5-nostr-profile)** 
+ * **[Post](#6-nostr-post)**
+ * **[WordPress Integration](#7-wordpress-integration)**
 
 ## 🛠️ Usage
 
@@ -70,7 +70,7 @@ import { NostrLike } from 'nostr-components';
 
 ### Authentication
 
-All interactive components (Follow, Like, Zap, DM, Live Chat, Comment) require user authentication. Components use [NostrLogin](https://github.com/nostrband/nostr-login) which supports:
+All interactive components (Follow, Like, Zap) require user authentication. Components use [NostrLogin](https://github.com/nostrband/nostr-login) which supports:
 - **NIP-07 Browser Extensions** (Alby, nos2x, etc.)
 - **NIP-46 Remote Signers** (Bunkers)
 
@@ -78,7 +78,7 @@ The authentication flow is handled automatically when users interact with compon
 
 ---
 
-## 1. Nostr Zap ⚡
+## 1. Nostr Zap
 
 A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
 
@@ -103,7 +103,7 @@ A Lightning Network zap button that allows users to send sats to any Nostr user 
 
 ---
 
-## 2. Nostr Follow ➕
+## 2. Nostr Follow
 
 A simple button that allows users to follow a Nostr profile.
 
@@ -129,7 +129,7 @@ A simple button that allows users to follow a Nostr profile.
 
 ---
 
-## 3. Nostr Like ❤️
+## 3. Nostr Like
 
 A like button that uses NIP-25 (External Content Reactions) to like any URL on the web.
 When URL is not specified, current URL is taken.
@@ -155,7 +155,7 @@ When URL is not specified, current URL is taken.
 
 ---
 
-## 4. Nostr Profile Badge 🔖
+## 4. Nostr Profile Badge
 
 A small badge displaying a Nostr profile with a username and avatar.
 
@@ -181,7 +181,7 @@ A small badge displaying a Nostr profile with a username and avatar.
 
 ---
 
-## 5. Nostr Profile 👤
+## 5. Nostr Profile
 
 A detailed profile card showing avatar, name, bio, notes count, followers, etc.
 
@@ -204,7 +204,7 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc.
 
 ---
 
-## 6. Nostr Post 📝
+## 6. Nostr Post
 
 Embed any Nostr post by providing the event ID.
 
@@ -227,7 +227,7 @@ Embed any Nostr post by providing the event ID.
 
 ---
 
-## 7. WordPress Integration 🔌
+## 7. WordPress Integration
 
 The Nostr Components WordPress plugin provides Gutenberg blocks and shortcodes for all components, making it easy to embed Nostr functionality in your WordPress site.
 
