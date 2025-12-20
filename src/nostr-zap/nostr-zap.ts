@@ -10,6 +10,7 @@ import { getZapButtonStyles } from './style';
 import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
 import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
+import { ensureInitialized } from '../common/nostr-login-service';
 
 /**
  * <nostr-zap>
@@ -138,6 +139,9 @@ export default class NostrZap extends NostrUserComponent {
     this.render();
 
     try {
+      // Ensure NostrLogin is initialized (sets up window.nostr)
+      await ensureInitialized();
+
       if (!this.user) {
         this.zapActionStatus.set(NCStatus.Error, "Could not resolve user to zap.");
         this.render();
