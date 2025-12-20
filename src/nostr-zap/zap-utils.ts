@@ -7,6 +7,7 @@ import {
   SimplePool,
 } from 'nostr-tools';
 import { decodeNip19Entity } from '../common/utils';
+import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 
 /**
  * Helper utilities for Nostr zap operations (adapted from the original `nostr-zap` repo).
@@ -108,10 +109,10 @@ interface NostrExtension {
 }
 
 const signEvent = async (zapEvent: any, anon?: boolean) => {
-  if (isNip07ExtAvailable() && !anon) {
+  if (!anon) {
     try {
-      const ext = (window as { nostr?: NostrExtension }).nostr;
-      if (ext?.signEvent) return await ext.signEvent(zapEvent);
+      await ensureInitialized();
+      return await signEventWithNostrLogin(zapEvent);
     } catch {
       /* fall-through -> anonymous */
     }
@@ -159,7 +160,21 @@ const makeZapEvent = async ({
     event.tags.push(['i', normalizeURL(url)]);
   }
 
-  if (!isNip07ExtAvailable() || anon) {
+  // Check if NostrLogin is available (will initialize if needed)
+  // Note: We check availability here to decide if we should add 'anon' tag
+  // The actual signing happens in signEvent() which will ensure initialization
+  let isNostrLoginAvailable = false;
+  if (!anon) {
+    try {
+      await ensureInitialized();
+      isNostrLoginAvailable = typeof window !== 'undefined' && !!(window as any).nostr;
+    } catch {
+      // If initialization fails, fall back to anonymous
+      isNostrLoginAvailable = false;
+    }
+  }
+  
+  if (!isNostrLoginAvailable || anon) {
     event.tags.push(['anon']);
   }
 
@@ -229,7 +244,15 @@ const generateRandomPrivKey = (): Uint8Array => {
   return bytes;
 };
 
-export const isNip07ExtAvailable = (): boolean => typeof window !== 'undefined' && !!(window as any).nostr;
+/**
+ * Check if NostrLogin is available
+ * @deprecated Use ensureInitialized() instead - it will initialize NostrLogin if needed
+ */
+export const isNip07ExtAvailable = (): boolean => {
+  // This function is kept for backward compatibility but will always return false
+  // until ensureInitialized() is called. Components should use ensureInitialized() instead.
+  return typeof window !== 'undefined' && !!(window as any).nostr;
+};
 
 // ---------------------------------------------------------------------------
 // nip05 resolution helper – very lightweight fetch to /.well-known/nostr.json

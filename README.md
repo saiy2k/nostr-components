@@ -6,90 +6,156 @@
 
 Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and follow buttons in any website. Inspired by <a href="https://unpkg.com/nostr-web-components@0.0.15/demo.html">fiatjaf's Nostr Web Components</a>, this project adds a beautiful UI, a Storybook component generator (for webmasters), and allows embedding Nostr content anywhere on the Internet.
 
-🔹 **[Nostr Zap](#5-nostr-zap-)** - Lightning Network zap button for Nostr  
-🔹 **[Nostr Profile Badge](#1-nostr-profile-badge-)** - Compact badge-style profile display  
-🔹 **[Nostr Profile](#2-nostr-profile-)** - Full Nostr profile with more details  
-🔹 **[Nostr Post](#3-nostr-post-)** - Embed a specific Nostr post  
-🔹 **[Nostr Follow](#4-nostr-follow-)** - Follow button for Nostr  
-🔹 **[Nostr DM](#6-nostr-dm-)** - Send a direct message on Nostr (Under construction)
-🔹 **[Nostr Live Chat](#7-nostr-live-chat-)** - Real-time chat with message history (Under construction)
-🔹 **[Nostr Comment](#8-nostr-comment-)** - Decentralized comment system for any website (Under construction)
-🔹 **[WordPress Integration](#9-wordpress-integration)** - WordPress Integration
+ * **[Zap button](#1-nostr-zap)**
+ * **[Follow button](#2-nostr-follow)**
+ * **[Like button](#3-nostr-like)**
+ * **[Profile Badge](#4-nostr-profile-badge)**
+ * **[Profile](#5-nostr-profile)** 
+ * **[Post](#6-nostr-post)**
+ * **[WordPress Integration](#7-wordpress-integration)**
 
 ## 🛠️ Usage
 
-### Option 1: Using with Bundlers (Webpack, Vite, React, etc.)
+### Quick Start
 
-For modern bundler-based projects (React, Vue, Next.js, etc.):
+#### Option 1: CDN (Recommended for Quick Integration)
 
-```typescript
-// Import the main package - this automatically registers all components
-import "nostr-components";
-
-// Or import specific components only
-import "nostr-components/components/nostr-like";
-import "nostr-components/components/nostr-zap";
-
-// Import themes
-import "nostr-components/themes/dark";
-// or
-import "nostr-components/themes/light";
-```
-
-Then use the components in your JSX/HTML:
-
-```tsx
-function MyComponent() {
-  return (
-    <>
-      <nostr-like url="https://example.com" text="Like" />
-      <nostr-zap npub="npub1..." theme="dark" />
-    </>
-  );
-}
-```
-
-**Note:** When importing from the main package (`import 'nostr-components'`), all components are automatically registered. Individual component imports also work and register only that component.
-
-### Option 2: Direct Script Tag Usage
-
-For direct HTML usage without a bundler:
+Add the component script to your HTML's `<head>`. Each component can be loaded individually or use the full bundle.
 
 ```html
 <head>
-  <!-- Required: Nostr Components Script (choose UMD or ES) -->
-  <script src="./dist/nostr-components.umd.js"></script>
-  <!-- Or nostr-components.es.js -->
+  <!-- Load individual component (recommended for smaller bundles) -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-follow-button.es.js"></script>
+  
+  <!-- Or load the full bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/nostr-components.umd.js"></script>
   <script>
-    // Initialize components (only needed for UMD build)
     NostrComponents.default.init();
   </script>
-
-  <!-- Optional: Glide.js CSS for Post Carousel -->
-  <!-- Needed only if displaying posts that might contain multiple images/videos -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css"
-  />
 </head>
 ```
 
-- **UMD (Universal Module Definition):** Use `<script src="./dist/nostr-components.umd.js"></script>` and the initialization script.
-- **ES Module:** Use `<script type="module">import NostrComponents from './dist/nostr-components.es.js'; NostrComponents.init();</script>`.
+#### Option 2: NPM Package
 
-_Note: Replace `./dist/nostr-components.min.js` with the actual path to the file on your server or use a CDN link if available (e.g., `https://nostr-components.web.app/dist/nostr-components.umd.js`)._
+Install the package via npm:
 
-### Using the Components
+```bash
+npm install nostr-components
+```
 
-Place the component tags anywhere in your HTML/JSX:
+Then import components in your JavaScript/TypeScript:
+
+```javascript
+// Import individual components
+import 'nostr-components/dist/components/nostr-follow-button.es.js';
+import 'nostr-components/dist/components/nostr-zap.es.js';
+import 'nostr-components/dist/components/nostr-like.es.js';
+
+// Or import the full bundle
+import 'nostr-components/dist/nostr-components.es.js';
+```
+
+For bundlers (Vite, Webpack, etc.), you can also import the source:
+
+```javascript
+// Import from source (requires bundler)
+import { NostrFollowButton } from 'nostr-components';
+import { NostrZap } from 'nostr-components';
+import { NostrLike } from 'nostr-components';
+```
+
+**Note:** When using npm packages, make sure your bundler is configured to handle Web Components properly.
+
+**Use the Components:** Place the component tags anywhere in your `<body>`.
+
+### Authentication
+
+All interactive components (Follow, Like, Zap) require user authentication. Components use [NostrLogin](https://github.com/nostrband/nostr-login) which supports:
+- **NIP-07 Browser Extensions** (Alby, nos2x, etc.)
+- **NIP-46 Remote Signers** (Bunkers)
+
+The authentication flow is handled automatically when users interact with components.
 
 ---
 
-## 1. Nostr Profile Badge 🔖
+## 1. Nostr Zap
+
+A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-zap.es.js"></script>
+</head>
+<body>
+  <nostr-zap 
+    npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
+    theme="dark"
+    text="⚡ Zap Me"
+  ></nostr-zap>
+</body>
+```
+
+**Preview:**
+
+![Preview of zap button](images/zap-preview.png)
+
+---
+
+## 2. Nostr Follow
+
+A simple button that allows users to follow a Nostr profile.
+
+**Usage:**
+
+```html
+<head>
+  <script
+    type="module"
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-follow-button.es.js"
+  ></script>
+</head>
+<body>
+  <nostr-follow-button
+    npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
+  ></nostr-follow-button>
+</body>
+```
+
+**Preview:**
+
+![Preview of follow button](images/follow-button-preview.png)
+
+---
+
+## 3. Nostr Like
+
+A like button that uses NIP-25 (External Content Reactions) to like any URL on the web.
+When URL is not specified, current URL is taken.
+
+**Usage:**
+
+```html
+<head>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-like.es.js"></script>
+</head>
+<body>
+  <!-- Like the current page URL -->
+  <nostr-like></nostr-like>
+
+  <!-- Like a specific URL with custom text -->
+  <nostr-like url="https://github.com/saiy2k/nostr-components" text="❤️"></nostr-like>
+</body>
+```
+
+**Preview:**
+
+![Preview of like button](images/like-button-preview.png)
+
+---
+
+## 4. Nostr Profile Badge
 
 A small badge displaying a Nostr profile with a username and avatar.
 
@@ -99,7 +165,7 @@ A small badge displaying a Nostr profile with a username and avatar.
 <head>
   <script
     type="module"
-    src="./dist/components/nostr-profile-badge.es.js"
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-profile-badge.es.js"
   ></script>
 </head>
 <body>
@@ -115,15 +181,15 @@ A small badge displaying a Nostr profile with a username and avatar.
 
 ---
 
-## 2. Nostr Profile 👤
+## 5. Nostr Profile
 
-A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
+A detailed profile card showing avatar, name, bio, notes count, followers, etc.
 
 **Usage:**
 
 ```html
 <head>
-  <script type="module" src="./dist/components/nostr-profile.es.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-profile.es.js"></script>
 </head>
 <body>
   <nostr-profile
@@ -138,7 +204,7 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc,.
 
 ---
 
-## 3. Nostr Post 📝
+## 6. Nostr Post
 
 Embed any Nostr post by providing the event ID.
 
@@ -146,13 +212,12 @@ Embed any Nostr post by providing the event ID.
 
 ```html
 <head>
-  <script type="module" src="./dist/components/nostr-post.es.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-post.es.js"></script>
 </head>
 <body>
   <nostr-post
     eventId="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"
   ></nostr-post>
-  <!-- Note: The previous example incorrectly used a pubkey, use eventId for posts -->
 </body>
 ```
 
@@ -162,157 +227,11 @@ Embed any Nostr post by providing the event ID.
 
 ---
 
-## 4. Nostr Follow ➕
+## 7. WordPress Integration
 
-A simple button that allows users to follow a Nostr profile.
+The Nostr Components WordPress plugin provides Gutenberg blocks and shortcodes for all components, making it easy to embed Nostr functionality in your WordPress site.
 
-**Usage:**
-
-```html
-<head>
-  <script
-    type="module"
-    src="./dist/components/nostr-follow-button.es.js"
-  ></script>
-</head>
-<body>
-  <nostr-follow-button
-    pubkey="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
-  ></nostr-follow-button>
-</body>
-```
-
-**Preview:**
-
-![Preview of follow button](images/follow-button-preview.png)
-
-## 5. Nostr Zap ⚡
-
-A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
-
-**Usage:**
-
-```html
-<head>
-  <script type="module" src="./dist/components/nostr-zap.es.js"></script>
-</head>
-<body>
-  <nostr-zap
-    npub="npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
-    theme="dark"
-    button-text="⚡ Zap Me"
-    button-color="#8a63d2"
-    amount="1000"
-  ></nostr-zap>
-</body>
-```
-
-**Preview:**
-
-![Preview of zap button](images/zap-preview.png)
-
----
-
-## 6. Nostr DM 💬
-
-A simple direct message composer for sending one-time messages to any Nostr user.
-
-**Usage:**
-
-```html
-<head>
-  <script type="module" src="./dist/components/nostr-dm.es.js"></script>
-</head>
-<body>
-  <!-- Basic DM, user will be prompted to enter a recipient -->
-  <nostr-dm theme="light"></nostr-dm>
-
-  <!-- Pre-configured recipient with npub -->
-  <nostr-dm
-    recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
-    theme="light"
-    relays="wss://relay.damus.io,wss://relay.primal.net"
-  ></nostr-dm>
-
-  <!-- Using NIP-05 identifier -->
-  <nostr-dm nip05="user@domain.com" theme="dark"></nostr-dm>
-</body>
-```
-
-**Preview:**
-
-![Preview of DM component](images/dm-preview.png)
-
----
-
-## 7. Nostr Live Chat 💬
-
-Real-time chat component with persistent message history and live updates.
-
-**Usage:**
-
-```html
-<head>
-  <script type="module" src="./dist/components/nostr-live-chat.es.js"></script>
-</head>
-<body>
-  <!-- Basic live chat, user will be prompted to enter a recipient -->
-  <nostr-live-chat theme="light"></nostr-live-chat>
-
-  <!-- Pre-configured recipient with npub -->
-  <nostr-live-chat
-    recipient-npub="npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk"
-    theme="light"
-    relays="wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social"
-  ></nostr-live-chat>
-
-  <!-- Using NIP-05 identifier -->
-  <nostr-live-chat nip05="user@domain.com" theme="dark"></nostr-live-chat>
-</body>
-```
-
-**Preview:**
-
-![Preview of live chat component](images/live-chat-preview.png)
-
----
-
-## 8. Nostr Comment 💬
-
-A complete decentralized comment system that stores comments on the Nostr network instead of a traditional database.
-
-**Usage:**
-
-```html
-<head>
-  <script type="importmap">
-    {
-      "imports": {
-        "lit": "https://unpkg.com/lit@3.1.0/index.js?module",
-        "dayjs": "https://unpkg.com/dayjs@1.11.10/dayjs.min.js?module"
-      }
-    }
-  </script>
-  <script type="module" src="./dist/components/nostr-comment.es.js"></script>
-</head>
-<body>
-  <nostr-comment
-    theme="light"
-    placeholder="Write a comment..."
-    relays="wss://relay.damus.io,wss://nostr.wine,wss://relay.nostr.net"
-  ></nostr-comment>
-</body>
-```
-
-**Preview:**
-
-![Preview of comment system](images/comment-preview.png)
-
----
-
-## 9. WordPress Integration
-
-Install the Nostr Components plugin from the WordPress plugin directory to easily embed Nostr content in your posts and pages.
+For more details, see the [WordPress Plugin](https://wordpress.org/plugins/saiy2k-nostr-components/).
 
 ---
 
