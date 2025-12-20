@@ -17,7 +17,7 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
-    this.attachDelegatedListeners();
+    this.addEventListener('click', this.onClick);
     this.render();
   }
 
@@ -60,8 +60,10 @@ export default class NostrFollowButton extends NostrUserComponent {
   }
 
   private async handleFollowClick() {
+    if (this.hasAttribute('disabled')) return;
     if (this.computeOverall() !== NCStatus.Ready) return;
 
+    const nip07signer = new NDKNip07Signer();
     this.followStatus.set(NCStatus.Loading);
     this.render();
 
