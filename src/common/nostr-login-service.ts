@@ -39,9 +39,13 @@ export async function ensureInitialized(): Promise<void> {
       // Dynamic import to avoid SSR issues and only load when needed
       const { init } = await import('nostr-login');
       
-      // Initialize with default options (auto-initialize)
-      // No configuration needed for now as per requirements
-      init({});
+      // Signup description should be:
+      // Nostr is a simple, open protocol that enables a global, decentralized and censorship-resistant social network.
+      // Watch a 1-min video
+      // Watch a long video
+      init({
+        "methods": ["connect", "extension"],
+      });
       
       isInitialized = true;
     } catch (error) {

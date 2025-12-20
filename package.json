@@ -1,6 +1,6 @@
 {
   "name": "nostr-components",
-  "version": "0.2.7",
+  "version": "0.3.0",
   "type": "module",
   "description": "Embed Nostr anywhere on the internet, a Zap Button for every webpage",
   "keywords": [
