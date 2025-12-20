@@ -7,49 +7,43 @@ import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
 import { ensureInitialized } from '../common/nostr-login-service';
 
-/**
- * TODO:
- *  1. To have a text attribute. Default value being "Follow me on Nostr"
- *  2. show-avatar attribute to show the avatar of the user, instead of nostr logo.
- */
 export default class NostrFollowButton extends NostrUserComponent {
-
   protected followStatus = this.channel('follow');
-  private isFollowed: boolean = false;
+  private isFollowed = false;
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'show-avatar', 'text'];
+    return [...super.observedAttributes, 'show-avatar', 'text', 'disabled'];
   }
 
   connectedCallback() {
     super.connectedCallback?.();
-    this.attachDelegatedListeners();
+    this.addEventListener('click', this.onClick);
     this.render();
   }
 
-  attributeChangedCallback(
-    name: string,
-    oldValue: string | null,
-    newValue: string | null
-  ) {
-    if (oldValue === newValue) return;
-    super.attributeChangedCallback(name, oldValue, newValue);
+  disconnectedCallback() {
+    this.removeEventListener('click', this.onClick);
+  }
+
+  private onClick = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void this.handleFollowClick();
+  };
+
+  protected onStatusChange() {
     this.render();
   }
 
-  /** Base class functions */
-  protected onStatusChange(_status: NCStatus) {
+  protected onUserReady() {
     this.render();
   }
 
-  protected onUserReady(_user: any, _profile: any) {
-    this.render();
-  }
-
-  /** Private functions */
   private async handleFollowClick() {
+    if (this.hasAttribute('disabled')) return;
     if (this.computeOverall() !== NCStatus.Ready) return;
 
+    const nip07signer = new NDKNip07Signer();
     this.followStatus.set(NCStatus.Loading);
     this.render();
 
@@ -63,8 +57,10 @@ export default class NostrFollowButton extends NostrUserComponent {
       ndk.signer = signer;
 
       if (!this.user) {
-        this.followStatus.set(NCStatus.Error, "Could not resolve user to follow.");
-        this.render();
+        this.followStatus.set(
+          NCStatus.Error,
+          'Could not resolve user to follow.'
+        );
         return;
       }
 
@@ -85,65 +81,40 @@ export default class NostrFollowButton extends NostrUserComponent {
     }
   }
 
-  private attachDelegatedListeners() {
-  // Mouse click support
-  this.delegateEvent('click', '.nostr-follow-button-container', (e) => {
-    e.preventDefault?.();
-    e.stopPropagation?.();
-    void this.handleFollowClick();
-  });
-//for keyboard accessibility(space/enter)
-  this.delegateEvent(
-    'keydown',
-    '.nostr-follow-button-container',
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        e.stopPropagation();
-        void this.handleFollowClick();
-      }
-    }
-  );
-}
-
-
   protected renderContent() {
-  const isLoading           = this.computeOverall() == NCStatus.Loading;
-  const isFollowing         = this.followStatus.get() == NCStatus.Loading;
-  const isError             = this.computeOverall() === NCStatus.Error;
-  const errorMessage        = super.renderError(this.errorMessage);
-  const showAvatar          = this.hasAttribute('show-avatar');
-  const customText          = this.getAttribute('text') || 'Follow me on nostr';
+    const isDisabled = this.hasAttribute('disabled');
 
-  const renderOptions: RenderFollowButtonOptions = {
-    isLoading   : isLoading,
-    isError     : isError,
-    errorMessage: errorMessage,
-    isFollowed  : this.isFollowed,
-    isFollowing : isFollowing,
-    showAvatar  : showAvatar,
-    user        : this.user,
-    profile     : this.profile,
-    customText  : customText,
-  };
+    const renderOptions: RenderFollowButtonOptions = {
+      isLoading: this.computeOverall() === NCStatus.Loading,
+      isError: this.computeOverall() === NCStatus.Error,
+      errorMessage: super.renderError(this.errorMessage),
+      isFollowed: this.isFollowed,
+      isFollowing: this.followStatus.get() === NCStatus.Loading,
+      showAvatar: this.hasAttribute('show-avatar'),
+      user: this.user,
+      profile: this.profile,
+      customText: this.getAttribute('text') || 'Follow me on nostr',
+    };
 
-  this.shadowRoot!.innerHTML = `
-    ${getFollowButtonStyles()}
-    ${renderFollowButton(renderOptions)}
-  `;
+    this.shadowRoot!.innerHTML = `
+      ${getFollowButtonStyles()}
+      ${renderFollowButton(renderOptions)}
+    `;
 
-  const container = this.shadowRoot?.querySelector(
-    '.nostr-follow-button-container'
-  ) as HTMLElement | null;
+    /* Accessibility: follow profile-badge pattern */
+    this.setAttribute('role', 'button');
+    this.setAttribute('aria-pressed', String(this.isFollowed));
 
-  if (container) {
-    container.setAttribute('role', 'button');
-    container.setAttribute('tabindex', '0');
-    container.setAttribute('aria-pressed', String(this.isFollowed));
+    if (isDisabled) {
+      this.setAttribute('aria-disabled', 'true');
+      this.removeAttribute('tabindex');
+    } else {
+      this.removeAttribute('aria-disabled');
+      this.setAttribute('tabindex', '0');
+    }
   }
 }
 
 if (!customElements.get('nostr-follow-button')) {
   customElements.define('nostr-follow-button', NostrFollowButton);
 }
-
