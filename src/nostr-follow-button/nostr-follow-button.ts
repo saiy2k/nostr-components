@@ -48,6 +48,8 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   /** Private functions */
   private async handleFollowClick() {
+    if (this.hasAttribute('disabled')) return;
+
     if (this.computeOverall() !== NCStatus.Ready) return;
 
     this.followStatus.set(NCStatus.Loading);
@@ -94,30 +96,51 @@ export default class NostrFollowButton extends NostrUserComponent {
   }
 
   protected renderContent() {
-    const isLoading           = this.computeOverall() == NCStatus.Loading;
-    const isFollowing         = this.followStatus.get() == NCStatus.Loading;
-    const isError             = this.computeOverall() === NCStatus.Error;
-    const errorMessage        = super.renderError(this.errorMessage);
-    const showAvatar          = this.hasAttribute('show-avatar');
-    const customText          = this.getAttribute('text') || 'Follow me on nostr';
+  const isLoading           = this.computeOverall() == NCStatus.Loading;
+  const isFollowing         = this.followStatus.get() == NCStatus.Loading;
+  const isError             = this.computeOverall() === NCStatus.Error;
+  const errorMessage        = super.renderError(this.errorMessage);
+  const showAvatar          = this.hasAttribute('show-avatar');
+  const customText          = this.getAttribute('text') || 'Follow me on nostr';
+  const isDisabled          = this.hasAttribute('disabled');
 
-    const renderOptions: RenderFollowButtonOptions = {
-      isLoading   : isLoading,
-      isError     : isError,
-      errorMessage: errorMessage,
-      isFollowed  : this.isFollowed,
-      isFollowing : isFollowing,
-      showAvatar  : showAvatar,
-      user        : this.user,
-      profile     : this.profile,
-      customText  : customText,
-    };
+  const renderOptions: RenderFollowButtonOptions = {
+    isLoading   : isLoading,
+    isError     : isError,
+    errorMessage: errorMessage,
+    isFollowed  : this.isFollowed,
+    isFollowing : isFollowing,
+    showAvatar  : showAvatar,
+    user        : this.user,
+    profile     : this.profile,
+    customText  : customText,
+  };
 
-    this.shadowRoot!.innerHTML = `
-      ${getFollowButtonStyles()}
-      ${renderFollowButton(renderOptions)}
-    `
+  this.shadowRoot!.innerHTML = `
+    ${getFollowButtonStyles()}
+    ${renderFollowButton(renderOptions)}
+  `;
+
+  // Accessibility + disabled handling
+  const container = this.shadowRoot?.querySelector(
+    '.nostr-follow-button-container'
+  ) as HTMLElement | null;
+
+  if (container) {
+    container.setAttribute('role', 'button');
+    container.setAttribute('aria-pressed', String(this.isFollowed));
+
+    if (isDisabled) {
+      container.setAttribute('aria-disabled', 'true');
+      container.setAttribute('tabindex', '-1');
+    } else {
+      container.removeAttribute('aria-disabled');
+      container.setAttribute('tabindex', '0');
+    }
   }
+}
+
+ 
 }
 
 customElements.define('nostr-follow-button', NostrFollowButton);
