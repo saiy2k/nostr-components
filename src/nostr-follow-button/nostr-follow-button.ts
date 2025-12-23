@@ -120,4 +120,6 @@ export default class NostrFollowButton extends NostrUserComponent {
   }
 }
 
-customElements.define('nostr-follow-button', NostrFollowButton);
+if (!customElements.get('nostr-follow-button')) {
+  customElements.define('nostr-follow-button', NostrFollowButton);
+}

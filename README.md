@@ -29,9 +29,6 @@ Add the component script to your HTML's `<head>`. Each component can be loaded i
   
   <!-- Or load the full bundle -->
   <script src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/nostr-components.umd.js"></script>
-  <script>
-    NostrComponents.default.init();
-  </script>
 </head>
 ```
 

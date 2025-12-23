@@ -1126,4 +1126,6 @@ export default class NostrLiveChat extends HTMLElement {
   }
 }
 
-customElements.define("nostr-live-chat", NostrLiveChat);
+if (!customElements.get('nostr-live-chat')) {
+  customElements.define('nostr-live-chat', NostrLiveChat);
+}

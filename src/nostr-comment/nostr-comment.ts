@@ -927,7 +927,6 @@ export default class NostrComment extends HTMLElement {
     }
 }
 
-// Guard against duplicate registration
 if (!customElements.get('nostr-comment')) {
     customElements.define('nostr-comment', NostrComment);
 }

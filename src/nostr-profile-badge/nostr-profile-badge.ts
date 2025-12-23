@@ -120,4 +120,6 @@ export default class NostrProfileBadge extends NostrUserComponent {
   }
 }
 
-customElements.define('nostr-profile-badge', NostrProfileBadge);
+if (!customElements.get('nostr-profile-badge')) {
+  customElements.define('nostr-profile-badge', NostrProfileBadge);
+}
