@@ -34,7 +34,7 @@ Add the component script to your HTML's `<head>`. Each component can be loaded i
   <script src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/nostr-components.umd.js"></script>
 
   <!-- Optional: Dark theme -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nostr-components@0.3.1/dist/themes/dark.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nostr-components@0.3.2/dist/themes/dark.css">
 </head>
 <body>
   <h1> Welcome to My home page </h1>

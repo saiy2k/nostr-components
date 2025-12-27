@@ -4,7 +4,7 @@ Tags: nostr, social, blocks, gutenberg, shortcodes, zap, like
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -63,6 +63,7 @@ To automatically add Like and Zap buttons to the end of every post and page:
 3. Open `functions.php`
 4. Add the following code at the end of the file:
 
+```
     // Add shortcode to the end of every post and page
     function add_shortcode_to_content($content) {
         // Only add in single posts and pages (not homepage or archives)
@@ -76,6 +77,7 @@ To automatically add Like and Zap buttons to the end of every post and page:
         return $content;
     }
     add_filter('the_content', 'add_shortcode_to_content');
+```
 
 **Important Notes:**
 * Replace `[YOUR-NPUB-GOES-HERE]` with your actual Nostr public key (npub format)
