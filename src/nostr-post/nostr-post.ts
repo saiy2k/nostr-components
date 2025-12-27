@@ -207,4 +207,6 @@ export default class NostrPost extends NostrEventComponent {
   }
 }
 
-customElements.define('nostr-post', NostrPost);
+if (!customElements.get('nostr-post')) {
+  customElements.define('nostr-post', NostrPost);
+}

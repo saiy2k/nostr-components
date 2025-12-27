@@ -202,4 +202,6 @@ export default class NostrProfile extends NostrUserComponent {
   }
 }
 
-customElements.define('nostr-profile', NostrProfile);
+if (!customElements.get('nostr-profile')) {
+  customElements.define('nostr-profile', NostrProfile);
+}

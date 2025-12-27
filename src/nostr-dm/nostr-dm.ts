@@ -487,4 +487,6 @@ export default class NostrDm extends HTMLElement {
   }
 }
 
-customElements.define("nostr-dm", NostrDm);
+if (!customElements.get('nostr-dm')) {
+  customElements.define('nostr-dm', NostrDm);
+}

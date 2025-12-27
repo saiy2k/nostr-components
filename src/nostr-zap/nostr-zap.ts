@@ -280,4 +280,6 @@ export default class NostrZap extends NostrUserComponent {
   }
 }
 
-customElements.define("nostr-zap", NostrZap);
+if (!customElements.get('nostr-zap')) {
+  customElements.define('nostr-zap', NostrZap);
+}

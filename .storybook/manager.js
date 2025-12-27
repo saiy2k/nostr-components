@@ -7,9 +7,10 @@ addons.setConfig({
       'Introduction', 
       'Zap Button',
       'Follow Button', 
-      'Post', 
-      'Profile', 
+      'Like Button', 
       'Profile Badge',
+      'Profile', 
+      'Post', 
       'Documentation'
     ],
   },

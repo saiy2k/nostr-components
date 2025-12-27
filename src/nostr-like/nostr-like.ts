@@ -364,4 +364,6 @@ export default class NostrLike extends NostrBaseComponent {
   }
 }
 
-customElements.define('nostr-like', NostrLike);
+if (!customElements.get('nostr-like')) {
+  customElements.define('nostr-like', NostrLike);
+}

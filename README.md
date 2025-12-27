@@ -2,9 +2,9 @@
 
 **Embed Nostr anywhere on the internet, a Zap Button for every webpage.**
 
-## 🚀 About the Project
+## About the Project
 
-Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and follow buttons in any website. Inspired by <a href="https://unpkg.com/nostr-web-components@0.0.15/demo.html">fiatjaf's Nostr Web Components</a>, this project adds a beautiful UI, a Storybook component generator (for webmasters), and allows embedding Nostr content anywhere on the Internet.
+Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and follow buttons in any website. Inspired by <a href="https://unpkg.com/nostr-web-components@latest/demo.html">fiatjaf's Nostr Web Components</a>, this project adds a beautiful UI, a Storybook component generator (for webmasters), and allows embedding Nostr content anywhere on the Internet.
 
  * **[Zap button](#1-nostr-zap)**
  * **[Follow button](#2-nostr-follow)**
@@ -14,7 +14,7 @@ Nostr Components makes it easy to embed Zap button, Nostr profiles, posts, and f
  * **[Post](#6-nostr-post)**
  * **[WordPress Integration](#7-wordpress-integration)**
 
-## 🛠️ Usage
+## Usage
 
 ### Quick Start
 
@@ -25,14 +25,25 @@ Add the component script to your HTML's `<head>`. Each component can be loaded i
 ```html
 <head>
   <!-- Load individual component (recommended for smaller bundles) -->
-  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-follow-button.es.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-profile.es.js"></script>
   
-  <!-- Or load the full bundle -->
+  <!-- Or load the full bundle: ES -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/nostr-components.es.js"></script>
+
+  <!-- Or load the full bundle: UMD -->
   <script src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/nostr-components.umd.js"></script>
-  <script>
-    NostrComponents.default.init();
-  </script>
+
+  <!-- Optional: Dark theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/themes/dark.css">
 </head>
+<body>
+  <h1> Welcome to My home page </h1>
+  <nostr-zap nip05="saiy2k@iris.to" url="https://nostr-components.web.app/"></nostr-zap>
+  <nostr-profile npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"></nostr-profile>
+  <nostr-like></nostr-like>
+
+  <!-- For more components, see below -->
+</body>
 ```
 
 #### Option 2: NPM Package
@@ -46,27 +57,11 @@ npm install nostr-components
 Then import components in your JavaScript/TypeScript:
 
 ```javascript
-// Import individual components
-import 'nostr-components/dist/components/nostr-follow-button.es.js';
-import 'nostr-components/dist/components/nostr-zap.es.js';
-import 'nostr-components/dist/components/nostr-like.es.js';
+// [Will update here soon for individual components]
 
 // Or import the full bundle
-import 'nostr-components/dist/nostr-components.es.js';
+import 'nostr-components';
 ```
-
-For bundlers (Vite, Webpack, etc.), you can also import the source:
-
-```javascript
-// Import from source (requires bundler)
-import { NostrFollowButton } from 'nostr-components';
-import { NostrZap } from 'nostr-components';
-import { NostrLike } from 'nostr-components';
-```
-
-**Note:** When using npm packages, make sure your bundler is configured to handle Web Components properly.
-
-**Use the Components:** Place the component tags anywhere in your `<body>`.
 
 ### Authentication
 
@@ -80,18 +75,23 @@ The authentication flow is handled automatically when users interact with compon
 
 ## 1. Nostr Zap
 
-A Lightning Network zap button that allows users to send sats to any Nostr user with a lightning address or LNURL.
+A Zap button that allows users to send sats to any Nostr user or a URL associated with a User.
+What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)? 
 
 **Usage:**
 
 ```html
 <head>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-zap.es.js"></script>
+  <script 
+    type="module" 
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-zap.es.js">
+  </script>
 </head>
 <body>
   <nostr-zap 
     npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
     theme="dark"
+    url="https://nostr-components.web.app/"
     text="⚡ Zap Me"
   ></nostr-zap>
 </body>
@@ -138,14 +138,20 @@ When URL is not specified, current URL is taken.
 
 ```html
 <head>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-like.es.js"></script>
+  <script 
+    type="module" 
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-like.es.js">
+  </script>
 </head>
 <body>
   <!-- Like the current page URL -->
   <nostr-like></nostr-like>
 
   <!-- Like a specific URL with custom text -->
-  <nostr-like url="https://github.com/saiy2k/nostr-components" text="❤️"></nostr-like>
+  <nostr-like 
+    url="https://github.com/saiy2k/nostr-components" 
+    text="❤️">
+  </nostr-like>
 </body>
 ```
 
@@ -189,7 +195,10 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc.
 
 ```html
 <head>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-profile.es.js"></script>
+  <script 
+    type="module" 
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-profile.es.js">
+  </script>
 </head>
 <body>
   <nostr-profile
@@ -212,7 +221,9 @@ Embed any Nostr post by providing the event ID.
 
 ```html
 <head>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-post.es.js"></script>
+  <script 
+    type="module" 
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-post.es.js"></script>
 </head>
 <body>
   <nostr-post

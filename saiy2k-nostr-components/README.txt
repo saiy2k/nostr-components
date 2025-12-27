@@ -4,7 +4,7 @@ Tags: nostr, social, blocks, gutenberg, shortcodes, zap, like
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -63,6 +63,7 @@ To automatically add Like and Zap buttons to the end of every post and page:
 3. Open `functions.php`
 4. Add the following code at the end of the file:
 
+```
     // Add shortcode to the end of every post and page
     function add_shortcode_to_content($content) {
         // Only add in single posts and pages (not homepage or archives)
@@ -76,6 +77,7 @@ To automatically add Like and Zap buttons to the end of every post and page:
         return $content;
     }
     add_filter('the_content', 'add_shortcode_to_content');
+```
 
 **Important Notes:**
 * Replace `[YOUR-NPUB-GOES-HERE]` with your actual Nostr public key (npub format)
@@ -112,22 +114,6 @@ Yes, the components are designed to work with any WordPress theme. They use mode
 4. Zappers list
 5. Gutenberg blocks
 6. Settings page
-
-== Changelog ==
-
-= 0.3.0 =
-* Initial release
-* Gutenberg blocks for Nostr Post, Profile, Profile Badge, and Follow Button
-* Shortcode support for all components
-* Selective component loading for optimal performance
-* Admin settings page for configuration
-* Security features with KSES integration
-* Performance optimizations with conditional asset loading
-* Support for custom relay configuration
-* Light and dark theme support
-* Responsive design for all components
-* WordPress 6.0+ compatibility
-* PHP 7.4+ compatibility
 
 == Development ==
 

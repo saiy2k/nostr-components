@@ -23,7 +23,7 @@ export const getProfileMetadata = async (authorId: string) => {
 
   const pool = new SimplePool();
   const relays = [
-    'wss://relay.nostr.band',
+    // 'wss://relay.nostr.band',
     'wss://purplepag.es',
     'wss://relay.damus.io',
     'wss://nostr.wine',
@@ -52,7 +52,7 @@ export const getBatchedProfileMetadata = async (authorIds: string[]) => {
 
   const pool = new SimplePool();
   const relays = [
-    'wss://relay.nostr.band',
+    // 'wss://relay.nostr.band',
     'wss://purplepag.es',
     'wss://relay.damus.io',
     'wss://nostr.wine',
@@ -138,7 +138,7 @@ const makeZapEvent = async ({
   url?: string;
 }) => {
   const req: any = {
-    profile,
+    pubkey: profile,
     amount,
     relays,
     comment: comment || '',
@@ -416,7 +416,7 @@ export const listenForZapReceipt = ({
   onSuccess: () => void;
 }) => {
   const pool = new SimplePool();
-  const normalizedRelays = Array.from(new Set([...relays, 'wss://relay.nostr.band']));
+  const normalizedRelays = Array.from(new Set(relays));
   const since = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000); // current time - 24 hours
 
   pool.subscribe(

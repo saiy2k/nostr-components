@@ -28,6 +28,7 @@ dist-ssr
 dist
 .prettierrc
 
+/saiy2k-nostr-components/assets/
 /nostr-components-wp/assets/
 /storybook-static/
 
