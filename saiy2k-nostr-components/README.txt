@@ -115,22 +115,6 @@ Yes, the components are designed to work with any WordPress theme. They use mode
 5. Gutenberg blocks
 6. Settings page
 
-== Changelog ==
-
-= 0.3.0 =
-* Initial release
-* Gutenberg blocks for Nostr Post, Profile, Profile Badge, and Follow Button
-* Shortcode support for all components
-* Selective component loading for optimal performance
-* Admin settings page for configuration
-* Security features with KSES integration
-* Performance optimizations with conditional asset loading
-* Support for custom relay configuration
-* Light and dark theme support
-* Responsive design for all components
-* WordPress 6.0+ compatibility
-* PHP 7.4+ compatibility
-
 == Development ==
 
 This plugin is developed as part of the Nostr Components project. For development, bug reports, and feature requests, please visit the [GitHub repository](https://github.com/saiy2k/nostr-components).

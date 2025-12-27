@@ -34,7 +34,7 @@ Add the component script to your HTML's `<head>`. Each component can be loaded i
   <script src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/nostr-components.umd.js"></script>
 
   <!-- Optional: Dark theme -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nostr-components@0.3.2/dist/themes/dark.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/themes/dark.css">
 </head>
 <body>
   <h1> Welcome to My home page </h1>
@@ -42,7 +42,7 @@ Add the component script to your HTML's `<head>`. Each component can be loaded i
   <nostr-profile npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"></nostr-profile>
   <nostr-like></nostr-like>
 
-  <!-- For more components, see blow -->
+  <!-- For more components, see below -->
 </body>
 ```
 
@@ -57,8 +57,7 @@ npm install nostr-components
 Then import components in your JavaScript/TypeScript:
 
 ```javascript
-// Import individual components
-// [Will update here soon]
+// [Will update here soon for individual components]
 
 // Or import the full bundle
 import 'nostr-components';
@@ -77,7 +76,7 @@ The authentication flow is handled automatically when users interact with compon
 ## 1. Nostr Zap
 
 A Zap button that allows users to send sats to any Nostr user or a URL associated with a User.
-What is ~[https://www.youtube.com/shorts/PDnrh8pkF3g](Zap)? 
+What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)? 
 
 **Usage:**
 

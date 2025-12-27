@@ -146,7 +146,6 @@ const makeZapEvent = async ({
   if (nip19Target?.startsWith('note')) {
     req.event = decodeNip19Entity(nip19Target);
   }
-  debugger;
   const event = nip57.makeZapRequest(req);
 
   if (nip19Target?.startsWith('naddr')) {
