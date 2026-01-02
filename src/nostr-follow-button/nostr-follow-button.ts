@@ -18,17 +18,30 @@ export default class NostrFollowButton extends NostrUserComponent {
   connectedCallback() {
     super.connectedCallback?.();
     this.addEventListener('click', this.onClick);
+    this.addEventListener('keydown', this.onKeyDown);
     this.render();
   }
 
   disconnectedCallback() {
     this.removeEventListener('click', this.onClick);
+    this.removeEventListener('keydown', this.onKeyDown);
   }
 
   private onClick = (e: Event) => {
+    if (this.hasAttribute('disabled')) return;
     e.preventDefault();
     e.stopPropagation();
     void this.handleFollowClick();
+  };
+
+  private onKeyDown = (e: KeyboardEvent) => {
+    if (this.hasAttribute('disabled')) return;
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      void this.handleFollowClick();
+    }
   };
 
   protected onStatusChange() {
@@ -40,7 +53,6 @@ export default class NostrFollowButton extends NostrUserComponent {
   }
 
   private async handleFollowClick() {
-    if (this.hasAttribute('disabled')) return;
     if (this.computeOverall() !== NCStatus.Ready) return;
 
     const nip07signer = new NDKNip07Signer();
