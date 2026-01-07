@@ -29,11 +29,11 @@ export default defineConfig({
           __dirname,
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
+        'nostr-zap-button': resolve(__dirname, 'src/nostr-zap-button/nostr-zap.ts'),
         'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
-        'nostr-live-chat': resolve(
-          __dirname,
-          'src/nostr-live-chat/nostr-live-chat.ts'
-        ),
+        'nostr-dm': resolve(__dirname, 'src/nostr-dm/nostr-dm.ts'),
+        'nostr-live-chat': resolve(__dirname, 'src/nostr-live-chat/nostr-live-chat.ts'),
+        'nostr-like-button': resolve(__dirname, 'src/nostr-like-button/nostr-like.ts'),
       },
       external: [],
       output: [

@@ -5,7 +5,7 @@ import { generateCode as generateCodeShared, generateCodeWithScript as generateC
 
 // Component-specific configuration
 export const COMPONENT_CONFIG: CodeGeneratorConfig = {
-  componentName: 'nostr-zap',
+  componentName: 'nostr-zap-button',
   defaultWidth: 200,
   eventHandlers: ['onClick'],
   gridColumns: 'minmax(300px, 1fr)'

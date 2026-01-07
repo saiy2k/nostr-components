@@ -2,7 +2,7 @@
 
 ## Overview
 
-- Component: `nostr-zap`
+- Component: `nostr-zap-button`
 - Purpose: Send Lightning zaps to Nostr users
 - Architecture: Extends `NostrUserComponent` → `NostrBaseComponent`
 
@@ -222,35 +222,35 @@ Success:
 
 Basic:
 ```html
-<nostr-zap npub="npub1..."></nostr-zap>
+<nostr-zap-button npub="npub1..."></nostr-zap-button>
 ```
 
 Custom text:
 ```html
-<nostr-zap npub="npub1..." text="Send Sats!"></nostr-zap>
+<nostr-zap-button npub="npub1..." text="Send Sats!"></nostr-zap-button>
 ```
 
 Fixed amount:
 ```html
-<nostr-zap npub="npub1..." amount="5000"></nostr-zap>
+<nostr-zap-button npub="npub1..." amount="5000"></nostr-zap-button>
 ```
 
 URL-based:
 ```html
-<nostr-zap npub="npub1..." url="https://saiy2k.in/2025/02/17/nostr-components/"></nostr-zap>
+<nostr-zap-button npub="npub1..." url="https://saiy2k.in/2025/02/17/nostr-components/"></nostr-zap-button>
 ```
 
 Custom styling:
 ```html
-<nostr-zap npub="npub1..." style="
+<nostr-zap-button npub="npub1..." style="
   --nostrc-icon-width: 30px;
   --nostrc-zap-btn-bg: #ff6b35;
-"></nostr-zap>
+"></nostr-zap-button>
 ```
 
 Dark theme:
 ```html
-<nostr-zap npub="npub1..." data-theme="dark"></nostr-zap>
+<nostr-zap-button npub="npub1..." data-theme="dark"></nostr-zap-button>
 ```
 
 ## Zappers Dialog

@@ -4,7 +4,7 @@
 	const { PanelBody, TextControl, SelectControl } = wp.components;
 	const { Fragment } = wp.element;
 
-	registerBlockType('nostr/nostr-like', {
+	registerBlockType('nostr/nostr-like-button', {
 		title: 'Nostr Like Button',
 		icon: 'thumbs-up',
 		category: 'nostr',

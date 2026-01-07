@@ -13,7 +13,7 @@ const meta: Meta = {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-zap',
+        element: 'nostr-zap-button',
         config: {
           rules: {
             'color-contrast': { enabled: true },

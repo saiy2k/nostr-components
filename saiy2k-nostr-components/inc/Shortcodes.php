@@ -133,8 +133,8 @@ class Shortcodes {
                 'nostr-profile' => ['npub', 'pubkey', 'nip05'],
                 'nostr-profile-badge' => ['npub', 'pubkey', 'nip05'],
                 'nostr-follow-button' => ['npub', 'pubkey', 'nip05'],
-                'nostr-zap' => ['npub', 'pubkey', 'nip05', 'url'],
-                'nostr-like' => ['url'],
+                'nostr-zap-button' => ['npub', 'pubkey', 'nip05', 'url'],
+                'nostr-like-button' => ['url'],
             ];
             
             $component_identifiers = $identifier_priority[$component] ?? [];

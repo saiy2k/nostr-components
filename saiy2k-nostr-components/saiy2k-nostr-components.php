@@ -3,7 +3,7 @@
  * Plugin Name: Saiy2k Nostr Components
  * Plugin URI:  https://github.com/saiy2k/nostr-components
  * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zaps button, follow button, posts, profiles with selective component loading for optimal performance.
- * Version:     0.3.2
+ * Version:     0.4.0
  * Author:      saiy2k
  * Author URI:  https://github.com/saiy2k
  * License:     MIT
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 define('NOSTR_WP_FILE', __FILE__);
-define('NOSTR_WP_VERSION', '0.3.2');
+define('NOSTR_WP_VERSION', '0.4.0');
 define('NOSTR_WP_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_WP_URL', plugin_dir_url(__FILE__));
 
@@ -58,7 +58,7 @@ add_action('plugins_loaded', function() {
 register_activation_hook(__FILE__, function() {
     // Set default enabled components only if option doesn't exist
     if (get_option('nostr_wp_enabled_components') === false) {
-        add_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button', 'nostr-zap', 'nostr-like']);
+        add_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button', 'nostr-zap-button', 'nostr-like-button']);
     }
     
     // Set default shared settings only if option doesn't exist

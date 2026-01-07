@@ -14,7 +14,7 @@ const meta: Meta = {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-like',
+        element: 'nostr-like-button',
         config: {
           rules: {
             'color-contrast': { enabled: true },
@@ -35,7 +35,7 @@ export const AllAttributes: Story = {
     url: 'https://github.com/nostr-protocol/nips',
   },
   play: createComprehensiveDynamicPlay({
-    componentName: 'nostr-like',
+    componentName: 'nostr-like-button',
     inputAttributes: ['url', 'text'],
     testInputs: [
       { type: 'url', value: 'https://github.com/nostr-protocol/nips', name: 'NIPs Repo' },
@@ -62,7 +62,7 @@ export const FastSwitching: Story = {
     url: 'https://github.com/nostr-protocol/nips',
   },
   play: createFastSwitchingPlay({
-    componentName: 'nostr-like',
+    componentName: 'nostr-like-button',
     attribute1: {
       name: 'url',
       values: [

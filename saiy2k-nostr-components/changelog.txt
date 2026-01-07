@@ -1,3 +1,10 @@
+= 0.4.0 - 2025-01-07 =
+
+* Improved relay connection handling - service now continues working even if some relays fail
+* Fixed relay connection status detection to correctly identify connected vs failed relays
+* Updated to use normalizeURL from nostr-tools for consistent URL normalization
+* Renamed nostr-like, nostr-zap to nostr-like-button, nostr-zap-button
+
 = 0.3.2 - 2025-12-27 =
 
 * Fixed zap button error

@@ -5,9 +5,11 @@ import NDK, {
   NDKUser,
   NDKUserProfile,
   NDKEvent,
+  NDKRelayStatus,
 } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from './constants';
 import { DEFAULT_PROFILE_IMAGE } from './constants';
+import { normalizeURL } from 'nostr-tools/utils';
 
 // TODO: Is this class doing too much work? Time to split into smaller services?
 export class NostrService {
@@ -30,19 +32,64 @@ export class NostrService {
   public async connectToNostr(
     relays: string[] = [...DEFAULT_RELAYS]
   ): Promise<void> {
-    // Identify new relays that were not part of the original set
     const newRelays = relays.filter(r => !this.getRelays().includes(r));
 
-    // If already connected, add only the delta – keep signer & subscriptions intact
     if (this.isConnected && newRelays.length) {
       newRelays.forEach(url => this.ndk.addExplicitRelay(url));
       return;
     }
 
-    // First-time connection or reconnect after explicit close
     this.ndk.explicitRelayUrls = relays;
-    await this.ndk.connect();
+    
+    try {
+      await this.ndk.connect(3000);
+    } catch (error) {
+      console.warn('[NostrService] ndk.connect() threw an error (unexpected):', error);
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const normalizedInputRelays = relays.map(r => normalizeURL(r));
+    const connectedRelays = this.getConnectedRelays();
+    const failedRelays = normalizedInputRelays.filter(r => !connectedRelays.includes(r));
+    
+    if (connectedRelays.length === 0) {
+      const error = new Error(`Failed to connect to any of ${relays.length} relay(s): ${relays.join(', ')}`);
+      console.error('[NostrService]', error.message);
+      throw error;
+    } else if (failedRelays.length > 0) {
+      console.warn(
+        `[NostrService] Connected to ${connectedRelays.length}/${relays.length} relay(s). ` +
+        `Working: ${connectedRelays.join(', ')}. ` +
+        `Failed: ${failedRelays.join(', ')}`
+      );
+    }
+    
     this.isConnected = true;
+  }
+
+  /**
+   * Get list of relay URLs that are currently connected
+   * @returns Array of normalized connected relay URLs (without trailing slashes)
+   */
+  private getConnectedRelays(): string[] {
+    const connected: string[] = [];
+    
+    try {
+      if (this.ndk.pool && this.ndk.pool.relays) {
+        for (const [url, relay] of this.ndk.pool.relays.entries()) {
+          if (relay && relay.status >= NDKRelayStatus.CONNECTED) {
+            connected.push(normalizeURL(url));
+          }
+        }
+      } else {
+        console.warn('[NostrService] NDK pool or relays map not available');
+      }
+    } catch (error) {
+      console.warn('[NostrService] Could not check relay connection status:', error);
+    }
+    
+    return connected;
   }
 
   public getRelays(): string[] {

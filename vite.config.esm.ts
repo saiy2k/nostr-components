@@ -27,11 +27,11 @@ export default defineConfig({
           __dirname,
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
-        'nostr-zap': resolve(__dirname, 'src/nostr-zap/nostr-zap.ts'),
+        'nostr-zap-button': resolve(__dirname, 'src/nostr-zap-button/nostr-zap.ts'),
         'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
         'nostr-dm': resolve(__dirname, 'src/nostr-dm/nostr-dm.ts'),
         'nostr-live-chat': resolve(__dirname, 'src/nostr-live-chat/nostr-live-chat.ts'),
-        'nostr-like': resolve(__dirname, 'src/nostr-like/nostr-like.ts'),
+        'nostr-like-button': resolve(__dirname, 'src/nostr-like-button/nostr-like.ts'),
       },
       external: [],
       preserveEntrySignatures: 'exports-only',

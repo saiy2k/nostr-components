@@ -1,6 +1,6 @@
 {
   "name": "nostr-components",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "type": "module",
   "description": "Embed Nostr anywhere on the internet, a Zap Button for every webpage",
   "keywords": [
@@ -12,7 +12,8 @@
     "social-network",
     "nostr-profile",
     "nostr-post",
-    "nostr-zap"
+    "nostr-like-button",
+    "nostr-zap-button"
   ],
   "author": "saiy2k",
   "license": "MIT",
@@ -46,13 +47,13 @@
       "import": "./dist/themes/light.css",
       "default": "./dist/themes/light.css"
     },
-    "./components/nostr-like": {
-      "import": "./dist/components/nostr-like.es.js",
-      "types": "./dist/components/nostr-like.d.ts"
+    "./components/nostr-like-button": {
+      "import": "./dist/components/nostr-like-button.es.js",
+      "types": "./dist/components/nostr-like-button.d.ts"
     },
-    "./components/nostr-zap": {
-      "import": "./dist/components/nostr-zap.es.js",
-      "types": "./dist/components/nostr-zap.d.ts"
+    "./components/nostr-zap-button": {
+      "import": "./dist/components/nostr-zap-button.es.js",
+      "types": "./dist/components/nostr-zap-button.d.ts"
     },
     "./components/nostr-profile": {
       "import": "./dist/components/nostr-profile.es.js",

@@ -77,12 +77,12 @@ class Registry {
                     'text'    => ['type' => 'string', 'default' => 'Follow me on nostr'],
                 ],
             ],
-            'nostr-zap' => [
+            'nostr-zap-button' => [
                 'title'       => 'Nostr Zap Button',
                 'description' => 'Send Bitcoin tips (zaps) to Nostr users',
                 'shortcode'   => 'nostr_zap',
-                'block'       => 'nostr/nostr-zap',
-                'esm'         => 'assets/nostr-zap.es.js',
+                'block'       => 'nostr/nostr-zap-button',
+                'esm'         => 'assets/nostr-zap-button.es.js',
                 'dependencies' => [],
                 'attributes'  => [
                     // From NostrUserComponent (base)
@@ -98,12 +98,12 @@ class Registry {
                     'url'     => ['type' => 'string'], // URL to send zap to (enables URL-based zaps)
                 ],
             ],
-            'nostr-like' => [
+            'nostr-like-button' => [
                 'title'       => 'Nostr Like Button',
                 'description' => 'Like URLs using Nostr reactions',
                 'shortcode'   => 'nostr_like',
-                'block'       => 'nostr/nostr-like',
-                'esm'         => 'assets/nostr-like.es.js',
+                'block'       => 'nostr/nostr-like-button',
+                'esm'         => 'assets/nostr-like-button.es.js',
                 'dependencies' => [],
                 'attributes'  => [
                     'url'     => ['type' => 'string'], // URL to like (default: current page)
