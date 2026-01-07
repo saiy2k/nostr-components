@@ -1,3 +1,7 @@
+= 0.4.3 - 2025-01-07 =
+
+* Temporarily disabled nostr-comment, nostr-dm, and nostr-live-chat components due to asset resolution issues in React applications
+
 = 0.4.0 - 2025-01-07 =
 
 * Improved relay connection handling - service now continues working even if some relays fail

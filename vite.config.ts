@@ -30,9 +30,9 @@ export default defineConfig({
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
         'nostr-zap-button': resolve(__dirname, 'src/nostr-zap-button/nostr-zap.ts'),
-        'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'),
-        'nostr-dm': resolve(__dirname, 'src/nostr-dm/nostr-dm.ts'),
-        'nostr-live-chat': resolve(__dirname, 'src/nostr-live-chat/nostr-live-chat.ts'),
+        // 'nostr-comment': resolve(__dirname, 'src/nostr-comment/nostr-comment.ts'), // Temporarily disabled due to asset resolution issues
+        // 'nostr-dm': resolve(__dirname, 'src/nostr-dm/nostr-dm.ts'), // Temporarily disabled due to asset resolution issues
+        // 'nostr-live-chat': resolve(__dirname, 'src/nostr-live-chat/nostr-live-chat.ts'), // Temporarily disabled due to asset resolution issues
         'nostr-like-button': resolve(__dirname, 'src/nostr-like-button/nostr-like.ts'),
       },
       external: [],

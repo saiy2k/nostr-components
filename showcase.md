@@ -7,4 +7,5 @@ Sites and projects using Nostr Components:
 - [Vivek Ganesan](https://vivekganesan.com/)
 - [SnapNostr](https://snapnostr.app/about/)
 - [Gray Face of India](https://grayfaceofindia.in/who-we-are/)
+- [Sats in INR](https://sats-in-inr.web.app/)
 
