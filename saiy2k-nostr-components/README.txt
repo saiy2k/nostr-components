@@ -4,7 +4,7 @@ Tags: nostr, social, blocks, gutenberg, shortcodes, zap, like
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.4.2
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -47,12 +47,12 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 Simply add the Nostr blocks from the block inserter and configure them in the block settings.
 
 **Shortcodes:**
-`[nostr_zap pubkey="npub1abc..." url=""]`
+`[nostr_zap_button pubkey="npub1abc..." url=""]`
 `[nostr_post eventid="note1abc..."]`
 `[nostr_profile pubkey="npub1abc..."]`
 `[nostr_profile_badge pubkey="npub1abc..."]`
 `[nostr_follow_button pubkey="npub1abc..."]`
-`[nostr_like]`
+`[nostr_like_button]`
 
 = Adding Like and Zap Buttons to All Posts/Pages =
 
@@ -63,21 +63,19 @@ To automatically add Like and Zap buttons to the end of every post and page:
 3. Open `functions.php`
 4. Add the following code at the end of the file:
 
-```
-    // Add shortcode to the end of every post and page
-    function add_shortcode_to_content($content) {
-        // Only add in single posts and pages (not homepage or archives)
-        if (is_singular(['post', 'page']) && in_the_loop() && is_main_query()) {
-            $shortcode_1 = do_shortcode('[nostr_like]');
-            $current_url = esc_url(get_permalink());
-            $shortcode_2 = do_shortcode('[nostr_zap npub="[YOUR-NPUB-GOES-HERE]" url="' . $current_url . '"]');
-            
-            $content .= '<div class="nostr-shortcode-wrapper">' . $shortcode_1 . '<br/><br/>' . $shortcode_2 . '</div>';
+        // Add shortcode to the end of every post and page
+        function add_shortcode_to_content($content) {
+            // Only add in single posts and pages (not homepage or archives)
+            if (is_singular(['post', 'page']) && in_the_loop() && is_main_query()) {
+                $shortcode_1 = do_shortcode('[nostr_like_button]');
+                $current_url = esc_url(get_permalink());
+                $shortcode_2 = do_shortcode('[nostr_zap_button npub="[YOUR-NPUB-GOES-HERE]" url="' . $current_url . '"]');
+
+                $content .= '<div class="nostr-shortcode-wrapper">' . $shortcode_1 . '<br/><br/>' . $shortcode_2 . '</div>';
+            }
+            return $content;
         }
-        return $content;
-    }
-    add_filter('the_content', 'add_shortcode_to_content');
-```
+        add_filter('the_content', 'add_shortcode_to_content');
 
 **Important Notes:**
 * Replace `[YOUR-NPUB-GOES-HERE]` with your actual Nostr public key (npub format)

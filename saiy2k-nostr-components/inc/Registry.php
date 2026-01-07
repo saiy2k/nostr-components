@@ -80,7 +80,7 @@ class Registry {
             'nostr-zap-button' => [
                 'title'       => 'Nostr Zap Button',
                 'description' => 'Send Bitcoin tips (zaps) to Nostr users',
-                'shortcode'   => 'nostr_zap',
+                'shortcode'   => 'nostr_zap_button',
                 'block'       => 'nostr/nostr-zap-button',
                 'esm'         => 'assets/nostr-zap-button.es.js',
                 'dependencies' => [],
@@ -101,7 +101,7 @@ class Registry {
             'nostr-like-button' => [
                 'title'       => 'Nostr Like Button',
                 'description' => 'Like URLs using Nostr reactions',
-                'shortcode'   => 'nostr_like',
+                'shortcode'   => 'nostr_like_button',
                 'block'       => 'nostr/nostr-like-button',
                 'esm'         => 'assets/nostr-like-button.es.js',
                 'dependencies' => [],
