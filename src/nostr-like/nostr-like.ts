@@ -20,7 +20,7 @@ import { ensureInitialized } from '../common/nostr-login-service';
 import { normalizeURL } from 'nostr-tools/utils';
 
 /**
- * <nostr-like>
+ * <nostr-like-button>
  * Attributes:
  *   - url          (optional) : URL to like (default: current page URL)
  *   - text         (optional) : custom text (default "Like") (Max 32 characters)
@@ -364,6 +364,6 @@ export default class NostrLike extends NostrBaseComponent {
   }
 }
 
-if (!customElements.get('nostr-like')) {
-  customElements.define('nostr-like', NostrLike);
+if (!customElements.get('nostr-like-button')) {
+  customElements.define('nostr-like-button', NostrLike);
 }

@@ -38,9 +38,9 @@ Add the component script to your HTML's `<head>`. Each component can be loaded i
 </head>
 <body>
   <h1> Welcome to My home page </h1>
-  <nostr-zap nip05="saiy2k@iris.to" url="https://nostr-components.web.app/"></nostr-zap>
+  <nostr-zap-button nip05="saiy2k@iris.to" url="https://nostr-components.web.app/"></nostr-zap-button>
   <nostr-profile npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"></nostr-profile>
-  <nostr-like></nostr-like>
+  <nostr-like-button></nostr-like-button>
 
   <!-- For more components, see below -->
 </body>
@@ -84,16 +84,16 @@ What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)?
 <head>
   <script 
     type="module" 
-    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-zap.es.js">
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-zap-button.es.js">
   </script>
 </head>
 <body>
-  <nostr-zap 
+  <nostr-zap-button 
     npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
     theme="dark"
     url="https://nostr-components.web.app/"
     text="⚡ Zap Me"
-  ></nostr-zap>
+  ></nostr-zap-button>
 </body>
 ```
 
@@ -140,18 +140,18 @@ When URL is not specified, current URL is taken.
 <head>
   <script 
     type="module" 
-    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-like.es.js">
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-like-button.es.js">
   </script>
 </head>
 <body>
   <!-- Like the current page URL -->
-  <nostr-like></nostr-like>
+  <nostr-like-button></nostr-like-button>
 
   <!-- Like a specific URL with custom text -->
-  <nostr-like 
+  <nostr-like-button 
     url="https://github.com/saiy2k/nostr-components" 
     text="❤️">
-  </nostr-like>
+  </nostr-like-button>
 </body>
 ```
 

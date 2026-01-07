@@ -7,7 +7,7 @@ import { generateCode as generateCodeShared, generateCodeWithScript as generateC
 
 // Component-specific configuration
 export const COMPONENT_CONFIG: CodeGeneratorConfig = {
-  componentName: 'nostr-like',
+  componentName: 'nostr-like-button',
   defaultWidth: 150,
   eventHandlers: ['onClick'],
   gridColumns: 'minmax(250px, 1fr)'

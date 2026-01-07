@@ -4,7 +4,7 @@
 	const { PanelBody, TextControl, SelectControl, Notice } = wp.components;
 	const { Fragment } = wp.element;
 
-	registerBlockType('nostr/nostr-zap', {
+	registerBlockType('nostr/nostr-zap-button', {
 		title: 'Nostr Zap Button',
 		icon: 'money-alt',
 		category: 'nostr',

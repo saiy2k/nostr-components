@@ -15,7 +15,7 @@ wp-plugin/
 │   ├── Blocks.php            # Block registration
 │   └── Kses.php              # Security (custom elements)
 ├── blocks/                   # Gutenberg block definitions
-│   ├── nostr-zap
+│   ├── nostr-zap-button/
 │   ├── nostr-follow-button/
 │   ├── nostr-post/
 │   ├── nostr-profile/

@@ -13,7 +13,7 @@ import type { DialogComponent } from '../base/dialog-component/dialog-component'
 import { ensureInitialized } from '../common/nostr-login-service';
 
 /**
- * <nostr-zap>
+ * <nostr-zap-button>
  * Attributes:
  *   - npub | pubkey | nip05   (required) : Nostr user to zap
  *   - relays          (optional) : comma-separated relay URLs
@@ -280,6 +280,6 @@ export default class NostrZap extends NostrUserComponent {
   }
 }
 
-if (!customElements.get('nostr-zap')) {
-  customElements.define('nostr-zap', NostrZap);
+if (!customElements.get('nostr-zap-button')) {
+  customElements.define('nostr-zap-button', NostrZap);
 }
