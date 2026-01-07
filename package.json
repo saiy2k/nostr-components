@@ -1,6 +1,6 @@
 {
   "name": "nostr-components",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "type": "module",
   "description": "Embed Nostr anywhere on the internet, a Zap Button for every webpage",
   "keywords": [
@@ -12,6 +12,7 @@
     "social-network",
     "nostr-profile",
     "nostr-post",
+    "nostr-like-button",
     "nostr-zap-button"
   ],
   "author": "saiy2k",

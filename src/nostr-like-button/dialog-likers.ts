@@ -4,7 +4,7 @@
 import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getLikersDialogStyles } from './dialog-likers-style';
-import { getBatchedProfileMetadata, extractProfileMetadataContent } from '../nostr-zap/zap-utils';
+import { getBatchedProfileMetadata, extractProfileMetadataContent } from '../nostr-zap-button/zap-utils';
 import { escapeHtml, formatRelativeTime, hexToNpub, isValidUrl } from '../common/utils';
 import { LikeDetails } from './like-utils';
 
@@ -282,7 +282,7 @@ async function enhanceLikeDetailsIndividually(dialog: HTMLDialogElement, likeDet
     }
 
     try {
-      const { getProfileMetadata } = await import('../nostr-zap/zap-utils');
+      const { getProfileMetadata } = await import('../nostr-zap-button/zap-utils');
       const profileMetadata = await getProfileMetadata(like.authorPubkey);
       const profileContent = extractProfileMetadataContent(profileMetadata);
       const npub = hexToNpub(like.authorPubkey);
