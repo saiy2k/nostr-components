@@ -67,7 +67,7 @@ This document contains the technical implementation details for the `nostr-strea
 
 #### EventResolver Extension
 - Extend `EventResolver` to support addressable events
-- Add `validateAddressableInputs({ naddr })` method:
+- Add `validateNaddr({ naddr })` method:
   - Check naddr is provided and not empty
   - Validate format: must start with `naddr1` (bech32-encoded)
   - Attempt to decode using `nip19.decode(naddr)`
@@ -75,7 +75,7 @@ This document contains the technical implementation details for the `nostr-strea
   - Return error message string if validation fails, `null` if valid
 
 - Add `resolveAddressableEvent({ naddr })` method:
-  - First call `validateAddressableInputs()` to ensure valid format
+  - First call `validateNaddr()` to ensure valid format
   - Decode naddr: `const { type, data } = nip19.decode(naddr)`
   - Verify `type === 'naddr'` (should be guaranteed by validation)
   - Extract: `{ kind, pubkey, identifier: dTag, relays }`
@@ -88,7 +88,7 @@ This document contains the technical implementation details for the `nostr-strea
 - Add `naddr` to `observedAttributes`
 - Extend `validateInputs()` method:
   - Check for `naddr` attribute
-  - If naddr present: Call `eventResolver.validateAddressableInputs({ naddr })`
+  - If naddr present: Call `eventResolver.validateNaddr({ naddr })`
   - If validation returns error message: Set error status and return `false`
   - Return `true` if validation passes
   - Ensure only one identifier type is provided (naddr XOR hex/noteid/eventid)
@@ -319,7 +319,7 @@ src/nostr-stream/
 ## Error Handling
 
 ### Invalid naddr
-- Validation occurs in `EventResolver.validateAddressableInputs()`
+- Validation occurs in `EventResolver.validateNaddr()`
 - Possible validation failures:
   - Missing naddr attribute: "Provide naddr attribute"
   - Invalid format (doesn't start with `naddr1`): "Invalid naddr format"

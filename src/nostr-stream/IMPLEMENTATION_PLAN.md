@@ -24,7 +24,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 ### Task 1.1: Extend EventResolver
 **File:** `src/base/resolvers/event-resolver.ts`
 
-- [ ] Add `validateAddressableInputs({ naddr })` method
+- [ ] Add `validateNaddr({ naddr })` method
   - Check naddr is provided and not empty
   - Validate format: must start with `naddr1` (bech32-encoded)
   - Attempt to decode using `nip19.decode(naddr)`
@@ -38,7 +38,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - Note: This validation happens before any network calls
 
 - [ ] Add `resolveAddressableEvent({ naddr })` method
-  - First call `validateAddressableInputs()` to ensure valid format
+  - First call `validateNaddr()` to ensure valid format
   - If validation returns error message, throw error with that message
   - Decode naddr: `const { type, data } = nip19.decode(naddr)`
   - Verify `type === 'naddr'` (should be guaranteed by validation)
@@ -46,8 +46,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - Query: `{ kinds: [kind], authors: [pubkey], '#d': [identifier] }`
   - Use `nostrService.getNDK().fetchEvents(filter)`
   - Return latest event (highest `created_at`) if multiple exist (shouldn't happen, but handle gracefully)
-  - Throw error if no events found: "Stream not found"
-  - Cache decoded naddr data to avoid re-decoding
+  - Throw error if no events found: "Addressable event not found"
 
 ### Task 1.2: Extend NostrEventComponent
 **File:** `src/base/event-component/nostr-event-component.ts`
@@ -55,7 +54,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - [ ] Add `naddr` to `observedAttributes` array
 - [ ] Extend `validateInputs()` method
   - Check for `naddr` attribute
-  - If naddr present: Call `eventResolver.validateAddressableInputs({ naddr })`
+  - If naddr present: Call `eventResolver.validateNaddr({ naddr })`
   - If validation returns error message: Set error status and return `false`
   - Ensure only one identifier type is provided (naddr XOR hex/noteid/eventid)
   - Return `true` if validation passes
