@@ -4,7 +4,6 @@
 
 - Component: `nostr-stream`
 - Purpose: Display live streaming events from Nostr using NIP-53
-- Architecture: Extends `NostrEventComponent`
 - NIP: [NIP-53 Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)
 
 ## Features
@@ -14,11 +13,10 @@
 - Display author profile information
 - Show participant list with roles (Host, Speaker, Participant)
 - Display participant counts (current and total)
-- Auto-update on event changes (live subscription)
+- Automatically updates when stream status or participants change
 - Status badges: Planned, Live, Ended
 - Handle status transitions (planned → live → ended)
 - Show post-event recording link when ended
-- Staleness detection (consider ended if no update for 1 hour when live)
 
 ## Stream Event Status
 
@@ -28,9 +26,8 @@
 - `ended` - Stream has concluded
 
 ### Status Transitions
-- Components subscribe to event updates and automatically reflect status changes
-- If `status="live"` and no update received for 1 hour, consider the stream `ended`
-- `starts` and `ends` timestamps SHOULD be updated when status changes to/from `live`
+- Component automatically updates when stream status changes
+- If a live stream hasn't updated in 1 hour, it will be considered `ended`
 
 ## Limitations
 
@@ -42,18 +39,6 @@
 - Participant counts may be approximate for large streams
 - Performance degrades with many participants (fetching 1000+ profiles)
 
-### Video Player Compatibility
-⚠️ **Browser Support**: Native HTML5 video player relies on browser HLS support:
-- Safari: Native HLS support (iOS, macOS)
-- Chrome/Edge (Android): Native HLS support
-- Chrome/Edge (Desktop): Requires HLS.js library (not included)
-- Firefox: Requires HLS.js library (not included)
-
-**Impact:**
-- Some browsers may not play HLS streams natively
-- Fallback to preview image when video cannot be played
-- Recording link shown when stream ends
-
 ## API
 
 ### Required Attributes
@@ -61,7 +46,6 @@
 - `naddr` (string) - NIP-19 addressable event code for the stream
   - Format: `naddr1...` (bech32-encoded)
   - Example: `naddr1qqjr2vehvyenvdtr94nrzetr956rgctr94skvvfs95eryep3x3snwve389nxyqgwwaehxw309ahx7uewd3hkctcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhszxthwden5te0wfjkccte9eekummjwsh8xmmrd9skctcpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtcpz9mhxue69uhkummnw3ezumrpdejz7qg7waehxw309ahx7um5wgkhqatz9emk2mrvdaexgetj9ehx2ap0qyghwumn8ghj7mn0wd68ytnhd9hx2tcpz4mhxue69uhhyetvv9ujumn0wd68ytnzvuhsz9thwden5te0dehhxarj9ehhsarj9ejx2a30qgsv73dxhgfk8tt76gf6q788zrfyz9dwwgwfk3aar6l5gk82a76v9fgrqsqqqan8tp7le0`
-  - Decodes to: `{ kind: 30311, pubkey: "...", identifier: "...", relays: [...] }`
 
 ### Optional Attributes
 
@@ -70,14 +54,6 @@
 - `auto-play` (boolean, default: `false`) - Autoplay video when status is "live"
 - `data-theme` (string, default: `"light"`) - Allowed values: `"light"` or `"dark"`
 - `relays` (string) - Comma-separated relay URLs
-
-### CSS Variables
-
-Component-specific CSS variables (to be defined based on design system):
-- Stream container styling
-- Status badge colors
-- Participant list styling
-- Video player controls
 
 ## Wireframes
 
@@ -200,50 +176,17 @@ Hide participant count:
 <nostr-stream naddr="naddr1..." show-participant-count="false"></nostr-stream>
 ```
 
-## NIP-53 Event Structure
-
-### Live Streaming Event (kind:30311)
-```json
-{
-  "kind": 30311,
-  "tags": [
-    ["d", "demo-cf-stream"],
-    ["title", "Adult Swim Metalocalypse"],
-    ["summary", "Live stream from IPTV-ORG collection"],
-    ["image", "https://i.imgur.com/CaKq6Mt.png"],
-    ["streaming", "https://adultswim-vodlive.cdn.turner.com/live/metalocalypse/stream.m3u8"],
-    ["recording", "https://example.com/recording.mp4"],
-    ["starts", "1687182672"],
-    ["ends", "1687186272"],
-    ["status", "live"],
-    ["current_participants", "127"],
-    ["total_participants", "145"],
-    ["p", "91cf9..4e5ca", "wss://provider1.com/", "Host", "<proof>"],
-    ["p", "14aeb..8dad4", "wss://provider2.com/nostr", "Speaker"],
-    ["p", "612ae..e610f", "ws://provider3.com/ws", "Participant"],
-    ["relays", "wss://one.com", "wss://two.com"],
-    ["t", "animation"],
-    ["t", "iptv"]
-  ],
-  "content": "",
-  "created_at": 1687182672,
-  "pubkey": "1597246ac22f7d1375041054f2a4986bd971d8d196d7997e48973263ac9879ec"
-}
-```
-
-### Addressable Event Query
-- Query filters: `{ kinds: [30311], authors: [pubkey], '#d': [dTag] }`
-- Addressable via NIP-19: `naddr1...` encoding `kind:pubkey:d-tag`
-- Events are constantly updated as participants join/leave
-- Latest event (highest `created_at`) represents current state
-
 ## Participant Roles
+
+The component displays participant roles as defined by NIP-53:
 
 - `Host` - Full stream management capabilities
 - `Speaker` - Allowed to present/speak in stream
 - `Participant` - Regular participant/viewer
 
-Participants with proof (5th element in `p` tag) are verified participants who agreed to join. Participants without proof may be displayed as "invited".
+Participants with proof are verified participants who agreed to join. Participants without proof may be displayed as "invited".
+
+For technical details about the event structure and implementation, see [NIP-53 Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md).
 
 ## Future Enhancements
 
@@ -253,6 +196,6 @@ Participants with proof (5th element in `p` tag) are verified participants who a
 - Zap button integration for streams
 - Full-screen video mode
 - Video quality selector (if HLS with multiple variants)
-- Real-time participant presence indicators (kind:10312)
-- Custom video player library support for broader browser compatibility
-- Notification when stream goes live (if user has subscribed)
+- Real-time participant presence indicators
+- Enhanced video player controls
+- Notification when stream goes live

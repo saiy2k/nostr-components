@@ -1,0 +1,85 @@
+import { DEFAULT_WIDTH } from "./utils";
+import { STREAM_DATA } from '../stream-data';
+
+export const TEST_CASES = {
+  // Basic Display
+  default: {
+    name: 'Default',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+    },
+  },
+  darkTheme: {
+    name: 'Dark Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+      'data-theme': 'dark',
+    },
+  },
+
+  // Status States - Planned
+  plannedStatus: {
+    name: 'Planned Status',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.planned.naddr,
+    },
+  },
+
+  // Status States - Live
+  liveStatus: {
+    name: 'Live Status',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+    },
+  },
+
+  // Status States - Ended
+  endedStatus: {
+    name: 'Ended Status',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.ended.naddr,
+    },
+  },
+
+  // Video Player
+  autoplay: {
+    name: 'Autoplay Video',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+      'auto-play': 'true',
+    },
+  },
+
+  // Participants
+  withParticipants: {
+    name: 'With Participants',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+      'show-participants': 'true',
+      'show-participant-count': 'true',
+    },
+  },
+  hideParticipants: {
+    name: 'Hide Participants',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+      'show-participants': 'false',
+    },
+  },
+  hideParticipantCount: {
+    name: 'Hide Participant Count',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+      'show-participant-count': 'false',
+    },
+  },
+};

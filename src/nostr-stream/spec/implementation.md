@@ -23,9 +23,7 @@ This document contains the technical implementation details for the `nostr-strea
 
 ### Event Handling
 - Delegated Events: Uses `delegateEvent()` for efficient Shadow DOM event handling
-- Video Player: Native `<video>` element with standard controls
-- Participant List: Scrollable list with role badges
-- Status Badge: Visual indicator of stream status
+- Video Player: `<hls-video>` custom element with standard controls
 - Event Delegation: Prevents memory leaks and improves performance
 
 ### Rendering Architecture
@@ -48,6 +46,7 @@ This document contains the technical implementation details for the `nostr-strea
 ### External Dependencies
 - `@nostr-dev-kit/ndk`: NDKEvent, NDKUser, NDKKind, NDKSubscription
 - `nostr-tools`: `nip19` for bech32 decoding/encoding
+- `hls-video-element`: Custom element for HLS video playback with cross-browser support
 
 ## Component Lifecycle
 
@@ -68,17 +67,37 @@ This document contains the technical implementation details for the `nostr-strea
 
 #### EventResolver Extension
 - Extend `EventResolver` to support addressable events
-- Add `resolveAddressableEvent({ naddr })` method
-- Decode naddr using `decodeNip19Entity()` or `nip19.decode()`
-- Extract: `{ kind, pubkey, identifier: dTag, relays }`
-- Query: `{ kinds: [kind], authors: [pubkey], '#d': [dTag] }`
-- Return latest event (highest `created_at`) if multiple exist
+- Add `validateAddressableInputs({ naddr })` method:
+  - Check naddr is provided and not empty
+  - Validate format: must start with `naddr1` (bech32-encoded)
+  - Attempt to decode using `nip19.decode(naddr)`
+  - Verify decoded type is `'naddr'`
+  - Return error message string if validation fails, `null` if valid
+
+- Add `resolveAddressableEvent({ naddr })` method:
+  - First call `validateAddressableInputs()` to ensure valid format
+  - Decode naddr: `const { type, data } = nip19.decode(naddr)`
+  - Verify `type === 'naddr'` (should be guaranteed by validation)
+  - Extract: `{ kind, pubkey, identifier: dTag, relays }`
+  - Query: `{ kinds: [kind], authors: [pubkey], '#d': [identifier] }`
+  - Use `nostrService.getNDK().fetchEvents(filter)`
+  - Return latest event (highest `created_at`) if multiple exist
+  - Throw error if no events found
 
 #### NostrEventComponent Extension
 - Add `naddr` to `observedAttributes`
-- Extend `validateInputs()` to accept `naddr`
-- Extend `resolveEventAndLoad()` to handle addressable events
-- Use `EventResolver.resolveAddressableEvent()` when `naddr` is provided
+- Extend `validateInputs()` method:
+  - Check for `naddr` attribute
+  - If naddr present: Call `eventResolver.validateAddressableInputs({ naddr })`
+  - If validation returns error message: Set error status and return `false`
+  - Return `true` if validation passes
+  - Ensure only one identifier type is provided (naddr XOR hex/noteid/eventid)
+
+- Extend `resolveEventAndLoad()` method:
+  - Check if `naddr` attribute exists
+  - If naddr: Call `eventResolver.resolveAddressableEvent({ naddr })`
+  - Store decoded naddr data (kind, pubkey, dTag) for subscription use
+  - Continue with existing flow for author profile loading
 
 ## Live Subscription Strategy
 
@@ -182,21 +201,31 @@ parseStreamEvent(event: NDKEvent): ParsedStreamEvent {
 ## Participant Profile Resolution
 
 ### Batch Profile Fetching
-- Extract all unique pubkeys from `p` tags
-- Use `getBatchedProfileMetadata()` from zap-utils
-- Fetch profiles in single batched query
+- Extract all unique pubkeys from `parsedStream.participants`
+- Use `getBatchedProfileMetadata(pubkeys)` from zap-utils
+- Fetch profiles in single batched query via NDK
+- Store profiles in `Map<string, any>` for lookup by pubkey
 - Cache profiles within component lifecycle
-- Handle missing profiles gracefully (show npub fallback)
+- Handle missing profiles: profile will be `null` in Map
 
-### Profile Display
-- Show avatar from profile metadata (fallback to default emoji)
-- Show display name or name (fallback to npub short format)
-- Show role badge (Host/Speaker/Participant)
-- Show proof indicator (verified/unverified) - future enhancement
+### Profile Data Structure
+- Avatar: `profile.image` or default fallback
+- Name: `profile.displayName` or `profile.name` or npub short format
+- Role: Extracted from `p` tag (3rd element)
+- Proof: Extracted from `p` tag (4th element, hex-encoded signature)
 
 ## Video Player Implementation
 
-### Native HTML5 Video
+### hls-video-element Custom Element
+Uses `hls-video-element` npm package. Custom element `<hls-video>` provides HTMLMediaElement-compatible API with HLS.js support.
+
+#### Installation and Setup
+```typescript
+// In nostr-stream.ts
+import 'hls-video-element'; // Registers <hls-video> custom element globally
+```
+
+#### Video Player Rendering
 ```typescript
 private renderVideoPlayer(streamingUrl: string | undefined, status: string): string {
   if (status !== 'live' || !streamingUrl) {
@@ -206,15 +235,15 @@ private renderVideoPlayer(streamingUrl: string | undefined, status: string): str
   const autoplay = this.getAttribute('auto-play') === 'true' ? 'autoplay' : '';
   
   return `
-    <video 
+    <hls-video 
       src="${streamingUrl}" 
       controls 
       ${autoplay}
       preload="metadata"
       class="stream-video"
     >
-      Your browser does not support the video tag.
-    </video>
+      Your browser does not support HLS video.
+    </hls-video>
   `;
 }
 ```
@@ -224,19 +253,18 @@ private renderVideoPlayer(streamingUrl: string | undefined, status: string): str
 - If streaming URL is missing: Show preview image
 - If video fails to load: Show error message + preview image
 - If status is "ended": Show recording link instead of video
-- Browser compatibility: Rely on native HLS support (Safari, Chrome Android)
 
-## Status Transitions and UI States
+## Status-Based Rendering Logic
 
-### Status-Based Rendering
-- `planned`: Show countdown, preview image, disabled video
-- `live`: Show active video player, live indicator, participant list
-- `ended`: Show recording link, ended indicator, final participant counts
+### Rendering Conditions
+- `planned`: Render preview image, hide video player
+- `live`: Render video player if streaming URL exists, show participant list
+- `ended`: Render recording link if available, show final participant counts
 
-### Status Badge Styling
-- Planned: Yellow/orange badge with "Planned" text
-- Live: Red badge with "LIVE" text and pulsing animation
-- Ended: Gray badge with "Ended" text
+### Status Updates
+- Update rendering when status changes
+- Transition video player visibility based on status
+- Update participant list visibility based on status
 
 ## Performance Considerations
 
@@ -291,24 +319,32 @@ src/nostr-stream/
 ## Error Handling
 
 ### Invalid naddr
-- Validate naddr format before decoding
-- Show error message: "Invalid naddr format"
+- Validation occurs in `EventResolver.validateAddressableInputs()`
+- Possible validation failures:
+  - Missing naddr attribute: "Provide naddr attribute"
+  - Invalid format (doesn't start with `naddr1`): "Invalid naddr format"
+  - Decode failure (malformed bech32): "Invalid naddr format: decoding failed"
+  - Wrong type (not an naddr): "Invalid naddr: expected naddr type"
+- Show error message from validator
 - Set `streamStatus` to Error
+- Validation happens before any network calls
 
 ### Event Not Found
-- If query returns no events, show "Stream not found"
+- If query returns no events, throw error from `resolveAddressableEvent()`
 - Set `streamStatus` to Error
-- Provide helpful error message
+- Set error message: "Stream not found"
+- Render error state in UI
 
 ### Missing Required Tags
 - If `d` tag missing, treat as invalid event
-- Warn about missing optional tags but continue rendering
-- Fallback to defaults for missing optional data
+- Log warnings about missing optional tags but continue rendering
+- Use default/fallback values for missing optional data
 
 ### Video Load Failures
-- Catch video `error` event
-- Show fallback preview image
-- Display error message: "Video unavailable"
+- Catch `error` event on `.stream-video` element (delegated listener)
+- Set `videoStatus` channel to Error
+- Re-render to show fallback preview image
+- Log error message for debugging
 
 ### Profile Fetch Failures
 - Handle individual profile fetch failures gracefully
