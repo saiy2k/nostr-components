@@ -1,0 +1,338 @@
+// SPDX-License-Identifier: MIT
+
+import { IRenderOptions } from '../base/render-options';
+import { NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { ParsedStreamEvent } from './stream-utils';
+import { escapeHtml } from '../common/utils';
+import { formatEventDate } from '../common/date-utils';
+
+export interface RenderStreamOptions extends IRenderOptions {
+  author: NDKUserProfile | null;
+  parsedStream: ParsedStreamEvent | null;
+  showParticipants: boolean;
+  showParticipantCount: boolean;
+  autoPlay: boolean;
+  participantProfiles: Map<string, any>;
+}
+
+export function renderStream(options: RenderStreamOptions): string {
+  const {
+    isLoading,
+    isError,
+    errorMessage,
+    author,
+    parsedStream,
+    showParticipants,
+    showParticipantCount,
+    participantProfiles,
+  } = options;
+
+  // Handle error state
+  if (isError) {
+    return renderError(errorMessage || 'An error occurred');
+  }
+
+  // Handle loading state
+  if (isLoading || !parsedStream) {
+    return renderLoading();
+  }
+
+  // Handle ready state - full stream display
+  return `
+    <div class="nostr-stream-container">
+      ${renderStreamHeader(isLoading, author, parsedStream)}
+      ${renderStreamMedia(parsedStream, options.autoPlay)}
+      ${renderStreamMetadata(parsedStream, showParticipantCount)}
+      ${showParticipants ? renderParticipants(parsedStream, participantProfiles, isLoading) : ''}
+    </div>
+  `;
+}
+
+function renderStreamHeader(
+  isLoading: boolean,
+  author: NDKUserProfile | null,
+  parsedStream: ParsedStreamEvent
+): string {
+  if (isLoading) {
+    return `
+      <div class="stream-header">
+        <div class="stream-header-left">
+          <div class="author-picture">
+            <div style="width: 35px; height: 35px; border-radius: 50%;" class="skeleton"></div>
+          </div>
+        </div>
+        <div class="stream-header-middle">
+          <div style="width: 70%; height: 16px; border-radius: 10px; margin-bottom: 8px;" class="skeleton"></div>
+          <div style="width: 50%; height: 12px; border-radius: 10px;" class="skeleton"></div>
+        </div>
+        <div class="stream-header-right">
+          <div style="width: 80px; height: 24px; border-radius: 12px;" class="skeleton"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  const authorImage = author?.picture || author?.image || '';
+  const authorName = author?.displayName || author?.name || 'Unknown';
+  const authorNip05 = author?.nip05 || '';
+  const title = parsedStream.title || 'Untitled Stream';
+  const status = parsedStream.status || 'planned';
+  const statusBadgeClass = `stream-status-badge stream-status-${status}`;
+
+  return `
+    <div class="stream-header">
+      <div class="stream-header-left">
+        <div class="author-picture">
+          ${authorImage ? `<img src="${escapeHtml(authorImage)}" alt="${escapeHtml(authorName)}" />` : ''}
+        </div>
+      </div>
+      <div class="stream-header-middle">
+        <div class="stream-title">${escapeHtml(title)}</div>
+        <div class="stream-author-info">
+          ${authorName ? `<span class="author-name">${escapeHtml(authorName)}</span>` : ''}
+          ${authorNip05 ? `<span class="author-username">${escapeHtml(authorNip05)}</span>` : ''}
+        </div>
+      </div>
+      <div class="stream-header-right">
+        <span class="${statusBadgeClass}">${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderStreamMedia(
+  parsedStream: ParsedStreamEvent,
+  _autoPlay: boolean // Will be used in Phase 6 for video autoplay
+): string {
+  const status = parsedStream.status || 'planned';
+  const streamingUrl = parsedStream.streamingUrl;
+  const recordingUrl = parsedStream.recordingUrl;
+  const imageUrl = parsedStream.image;
+
+  // If live and has streaming URL, render video player (will be enhanced in Phase 6)
+  if (status === 'live' && streamingUrl) {
+    // TODO: Implement video player in Phase 6
+    // For now, show placeholder
+    return `
+      <div class="stream-media">
+        <div class="stream-video-placeholder">
+          <p>Video player will be implemented in Phase 6</p>
+          <p>Stream URL: ${escapeHtml(streamingUrl)}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  // If ended and has recording URL, show recording link
+  if (status === 'ended' && recordingUrl) {
+    return `
+      <div class="stream-media">
+        ${renderPreviewImage(imageUrl)}
+        ${renderRecordingLink(recordingUrl)}
+      </div>
+    `;
+  }
+
+  // Show preview image (planned or no streaming URL)
+  return `
+    <div class="stream-media">
+      ${renderPreviewImage(imageUrl)}
+    </div>
+  `;
+}
+
+function renderPreviewImage(imageUrl?: string): string {
+  if (imageUrl) {
+    return `
+      <div class="stream-preview-image">
+        <img src="${escapeHtml(imageUrl)}" alt="Stream preview" loading="lazy" />
+      </div>
+    `;
+  }
+
+  // Default placeholder
+  return `
+    <div class="stream-preview-image stream-preview-placeholder">
+      <div class="stream-preview-placeholder-icon">📹</div>
+      <p>No preview image</p>
+    </div>
+  `;
+}
+
+function renderRecordingLink(url: string): string {
+  return `
+    <div class="stream-recording-link">
+      <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
+        <span class="recording-icon">▶</span>
+        <span>Watch Recording</span>
+      </a>
+    </div>
+  `;
+}
+
+function renderStreamMetadata(
+  parsedStream: ParsedStreamEvent,
+  showParticipantCount: boolean
+): string {
+  const summary = parsedStream.summary;
+  const hashtags = parsedStream.hashtags || [];
+  const currentParticipants = parsedStream.currentParticipants;
+  const totalParticipants = parsedStream.totalParticipants;
+  const starts = parsedStream.starts;
+  const ends = parsedStream.ends;
+
+  let metadataHtml = '<div class="stream-metadata">';
+
+  // Summary
+  if (summary) {
+    metadataHtml += `
+      <div class="stream-summary">
+        ${escapeHtml(summary)}
+      </div>
+    `;
+  }
+
+  // Participant count
+  if (showParticipantCount && (currentParticipants !== undefined || totalParticipants !== undefined)) {
+    const countText = currentParticipants !== undefined && totalParticipants !== undefined
+      ? `${currentParticipants} / ${totalParticipants}`
+      : currentParticipants !== undefined
+        ? `${currentParticipants}`
+        : `${totalParticipants || 0}`;
+    
+    metadataHtml += `
+      <div class="stream-participant-count">
+        <strong>Participants:</strong> ${countText}
+      </div>
+    `;
+  }
+
+  // Start/End times
+  if (starts || ends) {
+    metadataHtml += '<div class="stream-timestamps">';
+    if (starts) {
+      metadataHtml += `<span class="stream-start-time">Starts: ${formatEventDate(starts)}</span>`;
+    }
+    if (ends) {
+      metadataHtml += `<span class="stream-end-time">Ends: ${formatEventDate(ends)}</span>`;
+    }
+    metadataHtml += '</div>';
+  }
+
+  // Hashtags
+  if (hashtags.length > 0) {
+    metadataHtml += `
+      <div class="stream-hashtags">
+        ${hashtags.map(tag => `<span class="hashtag">#${escapeHtml(tag)}</span>`).join(' ')}
+      </div>
+    `;
+  }
+
+  metadataHtml += '</div>';
+  return metadataHtml;
+}
+
+function renderParticipants(
+  parsedStream: ParsedStreamEvent,
+  participantProfiles: Map<string, any>,
+  isLoading: boolean
+): string {
+  const participants = parsedStream.participants || [];
+
+  if (isLoading) {
+    return `
+      <div class="stream-participants">
+        <h3 class="participants-title">Participants</h3>
+        <div class="participants-list">
+          ${Array.from({ length: 3 }, () => `
+            <div class="participant-item">
+              <div style="width: 32px; height: 32px; border-radius: 50%;" class="skeleton"></div>
+              <div style="width: 120px; height: 14px; border-radius: 4px; margin-left: 8px;" class="skeleton"></div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (participants.length === 0) {
+    return `
+      <div class="stream-participants">
+        <h3 class="participants-title">Participants</h3>
+        <p class="participants-empty">No participants yet</p>
+      </div>
+    `;
+  }
+
+  // TODO: Enhanced participant rendering with profiles in Phase 5
+  return `
+    <div class="stream-participants">
+      <h3 class="participants-title">Participants (${participants.length})</h3>
+      <div class="participants-list">
+        ${participants.map(participant => {
+          const profile = participantProfiles.get(participant.pubkey);
+          const displayName = profile?.displayName || profile?.name || `npub${participant.pubkey.slice(0, 8)}...`;
+          const image = profile?.picture || profile?.image || '';
+          const role = participant.role || 'Participant';
+          const roleClass = `participant-role participant-role-${role.toLowerCase()}`;
+
+          return `
+            <div class="participant-item">
+              <div class="participant-avatar">
+                ${image
+                  ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(displayName)}" />`
+                  : '<div class="participant-avatar-placeholder"></div>'
+                }
+              </div>
+              <div class="participant-info">
+                <span class="participant-name">${escapeHtml(displayName)}</span>
+                <span class="${roleClass}">${escapeHtml(role)}</span>
+              </div>
+              ${participant.proof ? '<span class="participant-proof" title="Verified">✓</span>' : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderError(errorMessage: string): string {
+  return `
+    <div class="nostr-stream-container">
+      <div class="stream-error">
+        <div class="error-icon">⚠</div>
+        <div class="error-message">${escapeHtml(errorMessage)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLoading(): string {
+  return `
+    <div class="nostr-stream-container">
+      <div class="stream-header">
+        <div class="stream-header-left">
+          <div class="author-picture">
+            <div style="width: 35px; height: 35px; border-radius: 50%;" class="skeleton"></div>
+          </div>
+        </div>
+        <div class="stream-header-middle">
+          <div style="width: 70%; height: 16px; border-radius: 10px; margin-bottom: 8px;" class="skeleton"></div>
+          <div style="width: 50%; height: 12px; border-radius: 10px;" class="skeleton"></div>
+        </div>
+        <div class="stream-header-right">
+          <div style="width: 80px; height: 24px; border-radius: 12px;" class="skeleton"></div>
+        </div>
+      </div>
+      <div class="stream-media">
+        <div style="width: 100%; height: 300px; border-radius: 8px;" class="skeleton"></div>
+      </div>
+      <div class="stream-metadata">
+        <div style="width: 100%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
+        <div style="width: 80%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
+        <div style="width: 60%; height: 14px; border-radius: 4px;" class="skeleton"></div>
+      </div>
+    </div>
+  `;
+}
