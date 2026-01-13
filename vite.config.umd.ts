@@ -43,6 +43,7 @@ function ensureUMDDefaultExport(): Plugin {
         NostrDm: nc.NostrDm,
         NostrLiveChat: nc.NostrLiveChat,
         NostrLike: nc.NostrLike,
+        NostrStream: nc.NostrStream,
       };
     }
   }

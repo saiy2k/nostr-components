@@ -15,6 +15,7 @@ export interface RenderStreamOptions extends IRenderOptions {
   autoPlay: boolean;
   participantProfiles: Map<string, any>;
   participantsStatus: NCStatus;
+  videoStatus: NCStatus;
 }
 
 export function renderStream(options: RenderStreamOptions): string {
@@ -28,6 +29,7 @@ export function renderStream(options: RenderStreamOptions): string {
     showParticipantCount,
     participantProfiles,
     participantsStatus,
+    videoStatus,
   } = options;
 
   // Handle error state
@@ -44,7 +46,7 @@ export function renderStream(options: RenderStreamOptions): string {
   return `
     <div class="nostr-stream-container">
       ${renderStreamHeader(isLoading, author, parsedStream)}
-      ${renderStreamMedia(parsedStream, options.autoPlay)}
+      ${renderStreamMedia(parsedStream, options.autoPlay, videoStatus)}
       ${renderStreamMetadata(parsedStream, showParticipantCount)}
       ${showParticipants ? renderParticipants(parsedStream, participantProfiles, participantsStatus) : ''}
     </div>
@@ -105,23 +107,28 @@ function renderStreamHeader(
 
 function renderStreamMedia(
   parsedStream: ParsedStreamEvent,
-  _autoPlay: boolean // Will be used in Phase 6 for video autoplay
+  autoPlay: boolean,
+  videoStatus: NCStatus
 ): string {
   const status = parsedStream.status || 'planned';
   const streamingUrl = parsedStream.streamingUrl;
   const recordingUrl = parsedStream.recordingUrl;
   const imageUrl = parsedStream.image;
 
-  // If live and has streaming URL, render video player (will be enhanced in Phase 6)
-  if (status === 'live' && streamingUrl) {
-    // TODO: Implement video player in Phase 6
-    // For now, show placeholder
+  // If live and has streaming URL, render video player (unless video failed)
+  if (status === 'live' && streamingUrl && videoStatus !== NCStatus.Error) {
     return `
       <div class="stream-media">
-        <div class="stream-video-placeholder">
-          <p>Video player will be implemented in Phase 6</p>
-          <p>Stream URL: ${escapeHtml(streamingUrl)}</p>
-        </div>
+        ${renderVideoPlayer(streamingUrl, autoPlay)}
+      </div>
+    `;
+  }
+
+  // If video failed (error status), show preview image as fallback
+  if (status === 'live' && streamingUrl && videoStatus === NCStatus.Error) {
+    return `
+      <div class="stream-media">
+        ${renderPreviewImage(imageUrl)}
       </div>
     `;
   }
@@ -141,6 +148,20 @@ function renderStreamMedia(
     <div class="stream-media">
       ${renderPreviewImage(imageUrl)}
     </div>
+  `;
+}
+
+function renderVideoPlayer(url: string, autoPlay: boolean): string {
+  // Use <hls-video> custom element (not <video>) for cross-browser HLS support
+  const autoplayAttr = autoPlay ? 'autoplay' : '';
+  return `
+    <hls-video
+      class="stream-video"
+      src="${escapeHtml(url)}"
+      controls
+      ${autoplayAttr}
+      preload="metadata"
+    ></hls-video>
   `;
 }
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { NDKEvent, NDKSubscription } from '@nostr-dev-kit/ndk';
+import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { parseStreamEvent, ParsedStreamEvent } from './stream-utils';
@@ -10,14 +10,13 @@ import { getStreamStyles } from './style';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { formatEventDate } from '../common/date-utils'; // Will be used in render for date formatting
 import { getBatchedProfileMetadata } from '../nostr-zap-button/zap-utils';
+// Import hls-video-element to register <hls-video> custom element
+import 'hls-video-element';
 
 export default class NostrStream extends NostrEventComponent {
 
   protected parsedStream: ParsedStreamEvent | null = null;
-  protected streamSubscription: NDKSubscription | null = null;
   protected participantProfiles: Map<string, any> = new Map();
-  protected lastUpdateTime: number = 0;
-  private stalenessCheckInterval: number | null = null;
 
   // Status channels
   protected participantsStatus = this.channel('participants');
@@ -41,23 +40,58 @@ export default class NostrStream extends NostrEventComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
-    // TODO: Attach delegated listeners (Phase 6)
+    this.attachDelegatedListeners();
     this.renderContent();
   }
 
+  /**
+   * Attach delegated event listeners for video player
+   */
+  private attachDelegatedListeners(): void {
+    // Listen for video error events
+    this.delegateEvent('error', '.stream-video', (e: Event) => {
+      const target = e.target as HTMLMediaElement;
+      const error = target.error;
+      let errorMessage = 'Video failed to load';
+      
+      if (error) {
+        switch (error.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMessage = 'Video loading aborted';
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage = 'Network error while loading video';
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage = 'Video decode error';
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = 'Video format not supported';
+            break;
+          default:
+            errorMessage = 'Video failed to load';
+        }
+      }
+      
+      console.error('[NostrStream] Video error:', errorMessage, error);
+      this.videoStatus.set(NCStatus.Error, errorMessage);
+      this.renderContent(); // Re-render to show fallback preview image
+    });
+
+    // Listen for video loaded metadata (ready to play)
+    this.delegateEvent('loadedmetadata', '.stream-video', () => {
+      this.videoStatus.set(NCStatus.Ready);
+      // No need to re-render on successful load, just update status
+    });
+
+    // Set loading status when video starts loading
+    this.delegateEvent('loadstart', '.stream-video', () => {
+      this.videoStatus.set(NCStatus.Loading);
+      // No need to re-render, just update status
+    });
+  }
+
   disconnectedCallback() {
-    // Clean up subscription
-    if (this.streamSubscription) {
-      this.streamSubscription.stop();
-      this.streamSubscription = null;
-    }
-    
-    // Clear staleness interval
-    if (this.stalenessCheckInterval !== null) {
-      clearInterval(this.stalenessCheckInterval);
-      this.stalenessCheckInterval = null;
-    }
-    
     super.disconnectedCallback?.();
   }
 
@@ -92,7 +126,6 @@ export default class NostrStream extends NostrEventComponent {
     try {
       this.parsedStream = parseStreamEvent(event);
       console.log('parsedStream', this.parsedStream);
-      this.lastUpdateTime = Date.now();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to parse stream event';
       console.error('[NostrStream] ' + msg, error);
@@ -101,15 +134,12 @@ export default class NostrStream extends NostrEventComponent {
       return;
     }
 
-    // Extract pubkey and dTag from decoded naddr data (stored during event resolution)
-    if (this.decodedNaddr) {
-      this.subscribeToStreamUpdates(this.decodedNaddr.pubkey, this.decodedNaddr.dTag);
+    // Reset video status if we have a live stream with video URL
+    if (this.parsedStream?.status === 'live' && this.parsedStream?.streamingUrl) {
+      this.videoStatus.set(NCStatus.Loading);
     } else {
-      console.warn('[NostrStream] No decoded naddr data available for subscription');
+      this.videoStatus.set(NCStatus.Idle);
     }
-
-    // Start staleness check
-    this.startStalenessCheck();
 
     // Load participant profiles
     this.loadParticipantProfiles();
@@ -131,6 +161,7 @@ export default class NostrStream extends NostrEventComponent {
       autoPlay: this.getAttribute('auto-play') === 'true',
       participantProfiles: this.participantProfiles,
       participantsStatus: this.participantsStatus.get(),
+      videoStatus: this.videoStatus.get(),
     };
 
     // Get styles
@@ -143,103 +174,6 @@ export default class NostrStream extends NostrEventComponent {
     if (this.shadowRoot) {
       this.shadowRoot.innerHTML = `${styles}${rendered}`;
     }
-  }
-
-  /**
-   * Subscribe to live stream event updates
-   * @param pubkey - The author pubkey from the decoded naddr
-   * @param dTag - The 'd' tag identifier from the decoded naddr
-   */
-  private subscribeToStreamUpdates(pubkey: string, dTag: string): void {
-    // Stop existing subscription if present
-    if (this.streamSubscription) {
-      this.streamSubscription.stop();
-      this.streamSubscription = null;
-    }
-
-    // Create filter for kind 30311 stream events
-    const filter = {
-      kinds: [30311],
-      authors: [pubkey],
-      '#d': [dTag],
-    };
-
-    try {
-      // Subscribe with persistent subscription (closeOnEose: false)
-      this.streamSubscription = this.nostrService.getNDK().subscribe([filter], {
-        closeOnEose: false, // Keep subscription open for real-time updates
-        groupable: false, // Don't group with other subscriptions
-      });
-
-      // Handle incoming events
-      this.streamSubscription.on('event', (event: NDKEvent) => {
-        // Only update if this event is newer than current event
-        if (!this.event || event.created_at > this.event.created_at) {
-          try {
-            // Update event and parse stream data
-            this.event = event;
-            console.log('event', event);
-            const previousParticipants = this.parsedStream?.participants.map(p => p.pubkey).sort().join(',') || '';
-            
-            this.parsedStream = parseStreamEvent(event);
-            console.log('parsedStream in subs', this.parsedStream);
-            this.lastUpdateTime = Date.now();
-
-            // Check if participant list changed
-            const currentParticipants = this.parsedStream?.participants.map(p => p.pubkey).sort().join(',') || '';
-            const participantsChanged = previousParticipants !== currentParticipants;
-
-            // Re-load participant profiles if participant list changed
-            if (participantsChanged) {
-              this.loadParticipantProfiles();
-            }
-
-            // Re-render with updated data
-            this.renderContent();
-          } catch (parseError) {
-            console.error('[NostrStream] Error parsing stream update:', parseError);
-            // Don't set error status - just log it, keep showing current state
-          }
-        }
-      });
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to subscribe to stream updates';
-      console.error('[NostrStream] ' + msg, error);
-      // Don't set error status - subscription failure is non-fatal, component can still show current state
-    }
-  }
-
-  /**
-   * Start staleness detection for live streams
-   * Checks every 5 minutes if a live stream hasn't been updated for 1 hour
-   */
-  private startStalenessCheck(): void {
-    // Clear existing interval if present
-    if (this.stalenessCheckInterval !== null) {
-      clearInterval(this.stalenessCheckInterval);
-      this.stalenessCheckInterval = null;
-    }
-
-    // Set interval to check every 5 minutes (300000ms)
-    this.stalenessCheckInterval = window.setInterval(() => {
-      // Only check if stream is currently live and we have parsed stream data
-      if (this.parsedStream && this.parsedStream.status === 'live') {
-        const now = Date.now();
-        const timeSinceLastUpdate = now - this.lastUpdateTime;
-        const oneHourInMs = 3600000; // 1 hour in milliseconds
-
-        // If no update received for 1 hour, mark as ended
-        if (timeSinceLastUpdate > oneHourInMs) {
-          console.log('[NostrStream] Stream marked as ended due to staleness (no updates for 1 hour)');
-          
-          // Update status to ended
-          this.parsedStream.status = 'ended';
-          
-          // Re-render to reflect the status change
-          this.renderContent();
-        }
-      }
-    }, 300000); // Check every 5 minutes
   }
 
   /**
@@ -293,9 +227,10 @@ export default class NostrStream extends NostrEventComponent {
       // Re-render to show profiles
       this.renderContent();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to load participant profiles';
-      console.error('[NostrStream] ' + msg, error);
-      this.participantsStatus.set(NCStatus.Error, msg);
+      const msg = error instanceof Error ? error.message : 'Failed to load participants';
+      const userFriendlyMsg = 'Failed to load participants';
+      console.error('[NostrStream] Participant profile fetch error:', msg, error);
+      this.participantsStatus.set(NCStatus.Error, userFriendlyMsg);
       this.renderContent();
     }
   }

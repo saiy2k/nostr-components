@@ -62,7 +62,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - [ ] Extend `resolveEventAndLoad()` method
   - Check if `naddr` attribute exists
   - If naddr: Call `eventResolver.resolveAddressableEvent({ naddr })`
-  - Store decoded naddr data (kind, pubkey, dTag) for subscription use
+  - Store decoded naddr data (kind, pubkey, dTag) for reference
   - Continue with existing flow for author profile loading
 
 **Dependencies:**
@@ -165,7 +165,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 
 - [ ] Import dependencies:
   - `NostrEventComponent`, `NCStatus` from base
-  - `NDKEvent`, `NDKSubscription` from `@nostr-dev-kit/ndk`
+  - `NDKEvent` from `@nostr-dev-kit/ndk`
   - `parseStreamEvent`, `ParsedStreamEvent` from `./stream-utils`
   - `renderStream`, `RenderStreamOptions` from `./render`
   - `getStreamStyles` from `./style`
@@ -176,10 +176,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - [ ] Add protected properties:
   ```typescript
   protected parsedStream: ParsedStreamEvent | null = null;
-  protected streamSubscription: NDKSubscription | null = null;
   protected participantProfiles: Map<string, any> = new Map();
-  protected lastUpdateTime: number = 0;
-  private stalenessCheckInterval: number | null = null;
   ```
 
 - [ ] Add status channels:
@@ -199,8 +196,6 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - Initial render
 
 - [ ] Implement `disconnectedCallback()`
-  - Clean up subscription: `this.streamSubscription?.stop()`
-  - Clear staleness interval
   - Call `super.disconnectedCallback()`
 
 - [ ] Implement `attributeChangedCallback()`
@@ -210,10 +205,6 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 
 - [ ] Implement `protected onEventReady(event: NDKEvent)`
   - Parse stream event: `this.parsedStream = parseStreamEvent(event)`
-  - Set `lastUpdateTime = Date.now()`
-  - Extract pubkey and dTag from decoded naddr data (stored during event resolution)
-  - Start live subscription: `subscribeToStreamUpdates(pubkey, dTag)`
-  - Start staleness check: `startStalenessCheck()`
   - Load participant profiles: `loadParticipantProfiles()` (from Phase 5)
   - Render: `this.renderContent()`
 
@@ -303,11 +294,13 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 
 ---
 
-## Phase 4: Live Subscription Implementation
+## Phase 4: Future Enhancement - Live Subscription Implementation
 
-**Goal:** Subscribe to stream event updates and handle real-time changes.
+**Goal:** Subscribe to stream event updates and handle real-time changes (currently requires page refresh).
 
-### Task 4.1: Implement live subscription
+> **Note:** This phase is planned as a future enhancement. The component currently renders based on the initial event fetch. Users must refresh the page to get updated stream data.
+
+### Task 4.1: Implement live subscription (Future)
 **File:** `src/nostr-stream/nostr-stream.ts`
 
 - [ ] Add method `subscribeToStreamUpdates(pubkey: string, dTag: string)`
@@ -319,12 +312,15 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
     - Update `this.event` and parse: `this.parsedStream = parseStreamEvent(event)`
     - Update `lastUpdateTime = Date.now()`
     - Re-load participant profiles if participant list changed
-    - Re-render
+    - Re-render (with video playback preservation logic)
 
 - [ ] Call subscription in `onEventReady()` after initial load
 - [ ] Extract pubkey and dTag from naddr decoded data (stored in Phase 1)
+- [ ] Add `streamSubscription: NDKSubscription | null = null` property
+- [ ] Add `lastUpdateTime: number = 0` property
+- [ ] Clean up subscription in `disconnectedCallback()`
 
-### Task 4.2: Implement staleness detection
+### Task 4.2: Implement staleness detection (Future)
 **File:** `src/nostr-stream/nostr-stream.ts`
 
 - [ ] Add method `startStalenessCheck()`
@@ -334,6 +330,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - If stale: Update `parsedStream.status` to 'ended' and re-render
   - Store interval ID in `stalenessCheckInterval` for cleanup
 
+- [ ] Add `stalenessCheckInterval: number | null = null` property
 - [ ] Call `startStalenessCheck()` in `onEventReady()`
 - [ ] Clear interval in `disconnectedCallback()`
 
@@ -341,7 +338,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - Phase 1 (addressable event resolution)
 - Phase 3 (component structure)
 
-**Testing:**
+**Testing (Future):**
 - Test subscription receives updates
 - Test only newer events trigger updates
 - Test staleness detection works correctly
@@ -366,7 +363,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - Re-render
 
 - [ ] Call `loadParticipantProfiles()` in `onEventReady()`
-- [ ] Re-call when participant list changes (in subscription handler)
+- [ ] Note: Participant list updates require page refresh (live subscriptions are future enhancement)
 
 ### Task 5.2: Update render to show participants
 **File:** `src/nostr-stream/render.ts`
@@ -528,7 +525,6 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 
 - [ ] Add try-catch blocks around async operations:
   - `resolveEventAndLoad()` - catch event resolution errors
-  - `subscribeToStreamUpdates()` - catch subscription errors
   - `loadParticipantProfiles()` - catch profile fetch errors
   - Video event handlers - catch video load errors
 - [ ] Set appropriate error statuses:
@@ -542,7 +538,7 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - "Video failed to load" - when video player errors
 - [ ] Log errors to console for debugging (using `console.error()`)
 
-### Task 7.6: Performance optimizations
+### Task 7.6: Performance optimizations (Not now. Future TODO)
 **File:** `src/nostr-stream/nostr-stream.ts`
 
 - [ ] Debounce render calls (if rapid updates occur) - throttle to max once per 100ms
@@ -551,8 +547,8 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - Only fetch profiles for new participants (compare pubkeys)
   - Reuse existing profiles from Map when participants list hasn't changed
   - Batch all profile fetches in single query (already using `getBatchedProfileMetadata`)
-- [ ] Clean up subscriptions and intervals in `disconnectedCallback()` to prevent memory leaks
-- [ ] Only subscribe to stream updates when component is connected
+- [ ] Clean up listeners in `disconnectedCallback()` to prevent memory leaks
+- [ ] Note: Live subscriptions are a future enhancement (see Phase 4)
 
 **Dependencies:**
 - All previous phases
@@ -586,8 +582,8 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - [ ] Test with relay connection issues (unreachable relays, authentication failures)
 - [ ] Test with very long titles/summaries (truncation or overflow handling)
 - [ ] Test with 1000+ participants (NIP-53 limit) - verify scrolling and performance
-- [ ] Test status transitions (planned → live → ended)
-- [ ] Test staleness detection (live stream with no updates for 1+ hour)
+- [ ] Test status rendering (planned/live/ended from initial fetch)
+- [ ] Note: Status updates require page refresh (staleness detection is future enhancement)
 - [ ] Test with invalid naddr (malformed bech32, wrong type)
 - [ ] Test with naddr pointing to non-existent event
 - [ ] Test with naddr pointing to wrong kind (not 30311)
@@ -600,16 +596,180 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 
 ---
 
+## Phase 9: WordPress Plugin Integration
+
+**Goal:** Add nostr-stream component to WordPress plugin as a Gutenberg block and shortcode.
+
+### Task 9.1: Register component in WordPress plugin registry
+**File:** `saiy2k-nostr-components/inc/Registry.php`
+
+- [ ] Add `nostr-stream` entry to `all()` method array:
+  ```php
+  'nostr-stream' => [
+      'title'       => 'Nostr Stream',
+      'description' => 'Display Nostr live streaming events (NIP-53)',
+      'shortcode'   => 'nostr_stream',
+      'block'       => 'nostr/nostr-stream',
+      'esm'         => 'assets/nostr-stream.es.js',
+      'dependencies' => [],
+      'attributes'  => [
+          'naddr' => ['type' => 'string'],
+          'theme' => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
+          'relays' => ['type' => 'string'],
+          'show-participants' => ['type' => 'boolean', 'default' => true],
+          'show-participant-count' => ['type' => 'boolean', 'default' => true],
+          'auto-play' => ['type' => 'boolean', 'default' => false],
+      ],
+  ],
+  ```
+  - Add after existing component entries
+  - Match attribute names from component spec (use kebab-case)
+  - Set appropriate defaults
+
+### Task 9.2: Create Gutenberg block definition
+**File:** `saiy2k-nostr-components/blocks/nostr-stream/block.json`
+
+- [ ] Create block.json file:
+  - Set `name` to `nostr/nostr-stream`
+  - Set `title` to `Nostr Stream`
+  - Set `category` to `nostr`
+  - Set appropriate `icon` (e.g., `video-alt3`)
+  - Set `description` to match registry
+  - Define `attributes` matching Registry metadata:
+    - `naddr` (string, default: "")
+    - `theme` (string, enum: ["", "light", "dark"], default: "")
+    - `relays` (string, default: "")
+    - `show-participants` (boolean, default: true)
+    - `show-participant-count` (boolean, default: true)
+    - `auto-play` (boolean, default: false)
+  - Set `supports.html` to `false` (server-rendered)
+
+### Task 9.3: Create Gutenberg block editor UI
+**File:** `saiy2k-nostr-components/blocks/nostr-stream/index.js`
+
+- [ ] Create block editor registration script:
+  - Use `wp.blocks.registerBlockType` to register block
+  - Implement `edit` function with InspectorControls:
+    - Add TextControl for `naddr` attribute
+      - Label: "Stream Address (naddr)"
+      - Help text: "NIP-19 addressable event code (naddr1...)"
+      - Placeholder: "naddr1..."
+    - Add TextControl for `relays` attribute
+      - Label: "Relays"
+      - Help text: "Comma-separated list of Nostr relay URLs"
+      - Placeholder: "wss://relay.example.com,wss://relay2.example.com"
+    - Add SelectControl for `theme` attribute
+      - Label: "Theme"
+      - Options: "Use Site Default", "Light", "Dark"
+    - Add ToggleControl for `show-participants`
+      - Label: "Show Participants"
+      - Help: "Display participant list with roles"
+    - Add ToggleControl for `show-participant-count`
+      - Label: "Show Participant Count"
+      - Help: "Display current and total participant counts"
+    - Add ToggleControl for `auto-play`
+      - Label: "Autoplay Video"
+      - Help: "Automatically play video when stream is live"
+  - Implement `save` function returning `null` (server-rendered)
+  - Add visual placeholder in editor showing:
+    - Block title "Nostr Stream"
+    - Current naddr value (if provided)
+    - Icon or preview placeholder
+  - Follow pattern from existing blocks (e.g., `nostr-post/index.js`)
+
+### Task 9.4: Update build script to include nostr-stream
+**File:** `scripts/wp-copy.js`
+
+- [ ] Add `'nostr-stream'` to `components` array:
+  ```javascript
+  const components = [
+      'nostr-post',
+      'nostr-profile', 
+      'nostr-profile-badge',
+      'nostr-follow-button',
+      'nostr-zap-button',
+      'nostr-like-button',
+      'nostr-stream'  // Add this line
+  ];
+  ```
+  - Ensure component is copied during WordPress build process
+  - Verify `nostr-stream.es.js` is included in manifest
+
+### Task 9.5: Update plugin activation defaults (optional)
+**File:** `saiy2k-nostr-components/saiy2k-nostr-components.php`
+
+- [ ] Consider adding `'nostr-stream'` to default enabled components in activation hook:
+  ```php
+  add_option('nostr_wp_enabled_components', [
+      'nostr-post', 
+      'nostr-profile', 
+      'nostr-profile-badge', 
+      'nostr-follow-button', 
+      'nostr-zap-button', 
+      'nostr-like-button',
+      'nostr-stream'  // Optional: add to defaults
+  ]);
+  ```
+  - Note: This is optional - users can enable via plugin settings
+
+### Task 9.6: Update shortcode usage examples (optional)
+**File:** `saiy2k-nostr-components/inc/Shortcodes.php`
+
+- [ ] Add `naddr` example value to `get_example_value()` method:
+  ```php
+  case 'naddr':
+      return 'naddr1qqjr2vehvyenvdtr94nrzetr956rgctr94skvvfs95eryep3x3snwve389nxyqgwwaehxw309ahx7uewd3hkctcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhszxthwden5te0wfjkccte9eekummjwsh8xmmrd9skctcpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtcpz9mhxue69uhkummnw3ezumrpdejz7qg7waehxw309ahx7um5wgkhqatz9emk2mrvdaexgetj9ehx2ap0qyghwumn8ghj7mn0wd68ytnhd9hx2tcpz4mhxue69uhhyetvv9ujumn0wd68ytnzvuhsz9thwden5te0dehhxarj9ehhsarj9ejx2a30qgsv73dxhgfk8tt76gf6q788zrfyz9dwwgwfk3aar6l5gk82a76v9fgrqsqqqan8tp7le0';
+  ```
+  - Add to identifier priority array if needed (for shortcode usage examples)
+
+### Task 9.7: Verify WordPress integration
+- [ ] Run `npm run wp-build` to copy component to WordPress plugin
+- [ ] Verify `nostr-stream.es.js` exists in `saiy2k-nostr-components/assets/`
+- [ ] Verify block directory exists: `saiy2k-nostr-components/blocks/nostr-stream/`
+- [ ] Test Gutenberg block in WordPress editor:
+  - Block appears in "Saiy2k Nostr Components" category
+  - Inspector controls work correctly
+  - Attributes save and render properly
+  - Preview placeholder displays correctly
+- [ ] Test shortcode `[nostr_stream]` in classic editor:
+  - Shortcode renders component correctly
+  - Attributes pass through properly
+  - Component loads and displays stream
+
+**Dependencies:**
+- Phase 1-7 (component must be fully implemented)
+- Phase 8 (component should be tested before WordPress integration)
+
+**Files to Create:**
+- `saiy2k-nostr-components/blocks/nostr-stream/block.json`
+- `saiy2k-nostr-components/blocks/nostr-stream/index.js`
+
+**Files to Modify:**
+- `saiy2k-nostr-components/inc/Registry.php` - Add component metadata
+- `scripts/wp-copy.js` - Add to components array
+- `saiy2k-nostr-components/saiy2k-nostr-components.php` - Optional: Add to default enabled components
+- `saiy2k-nostr-components/inc/Shortcodes.php` - Optional: Add naddr example
+
+**Testing:**
+- Test Gutenberg block registration
+- Test block editor UI and controls
+- Test shortcode rendering
+- Test component loading in WordPress context
+- Verify component works with WordPress shared config (relays, theme)
+
+---
+
 ## Implementation Order Summary
 
 1. **Phase 1**: Extend EventResolver and NostrEventComponent (Foundation)
 2. **Phase 2**: Create stream-utils.ts (Data parsing)
 3. **Phase 3**: Component skeleton and basic rendering (Core structure)
-4. **Phase 4**: Live subscription (Real-time updates)
+4. **Phase 4**: Live subscription (Future enhancement - currently requires page refresh)
 5. **Phase 5**: Participant profiles (Social features)
 6. **Phase 6**: Video player (Media display)
 7. **Phase 7**: Polish and integration (Production readiness)
 8. **Phase 8**: Testing and documentation (Quality assurance)
+9. **Phase 9**: WordPress plugin integration (WordPress block and shortcode)
 
 ---
 
@@ -623,6 +783,8 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - `src/nostr-stream/spec/spec.md` - ✅ Already created
 - `src/nostr-stream/spec/implementation.md` - ✅ Already created
 - `src/nostr-stream/spec/testing.md` - ✅ Already created
+- `saiy2k-nostr-components/blocks/nostr-stream/block.json` - WordPress block definition
+- `saiy2k-nostr-components/blocks/nostr-stream/index.js` - WordPress block editor UI
 
 ### Files to Modify
 - `src/base/resolvers/event-resolver.ts` - Add addressable event support
@@ -630,6 +792,10 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - `src/index.ts` - Export component
 - `vite.config.esm.ts` - Add build entry
 - `vite.config.umd.ts` - Add build entry (if exists)
+- `saiy2k-nostr-components/inc/Registry.php` - Add component metadata (Phase 9)
+- `scripts/wp-copy.js` - Add to components array (Phase 9)
+- `saiy2k-nostr-components/saiy2k-nostr-components.php` - Optional: Add to default enabled components (Phase 9)
+- `saiy2k-nostr-components/inc/Shortcodes.php` - Optional: Add naddr example (Phase 9)
 
 ---
 
@@ -651,9 +817,10 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
   - All tags optional except `d` tag
 
 ### External
-- `@nostr-dev-kit/ndk` - NDKEvent, NDKSubscription
+- `@nostr-dev-kit/ndk` - NDKEvent
 - `nostr-tools` - nip19 decoding
 - `hls-video-element` - HLS video playback custom element (cross-browser HLS support)
+- `NDKSubscription` - Future enhancement for live subscriptions (Phase 4)
 
 ---
 
@@ -662,13 +829,14 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - **Phase 1**: Medium (extends existing infrastructure)
 - **Phase 2**: Low (straightforward parsing)
 - **Phase 3**: Medium (component structure setup)
-- **Phase 4**: Medium (subscription logic)
+- **Phase 4**: Medium (subscription logic) - Future enhancement
 - **Phase 5**: Low (reuses existing patterns)
 - **Phase 6**: Low (hls-video-element custom element)
 - **Phase 7**: Low (polish and configuration)
 - **Phase 8**: Medium (comprehensive testing)
+- **Phase 9**: Low (follows existing WordPress plugin patterns)
 
-**Total Estimated Effort**: 3-4 days for complete implementation
+**Total Estimated Effort**: 3-4 days for complete implementation (excluding Phase 4 future enhancement)
 
 ---
 
@@ -682,8 +850,8 @@ This document outlines the step-by-step implementation plan for the `nostr-strea
 - Use delegated events for Shadow DOM efficiency (via `delegateEvent()`)
 - Follow memory leak prevention patterns (cleanup in disconnectedCallback)
 - Status management: Use inherited `eventStatus` and `authorStatus` from `NostrEventComponent`, don't create new `streamStatus`
-- Addressable events: Store decoded naddr data (kind, pubkey, dTag, relays) for use in subscriptions
+- Addressable events: Store decoded naddr data (kind, pubkey, dTag, relays) for reference
 - Video player: Use `<hls-video>` custom element (not native `<video>`) for cross-browser HLS support
 - Participant limits: NIP-53 recommends keeping participant lists under 1000 users - handle gracefully
 - Status-based rendering: Only show video player when status is "live", show preview image otherwise
-- Staleness detection: Automatically mark live streams as "ended" if no updates received for 1 hour
+- Status updates: Component renders based on initial event fetch. Status updates require page refresh (live subscriptions and staleness detection are future enhancements - see Phase 4)

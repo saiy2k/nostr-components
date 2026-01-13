@@ -13,13 +13,13 @@ export function getStreamStyles(): string {
       --nostrc-stream-font-family: var(--nostrc-font-family-primary);
       --nostrc-stream-font-size: var(--nostrc-font-size-base);
       
-      /* Status badge colors */
-      --nostrc-stream-status-planned-bg: #e3f2fd;
-      --nostrc-stream-status-planned-color: #1976d2;
-      --nostrc-stream-status-live-bg: #e8f5e9;
-      --nostrc-stream-status-live-color: #2e7d32;
-      --nostrc-stream-status-ended-bg: #f5f5f5;
-      --nostrc-stream-status-ended-color: #616161;
+      /* Status badge colors (theme-aware, can be overridden by data-theme) */
+      --nostrc-stream-status-planned-bg: var(--nostrc-theme-status-planned-bg, #e3f2fd);
+      --nostrc-stream-status-planned-color: var(--nostrc-theme-status-planned-color, #1976d2);
+      --nostrc-stream-status-live-bg: var(--nostrc-theme-status-live-bg, #e8f5e9);
+      --nostrc-stream-status-live-color: var(--nostrc-theme-status-live-color, #2e7d32);
+      --nostrc-stream-status-ended-bg: var(--nostrc-theme-status-ended-bg, #f5f5f5);
+      --nostrc-stream-status-ended-color: var(--nostrc-theme-status-ended-color, #616161);
       
       /* Hover state variables */
       --nostrc-stream-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));

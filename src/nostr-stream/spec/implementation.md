@@ -44,7 +44,7 @@ This document contains the technical implementation details for the `nostr-strea
 - Zap Utils: `getBatchedProfileMetadata()` (reused for participant profile fetching)
 
 ### External Dependencies
-- `@nostr-dev-kit/ndk`: NDKEvent, NDKUser, NDKKind, NDKSubscription
+- `@nostr-dev-kit/ndk`: NDKEvent, NDKUser, NDKKind
 - `nostr-tools`: `nip19` for bech32 decoding/encoding
 - `hls-video-element`: Custom element for HLS video playback with cross-browser support
 
@@ -56,12 +56,12 @@ This document contains the technical implementation details for the `nostr-strea
    - Validate inputs (`naddr` attribute)
    - Decode naddr to extract `kind`, `pubkey`, `identifier` (d tag)
    - Connect to relays (inherited)
-   - Start addressable event subscription
+   - Fetch addressable event
    - Attach delegated listeners
    - Render initial state
 3. Attribute Changed: Handle `naddr`, `show-participants`, `show-participant-count`, `auto-play`, `data-theme` updates
 4. Status Change: React to status updates via `onStatusChange()`, `onEventReady()`
-5. Disconnected Callback: Clean up subscriptions and listeners
+5. Disconnected Callback: Clean up listeners
 
 ### Addressable Event Resolution
 
@@ -96,51 +96,21 @@ This document contains the technical implementation details for the `nostr-strea
 - Extend `resolveEventAndLoad()` method:
   - Check if `naddr` attribute exists
   - If naddr: Call `eventResolver.resolveAddressableEvent({ naddr })`
-  - Store decoded naddr data (kind, pubkey, dTag) for subscription use
+  - Store decoded naddr data (kind, pubkey, dTag) for reference
   - Continue with existing flow for author profile loading
 
-## Live Subscription Strategy
+## Future Enhancements
 
-### Persistent Subscription
-```typescript
-private streamSubscription: NDKSubscription | null = null;
-
-private subscribeToStreamUpdates(pubkey: string, dTag: string): void {
-  if (this.streamSubscription) {
-    this.streamSubscription.stop();
-  }
-
-  const filter = {
-    kinds: [30311],
-    authors: [pubkey],
-    '#d': [dTag],
-  };
-
-  this.streamSubscription = this.nostrService.getNDK().subscribe([filter], {
-    closeOnEose: false, // Keep subscription open
-    groupable: false
-  });
-
-  this.streamSubscription.on('event', (event: NDKEvent) => {
-    // Only update if this event is newer than current
-    if (!this.event || event.created_at > this.event.created_at) {
-      this.event = event;
-      this.parseStreamEvent(event);
-      this.render();
-    }
-  });
-}
-```
-
-### Update Detection
-- Compare `created_at` timestamps
+### Live Event Subscriptions
+- Real-time updates when stream status or participants change
+- Requires persistent NDK subscription with `closeOnEose: false`
+- Compare `created_at` timestamps to detect newer events
 - Only update if new event is newer than current event
-- Parse and update all stream metadata (status, participants, counts, etc.)
 
 ### Staleness Detection
 - Track last update timestamp
-- If `status="live"` and no update received for 1 hour, consider ended
-- Use `setInterval` to check staleness every 5 minutes
+- If `status="live"` and no update received for extended period, consider ended
+- Use `setInterval` to check staleness periodically
 - Update UI to show ended state
 
 ## Stream Event Parsing
@@ -262,26 +232,21 @@ private renderVideoPlayer(streamingUrl: string | undefined, status: string): str
 - `ended`: Render recording link if available, show final participant counts
 
 ### Status Updates
-- Update rendering when status changes
+- Render based on status from initially fetched event
+- Status updates require page refresh to reflect changes
 - Transition video player visibility based on status
 - Update participant list visibility based on status
 
 ## Performance Considerations
-
-### Subscription Management
-- Single persistent subscription per component
-- Clean up subscription on `disconnectedCallback`
-- Avoid duplicate subscriptions when attributes change
 
 ### Profile Batching
 - Fetch all participant profiles in single batched query
 - Reduce relay round-trips
 - Reuse `getBatchedProfileMetadata()` from zap-utils
 
-### Debouncing Updates
-- Debounce render calls when rapid event updates occur
-- Throttle staleness checks to every 5 minutes
+### Render Optimization
 - Cache parsed event data to avoid re-parsing on every render
+- Debounce render calls when rapid attribute changes occur
 
 ### Lazy Loading
 - Only load video player when status becomes "live"

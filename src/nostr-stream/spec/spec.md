@@ -190,6 +190,7 @@ For technical details about the event structure and implementation, see [NIP-53 
 
 ## Future Enhancements
 
+- Live event subscriptions: Real-time updates when stream status or participants change
 - Live chat integration (kind:1311 events with `a` tag reference)
 - Meeting spaces support (kind:30312, 30313)
 - Participant proof verification
@@ -199,3 +200,4 @@ For technical details about the event structure and implementation, see [NIP-53 
 - Real-time participant presence indicators
 - Enhanced video player controls
 - Notification when stream goes live
+- Staleness detection: Marking live streams as ended if no updates received for extended period
