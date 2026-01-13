@@ -3,8 +3,9 @@
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { ParsedStreamEvent } from './stream-utils';
-import { escapeHtml } from '../common/utils';
+import { escapeHtml, hexToNpub } from '../common/utils';
 import { formatEventDate } from '../common/date-utils';
+import { NCStatus } from '../base/base-component/nostr-base-component';
 
 export interface RenderStreamOptions extends IRenderOptions {
   author: NDKUserProfile | null;
@@ -13,6 +14,7 @@ export interface RenderStreamOptions extends IRenderOptions {
   showParticipantCount: boolean;
   autoPlay: boolean;
   participantProfiles: Map<string, any>;
+  participantsStatus: NCStatus;
 }
 
 export function renderStream(options: RenderStreamOptions): string {
@@ -25,6 +27,7 @@ export function renderStream(options: RenderStreamOptions): string {
     showParticipants,
     showParticipantCount,
     participantProfiles,
+    participantsStatus,
   } = options;
 
   // Handle error state
@@ -43,7 +46,7 @@ export function renderStream(options: RenderStreamOptions): string {
       ${renderStreamHeader(isLoading, author, parsedStream)}
       ${renderStreamMedia(parsedStream, options.autoPlay)}
       ${renderStreamMetadata(parsedStream, showParticipantCount)}
-      ${showParticipants ? renderParticipants(parsedStream, participantProfiles, isLoading) : ''}
+      ${showParticipants ? renderParticipants(parsedStream, participantProfiles, participantsStatus) : ''}
     </div>
   `;
 }
@@ -235,11 +238,12 @@ function renderStreamMetadata(
 function renderParticipants(
   parsedStream: ParsedStreamEvent,
   participantProfiles: Map<string, any>,
-  isLoading: boolean
+  participantsStatus: NCStatus
 ): string {
   const participants = parsedStream.participants || [];
 
-  if (isLoading) {
+  // Show skeleton loaders while participants are loading
+  if (participantsStatus === NCStatus.Loading) {
     return `
       <div class="stream-participants">
         <h3 class="participants-title">Participants</h3>
@@ -264,15 +268,35 @@ function renderParticipants(
     `;
   }
 
-  // TODO: Enhanced participant rendering with profiles in Phase 5
+  // Enhanced participant rendering with profiles
   return `
     <div class="stream-participants">
       <h3 class="participants-title">Participants (${participants.length})</h3>
       <div class="participants-list">
         ${participants.map(participant => {
           const profile = participantProfiles.get(participant.pubkey);
-          const displayName = profile?.displayName || profile?.name || `npub${participant.pubkey.slice(0, 8)}...`;
+          
+          // Get display name: profile.displayName or profile.name or npub short format
+          let displayName: string;
+          if (profile?.displayName) {
+            displayName = profile.displayName;
+          } else if (profile?.name) {
+            displayName = profile.name;
+          } else {
+            // Fallback to shortened npub format
+            try {
+              const npub = hexToNpub(participant.pubkey);
+              displayName = `${npub.slice(0, 8)}...${npub.slice(-8)}`;
+            } catch {
+              // If hexToNpub fails, use hex format
+              displayName = `${participant.pubkey.slice(0, 8)}...${participant.pubkey.slice(-8)}`;
+            }
+          }
+          
+          // Get avatar image
           const image = profile?.picture || profile?.image || '';
+          
+          // Get role (Host/Speaker/Participant) - default to 'Participant'
           const role = participant.role || 'Participant';
           const roleClass = `participant-role participant-role-${role.toLowerCase()}`;
 
@@ -280,7 +304,7 @@ function renderParticipants(
             <div class="participant-item">
               <div class="participant-avatar">
                 ${image
-                  ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(displayName)}" />`
+                  ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(displayName)}" loading="lazy" />`
                   : '<div class="participant-avatar-placeholder"></div>'
                 }
               </div>
