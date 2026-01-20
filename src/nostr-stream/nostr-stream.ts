@@ -7,7 +7,11 @@ import { parseStreamEvent, ParsedStreamEvent } from './stream-utils';
 import { renderStream, RenderStreamOptions } from './render';
 import { getStreamStyles } from './style';
 import { getBatchedProfileMetadata } from '../nostr-zap-button/zap-utils';
+import { hexToNpub } from '../common/utils';
 import 'hls-video-element';
+
+const EVT_STREAM = 'nc:stream';
+const EVT_AUTHOR = 'nc:author';
 
 export default class NostrStream extends NostrEventComponent {
 
@@ -38,7 +42,7 @@ export default class NostrStream extends NostrEventComponent {
   connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
-    this.renderContent();
+    this.render();
   }
 
   /**
@@ -55,7 +59,7 @@ export default class NostrStream extends NostrEventComponent {
 
   protected onEventReady(event: NDKEvent) {
     this.parseLiveStreamEvent(event);
-    this.renderContent();
+    this.render();
   }
 
   /**
@@ -65,17 +69,17 @@ export default class NostrStream extends NostrEventComponent {
   protected updateHostClasses() {
     const eventReady = this.eventStatus.get() === NCStatus.Ready;
     const authorReady = this.authorStatus.get() === NCStatus.Ready;
-    const isLoading = !(eventReady && authorReady);
     const isError = this.eventStatus.get() === NCStatus.Error || this.authorStatus.get() === NCStatus.Error;
+    const isLoading = !isError && !(eventReady && authorReady);
     
     // Remove all state classes
     this.classList.remove('is-clickable', 'is-disabled', 'is-error');
     
-    // Add appropriate state class
-    if (isLoading) {
-      this.classList.add('is-disabled');
-    } else if (isError) {
+    // Add appropriate state class (check error first, then loading, then ready)
+    if (isError) {
       this.classList.add('is-error');
+    } else if (isLoading) {
+      this.classList.add('is-disabled');
     } else if (eventReady && authorReady) {
       this.classList.add('is-clickable');
     }
@@ -89,7 +93,7 @@ export default class NostrStream extends NostrEventComponent {
       const msg = error instanceof Error ? error.message : 'Failed to parse stream event';
       console.error('[NostrStream] ' + msg, error);
       this.eventStatus.set(NCStatus.Error, msg);
-      this.renderContent();
+      this.render();
       return;
     }
 
@@ -126,7 +130,7 @@ export default class NostrStream extends NostrEventComponent {
 
     // Set status to loading
     this.participantsStatus.set(NCStatus.Loading);
-    this.renderContent();
+    this.render();
 
     try {
       // Fetch all profiles in a single batched call
@@ -159,13 +163,13 @@ export default class NostrStream extends NostrEventComponent {
       console.log('participant profiles:', this.participantProfiles);
       
       // Re-render to show profiles
-      this.renderContent();
+      this.render();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to load participants';
       const userFriendlyMsg = 'Failed to load participants';
       console.error('[NostrStream] Participant profile fetch error:', msg, error);
       this.participantsStatus.set(NCStatus.Error, userFriendlyMsg);
-      this.renderContent();
+      this.render();
     }
   }
 
@@ -184,14 +188,98 @@ export default class NostrStream extends NostrEventComponent {
 
     // Handle component-specific attributes
     if (name === 'show-participants' || name === 'show-participant-count' || name === 'auto-play') {
-      this.renderContent();
+      this.render();
     }
   }
 
   /**
-   * Attach delegated event listeners for video player
+   * Handle click on the stream component - opens zap.stream
+   */
+  private onStreamClick(): void {
+    // Check if component is ready (event and author loaded)
+    const eventReady = this.eventStatus.get() === NCStatus.Ready;
+    const authorReady = this.authorStatus.get() === NCStatus.Ready;
+    if (!eventReady || !authorReady) return;
+
+    const naddr = this.getAttribute('naddr');
+    if (!naddr) return;
+
+    const event = new CustomEvent(EVT_STREAM, {
+      detail: {
+        event: this.event,
+        parsedStream: this.parsedStream,
+        naddr,
+      },
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+
+    const notPrevented = this.dispatchEvent(event);
+    if (notPrevented) {
+      window.open(`https://zap.stream/${naddr}`, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  /**
+   * Handle click on author info - opens njump.me profile
+   */
+  private onAuthorClick(): void {
+    // Check if component is ready (event and author loaded)
+    const eventReady = this.eventStatus.get() === NCStatus.Ready;
+    const authorReady = this.authorStatus.get() === NCStatus.Ready;
+    if (!eventReady || !authorReady) return;
+
+    // Get host pubkey or fallback to event author
+    const pubkey = this.hostPubkey || this.event?.pubkey;
+    if (!pubkey) return;
+
+    // Convert pubkey to npub for njump URL
+    let npub: string;
+    try {
+      npub = hexToNpub(pubkey);
+    } catch {
+      // Fallback to raw pubkey if conversion fails
+      npub = pubkey;
+    }
+
+    const displayProfile = this.hostProfile || this.authorProfile;
+
+    const event = new CustomEvent(EVT_AUTHOR, {
+      detail: {
+        pubkey,
+        npub,
+        profile: displayProfile,
+      },
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+
+    const notPrevented = this.dispatchEvent(event);
+    if (notPrevented) {
+      window.open(`https://njump.me/${npub}`, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  /**
+   * Attach delegated event listeners for video player and click handlers
    */
   private attachDelegatedListeners(): void {
+    // Click anywhere on the stream container (except interactive elements)
+    this.delegateEvent('click', '.nostr-stream-container', (e: Event) => {
+      const target = e.target as HTMLElement;
+      // Don't trigger stream click if clicking on author info, video controls, or links
+      if (!target.closest('.stream-author-row, video, hls-video, a, .stream-video')) {
+        this.onStreamClick();
+      }
+    });
+
+    // Click on author row (avatar + info)
+    this.delegateEvent('click', '.stream-author-row', () => {
+      this.onAuthorClick();
+    });
+
     // Listen for video error events
     this.delegateEvent('error', '.stream-video', (e: Event) => {
       const target = e.target as HTMLMediaElement;
@@ -219,7 +307,7 @@ export default class NostrStream extends NostrEventComponent {
       
       console.error('[NostrStream] Video error:', errorMessage, error);
       this.videoStatus.set(NCStatus.Error, errorMessage);
-      this.renderContent(); // Re-render to show fallback preview image
+      this.render(); // Re-render to show fallback preview image
     });
 
     // Listen for video loaded metadata (ready to play)

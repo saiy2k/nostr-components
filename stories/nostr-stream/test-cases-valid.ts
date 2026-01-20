@@ -81,4 +81,34 @@ export const TEST_CASES = {
       'show-participant-count': 'false',
     },
   },
+
+  // Theme Variations
+  oceanGlassTheme: {
+    name: 'Ocean Glass Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+    },
+  },
+  holographicTheme: {
+    name: 'Holographic Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+    },
+  },
+  neoMatrixTheme: {
+    name: 'Neo Matrix Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+    },
+  },
+  bitcoinOrangeTheme: {
+    name: 'Bitcoin Orange Theme',
+    args: {
+      width: DEFAULT_WIDTH,
+      naddr: STREAM_DATA.live.naddr,
+    },
+  },
 };

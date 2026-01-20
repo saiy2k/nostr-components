@@ -16,7 +16,11 @@ export const STREAM_DATA: Record<string, Stream> = {
   },
   live: {
     name: 'Live Stream',
-    naddr: 'naddr1qqjxgv3jvgurjc3495urydnp956xxvpc95uryd3j943kgdpnxa3xgepcx3skgqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzpa4ztwrl0ea7exnfrcmc2xcm27nmf8aqpw6rz2qrqvqz504u5jy3qvzqqqrkvunnhlja',
+    naddr: 'naddr1qqjxgdrzv9jnwdmr94skgwpn956r2ety943xgwr995urwvtyvsckzd33x33xxqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzpn6956apxcad0mfp8grcuugdysg44eepex68h50t73zcathmfs49qvzqqqrkvu0mc7et',
+  },
+  live2: {
+    name: 'Live Stream 2',
+    naddr: 'naddr1qqjrydm9vsmryerz95mrqv3h956rgvrz95urzdty943r2d3jxy6kvcn9xsckxqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzpn98aa2pmwpk39qnm96ufa4rte8vwwg45fvkcacyztvjsmnnyvtkqvzqqqrkvu7qdk0f',
   },
   planned: {
     name: 'Planned Stream',

@@ -50,6 +50,10 @@ export function getStreamStyles(): string {
       cursor: pointer;
     }
 
+    :host(.is-error) {
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
+    }
+
     /* === STREAM CONTAINER === */
     .nostr-stream-container {
       display: flex;
@@ -97,6 +101,12 @@ export function getStreamStyles(): string {
       display: flex;
       align-items: center;
       gap: var(--nostrc-spacing-sm);
+      cursor: pointer;
+    }
+
+    .stream-author-row:hover .author-name,
+    .stream-author-row:hover .author-username {
+      text-decoration: underline;
     }
 
     .author-picture {
