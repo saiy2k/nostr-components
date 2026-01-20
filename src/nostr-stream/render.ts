@@ -61,17 +61,18 @@ function renderStreamHeader(
   if (isLoading) {
     return `
       <div class="stream-header">
-        <div class="stream-header-left">
+        <div class="stream-title-row">
+          <div style="display: block; width: 70%; height: 20px; border-radius: 10px; margin-bottom: 0;" class="skeleton"></div>
+          <div style="display: block; width: 80px; height: 24px; border-radius: 12px; margin-bottom: 0;" class="skeleton"></div>
+        </div>
+        <div class="stream-author-row">
           <div class="author-picture">
-            <div style="width: 35px; height: 35px; border-radius: 50%;" class="skeleton"></div>
+            <div style="display: block; width: 35px; height: 35px; border-radius: 50%; margin-bottom: 0;" class="skeleton"></div>
           </div>
-        </div>
-        <div class="stream-header-middle">
-          <div style="width: 70%; height: 16px; border-radius: 10px; margin-bottom: 8px;" class="skeleton"></div>
-          <div style="width: 50%; height: 12px; border-radius: 10px;" class="skeleton"></div>
-        </div>
-        <div class="stream-header-right">
-          <div style="width: 80px; height: 24px; border-radius: 12px;" class="skeleton"></div>
+          <div class="stream-author-info">
+            <div style="display: block; width: 150px; height: 16px; border-radius: 8px; margin-bottom: 4px;" class="skeleton"></div>
+            <div style="display: block; width: 120px; height: 14px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
+          </div>
         </div>
       </div>
     `;
@@ -86,20 +87,20 @@ function renderStreamHeader(
 
   return `
     <div class="stream-header">
-      <div class="stream-header-left">
+      <div class="stream-title-row">
+        <div class="stream-title">${escapeHtml(title)}</div>
+        <div class="stream-header-right">
+          <span class="${statusBadgeClass}">${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</span>
+        </div>
+      </div>
+      <div class="stream-author-row">
         <div class="author-picture">
           ${authorImage ? `<img src="${escapeHtml(authorImage)}" alt="${escapeHtml(authorName)}" />` : ''}
         </div>
-      </div>
-      <div class="stream-header-middle">
-        <div class="stream-title">${escapeHtml(title)}</div>
         <div class="stream-author-info">
           ${authorName ? `<span class="author-name">${escapeHtml(authorName)}</span>` : ''}
           ${authorNip05 ? `<span class="author-username">${escapeHtml(authorNip05)}</span>` : ''}
         </div>
-      </div>
-      <div class="stream-header-right">
-        <span class="${statusBadgeClass}">${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</span>
       </div>
     </div>
   `;
@@ -200,7 +201,7 @@ function renderStreamMetadata(
 ): string {
   const summary = parsedStream.summary;
   const hashtags = parsedStream.hashtags || [];
-  const currentParticipants = parsedStream.currentParticipants;
+  const currentParticipants = parsedStream.currentParticipants ||parsedStream.participants.length;
   const totalParticipants = parsedStream.totalParticipants;
   const starts = parsedStream.starts;
   const ends = parsedStream.ends;
@@ -357,26 +358,27 @@ function renderLoading(): string {
   return `
     <div class="nostr-stream-container">
       <div class="stream-header">
-        <div class="stream-header-left">
+        <div class="stream-title-row">
+          <div style="display: block; width: 70%; height: 20px; border-radius: 10px; margin-bottom: 0;" class="skeleton"></div>
+          <div style="display: block; width: 80px; height: 24px; border-radius: 12px; margin-bottom: 0;" class="skeleton"></div>
+        </div>
+        <div class="stream-author-row">
           <div class="author-picture">
-            <div style="width: 35px; height: 35px; border-radius: 50%;" class="skeleton"></div>
+            <div style="display: block; width: 35px; height: 35px; border-radius: 50%; margin-bottom: 0;" class="skeleton"></div>
           </div>
-        </div>
-        <div class="stream-header-middle">
-          <div style="width: 70%; height: 16px; border-radius: 10px; margin-bottom: 8px;" class="skeleton"></div>
-          <div style="width: 50%; height: 12px; border-radius: 10px;" class="skeleton"></div>
-        </div>
-        <div class="stream-header-right">
-          <div style="width: 80px; height: 24px; border-radius: 12px;" class="skeleton"></div>
+          <div class="stream-author-info">
+            <div style="display: block; width: 150px; height: 16px; border-radius: 8px; margin-bottom: 4px;" class="skeleton"></div>
+            <div style="display: block; width: 120px; height: 14px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
+          </div>
         </div>
       </div>
       <div class="stream-media">
-        <div style="width: 100%; height: 300px; border-radius: 8px;" class="skeleton"></div>
+        <div style="display: block; width: 100%; height: 300px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
       </div>
       <div class="stream-metadata">
-        <div style="width: 100%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
-        <div style="width: 80%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
-        <div style="width: 60%; height: 14px; border-radius: 4px;" class="skeleton"></div>
+        <div style="display: block; width: 100%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
+        <div style="display: block; width: 80%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
+        <div style="display: block; width: 60%; height: 14px; border-radius: 4px; margin-bottom: 0;" class="skeleton"></div>
       </div>
     </div>
   `;

@@ -43,11 +43,6 @@ export const PlannedStatus: Story = {
   args: TEST_CASES.plannedStatus.args,
 };
 
-export const LiveStatus: Story = {
-  name: TEST_CASES.liveStatus.name,
-  args: TEST_CASES.liveStatus.args,
-};
-
 export const EndedStatus: Story = {
   name: TEST_CASES.endedStatus.name,
   args: TEST_CASES.endedStatus.args,

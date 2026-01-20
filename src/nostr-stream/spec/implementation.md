@@ -8,40 +8,33 @@ This document contains the technical implementation details for the `nostr-strea
 
 ### Base Class
 - Extends: `NostrEventComponent` → `NostrBaseComponent`
-- Inheritance Chain:
-  - `NostrBaseComponent`: Relay connection, theme handling (`data-theme`), status management, event delegation
-  - `NostrEventComponent`: Event resolution (addressable events), author profile loading
+- Inheritance:
+  - `NostrBaseComponent`: Relay connection, theme handling, status management, event delegation
+  - `NostrEventComponent`: Addressable event resolution (naddr), author profile loading
   - `NostrStream`: Stream-specific functionality
 
 ### Status Management
-- Channel-based: Separate status channels for different concerns
-  - `streamStatus`: Stream event loading status (Idle, Loading, Ready, Error) - inherited as `eventStatus`
-  - `authorStatus`: Author profile loading status (Idle, Loading, Ready, Error) - inherited
-  - `participantsStatus`: Participant profile resolution status (Idle, Loading, Ready, Error)
-  - `videoStatus`: Video player/stream URL loading status (Idle, Loading, Ready, Error)
-  - `connectionStatus`: Relay connection status (inherited as `conn`)
-
-### Event Handling
-- Delegated Events: Uses `delegateEvent()` for efficient Shadow DOM event handling
-- Video Player: `<hls-video>` custom element with standard controls
-- Event Delegation: Prevents memory leaks and improves performance
+Channel-based status channels:
+- `eventStatus`: Stream event loading (inherited)
+- `authorStatus`: Author profile loading (inherited)
+- `participantsStatus`: Participant profile resolution
+- `videoStatus`: Video player/stream URL loading
+- `connectionStatus`: Relay connection (inherited as `conn`)
 
 ### Rendering Architecture
-- Separation of Concerns:
-  - `nostr-stream.ts`: Component logic and lifecycle
-  - `render.ts`: Rendering functions and HTML generation
-  - `style.ts`: CSS styles and theming (component-specific)
-  - `stream-utils.ts`: Stream parsing and utility functions
+- `nostr-stream.ts`: Component logic and lifecycle
+- `render.ts`: Rendering functions and HTML generation
+- `style.ts`: CSS styles and theming
+- `stream-utils.ts`: Stream parsing and utility functions
 
 ## Dependencies
 
 ### Internal Dependencies
-- `NostrEventComponent`: Base class with event resolution (to be extended for addressable events)
+- `NostrEventComponent`: Base class with addressable event resolution
 - `NostrService`: Relay connection management
-- `EventResolver`: Event resolution (to be extended for addressable events)
-- `getBaseStyles()`: Utility for base CSS injection
-- Common Utils: `formatEventDate()`, `decodeNip19Entity()` for naddr decoding
-- Zap Utils: `getBatchedProfileMetadata()` (reused for participant profile fetching)
+- `EventResolver`: Event resolution with naddr support
+- `getBaseStyles()`: Base CSS injection utility
+- `getBatchedProfileMetadata()`: Participant profile fetching (from zap-utils)
 
 ### External Dependencies
 - `@nostr-dev-kit/ndk`: NDKEvent, NDKUser, NDKKind
@@ -50,72 +43,15 @@ This document contains the technical implementation details for the `nostr-strea
 
 ## Component Lifecycle
 
-### Initialization Flow
-1. Constructor: Initialize status channels
-2. Connected Callback:
-   - Validate inputs (`naddr` attribute)
-   - Decode naddr to extract `kind`, `pubkey`, `identifier` (d tag)
-   - Connect to relays (inherited)
-   - Fetch addressable event
-   - Attach delegated listeners
-   - Render initial state
-3. Attribute Changed: Handle `naddr`, `show-participants`, `show-participant-count`, `auto-play`, `data-theme` updates
-4. Status Change: React to status updates via `onStatusChange()`, `onEventReady()`
-5. Disconnected Callback: Clean up listeners
-
-### Addressable Event Resolution
-
-#### EventResolver Extension
-- Extend `EventResolver` to support addressable events
-- Add `validateNaddr({ naddr })` method:
-  - Check naddr is provided and not empty
-  - Validate format: must start with `naddr1` (bech32-encoded)
-  - Attempt to decode using `nip19.decode(naddr)`
-  - Verify decoded type is `'naddr'`
-  - Return error message string if validation fails, `null` if valid
-
-- Add `resolveAddressableEvent({ naddr })` method:
-  - First call `validateNaddr()` to ensure valid format
-  - Decode naddr: `const { type, data } = nip19.decode(naddr)`
-  - Verify `type === 'naddr'` (should be guaranteed by validation)
-  - Extract: `{ kind, pubkey, identifier: dTag, relays }`
-  - Query: `{ kinds: [kind], authors: [pubkey], '#d': [identifier] }`
-  - Use `nostrService.getNDK().fetchEvents(filter)`
-  - Return latest event (highest `created_at`) if multiple exist
-  - Throw error if no events found
-
-#### NostrEventComponent Extension
-- Add `naddr` to `observedAttributes`
-- Extend `validateInputs()` method:
-  - Check for `naddr` attribute
-  - If naddr present: Call `eventResolver.validateNaddr({ naddr })`
-  - If validation returns error message: Set error status and return `false`
-  - Return `true` if validation passes
-  - Ensure only one identifier type is provided (naddr XOR hex/noteid/eventid)
-
-- Extend `resolveEventAndLoad()` method:
-  - Check if `naddr` attribute exists
-  - If naddr: Call `eventResolver.resolveAddressableEvent({ naddr })`
-  - Store decoded naddr data (kind, pubkey, dTag) for reference
-  - Continue with existing flow for author profile loading
-
-## Future Enhancements
-
-### Live Event Subscriptions
-- Real-time updates when stream status or participants change
-- Requires persistent NDK subscription with `closeOnEose: false`
-- Compare `created_at` timestamps to detect newer events
-- Only update if new event is newer than current event
-
-### Staleness Detection
-- Track last update timestamp
-- If `status="live"` and no update received for extended period, consider ended
-- Use `setInterval` to check staleness periodically
-- Update UI to show ended state
+1. **Constructor**: Initialize status channels
+2. **Connected Callback**: Validate `naddr`, connect to relays, fetch event, attach listeners, render
+3. **Attribute Changed**: Handle `naddr`, `show-participants`, `show-participant-count`, `auto-play`, `data-theme`
+4. **onEventReady**: Parse stream event, load participant profiles, render
+5. **Disconnected Callback**: Clean up listeners
 
 ## Stream Event Parsing
 
-### Utility Functions (`src/nostr-stream/stream-utils.ts`)
+Parses kind:30311 events into structured data:
 
 ```typescript
 interface ParsedStreamEvent {
@@ -141,117 +77,40 @@ interface Participant {
   role?: string; // "Host", "Speaker", "Participant"
   proof?: string; // Hex-encoded signature proof
 }
-
-parseStreamEvent(event: NDKEvent): ParsedStreamEvent {
-  // Extract all tags from kind:30311 event
-  // Parse d, title, summary, image, streaming, recording tags
-  // Parse starts, ends, status, current_participants, total_participants
-  // Parse all 'p' tags into Participant objects
-  // Parse 'relays' and 't' (hashtag) tags
-  // Return structured object
-}
 ```
 
-### Tag Parsing Logic
-- `d` tag: Required, unique identifier
-- `title` tag: First value is title
-- `summary` tag: First value is summary
-- `image` tag: First value is preview image URL
-- `streaming` tag: First value is streaming URL (HLS/M3U8)
-- `recording` tag: First value is recording URL
-- `starts` tag: First value parsed as unix timestamp
-- `ends` tag: First value parsed as unix timestamp
-- `status` tag: First value must be "planned", "live", or "ended"
-- `current_participants` tag: First value parsed as number
-- `total_participants` tag: First value parsed as number
-- `p` tags: Array of `[pubkey, relay?, role?, proof?]`
-- `relays` tags: Array of relay URLs
-- `t` tags: Array of hashtags
+**Tag Parsing**: `d` (required), `title`, `summary`, `image`, `streaming`, `recording`, `starts`, `ends`, `status`, `current_participants`, `total_participants`, `p` (participants), `relays`, `t` (hashtags)
 
 ## Participant Profile Resolution
 
-### Batch Profile Fetching
-- Extract all unique pubkeys from `parsedStream.participants`
-- Use `getBatchedProfileMetadata(pubkeys)` from zap-utils
-- Fetch profiles in single batched query via NDK
-- Store profiles in `Map<string, any>` for lookup by pubkey
-- Cache profiles within component lifecycle
-- Handle missing profiles: profile will be `null` in Map
-
-### Profile Data Structure
-- Avatar: `profile.image` or default fallback
-- Name: `profile.displayName` or `profile.name` or npub short format
-- Role: Extracted from `p` tag (3rd element)
-- Proof: Extracted from `p` tag (4th element, hex-encoded signature)
+- Batch fetch all participant profiles using `getBatchedProfileMetadata()`
+- Store profiles in `Map<string, any>` keyed by pubkey
+- Fallback to npub format for missing profiles
+- Role and proof extracted from `p` tag elements
 
 ## Video Player Implementation
 
-### hls-video-element Custom Element
-Uses `hls-video-element` npm package. Custom element `<hls-video>` provides HTMLMediaElement-compatible API with HLS.js support.
+Uses `<hls-video>` custom element from `hls-video-element` package for cross-browser HLS support.
 
-#### Installation and Setup
-```typescript
-// In nostr-stream.ts
-import 'hls-video-element'; // Registers <hls-video> custom element globally
-```
+- Renders video player when `status === 'live'` and `streamingUrl` exists
+- Supports `auto-play` attribute
+- Fallback to preview image if video fails to load
+- Delegated error listener updates `videoStatus` on failure
 
-#### Video Player Rendering
-```typescript
-private renderVideoPlayer(streamingUrl: string | undefined, status: string): string {
-  if (status !== 'live' || !streamingUrl) {
-    return this.renderPreviewImage();
-  }
+## Status-Based Rendering
 
-  const autoplay = this.getAttribute('auto-play') === 'true' ? 'autoplay' : '';
-  
-  return `
-    <hls-video 
-      src="${streamingUrl}" 
-      controls 
-      ${autoplay}
-      preload="metadata"
-      class="stream-video"
-    >
-      Your browser does not support HLS video.
-    </hls-video>
-  `;
-}
-```
+- **planned**: Preview image, scheduled time
+- **live**: Video player (if URL exists), participant list
+- **ended**: Recording link, final participant counts
 
-### Fallback Handling
-- If status is not "live": Show preview image
-- If streaming URL is missing: Show preview image
-- If video fails to load: Show error message + preview image
-- If status is "ended": Show recording link instead of video
-
-## Status-Based Rendering Logic
-
-### Rendering Conditions
-- `planned`: Render preview image, hide video player
-- `live`: Render video player if streaming URL exists, show participant list
-- `ended`: Render recording link if available, show final participant counts
-
-### Status Updates
-- Render based on status from initially fetched event
-- Status updates require page refresh to reflect changes
-- Transition video player visibility based on status
-- Update participant list visibility based on status
+Status is determined from the initially fetched event. Page refresh required to see status changes.
 
 ## Performance Considerations
 
-### Profile Batching
-- Fetch all participant profiles in single batched query
-- Reduce relay round-trips
-- Reuse `getBatchedProfileMetadata()` from zap-utils
-
-### Render Optimization
-- Cache parsed event data to avoid re-parsing on every render
-- Debounce render calls when rapid attribute changes occur
-
-### Lazy Loading
-- Only load video player when status becomes "live"
-- Lazy load participant profiles (render skeleton first)
-- Load preview image immediately, video only when needed
+- Batch fetch all participant profiles in a single query
+- Cache parsed stream event data
+- Lazy load video player only when status is "live"
+- Show skeleton loaders for participant profiles while loading
 
 ## File Structure
 
@@ -263,55 +122,21 @@ src/nostr-stream/
 ├── stream-utils.ts          # Stream parsing and utility functions
 └── spec/
     ├── spec.md              # Component specification
-    ├── implementation.md     # This file
+    ├── implementation.md    # This file
     └── testing.md           # Testing considerations
 ```
 
-## Addressable Event Resolution Details
+## Addressable Event Resolution
 
-### NIP-19 Decoding
-- Use `nip19.decode(naddr)` from `nostr-tools`
-- Returns: `{ type: 'naddr', data: { kind, pubkey, identifier, relays } }`
-- `identifier` is the `d` tag value
-- `relays` array contains preferred relay hints
-
-### Event Query
-- Filter: `{ kinds: [kind], authors: [pubkey], '#d': [identifier] }`
-- Query for latest event (highest `created_at`)
-- If multiple events exist (shouldn't happen, but handle gracefully), take newest
-- Cache decoded naddr data to avoid re-decoding
+- Decode naddr using `nip19.decode()` from `nostr-tools`
+- Extract `{ kind, pubkey, identifier (d tag), relays }`
+- Query: `{ kinds: [kind], authors: [pubkey], '#d': [identifier] }`
+- Returns latest event (highest `created_at`) if multiple exist
 
 ## Error Handling
 
-### Invalid naddr
-- Validation occurs in `EventResolver.validateNaddr()`
-- Possible validation failures:
-  - Missing naddr attribute: "Provide naddr attribute"
-  - Invalid format (doesn't start with `naddr1`): "Invalid naddr format"
-  - Decode failure (malformed bech32): "Invalid naddr format: decoding failed"
-  - Wrong type (not an naddr): "Invalid naddr: expected naddr type"
-- Show error message from validator
-- Set `streamStatus` to Error
-- Validation happens before any network calls
-
-### Event Not Found
-- If query returns no events, throw error from `resolveAddressableEvent()`
-- Set `streamStatus` to Error
-- Set error message: "Stream not found"
-- Render error state in UI
-
-### Missing Required Tags
-- If `d` tag missing, treat as invalid event
-- Log warnings about missing optional tags but continue rendering
-- Use default/fallback values for missing optional data
-
-### Video Load Failures
-- Catch `error` event on `.stream-video` element (delegated listener)
-- Set `videoStatus` channel to Error
-- Re-render to show fallback preview image
-- Log error message for debugging
-
-### Profile Fetch Failures
-- Handle individual profile fetch failures gracefully
-- Show npub fallback for failed profiles
-- Continue rendering other participants
+- **Invalid naddr**: Validated before network calls, shows error message
+- **Event not found**: Sets `eventStatus` to Error, renders error state
+- **Missing `d` tag**: Treated as invalid event
+- **Video load failure**: Delegated error listener, fallback to preview image
+- **Profile fetch failure**: Graceful fallback to npub format, continue rendering

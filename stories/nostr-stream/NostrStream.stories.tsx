@@ -41,11 +41,6 @@ export const PlannedStatus: Story = {
   args: TEST_CASES.plannedStatus.args,
 };
 
-export const LiveStatus: Story = {
-  name: TEST_CASES.liveStatus.name,
-  args: TEST_CASES.liveStatus.args,
-};
-
 export const EndedStatus: Story = {
   name: TEST_CASES.endedStatus.name,
   args: TEST_CASES.endedStatus.args,
@@ -58,11 +53,6 @@ export const Autoplay: Story = {
 };
 
 // Participants
-export const WithParticipants: Story = {
-  name: TEST_CASES.withParticipants.name,
-  args: TEST_CASES.withParticipants.args,
-};
-
 export const HideParticipants: Story = {
   name: TEST_CASES.hideParticipants.name,
   args: TEST_CASES.hideParticipants.args,

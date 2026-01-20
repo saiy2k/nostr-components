@@ -77,17 +77,17 @@ export class EventResolver {
 
     // Validate format: must start with 'naddr1' (bech32-encoded)
     if (!naddr.startsWith('naddr1')) {
-      return "Invalid naddr format";
+      return `Invalid naddr format: ${naddr}`;
     }
 
     // Attempt to decode using nip19
     try {
       const decoded = nip19.decode(naddr);
       if (decoded.type !== 'naddr') {
-        return "Invalid naddr: expected naddr type";
+        return `Invalid naddr: expected naddr type, got ${decoded.type}`;
       }
     } catch (error) {
-      return "Invalid naddr format: decoding failed";
+      return `Invalid naddr format: decoding failed: ${naddr}`;
     }
 
     return null;

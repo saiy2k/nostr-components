@@ -8,15 +8,13 @@
 
 ## Features
 
-- Display live streaming event metadata (title, summary, image, status)
-- Show video player with streaming URL (when status is "live")
+- Display stream metadata (title, summary, image, status)
+- Show HLS video player when stream status is "live"
 - Display author profile information
 - Show participant list with roles (Host, Speaker, Participant)
 - Display participant counts (current and total)
-- Automatically updates when stream status or participants change
 - Status badges: Planned, Live, Ended
-- Handle status transitions (planned → live → ended)
-- Show post-event recording link when ended
+- Show post-event recording link when stream has ended
 
 ## Stream Event Status
 
@@ -24,10 +22,6 @@
 - `planned` - Stream is scheduled but not yet live
 - `live` - Stream is currently active
 - `ended` - Stream has concluded
-
-### Status Transitions
-- Component automatically updates when stream status changes
-- If a live stream hasn't updated in 1 hour, it will be considered `ended`
 
 ## Limitations
 
@@ -43,9 +37,7 @@
 
 ### Required Attributes
 
-- `naddr` (string) - NIP-19 addressable event code for the stream
-  - Format: `naddr1...` (bech32-encoded)
-  - Example: `naddr1qqjr2vehvyenvdtr94nrzetr956rgctr94skvvfs95eryep3x3snwve389nxyqgwwaehxw309ahx7uewd3hkctcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhszxthwden5te0wfjkccte9eekummjwsh8xmmrd9skctcpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtcpz9mhxue69uhkummnw3ezumrpdejz7qg7waehxw309ahx7um5wgkhqatz9emk2mrvdaexgetj9ehx2ap0qyghwumn8ghj7mn0wd68ytnhd9hx2tcpz4mhxue69uhhyetvv9ujumn0wd68ytnzvuhsz9thwden5te0dehhxarj9ehhsarj9ejx2a30qgsv73dxhgfk8tt76gf6q788zrfyz9dwwgwfk3aar6l5gk82a76v9fgrqsqqqan8tp7le0`
+- `naddr` (string) - NIP-19 addressable event code for the stream (`naddr1...` bech32-encoded)
 
 ### Optional Attributes
 
@@ -55,42 +47,25 @@
 - `data-theme` (string, default: `"light"`) - Allowed values: `"light"` or `"dark"`
 - `relays` (string) - Comma-separated relay URLs
 
-## Wireframes
+## UI States
 
-### States
+- **Loading**: Skeleton loaders for title, author, status badge, preview image, and summary
+- **Planned**: Preview image, scheduled start time, participant counts (0/0)
+- **Live**: HLS video player, live status badge, current participant counts, participant list with roles
+- **Ended**: Final frame preview image, recording link (if available), final participant counts
+- **Error**: Error message indicating stream could not be loaded
 
-#### Loading
+### Responsive Design
+
+- Desktop: Full-width container, video player maintains aspect ratio
+- Mobile: Responsive layout, video player scales to container width
+- Participant list: Scrollable when many participants are present
+
+### Live State Wireframe
+
 ```text
 ┌─────────────────────────────────────┐
-│  [Skeleton: Stream Title]           │
-│  [Skeleton: Author Avatar + Name]   │
-│  [Skeleton: Status Badge]           │
-│  [Skeleton: Preview Image]          │
-│  [Skeleton: Summary Text]           │
-│  [Skeleton: Participant Count]      │
-└─────────────────────────────────────┘
-```
-
-#### Planned Status
-```text
-┌─────────────────────────────────────┐
-│  🎬 Adult Swim Metalocalypse        │
-│  [Avatar] Author Name               │
-│  [🟡 Planned] Starts: 2 hours      │
-├─────────────────────────────────────┤
-│  [Preview Image Placeholder]        │
-│  ⏸️ Stream starts in 2 hours        │
-├─────────────────────────────────────┤
-│  Summary: Live stream from IPTV-ORG │
-│  Tags: #animation #iptv             │
-│  Participants: 0 / 0                │
-└─────────────────────────────────────┘
-```
-
-#### Live Status
-```text
-┌─────────────────────────────────────┐
-│  🎬 Adult Swim Metalocalypse        │
+│  🎬 Stream Title                    │
 │  [Avatar] Author Name               │
 │  [🔴 LIVE] Started: 15 minutes ago  │
 ├─────────────────────────────────────┤
@@ -100,8 +75,8 @@
 │  │                               │  │
 │  └───────────────────────────────┘  │
 ├─────────────────────────────────────┤
-│  Summary: Live stream from IPTV-ORG │
-│  Tags: #animation #iptv             │
+│  Summary: Stream description text   │
+│  Tags: #tag1 #tag2                  │
 │  Participants: 127 / 145            │
 │                                     │
 │  Participants:                      │
@@ -111,44 +86,11 @@
 └─────────────────────────────────────┘
 ```
 
-#### Ended Status
-```text
-┌─────────────────────────────────────┐
-│  🎬 Adult Swim Metalocalypse        │
-│  [Avatar] Author Name               │
-│  [⚫ Ended] Ended: 1 hour ago       │
-├─────────────────────────────────────┤
-│  [Final Frame Preview Image]        │
-│  ▶️ Watch Recording                 │
-├─────────────────────────────────────┤
-│  Summary: Live stream from IPTV-ORG │
-│  Tags: #animation #iptv             │
-│  Participants: 145 / 145            │
-│                                     │
-│  Participants: (collapsed)          │
-└─────────────────────────────────────┘
-```
-
-#### Error State
-```text
-┌─────────────────────────────────────┐
-│  ⚠️ Stream not found                │
-│  The stream event could not be      │
-│  loaded from the specified relays.  │
-└─────────────────────────────────────┘
-```
-
-### Responsive
-
-- Desktop: Full-width container, video player maintains aspect ratio
-- Mobile: Responsive with max-width 100%, video player scales to container
-- Participant list: Scrollable if many participants
-
 ## Usage
 
 Basic stream display:
 ```html
-<nostr-stream naddr="naddr1qqjr2vehvyenvdtr94nrzetr956rgctr94skvvfs95eryep3x3snwve389nxyqgwwaehxw309ahx7uewd3hkctcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhszxthwden5te0wfjkccte9eekummjwsh8xmmrd9skctcpzamhxue69uhhyetvv9ujumn0wd68ytnzv9hxgtcpz9mhxue69uhkummnw3ezumrpdejz7qg7waehxw309ahx7um5wgkhqatz9emk2mrvdaexgetj9ehx2ap0qyghwumn8ghj7mn0wd68ytnhd9hx2tcpz4mhxue69uhhyetvv9ujumn0wd68ytnzvuhsz9thwden5te0dehhxarj9ehhsarj9ejx2a30qgsv73dxhgfk8tt76gf6q788zrfyz9dwwgwfk3aar6l5gk82a76v9fgrqsqqqan8tp7le0"></nostr-stream>
+<nostr-stream naddr="naddr1..."></nostr-stream>
 ```
 
 Hide participant list:
@@ -185,8 +127,6 @@ The component displays participant roles as defined by NIP-53:
 - `Participant` - Regular participant/viewer
 
 Participants with proof are verified participants who agreed to join. Participants without proof may be displayed as "invited".
-
-For technical details about the event structure and implementation, see [NIP-53 Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md).
 
 ## Future Enhancements
 

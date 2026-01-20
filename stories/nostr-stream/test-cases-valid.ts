@@ -4,7 +4,7 @@ import { STREAM_DATA } from '../stream-data';
 export const TEST_CASES = {
   // Basic Display
   default: {
-    name: 'Default',
+    name: 'Default - Live',
     args: {
       width: DEFAULT_WIDTH,
       naddr: STREAM_DATA.live.naddr,
@@ -58,12 +58,11 @@ export const TEST_CASES = {
 
   // Participants
   withParticipants: {
-    name: 'With Participants',
+    name: 'With Participants (Default)',
     args: {
       width: DEFAULT_WIDTH,
       naddr: STREAM_DATA.live.naddr,
       'show-participants': 'true',
-      'show-participant-count': 'true',
     },
   },
   hideParticipants: {

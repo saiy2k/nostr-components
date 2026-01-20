@@ -12,11 +12,11 @@ export interface InputType {
 export const STREAM_DATA: Record<string, Stream> = {
   ended: {
     name: 'Ended Stream',
-    naddr: 'naddr1qqjrqvfevgurzeps956rvcfs95mn2cmp95urzdpe956rjd338yunsve3vdjrgqgwwaehxw309ahx7uewd3hkctczyrt8hwqfm33fqvryz4v9lywftgax3n3x3w9vdx04syyr3xya8pskvqcyqqq8vecaj5ryr',
+    naddr: 'naddr1qqjrqvfevyekzv3495unqdnz95mngcen94skze3494nxgvrzvvenvwfjxvmrxqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzq0d4uxua4ftuc6na254gd2r4wnh2ye0qwkwaawragns8ylmeakydqvzqqqrkvu5jsvfk',
   },
   live: {
     name: 'Live Stream',
-    naddr: 'naddr1qqjxxwp3xymrwdek95cxxv3h956rvdmz943rvvfh94sngef5x4jkxe3nvf3nxqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzpn6956apxcad0mfp8grcuugdysg44eepex68h50t73zcathmfs49qvzqqqrkvu7k4zz2',
+    naddr: 'naddr1qqjxgv3jvgurjc3495urydnp956xxvpc95uryd3j943kgdpnxa3xgepcx3skgqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzpa4ztwrl0ea7exnfrcmc2xcm27nmf8aqpw6rz2qrqvqz504u5jy3qvzqqqrkvunnhlja',
   },
   planned: {
     name: 'Planned Stream',

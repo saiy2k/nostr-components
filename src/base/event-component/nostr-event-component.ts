@@ -97,6 +97,19 @@ export class NostrEventComponent extends NostrBaseComponent {
     }
   }
 
+  /**
+   * Returns true if this component requires naddr (addressable events).
+   * Returns false if this component uses hex/noteid/eventid (regular events).
+   * Override this method in subclasses to specify which identifier type is required.
+   * Right now NostrStreamComponent uses this function to return true,
+   * so it requires naddr only.
+   * In future, if more components need naddr only,
+   * we can create a NostrAddressableEventComponent that extends NostrEventComponent and requires naddr only.
+   */
+  protected requiresNaddr(): boolean {
+    return false; // Default: uses hex/noteid/eventid
+  }
+
   /** Protected methods */
   protected validateInputs(): boolean {
 
@@ -112,26 +125,34 @@ export class NostrEventComponent extends NostrBaseComponent {
     const naddr   = this.getAttribute("naddr");
     const tagName = this.tagName.toLowerCase();
 
-    const identifierCount = [hex, noteid, eventid, naddr].filter(Boolean).length;
-    if (identifierCount === 0) {
-      const err = "Provide hex, noteid, eventid, or naddr attribute";
-      this.eventStatus.set(NCStatus.Error, err);
-      this.authorStatus.set(NCStatus.Error, err);
-      console.error(`Nostr-Components: ${tagName}: ${err}`);
-      this.errorMessage = err;
-      return false;
-    }
-    if (identifierCount > 1) {
-      const err = "Provide only one of hex, noteid, eventid, or naddr attribute";
-      this.eventStatus.set(NCStatus.Error, err);
-      this.authorStatus.set(NCStatus.Error, err);
-      console.error(`Nostr-Components: ${tagName}: ${err}`);
-      this.errorMessage = err;
-      return false;
-    }
+    const requiresNaddr = this.requiresNaddr();
 
-    // Validate naddr if provided
-    if (naddr) {
+    if (requiresNaddr) {
+      // Component requires naddr only
+      // Check if naddr attribute exists (even if empty)
+      const hasNaddr = naddr !== null;
+      const hasOtherIdentifiers = !!(hex || noteid || eventid);
+
+      if (hasOtherIdentifiers) {
+        const provided = [hex && `hex="${hex}"`, noteid && `noteid="${noteid}"`, eventid && `eventid="${eventid}"`].filter(Boolean).join(', ');
+        const err = `Provide only naddr attribute. Found: ${provided}`;
+        this.eventStatus.set(NCStatus.Error, err);
+        this.authorStatus.set(NCStatus.Error, err);
+        console.error(`Nostr-Components: ${tagName}: ${err}`);
+        this.errorMessage = err;
+        return false;
+      }
+
+      if (!hasNaddr) {
+        const err = "Provide naddr attribute";
+        this.eventStatus.set(NCStatus.Error, err);
+        this.authorStatus.set(NCStatus.Error, err);
+        console.error(`Nostr-Components: ${tagName}: ${err}`);
+        this.errorMessage = err;
+        return false;
+      }
+
+      // Validate naddr
       const err = this.eventResolver.validateNaddr({ naddr });
       if (err) {
         this.eventStatus.set(NCStatus.Error, err);
@@ -141,6 +162,28 @@ export class NostrEventComponent extends NostrBaseComponent {
         return false;
       }
     } else {
+      // Component requires hex/noteid/eventid
+      const hasNaddr = naddr !== null;
+      const hasOtherIdentifiers = !!(hex || noteid || eventid);
+
+      if (hasNaddr) {
+        const err = `Provide hex, noteid, or eventid attribute. Found: naddr="${naddr}"`;
+        this.eventStatus.set(NCStatus.Error, err);
+        this.authorStatus.set(NCStatus.Error, err);
+        console.error(`Nostr-Components: ${tagName}: ${err}`);
+        this.errorMessage = err;
+        return false;
+      }
+
+      if (!hasOtherIdentifiers) {
+        const err = "Provide hex, noteid, or eventid attribute";
+        this.eventStatus.set(NCStatus.Error, err);
+        this.authorStatus.set(NCStatus.Error, err);
+        console.error(`Nostr-Components: ${tagName}: ${err}`);
+        this.errorMessage = err;
+        return false;
+      }
+
       // Validate regular event identifiers
       const err = this.eventResolver.validateInputs({
         hex: hex,
@@ -195,6 +238,8 @@ export class NostrEventComponent extends NostrBaseComponent {
       if (naddr) {
         // Resolve addressable event via naddr
         event = await this.eventResolver.resolveAddressableEvent({ naddr });
+
+        console.log('[NostrEventComponent] Resolved addressable event:', event);
 
         // Store decoded naddr data for subscription use
         try {

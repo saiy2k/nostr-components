@@ -51,8 +51,9 @@ export const getBatchedProfileMetadata = async (authorIds: string[]) => {
   }
 
   const pool = new SimplePool();
+  // TODO: Hard coded relays?!
   const relays = [
-    // 'wss://relay.nostr.band',
+    'wss://relay.nostr.band',
     'wss://purplepag.es',
     'wss://relay.damus.io',
     'wss://nostr.wine',

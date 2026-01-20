@@ -68,18 +68,41 @@ export function getStreamStyles(): string {
     /* === STREAM HEADER === */
     .stream-header {
       display: flex;
+      flex-direction: column;
       gap: var(--nostrc-spacing-sm);
-      align-items: flex-start;
     }
 
-    .stream-header-left {
-      width: 35px;
+    .stream-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--nostrc-spacing-sm);
+    }
+
+    .stream-title {
+      color: var(--nostrc-stream-text-primary);
+      font-weight: var(--nostrc-font-weight-bold);
+      font-size: var(--nostrc-font-size-large);
+      word-break: break-word;
+      line-height: 1.3;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .stream-header-right {
       flex-shrink: 0;
+    }
+
+    .stream-author-row {
+      display: flex;
+      align-items: center;
+      gap: var(--nostrc-spacing-sm);
     }
 
     .author-picture {
       width: 35px;
       height: 35px;
+      flex-shrink: 0;
     }
 
     .author-picture img {
@@ -89,26 +112,12 @@ export function getStreamStyles(): string {
       object-fit: cover;
     }
 
-    .stream-header-middle {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      gap: var(--nostrc-spacing-xs);
-      min-width: 0;
-    }
-
-    .stream-title {
-      color: var(--nostrc-stream-text-primary);
-      font-weight: var(--nostrc-font-weight-bold);
-      font-size: var(--nostrc-font-size-large);
-      word-break: break-word;
-      line-height: 1.3;
-    }
-
     .stream-author-info {
       display: flex;
       flex-direction: column;
       gap: 2px;
+      flex: 1;
+      min-width: 0;
     }
 
     .stream-author-info .author-name {
@@ -122,10 +131,6 @@ export function getStreamStyles(): string {
       color: var(--nostrc-stream-text-secondary);
       font-size: var(--nostrc-font-size-small);
       word-break: break-all;
-    }
-
-    .stream-header-right {
-      flex-shrink: 0;
     }
 
     /* === STATUS BADGES === */
