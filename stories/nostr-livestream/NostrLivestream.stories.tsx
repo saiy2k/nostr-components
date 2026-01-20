@@ -3,7 +3,7 @@ import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'Stream',
+  title: 'Livestream',
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -11,7 +11,7 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: 'A web component that displays Nostr live stream events (kind 30311) with video playback, participant lists, and stream metadata. Supports addressable events via naddr (NIP-19).',
+        component: 'A web component that displays Nostr live stream events (Nip53, kind 30311) with video playback, participant lists, and livestream metadata.',
       },
       source: {
         transform: (code, storyContext) =>

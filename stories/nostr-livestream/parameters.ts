@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Stream Parameters
- * ================
+ * Livestream Parameters
+ * =====================
  * 
- * This file contains parameter definitions specific to the nostr-stream component.
- * These parameters define stream-specific attributes like naddr and stream-specific features.
+ * This file contains parameter definitions specific to the nostr-livestream component.
+ * These parameters define livestream-specific attributes like naddr and livestream-specific features.
  */
 
 import { ParameterDefinition } from '../common/parameters';
 import { DEFAULT_RELAYS } from '../../src/common/constants';
 
 /**
- * Stream-specific parameters used by nostr-stream component
+ * Livestream-specific parameters used by nostr-livestream component
  */
-export const STREAM_PARAMETERS: ParameterDefinition[] = [
+export const LIVESTREAM_PARAMETERS: ParameterDefinition[] = [
   {
     variable: 'naddr',
-    description: 'NIP-19 addressable event code for the stream (bech32-encoded naddr)',
+    description: 'NIP-19 addressable event code for the livestream (bech32-encoded naddr)',
     defaultValue: 'null',
     control: 'text',
   },

@@ -3,19 +3,19 @@
 import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
-import { parseStreamEvent, ParsedStreamEvent } from './stream-utils';
-import { renderStream, RenderStreamOptions } from './render';
-import { getStreamStyles } from './style';
+import { parseLivestreamEvent, ParsedLivestreamEvent } from './livestream-utils';
+import { renderLivestream, RenderLivestreamOptions } from './render';
+import { getLivestreamStyles } from './style';
 import { getBatchedProfileMetadata } from '../nostr-zap-button/zap-utils';
 import { hexToNpub } from '../common/utils';
 import 'hls-video-element';
 
-const EVT_STREAM = 'nc:stream';
+const EVT_LIVESTREAM = 'nc:livestream';
 const EVT_AUTHOR = 'nc:author';
 
-export default class NostrStream extends NostrEventComponent {
+export default class NostrLivestream extends NostrEventComponent {
 
-  protected parsedStream: ParsedStreamEvent | null = null;
+  protected parsedLivestream: ParsedLivestreamEvent | null = null;
   protected participantProfiles: Map<string, any> = new Map();
   protected hostProfile: NDKUserProfile | null = null;
   protected hostPubkey: string | null = null;
@@ -46,7 +46,7 @@ export default class NostrStream extends NostrEventComponent {
   }
 
   /**
-   * NostrStream requires naddr (addressable events) only.
+   * NostrLivestream requires naddr (addressable events) only.
    */
   protected requiresNaddr(): boolean {
     return true;
@@ -58,7 +58,7 @@ export default class NostrStream extends NostrEventComponent {
   }
 
   protected onEventReady(event: NDKEvent) {
-    this.parseLiveStreamEvent(event);
+    this.parseLivestreamEvent(event);
     this.render();
   }
 
@@ -85,25 +85,25 @@ export default class NostrStream extends NostrEventComponent {
     }
   }
 
-  private parseLiveStreamEvent(event: NDKEvent) {
+  private parseLivestreamEvent(event: NDKEvent) {
     try {
-      this.parsedStream = parseStreamEvent(event);
-      console.log('[NostrStream] Parsed stream event:', this.parsedStream);
+      this.parsedLivestream = parseLivestreamEvent(event);
+      console.log('[NostrLivestream] Parsed livestream event:', this.parsedLivestream);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to parse stream event';
-      console.error('[NostrStream] ' + msg, error);
+      const msg = error instanceof Error ? error.message : 'Failed to parse livestream event';
+      console.error('[NostrLivestream] ' + msg, error);
       this.eventStatus.set(NCStatus.Error, msg);
       this.render();
       return;
     }
 
     // Find host participant (role === 'Host')
-    const hostParticipant = this.parsedStream?.participants.find(p => p.role === 'host');
+    const hostParticipant = this.parsedLivestream?.participants.find(p => p.role === 'host');
     this.hostPubkey = hostParticipant?.pubkey || null;
-    console.log('[NostrStream] Host pubkey:', this.hostPubkey);
+    console.log('[NostrLivestream] Host pubkey:', this.hostPubkey);
 
     // Reset video status if we have a live stream with video URL
-    if (this.parsedStream?.status === 'live' && this.parsedStream?.streamingUrl) {
+    if (this.parsedLivestream?.status === 'live' && this.parsedLivestream?.streamingUrl) {
       this.videoStatus.set(NCStatus.Loading);
     } else {
       this.videoStatus.set(NCStatus.Idle);
@@ -113,12 +113,12 @@ export default class NostrStream extends NostrEventComponent {
   }
  
   private async loadParticipantProfiles(): Promise<void> {
-    if (!this.parsedStream || !this.parsedStream.participants || this.parsedStream.participants.length === 0) {
+    if (!this.parsedLivestream || !this.parsedLivestream.participants || this.parsedLivestream.participants.length === 0) {
       this.participantsStatus.set(NCStatus.Ready);
       return;
     }
 
-    const participantPubkeys = this.parsedStream.participants.map(p => p.pubkey);
+    const participantPubkeys = this.parsedLivestream.participants.map(p => p.pubkey);
     
     // Remove duplicates
     const uniquePubkeys = [...new Set(participantPubkeys)];
@@ -144,7 +144,7 @@ export default class NostrStream extends NostrEventComponent {
           try {
             profileData = JSON.parse(result.profile.content || '{}');
           } catch (parseError) {
-            console.warn('[NostrStream] Failed to parse profile content for', result.id, parseError);
+            console.warn('[NostrLivestream] Failed to parse profile content for', result.id, parseError);
             profileData = {};
           }
         }
@@ -159,7 +159,7 @@ export default class NostrStream extends NostrEventComponent {
       // Set status to ready
       this.participantsStatus.set(NCStatus.Ready);
 
-      console.log('[NostrStream] Host profile:', this.hostProfile);
+      console.log('[NostrLivestream] Host profile:', this.hostProfile);
       console.log('participant profiles:', this.participantProfiles);
       
       // Re-render to show profiles
@@ -167,7 +167,7 @@ export default class NostrStream extends NostrEventComponent {
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to load participants';
       const userFriendlyMsg = 'Failed to load participants';
-      console.error('[NostrStream] Participant profile fetch error:', msg, error);
+      console.error('[NostrLivestream] Participant profile fetch error:', msg, error);
       this.participantsStatus.set(NCStatus.Error, userFriendlyMsg);
       this.render();
     }
@@ -193,9 +193,9 @@ export default class NostrStream extends NostrEventComponent {
   }
 
   /**
-   * Handle click on the stream component - opens zap.stream
+   * Handle click on the livestream component - opens zap.stream
    */
-  private onStreamClick(): void {
+  private onLivestreamClick(): void {
     // Check if component is ready (event and author loaded)
     const eventReady = this.eventStatus.get() === NCStatus.Ready;
     const authorReady = this.authorStatus.get() === NCStatus.Ready;
@@ -204,10 +204,10 @@ export default class NostrStream extends NostrEventComponent {
     const naddr = this.getAttribute('naddr');
     if (!naddr) return;
 
-    const event = new CustomEvent(EVT_STREAM, {
+    const event = new CustomEvent(EVT_LIVESTREAM, {
       detail: {
         event: this.event,
-        parsedStream: this.parsedStream,
+        parsedLivestream: this.parsedLivestream,
         naddr,
       },
       bubbles: true,
@@ -266,22 +266,22 @@ export default class NostrStream extends NostrEventComponent {
    * Attach delegated event listeners for video player and click handlers
    */
   private attachDelegatedListeners(): void {
-    // Click anywhere on the stream container (except interactive elements)
-    this.delegateEvent('click', '.nostr-stream-container', (e: Event) => {
+    // Click anywhere on the livestream container (except interactive elements)
+    this.delegateEvent('click', '.nostr-livestream-container', (e: Event) => {
       const target = e.target as HTMLElement;
-      // Don't trigger stream click if clicking on author info, video controls, or links
-      if (!target.closest('.stream-author-row, video, hls-video, a, .stream-video')) {
-        this.onStreamClick();
+      // Don't trigger livestream click if clicking on author info, video controls, or links
+      if (!target.closest('.livestream-author-row, video, hls-video, a, .livestream-video')) {
+        this.onLivestreamClick();
       }
     });
 
     // Click on author row (avatar + info)
-    this.delegateEvent('click', '.stream-author-row', () => {
+    this.delegateEvent('click', '.livestream-author-row', () => {
       this.onAuthorClick();
     });
 
     // Listen for video error events
-    this.delegateEvent('error', '.stream-video', (e: Event) => {
+    this.delegateEvent('error', '.livestream-video', (e: Event) => {
       const target = e.target as HTMLMediaElement;
       const error = target.error;
       let errorMessage = 'Video failed to load';
@@ -305,18 +305,18 @@ export default class NostrStream extends NostrEventComponent {
         }
       }
       
-      console.error('[NostrStream] Video error:', errorMessage, error);
+      console.error('[NostrLivestream] Video error:', errorMessage, error);
       this.videoStatus.set(NCStatus.Error, errorMessage);
       this.render(); // Re-render to show fallback preview image
     });
 
     // Listen for video loaded metadata (ready to play)
-    this.delegateEvent('loadedmetadata', '.stream-video', () => {
+    this.delegateEvent('loadedmetadata', '.livestream-video', () => {
       this.videoStatus.set(NCStatus.Ready);
     });
 
     // Set loading status when video starts loading
-    this.delegateEvent('loadstart', '.stream-video', () => {
+    this.delegateEvent('loadstart', '.livestream-video', () => {
       this.videoStatus.set(NCStatus.Loading);
     });
   }
@@ -330,12 +330,12 @@ export default class NostrStream extends NostrEventComponent {
     // Use host profile if available, otherwise fallback to author profile (for backwards compatibility)
     const displayProfile = this.hostProfile || this.authorProfile;
 
-    const renderOptions: RenderStreamOptions = {
+    const renderOptions: RenderLivestreamOptions = {
       isLoading           :  isLoading,
       isError             :  this.computeOverall() === NCStatus.Error,
       errorMessage        :  this.errorMessage,
       author              :  displayProfile,
-      parsedStream        :  this.parsedStream,
+      parsedLivestream    :  this.parsedLivestream,
       showParticipants    :  this.getAttribute('show-participants') !== 'false', // Default to true
       showParticipantCount:  this.getAttribute('show-participant-count') !== 'false', // Default to true
       autoPlay            :  this.getAttribute('auto-play') === 'true',
@@ -345,10 +345,10 @@ export default class NostrStream extends NostrEventComponent {
     };
 
     // Get styles
-    const styles = getStreamStyles();
+    const styles = getLivestreamStyles();
 
     // Render
-    const rendered = renderStream(renderOptions);
+    const rendered = renderLivestream(renderOptions);
 
     // Update shadow root
     if (this.shadowRoot) {
@@ -357,6 +357,6 @@ export default class NostrStream extends NostrEventComponent {
   }
 }
 
-if (!customElements.get('nostr-stream')) {
-  customElements.define('nostr-stream', NostrStream);
+if (!customElements.get('nostr-livestream')) {
+  customElements.define('nostr-livestream', NostrLivestream);
 }

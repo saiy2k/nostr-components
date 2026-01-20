@@ -4,7 +4,7 @@ import { TEST_CASES } from './test-cases-valid';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'Stream/Testing',
+  title: 'Livestream/Testing',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -13,7 +13,7 @@ const meta: Meta = {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-stream',
+        element: 'nostr-livestream',
         config: {
           rules: {
             'color-contrast': { enabled: true },
@@ -31,8 +31,8 @@ type Story = StoryObj<any>;
 // COMPREHENSIVE TESTING DASHBOARDS
 // ====================================
 // Individual test stories have been moved to separate files:
-// - NostrStream.testing.valid.stories.tsx (for valid cases)
-// - NostrStream.testing.invalid.stories.tsx (for invalid cases)
+// - NostrLivestream.testing.valid.stories.tsx (for valid cases)
+// - NostrLivestream.testing.invalid.stories.tsx (for invalid cases)
 
 export const ValidCasesDashboard: Story = {
   name: 'Valid Cases Dashboard',

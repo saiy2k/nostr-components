@@ -1,11 +1,11 @@
-import { STREAM_PARAMETERS as PARAMETERS } from './parameters';
-import { STREAM_CSS_VARIABLES as CSS_VARIABLES } from './css-variables';
+import { LIVESTREAM_PARAMETERS as PARAMETERS } from './parameters';
+import { LIVESTREAM_CSS_VARIABLES as CSS_VARIABLES } from './css-variables';
 import { generateArgTypes } from '../common/utils';
 import { generateCode as generateCodeShared, generateCodeWithScript as generateCodeWithScriptShared, generateDashboardHTML as generateDashboardHTMLShared, BUNDLE_SCRIPT, generateBundleScript, type CodeGeneratorConfig } from '../common/code-generator';
 
 // Component-specific configuration
 export const COMPONENT_CONFIG: CodeGeneratorConfig = {
-  componentName: 'nostr-stream',
+  componentName: 'nostr-livestream',
   defaultWidth: 800,
   eventHandlers: [],
   gridColumns: 'minmax(800px, 1fr)'

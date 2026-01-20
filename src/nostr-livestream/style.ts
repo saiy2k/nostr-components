@@ -2,38 +2,38 @@
 
 import { getComponentStyles } from '../common/base-styles';
 
-export function getStreamStyles(): string {
+export function getLivestreamStyles(): string {
   const customStyles = `
-    /* === STREAM CSS VARIABLES === */
+    /* === LIVESTREAM CSS VARIABLES === */
     :host {
-      --nostrc-stream-bg: var(--nostrc-theme-bg, #ffffff);
-      --nostrc-stream-text-primary: var(--nostrc-theme-text-primary, #333333);
-      --nostrc-stream-text-secondary: var(--nostrc-theme-text-secondary, #666666);
-      --nostrc-stream-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
-      --nostrc-stream-font-family: var(--nostrc-font-family-primary);
-      --nostrc-stream-font-size: var(--nostrc-font-size-base);
+      --nostrc-livestream-bg: var(--nostrc-theme-bg, #ffffff);
+      --nostrc-livestream-text-primary: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-livestream-text-secondary: var(--nostrc-theme-text-secondary, #666666);
+      --nostrc-livestream-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
+      --nostrc-livestream-font-family: var(--nostrc-font-family-primary);
+      --nostrc-livestream-font-size: var(--nostrc-font-size-base);
       
       /* Status badge colors (theme-aware, can be overridden by data-theme) */
-      --nostrc-stream-status-planned-bg: var(--nostrc-theme-status-planned-bg, #e3f2fd);
-      --nostrc-stream-status-planned-color: var(--nostrc-theme-status-planned-color, #1976d2);
-      --nostrc-stream-status-live-bg: var(--nostrc-theme-status-live-bg, #e8f5e9);
-      --nostrc-stream-status-live-color: var(--nostrc-theme-status-live-color, #2e7d32);
-      --nostrc-stream-status-ended-bg: var(--nostrc-theme-status-ended-bg, #f5f5f5);
-      --nostrc-stream-status-ended-color: var(--nostrc-theme-status-ended-color, #616161);
+      --nostrc-livestream-status-planned-bg: var(--nostrc-theme-status-planned-bg, #e3f2fd);
+      --nostrc-livestream-status-planned-color: var(--nostrc-theme-status-planned-color, #1976d2);
+      --nostrc-livestream-status-live-bg: var(--nostrc-theme-status-live-bg, #e8f5e9);
+      --nostrc-livestream-status-live-color: var(--nostrc-theme-status-live-color, #2e7d32);
+      --nostrc-livestream-status-ended-bg: var(--nostrc-theme-status-ended-bg, #f5f5f5);
+      --nostrc-livestream-status-ended-color: var(--nostrc-theme-status-ended-color, #616161);
       
       /* Hover state variables */
-      --nostrc-stream-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
-      --nostrc-stream-hover-color: var(--nostrc-theme-text-primary, #333333);
-      --nostrc-stream-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
+      --nostrc-livestream-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
+      --nostrc-livestream-hover-color: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-livestream-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
 
-      /* Make the host the visual stream surface */
+      /* Make the host the visual livestream surface */
       display: block;
-      background: var(--nostrc-stream-bg);
-      color: var(--nostrc-stream-text-primary);
-      border: var(--nostrc-stream-border);
+      background: var(--nostrc-livestream-bg);
+      color: var(--nostrc-livestream-text-primary);
+      border: var(--nostrc-livestream-border);
       border-radius: var(--nostrc-border-radius-md);
-      font-family: var(--nostrc-stream-font-family);
-      font-size: var(--nostrc-stream-font-size);
+      font-family: var(--nostrc-livestream-font-family);
+      font-size: var(--nostrc-livestream-font-size);
       transition: background-color var(--nostrc-transition-duration) var(--nostrc-transition-timing),
                   border-color var(--nostrc-transition-duration) var(--nostrc-transition-timing),
                   color var(--nostrc-transition-duration) var(--nostrc-transition-timing);
@@ -41,9 +41,9 @@ export function getStreamStyles(): string {
 
     /* Hover state on host element (CSS-only, no JavaScript) */
     :host(.is-clickable:hover) {
-      background: var(--nostrc-stream-hover-bg);
-      color: var(--nostrc-stream-hover-color);
-      border: var(--nostrc-stream-hover-border);
+      background: var(--nostrc-livestream-hover-bg);
+      color: var(--nostrc-livestream-hover-color);
+      border: var(--nostrc-livestream-hover-border);
     }
 
     :host(.is-clickable) {
@@ -54,8 +54,8 @@ export function getStreamStyles(): string {
       border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
     }
 
-    /* === STREAM CONTAINER === */
-    .nostr-stream-container {
+    /* === LIVESTREAM CONTAINER === */
+    .nostr-livestream-container {
       display: flex;
       flex-direction: column;
       gap: var(--nostrc-spacing-lg);
@@ -63,28 +63,28 @@ export function getStreamStyles(): string {
       min-height: 200px;
     }
 
-    :host(.is-error) .nostr-stream-container {
+    :host(.is-error) .nostr-livestream-container {
       justify-content: center;
       align-items: center;
       color: var(--nostrc-color-error-text);
     }
 
-    /* === STREAM HEADER === */
-    .stream-header {
+    /* === LIVESTREAM HEADER === */
+    .livestream-header {
       display: flex;
       flex-direction: column;
       gap: var(--nostrc-spacing-sm);
     }
 
-    .stream-title-row {
+    .livestream-title-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       gap: var(--nostrc-spacing-sm);
     }
 
-    .stream-title {
-      color: var(--nostrc-stream-text-primary);
+    .livestream-title {
+      color: var(--nostrc-livestream-text-primary);
       font-weight: var(--nostrc-font-weight-bold);
       font-size: var(--nostrc-font-size-large);
       word-break: break-word;
@@ -93,19 +93,19 @@ export function getStreamStyles(): string {
       min-width: 0;
     }
 
-    .stream-header-right {
+    .livestream-header-right {
       flex-shrink: 0;
     }
 
-    .stream-author-row {
+    .livestream-author-row {
       display: flex;
       align-items: center;
       gap: var(--nostrc-spacing-sm);
       cursor: pointer;
     }
 
-    .stream-author-row:hover .author-name,
-    .stream-author-row:hover .author-username {
+    .livestream-author-row:hover .author-name,
+    .livestream-author-row:hover .author-username {
       text-decoration: underline;
     }
 
@@ -122,7 +122,7 @@ export function getStreamStyles(): string {
       object-fit: cover;
     }
 
-    .stream-author-info {
+    .livestream-author-info {
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -130,21 +130,21 @@ export function getStreamStyles(): string {
       min-width: 0;
     }
 
-    .stream-author-info .author-name {
-      color: var(--nostrc-stream-text-primary);
+    .livestream-author-info .author-name {
+      color: var(--nostrc-livestream-text-primary);
       font-weight: var(--nostrc-font-weight-medium);
       font-size: var(--nostrc-font-size-base);
       word-break: break-word;
     }
 
-    .stream-author-info .author-username {
-      color: var(--nostrc-stream-text-secondary);
+    .livestream-author-info .author-username {
+      color: var(--nostrc-livestream-text-secondary);
       font-size: var(--nostrc-font-size-small);
       word-break: break-all;
     }
 
     /* === STATUS BADGES === */
-    .stream-status-badge {
+    .livestream-status-badge {
       display: inline-block;
       padding: var(--nostrc-spacing-xs) var(--nostrc-spacing-sm);
       border-radius: var(--nostrc-border-radius-md);
@@ -154,20 +154,20 @@ export function getStreamStyles(): string {
       letter-spacing: 0.5px;
     }
 
-    .stream-status-planned {
-      background-color: var(--nostrc-stream-status-planned-bg);
-      color: var(--nostrc-stream-status-planned-color);
+    .livestream-status-planned {
+      background-color: var(--nostrc-livestream-status-planned-bg);
+      color: var(--nostrc-livestream-status-planned-color);
     }
 
-    .stream-status-live {
-      background-color: var(--nostrc-stream-status-live-bg);
-      color: var(--nostrc-stream-status-live-color);
+    .livestream-status-live {
+      background-color: var(--nostrc-livestream-status-live-bg);
+      color: var(--nostrc-livestream-status-live-color);
       animation: pulse-live 2s ease-in-out infinite;
     }
 
-    .stream-status-ended {
-      background-color: var(--nostrc-stream-status-ended-bg);
-      color: var(--nostrc-stream-status-ended-color);
+    .livestream-status-ended {
+      background-color: var(--nostrc-livestream-status-ended-bg);
+      color: var(--nostrc-livestream-status-ended-color);
     }
 
     /* Pulsing animation for live status */
@@ -183,18 +183,18 @@ export function getStreamStyles(): string {
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .stream-status-live {
+      .livestream-status-live {
         animation: none;
       }
     }
 
-    /* === STREAM MEDIA === */
-    .stream-media {
+    /* === LIVESTREAM MEDIA === */
+    .livestream-media {
       width: 100%;
       position: relative;
     }
 
-    .stream-video-placeholder {
+    .livestream-video-placeholder {
       width: 100%;
       aspect-ratio: 16 / 9;
       background-color: var(--nostrc-color-background, #f5f5f5);
@@ -203,14 +203,14 @@ export function getStreamStyles(): string {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: var(--nostrc-stream-text-secondary);
+      color: var(--nostrc-livestream-text-secondary);
       padding: var(--nostrc-spacing-lg);
       text-align: center;
       min-height: 300px;
       max-height: 600px;
     }
 
-    .stream-video {
+    .livestream-video {
       width: 100%;
       max-width: 100%;
       aspect-ratio: 16 / 9;
@@ -219,12 +219,12 @@ export function getStreamStyles(): string {
       display: block;
     }
 
-    .stream-preview-image {
+    .livestream-preview-image {
       width: 100%;
       position: relative;
     }
 
-    .stream-preview-image img {
+    .livestream-preview-image img {
       width: 100%;
       height: auto;
       max-height: 500px;
@@ -233,7 +233,7 @@ export function getStreamStyles(): string {
       display: block;
     }
 
-    .stream-preview-placeholder {
+    .livestream-preview-placeholder {
       width: 100%;
       aspect-ratio: 16 / 9;
       background-color: var(--nostrc-color-background, #f5f5f5);
@@ -242,23 +242,23 @@ export function getStreamStyles(): string {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: var(--nostrc-stream-text-secondary);
+      color: var(--nostrc-livestream-text-secondary);
       padding: var(--nostrc-spacing-lg);
       min-height: 300px;
     }
 
-    .stream-preview-placeholder-icon {
+    .livestream-preview-placeholder-icon {
       font-size: 3em;
       margin-bottom: var(--nostrc-spacing-sm);
       opacity: 0.5;
     }
 
-    .stream-recording-link {
+    .livestream-recording-link {
       margin-top: var(--nostrc-spacing-md);
       text-align: center;
     }
 
-    .stream-recording-link a {
+    .livestream-recording-link a {
       display: inline-flex;
       align-items: center;
       gap: var(--nostrc-spacing-xs);
@@ -272,7 +272,7 @@ export function getStreamStyles(): string {
                   transform 0.2s ease;
     }
 
-    .stream-recording-link a:hover {
+    .livestream-recording-link a:hover {
       background-color: var(--nostrc-color-primary, #6a00d1);
       transform: translateY(-1px);
     }
@@ -281,43 +281,43 @@ export function getStreamStyles(): string {
       font-size: 1.2em;
     }
 
-    /* === STREAM METADATA === */
-    .stream-metadata {
+    /* === LIVESTREAM METADATA === */
+    .livestream-metadata {
       display: flex;
       flex-direction: column;
       gap: var(--nostrc-spacing-md);
     }
 
-    .stream-summary {
-      color: var(--nostrc-stream-text-primary);
+    .livestream-summary {
+      color: var(--nostrc-livestream-text-primary);
       line-height: 1.6;
       word-break: break-word;
     }
 
-    .stream-participant-count {
-      color: var(--nostrc-stream-text-secondary);
+    .livestream-participant-count {
+      color: var(--nostrc-livestream-text-secondary);
       font-size: var(--nostrc-font-size-base);
     }
 
-    .stream-participant-count strong {
-      color: var(--nostrc-stream-text-primary);
+    .livestream-participant-count strong {
+      color: var(--nostrc-livestream-text-primary);
       font-weight: var(--nostrc-font-weight-medium);
     }
 
-    .stream-timestamps {
+    .livestream-timestamps {
       display: flex;
       flex-direction: column;
       gap: var(--nostrc-spacing-xs);
-      color: var(--nostrc-stream-text-secondary);
+      color: var(--nostrc-livestream-text-secondary);
       font-size: var(--nostrc-font-size-small);
     }
 
-    .stream-start-time,
-    .stream-end-time {
+    .livestream-start-time,
+    .livestream-end-time {
       display: block;
     }
 
-    .stream-hashtags {
+    .livestream-hashtags {
       display: flex;
       flex-wrap: wrap;
       gap: var(--nostrc-spacing-xs);
@@ -334,12 +334,12 @@ export function getStreamStyles(): string {
     }
 
     /* === PARTICIPANTS === */
-    .stream-participants {
+    .livestream-participants {
       margin-top: var(--nostrc-spacing-md);
     }
 
     .participants-title {
-      color: var(--nostrc-stream-text-primary);
+      color: var(--nostrc-livestream-text-primary);
       font-size: var(--nostrc-font-size-large);
       font-weight: var(--nostrc-font-weight-bold);
       margin-bottom: var(--nostrc-spacing-md);
@@ -354,7 +354,7 @@ export function getStreamStyles(): string {
     }
 
     .participants-empty {
-      color: var(--nostrc-stream-text-secondary);
+      color: var(--nostrc-livestream-text-secondary);
       font-style: italic;
       padding: var(--nostrc-spacing-md);
       text-align: center;
@@ -370,7 +370,7 @@ export function getStreamStyles(): string {
     }
 
     .participant-item:hover {
-      background-color: var(--nostrc-stream-hover-bg);
+      background-color: var(--nostrc-livestream-hover-bg);
     }
 
     .participant-avatar {
@@ -403,7 +403,7 @@ export function getStreamStyles(): string {
     }
 
     .participant-name {
-      color: var(--nostrc-stream-text-primary);
+      color: var(--nostrc-livestream-text-primary);
       font-weight: var(--nostrc-font-weight-medium);
       font-size: var(--nostrc-font-size-base);
       word-break: break-word;
@@ -430,18 +430,18 @@ export function getStreamStyles(): string {
 
     .participant-role-participant {
       background-color: var(--nostrc-color-background, #f5f5f5);
-      color: var(--nostrc-stream-text-secondary);
+      color: var(--nostrc-livestream-text-secondary);
     }
 
     .participant-proof {
-      color: var(--nostrc-stream-status-live-color);
+      color: var(--nostrc-livestream-status-live-color);
       font-weight: var(--nostrc-font-weight-bold);
       font-size: 1.2em;
       flex-shrink: 0;
     }
 
     /* === ERROR STATE === */
-    .stream-error {
+    .livestream-error {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -451,7 +451,7 @@ export function getStreamStyles(): string {
       text-align: center;
     }
 
-    .stream-error .error-icon {
+    .livestream-error .error-icon {
       width: 48px;
       height: 48px;
       border-radius: var(--nostrc-border-radius-full);
@@ -463,39 +463,39 @@ export function getStreamStyles(): string {
       justify-content: center;
     }
 
-    .stream-error .error-message {
+    .livestream-error .error-message {
       color: var(--nostrc-color-error-text);
       font-size: var(--nostrc-font-size-base);
     }
 
     /* === RESPONSIVE DESIGN === */
     @media only screen and (max-width: 768px) {
-      .nostr-stream-container {
+      .nostr-livestream-container {
         padding: var(--nostrc-spacing-sm);
         gap: var(--nostrc-spacing-md);
       }
 
-      .stream-title {
+      .livestream-title {
         font-size: var(--nostrc-font-size-base);
       }
 
-      .stream-video,
-      .stream-video-placeholder,
-      .stream-preview-placeholder {
+      .livestream-video,
+      .livestream-video-placeholder,
+      .livestream-preview-placeholder {
         aspect-ratio: 16 / 9;
         max-height: 400px;
       }
 
-      .stream-header {
+      .livestream-header {
         flex-wrap: wrap;
       }
 
-      .stream-header-right {
+      .livestream-header-right {
         width: 100%;
         margin-top: var(--nostrc-spacing-xs);
       }
 
-      .stream-status-badge {
+      .livestream-status-badge {
         font-size: var(--nostrc-font-size-small);
         padding: 4px var(--nostrc-spacing-xs);
       }
@@ -504,19 +504,19 @@ export function getStreamStyles(): string {
         max-height: 300px;
       }
 
-      .stream-timestamps {
+      .livestream-timestamps {
         font-size: var(--nostrc-font-size-small);
       }
     }
 
     @media only screen and (max-width: 480px) {
-      .stream-title {
+      .livestream-title {
         font-size: var(--nostrc-font-size-base);
       }
 
-      .stream-video,
-      .stream-video-placeholder,
-      .stream-preview-placeholder {
+      .livestream-video,
+      .livestream-video-placeholder,
+      .livestream-preview-placeholder {
         aspect-ratio: 4 / 3;
         min-height: 200px;
       }

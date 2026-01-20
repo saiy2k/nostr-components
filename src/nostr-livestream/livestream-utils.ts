@@ -2,7 +2,7 @@
 
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 
-export interface ParsedStreamEvent {
+export interface ParsedLivestreamEvent {
   dTag: string;
   title?: string;
   summary?: string;
@@ -77,18 +77,18 @@ function parseNumber(value: string | undefined): number | undefined {
 }
 
 /**
- * Parse a kind:30311 stream event into a structured ParsedStreamEvent object
+ * Parse a kind:30311 livestream event into a structured ParsedLivestreamEvent object
  * @param event NDKEvent of kind 30311
- * @returns ParsedStreamEvent with all extracted data
+ * @returns ParsedLivestreamEvent with all extracted data
  * @throws Error if required 'd' tag is missing
  */
-export function parseStreamEvent(event: NDKEvent): ParsedStreamEvent {
+export function parseLivestreamEvent(event: NDKEvent): ParsedLivestreamEvent {
   const tags = event.tags || [];
 
   // Extract 'd' tag (required)
   const dTag = getTagValue(tags, 'd');
   if (!dTag) {
-    throw new Error("Missing required 'd' tag in stream event");
+    throw new Error("Missing required 'd' tag in livestream event");
   }
 
   // Extract optional single-value tags

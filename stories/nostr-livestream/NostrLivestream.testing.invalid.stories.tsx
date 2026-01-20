@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from './utils';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'Stream/Testing/Invalid',
+  title: 'Livestream/Testing/Invalid',
   tags: ['test', 'invalid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -12,7 +12,7 @@ const meta: Meta = {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-stream',
+        element: 'nostr-livestream',
         config: {
           rules: {
             'color-contrast': { enabled: true },
@@ -22,7 +22,7 @@ const meta: Meta = {
     },
     docs: {
       description: {
-        component: 'Invalid test cases for the nostr-stream component demonstrating error handling and validation.',
+        component: 'Invalid test cases for the nostr-livestream component demonstrating error handling and validation.',
       },
     },
   },

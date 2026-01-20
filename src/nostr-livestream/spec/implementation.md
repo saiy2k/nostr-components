@@ -1,8 +1,8 @@
-# Nostr Stream Component - Technical Implementation
+# Nostr Livestream Component - Technical Implementation
 
 ## Overview
 
-This document contains the technical implementation details for the `nostr-stream` component. For component usage and API specifications, see [spec.md](./spec.md).
+This document contains the technical implementation details for the `nostr-livestream` component. For component usage and API specifications, see [spec.md](./spec.md).
 
 ## Architecture
 
@@ -11,21 +11,21 @@ This document contains the technical implementation details for the `nostr-strea
 - Inheritance:
   - `NostrBaseComponent`: Relay connection, theme handling, status management, event delegation
   - `NostrEventComponent`: Addressable event resolution (naddr), author profile loading
-  - `NostrStream`: Stream-specific functionality
+  - `NostrLivestream`: Livestream-specific functionality
 
 ### Status Management
 Channel-based status channels:
-- `eventStatus`: Stream event loading (inherited)
+- `eventStatus`: Livestream event loading (inherited)
 - `authorStatus`: Author profile loading (inherited)
 - `participantsStatus`: Participant profile resolution
 - `videoStatus`: Video player/stream URL loading
 - `connectionStatus`: Relay connection (inherited as `conn`)
 
 ### Rendering Architecture
-- `nostr-stream.ts`: Component logic and lifecycle
+- `nostr-livestream.ts`: Component logic and lifecycle
 - `render.ts`: Rendering functions and HTML generation
 - `style.ts`: CSS styles and theming
-- `stream-utils.ts`: Stream parsing and utility functions
+- `livestream-utils.ts`: Livestream parsing and utility functions
 
 ## Dependencies
 
@@ -46,15 +46,15 @@ Channel-based status channels:
 1. **Constructor**: Initialize status channels
 2. **Connected Callback**: Validate `naddr`, connect to relays, fetch event, attach listeners, render
 3. **Attribute Changed**: Handle `naddr`, `show-participants`, `show-participant-count`, `auto-play`, `data-theme`
-4. **onEventReady**: Parse stream event, load participant profiles, render
+4. **onEventReady**: Parse livestream event, load participant profiles, render
 5. **Disconnected Callback**: Clean up listeners
 
-## Stream Event Parsing
+## Livestream Event Parsing
 
 Parses kind:30311 events into structured data:
 
 ```typescript
-interface ParsedStreamEvent {
+interface ParsedLivestreamEvent {
   dTag: string;
   title?: string;
   summary?: string;
@@ -108,22 +108,22 @@ Status is determined from the initially fetched event. Page refresh required to 
 ## Performance Considerations
 
 - Batch fetch all participant profiles in a single query
-- Cache parsed stream event data
+- Cache parsed livestream event data
 - Lazy load video player only when status is "live"
 - Show skeleton loaders for participant profiles while loading
 
 ## File Structure
 
 ```
-src/nostr-stream/
-├── nostr-stream.ts          # Main component class
-├── render.ts                # Rendering functions and HTML generation
-├── style.ts                 # Component-specific CSS styles
-├── stream-utils.ts          # Stream parsing and utility functions
+src/nostr-livestream/
+├── nostr-livestream.ts          # Main component class
+├── render.ts                    # Rendering functions and HTML generation
+├── style.ts                     # Component-specific CSS styles
+├── livestream-utils.ts          # Livestream parsing and utility functions
 └── spec/
-    ├── spec.md              # Component specification
-    ├── implementation.md    # This file
-    └── testing.md           # Testing considerations
+    ├── spec.md                  # Component specification
+    ├── implementation.md        # This file
+    └── testing.md               # Testing considerations
 ```
 
 ## Addressable Event Resolution

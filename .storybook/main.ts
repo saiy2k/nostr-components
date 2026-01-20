@@ -11,8 +11,7 @@ const getStories = () => {
       '../stories/nostr-profile-badge/NostrProfileBadge.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-profile/NostrProfile.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-post/NostrPost.stories.@(js|jsx|mjs|ts|tsx)',
-      // TODO: Add when NostrStream.stories.tsx is created
-      // '../stories/nostr-stream/NostrStream.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-livestream/NostrLivestream.stories.@(js|jsx|mjs|ts|tsx)',
       // Include styling stories
       '../stories/nostr-zap/NostrZap.styling.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-follow-button/NostrFollowButton.styling.stories.@(js|jsx|mjs|ts|tsx)',
@@ -20,8 +19,7 @@ const getStories = () => {
       '../stories/nostr-profile-badge/NostrProfileBadge.styling.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-profile/NostrProfile.styling.stories.@(js|jsx|mjs|ts|tsx)',
       '../stories/nostr-post/NostrPost.styling.stories.@(js|jsx|mjs|ts|tsx)',
-      // TODO: Add when NostrStream.styling.stories.tsx is created
-      // '../stories/nostr-stream/NostrStream.styling.stories.@(js|jsx|mjs|ts|tsx)',
+      '../stories/nostr-livestream/NostrLivestream.styling.stories.@(js|jsx|mjs|ts|tsx)',
     ];
   } else {
     return [

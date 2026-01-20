@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { NDKEvent } from '@nostr-dev-kit/ndk';
-import { parseStreamEvent, ParsedStreamEvent } from '../stream-utils';
+import { parseLivestreamEvent } from '../livestream-utils';
 
 /**
  * Helper to create a mock NDKEvent with tags
@@ -20,12 +20,12 @@ function createMockEvent(tags: string[][], kind: number = 30311): NDKEvent {
   return event;
 }
 
-describe('parseStreamEvent', () => {
+describe('parseLivestreamEvent', () => {
   it('should parse event with all tags present', () => {
     const tags: string[][] = [
-      ['d', 'demo-stream-123'],
-      ['title', 'Test Stream'],
-      ['summary', 'This is a test stream'],
+      ['d', 'demo-livestream-123'],
+      ['title', 'Test Livestream'],
+      ['summary', 'This is a test livestream'],
       ['image', 'https://example.com/image.png'],
       ['streaming', 'https://example.com/stream.m3u8'],
       ['recording', 'https://example.com/recording.mp4'],
@@ -43,11 +43,11 @@ describe('parseStreamEvent', () => {
     ];
 
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
-    expect(result.dTag).toBe('demo-stream-123');
-    expect(result.title).toBe('Test Stream');
-    expect(result.summary).toBe('This is a test stream');
+    expect(result.dTag).toBe('demo-livestream-123');
+    expect(result.title).toBe('Test Livestream');
+    expect(result.summary).toBe('This is a test livestream');
     expect(result.image).toBe('https://example.com/image.png');
     expect(result.streamingUrl).toBe('https://example.com/stream.m3u8');
     expect(result.recordingUrl).toBe('https://example.com/recording.mp4');
@@ -77,11 +77,11 @@ describe('parseStreamEvent', () => {
   });
 
   it('should parse event with only required d tag', () => {
-    const tags: string[][] = [['d', 'minimal-stream']];
+    const tags: string[][] = [['d', 'minimal-livestream']];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
-    expect(result.dTag).toBe('minimal-stream');
+    expect(result.dTag).toBe('minimal-livestream');
     expect(result.title).toBeUndefined();
     expect(result.summary).toBeUndefined();
     expect(result.status).toBe('planned'); // Default status
@@ -90,21 +90,21 @@ describe('parseStreamEvent', () => {
   });
 
   it('should throw error if d tag is missing', () => {
-    const tags: string[][] = [['title', 'Stream without d tag']];
+    const tags: string[][] = [['title', 'Livestream without d tag']];
     const event = createMockEvent(tags);
 
-    expect(() => parseStreamEvent(event)).toThrow("Missing required 'd' tag in stream event");
+    expect(() => parseLivestreamEvent(event)).toThrow("Missing required 'd' tag in livestream event");
   });
 
   it('should handle missing optional tags gracefully', () => {
     const tags: string[][] = [
-      ['d', 'test-stream'],
+      ['d', 'test-livestream'],
       ['title', 'Only Title'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
-    expect(result.dTag).toBe('test-stream');
+    expect(result.dTag).toBe('test-livestream');
     expect(result.title).toBe('Only Title');
     expect(result.summary).toBeUndefined();
     expect(result.image).toBeUndefined();
@@ -121,7 +121,7 @@ describe('parseStreamEvent', () => {
     for (const status of statuses) {
       const tags: string[][] = [['d', 'test'], ['status', status]];
       const event = createMockEvent(tags);
-      const result = parseStreamEvent(event);
+      const result = parseLivestreamEvent(event);
       expect(result.status).toBe(status);
     }
   });
@@ -132,7 +132,7 @@ describe('parseStreamEvent', () => {
       ['status', 'invalid-status'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
     
     expect(result.status).toBe('planned');
   });
@@ -143,7 +143,7 @@ describe('parseStreamEvent', () => {
       ['p', 'pubkey123', 'wss://relay.com', 'Host', 'proof-signature'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.participants).toHaveLength(1);
     expect(result.participants[0]).toEqual({
@@ -160,7 +160,7 @@ describe('parseStreamEvent', () => {
       ['p', 'pubkey123'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.participants).toHaveLength(1);
     expect(result.participants[0]).toEqual({
@@ -175,7 +175,7 @@ describe('parseStreamEvent', () => {
       ['p', 'valid-pubkey'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.participants).toHaveLength(1);
     expect(result.participants[0].pubkey).toBe('valid-pubkey');
@@ -188,7 +188,7 @@ describe('parseStreamEvent', () => {
       ['ends', '1699127056'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.starts).toBe(1699123456);
     expect(result.ends).toBe(1699127056);
@@ -201,7 +201,7 @@ describe('parseStreamEvent', () => {
       ['ends', ''],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.starts).toBeUndefined();
     expect(result.ends).toBeUndefined();
@@ -214,7 +214,7 @@ describe('parseStreamEvent', () => {
       ['total_participants', '200'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.currentParticipants).toBe(50);
     expect(result.totalParticipants).toBe(200);
@@ -227,7 +227,7 @@ describe('parseStreamEvent', () => {
       ['total_participants', ''],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.currentParticipants).toBeUndefined();
     expect(result.totalParticipants).toBeUndefined();
@@ -241,7 +241,7 @@ describe('parseStreamEvent', () => {
       ['relays', 'wss://relay3.com'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.relays).toEqual([
       'wss://relay1.com',
@@ -258,7 +258,7 @@ describe('parseStreamEvent', () => {
       ['t', 'live'],
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.hashtags).toEqual(['nostr', 'streaming', 'live']);
   });
@@ -266,7 +266,7 @@ describe('parseStreamEvent', () => {
   it('should return empty array for hashtags when none present', () => {
     const tags: string[][] = [['d', 'test']];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.hashtags).toEqual([]);
   });
@@ -274,7 +274,7 @@ describe('parseStreamEvent', () => {
   it('should return undefined for relays when none present', () => {
     const tags: string[][] = [['d', 'test']];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     expect(result.relays).toBeUndefined();
   });
@@ -285,7 +285,7 @@ describe('parseStreamEvent', () => {
       ['p', 'pubkey1', '', 'Participant'], // Empty relay string
     ];
     const event = createMockEvent(tags);
-    const result = parseStreamEvent(event);
+    const result = parseLivestreamEvent(event);
 
     // Empty string is falsy, so it's treated as missing (undefined)
     expect(result.participants[0].relay).toBeUndefined();

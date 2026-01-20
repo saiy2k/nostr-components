@@ -2,14 +2,14 @@
 
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { ParsedStreamEvent } from './stream-utils';
+import { ParsedLivestreamEvent } from './livestream-utils';
 import { escapeHtml, hexToNpub } from '../common/utils';
 import { formatEventDate } from '../common/date-utils';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 
-export interface RenderStreamOptions extends IRenderOptions {
+export interface RenderLivestreamOptions extends IRenderOptions {
   author: NDKUserProfile | null;
-  parsedStream: ParsedStreamEvent | null;
+  parsedLivestream: ParsedLivestreamEvent | null;
   showParticipants: boolean;
   showParticipantCount: boolean;
   autoPlay: boolean;
@@ -18,13 +18,13 @@ export interface RenderStreamOptions extends IRenderOptions {
   videoStatus: NCStatus;
 }
 
-export function renderStream(options: RenderStreamOptions): string {
+export function renderLivestream(options: RenderLivestreamOptions): string {
   const {
     isLoading,
     isError,
     errorMessage,
     author,
-    parsedStream,
+    parsedLivestream,
     showParticipants,
     showParticipantCount,
     participantProfiles,
@@ -38,38 +38,38 @@ export function renderStream(options: RenderStreamOptions): string {
   }
 
   // Handle loading state
-  if (isLoading || !parsedStream) {
+  if (isLoading || !parsedLivestream) {
     return renderLoading();
   }
 
-  // Handle ready state - full stream display
+  // Handle ready state - full livestream display
   return `
-    <div class="nostr-stream-container">
-      ${renderStreamHeader(isLoading, author, parsedStream)}
-      ${renderStreamMedia(parsedStream, options.autoPlay, videoStatus)}
-      ${renderStreamMetadata(parsedStream, showParticipantCount)}
-      ${showParticipants ? renderParticipants(parsedStream, participantProfiles, participantsStatus) : ''}
+    <div class="nostr-livestream-container">
+      ${renderLivestreamHeader(isLoading, author, parsedLivestream)}
+      ${renderLivestreamMedia(parsedLivestream, options.autoPlay, videoStatus)}
+      ${renderLivestreamMetadata(parsedLivestream, showParticipantCount)}
+      ${showParticipants ? renderParticipants(parsedLivestream, participantProfiles, participantsStatus) : ''}
     </div>
   `;
 }
 
-function renderStreamHeader(
+function renderLivestreamHeader(
   isLoading: boolean,
   author: NDKUserProfile | null,
-  parsedStream: ParsedStreamEvent
+  parsedLivestream: ParsedLivestreamEvent
 ): string {
   if (isLoading) {
     return `
-      <div class="stream-header">
-        <div class="stream-title-row">
+      <div class="livestream-header">
+        <div class="livestream-title-row">
           <div style="display: block; width: 70%; height: 20px; border-radius: 10px; margin-bottom: 0;" class="skeleton"></div>
           <div style="display: block; width: 80px; height: 24px; border-radius: 12px; margin-bottom: 0;" class="skeleton"></div>
         </div>
-        <div class="stream-author-row">
+        <div class="livestream-author-row">
           <div class="author-picture">
             <div style="display: block; width: 35px; height: 35px; border-radius: 50%; margin-bottom: 0;" class="skeleton"></div>
           </div>
-          <div class="stream-author-info">
+          <div class="livestream-author-info">
             <div style="display: block; width: 150px; height: 16px; border-radius: 8px; margin-bottom: 4px;" class="skeleton"></div>
             <div style="display: block; width: 120px; height: 14px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
           </div>
@@ -81,23 +81,23 @@ function renderStreamHeader(
   const authorImage = author?.picture || author?.image || '';
   const authorName = author?.displayName || author?.name || 'Unknown';
   const authorNip05 = author?.nip05 || '';
-  const title = parsedStream.title || 'Untitled Stream';
-  const status = parsedStream.status || 'planned';
-  const statusBadgeClass = `stream-status-badge stream-status-${status}`;
+  const title = parsedLivestream.title || 'Untitled Livestream';
+  const status = parsedLivestream.status || 'planned';
+  const statusBadgeClass = `livestream-status-badge livestream-status-${status}`;
 
   return `
-    <div class="stream-header">
-      <div class="stream-title-row">
-        <div class="stream-title">${escapeHtml(title)}</div>
-        <div class="stream-header-right">
+    <div class="livestream-header">
+      <div class="livestream-title-row">
+        <div class="livestream-title">${escapeHtml(title)}</div>
+        <div class="livestream-header-right">
           <span class="${statusBadgeClass}">${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</span>
         </div>
       </div>
-      <div class="stream-author-row">
+      <div class="livestream-author-row">
         <div class="author-picture">
           ${authorImage ? `<img src="${escapeHtml(authorImage)}" alt="${escapeHtml(authorName)}" />` : ''}
         </div>
-        <div class="stream-author-info">
+        <div class="livestream-author-info">
           ${authorName ? `<span class="author-name">${escapeHtml(authorName)}</span>` : ''}
           ${authorNip05 ? `<span class="author-username">${escapeHtml(authorNip05)}</span>` : ''}
         </div>
@@ -106,20 +106,20 @@ function renderStreamHeader(
   `;
 }
 
-function renderStreamMedia(
-  parsedStream: ParsedStreamEvent,
+function renderLivestreamMedia(
+  parsedLivestream: ParsedLivestreamEvent,
   autoPlay: boolean,
   videoStatus: NCStatus
 ): string {
-  const status = parsedStream.status || 'planned';
-  const streamingUrl = parsedStream.streamingUrl;
-  const recordingUrl = parsedStream.recordingUrl;
-  const imageUrl = parsedStream.image;
+  const status = parsedLivestream.status || 'planned';
+  const streamingUrl = parsedLivestream.streamingUrl;
+  const recordingUrl = parsedLivestream.recordingUrl;
+  const imageUrl = parsedLivestream.image;
 
   // If live and has streaming URL, render video player (unless video failed)
   if (status === 'live' && streamingUrl && videoStatus !== NCStatus.Error) {
     return `
-      <div class="stream-media">
+      <div class="livestream-media">
         ${renderVideoPlayer(streamingUrl, autoPlay)}
       </div>
     `;
@@ -128,7 +128,7 @@ function renderStreamMedia(
   // If video failed (error status), show preview image as fallback
   if (status === 'live' && streamingUrl && videoStatus === NCStatus.Error) {
     return `
-      <div class="stream-media">
+      <div class="livestream-media">
         ${renderPreviewImage(imageUrl)}
       </div>
     `;
@@ -137,7 +137,7 @@ function renderStreamMedia(
   // If ended and has recording URL, show recording link
   if (status === 'ended' && recordingUrl) {
     return `
-      <div class="stream-media">
+      <div class="livestream-media">
         ${renderPreviewImage(imageUrl)}
         ${renderRecordingLink(recordingUrl)}
       </div>
@@ -146,7 +146,7 @@ function renderStreamMedia(
 
   // Show preview image (planned or no streaming URL)
   return `
-    <div class="stream-media">
+    <div class="livestream-media">
       ${renderPreviewImage(imageUrl)}
     </div>
   `;
@@ -157,7 +157,7 @@ function renderVideoPlayer(url: string, autoPlay: boolean): string {
   const autoplayAttr = autoPlay ? 'autoplay' : '';
   return `
     <hls-video
-      class="stream-video"
+      class="livestream-video"
       src="${escapeHtml(url)}"
       controls
       ${autoplayAttr}
@@ -169,16 +169,16 @@ function renderVideoPlayer(url: string, autoPlay: boolean): string {
 function renderPreviewImage(imageUrl?: string): string {
   if (imageUrl) {
     return `
-      <div class="stream-preview-image">
-        <img src="${escapeHtml(imageUrl)}" alt="Stream preview" loading="lazy" />
+      <div class="livestream-preview-image">
+        <img src="${escapeHtml(imageUrl)}" alt="Livestream preview" loading="lazy" />
       </div>
     `;
   }
 
   // Default placeholder
   return `
-    <div class="stream-preview-image stream-preview-placeholder">
-      <div class="stream-preview-placeholder-icon">📹</div>
+    <div class="livestream-preview-image livestream-preview-placeholder">
+      <div class="livestream-preview-placeholder-icon">📹</div>
       <p>No preview image</p>
     </div>
   `;
@@ -186,7 +186,7 @@ function renderPreviewImage(imageUrl?: string): string {
 
 function renderRecordingLink(url: string): string {
   return `
-    <div class="stream-recording-link">
+    <div class="livestream-recording-link">
       <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
         <span class="recording-icon">▶</span>
         <span>Watch Recording</span>
@@ -195,23 +195,23 @@ function renderRecordingLink(url: string): string {
   `;
 }
 
-function renderStreamMetadata(
-  parsedStream: ParsedStreamEvent,
+function renderLivestreamMetadata(
+  parsedLivestream: ParsedLivestreamEvent,
   showParticipantCount: boolean
 ): string {
-  const summary = parsedStream.summary;
-  const hashtags = parsedStream.hashtags || [];
-  const currentParticipants = parsedStream.currentParticipants ||parsedStream.participants.length;
-  const totalParticipants = parsedStream.totalParticipants;
-  const starts = parsedStream.starts;
-  const ends = parsedStream.ends;
+  const summary = parsedLivestream.summary;
+  const hashtags = parsedLivestream.hashtags || [];
+  const currentParticipants = parsedLivestream.currentParticipants || parsedLivestream.participants.length;
+  const totalParticipants = parsedLivestream.totalParticipants;
+  const starts = parsedLivestream.starts;
+  const ends = parsedLivestream.ends;
 
-  let metadataHtml = '<div class="stream-metadata">';
+  let metadataHtml = '<div class="livestream-metadata">';
 
   // Summary
   if (summary) {
     metadataHtml += `
-      <div class="stream-summary">
+      <div class="livestream-summary">
         ${escapeHtml(summary)}
       </div>
     `;
@@ -226,7 +226,7 @@ function renderStreamMetadata(
         : `${totalParticipants || 0}`;
     
     metadataHtml += `
-      <div class="stream-participant-count">
+      <div class="livestream-participant-count">
         <strong>Participants:</strong> ${countText}
       </div>
     `;
@@ -234,12 +234,12 @@ function renderStreamMetadata(
 
   // Start/End times
   if (starts || ends) {
-    metadataHtml += '<div class="stream-timestamps">';
+    metadataHtml += '<div class="livestream-timestamps">';
     if (starts) {
-      metadataHtml += `<span class="stream-start-time">Starts: ${formatEventDate(starts)}</span>`;
+      metadataHtml += `<span class="livestream-start-time">Starts: ${formatEventDate(starts)}</span>`;
     }
     if (ends) {
-      metadataHtml += `<span class="stream-end-time">Ends: ${formatEventDate(ends)}</span>`;
+      metadataHtml += `<span class="livestream-end-time">Ends: ${formatEventDate(ends)}</span>`;
     }
     metadataHtml += '</div>';
   }
@@ -247,7 +247,7 @@ function renderStreamMetadata(
   // Hashtags
   if (hashtags.length > 0) {
     metadataHtml += `
-      <div class="stream-hashtags">
+      <div class="livestream-hashtags">
         ${hashtags.map(tag => `<span class="hashtag">#${escapeHtml(tag)}</span>`).join(' ')}
       </div>
     `;
@@ -258,16 +258,16 @@ function renderStreamMetadata(
 }
 
 function renderParticipants(
-  parsedStream: ParsedStreamEvent,
+  parsedLivestream: ParsedLivestreamEvent,
   participantProfiles: Map<string, any>,
   participantsStatus: NCStatus
 ): string {
-  const participants = parsedStream.participants || [];
+  const participants = parsedLivestream.participants || [];
 
   // Show skeleton loaders while participants are loading
   if (participantsStatus === NCStatus.Loading) {
     return `
-      <div class="stream-participants">
+      <div class="livestream-participants">
         <h3 class="participants-title">Participants</h3>
         <div class="participants-list">
           ${Array.from({ length: 3 }, () => `
@@ -283,7 +283,7 @@ function renderParticipants(
 
   if (participants.length === 0) {
     return `
-      <div class="stream-participants">
+      <div class="livestream-participants">
         <h3 class="participants-title">Participants</h3>
         <p class="participants-empty">No participants yet</p>
       </div>
@@ -292,7 +292,7 @@ function renderParticipants(
 
   // Enhanced participant rendering with profiles
   return `
-    <div class="stream-participants">
+    <div class="livestream-participants">
       <h3 class="participants-title">Participants (${participants.length})</h3>
       <div class="participants-list">
         ${participants.map(participant => {
@@ -345,8 +345,8 @@ function renderParticipants(
 
 function renderError(errorMessage: string): string {
   return `
-    <div class="nostr-stream-container">
-      <div class="stream-error">
+    <div class="nostr-livestream-container">
+      <div class="livestream-error">
         <div class="error-icon">⚠</div>
         <div class="error-message">${escapeHtml(errorMessage)}</div>
       </div>
@@ -356,26 +356,26 @@ function renderError(errorMessage: string): string {
 
 function renderLoading(): string {
   return `
-    <div class="nostr-stream-container">
-      <div class="stream-header">
-        <div class="stream-title-row">
+    <div class="nostr-livestream-container">
+      <div class="livestream-header">
+        <div class="livestream-title-row">
           <div style="display: block; width: 70%; height: 20px; border-radius: 10px; margin-bottom: 0;" class="skeleton"></div>
           <div style="display: block; width: 80px; height: 24px; border-radius: 12px; margin-bottom: 0;" class="skeleton"></div>
         </div>
-        <div class="stream-author-row">
+        <div class="livestream-author-row">
           <div class="author-picture">
             <div style="display: block; width: 35px; height: 35px; border-radius: 50%; margin-bottom: 0;" class="skeleton"></div>
           </div>
-          <div class="stream-author-info">
+          <div class="livestream-author-info">
             <div style="display: block; width: 150px; height: 16px; border-radius: 8px; margin-bottom: 4px;" class="skeleton"></div>
             <div style="display: block; width: 120px; height: 14px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
           </div>
         </div>
       </div>
-      <div class="stream-media">
+      <div class="livestream-media">
         <div style="display: block; width: 100%; height: 300px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
       </div>
-      <div class="stream-metadata">
+      <div class="livestream-metadata">
         <div style="display: block; width: 100%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
         <div style="display: block; width: 80%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
         <div style="display: block; width: 60%; height: 14px; border-radius: 4px; margin-bottom: 0;" class="skeleton"></div>

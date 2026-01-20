@@ -1,27 +1,27 @@
-# Nostr Stream Component Specification
+# Nostr Livestream Component Specification
 
 ## Overview
 
-- Component: `nostr-stream`
+- Component: `nostr-livestream`
 - Purpose: Display live streaming events from Nostr using NIP-53
 - NIP: [NIP-53 Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)
 
 ## Features
 
-- Display stream metadata (title, summary, image, status)
-- Show HLS video player when stream status is "live"
+- Display livestream metadata (title, summary, image, status)
+- Show HLS video player when livestream status is "live"
 - Display author profile information
 - Show participant list with roles (Host, Speaker, Participant)
 - Display participant counts (current and total)
 - Status badges: Planned, Live, Ended
-- Show post-event recording link when stream has ended
+- Show post-event recording link when livestream has ended
 
-## Stream Event Status
+## Livestream Event Status
 
 ### Status Values
-- `planned` - Stream is scheduled but not yet live
-- `live` - Stream is currently active
-- `ended` - Stream has concluded
+- `planned` - Livestream is scheduled but not yet live
+- `live` - Livestream is currently active
+- `ended` - Livestream has concluded
 
 ## Limitations
 
@@ -30,14 +30,14 @@
 
 **Impact:**
 - Participant list may not show all viewers/participants
-- Participant counts may be approximate for large streams
+- Participant counts may be approximate for large livestreams
 - Performance degrades with many participants (fetching 1000+ profiles)
 
 ## API
 
 ### Required Attributes
 
-- `naddr` (string) - NIP-19 addressable event code for the stream (`naddr1...` bech32-encoded)
+- `naddr` (string) - NIP-19 addressable event code for the livestream (`naddr1...` bech32-encoded)
 
 ### Optional Attributes
 
@@ -53,7 +53,7 @@
 - **Planned**: Preview image, scheduled start time, participant counts (0/0)
 - **Live**: HLS video player, live status badge, current participant counts, participant list with roles
 - **Ended**: Final frame preview image, recording link (if available), final participant counts
-- **Error**: Error message indicating stream could not be loaded
+- **Error**: Error message indicating livestream could not be loaded
 
 ### Responsive Design
 
@@ -65,7 +65,7 @@
 
 ```text
 ┌─────────────────────────────────────┐
-│  🎬 Stream Title                    │
+│  🎬 Livestream Title                │
 │  [Avatar] Author Name               │
 │  [🔴 LIVE] Started: 15 minutes ago  │
 ├─────────────────────────────────────┤
@@ -75,7 +75,7 @@
 │  │                               │  │
 │  └───────────────────────────────┘  │
 ├─────────────────────────────────────┤
-│  Summary: Stream description text   │
+│  Summary: Livestream description    │
 │  Tags: #tag1 #tag2                  │
 │  Participants: 127 / 145            │
 │                                     │
@@ -88,56 +88,56 @@
 
 ## Usage
 
-Basic stream display:
+Basic livestream display:
 ```html
-<nostr-stream naddr="naddr1..."></nostr-stream>
+<nostr-livestream naddr="naddr1..."></nostr-livestream>
 ```
 
 Hide participant list:
 ```html
-<nostr-stream naddr="naddr1..." show-participants="false"></nostr-stream>
+<nostr-livestream naddr="naddr1..." show-participants="false"></nostr-livestream>
 ```
 
 Autoplay video (when live):
 ```html
-<nostr-stream naddr="naddr1..." auto-play="true"></nostr-stream>
+<nostr-livestream naddr="naddr1..." auto-play="true"></nostr-livestream>
 ```
 
 Dark theme:
 ```html
-<nostr-stream naddr="naddr1..." data-theme="dark"></nostr-stream>
+<nostr-livestream naddr="naddr1..." data-theme="dark"></nostr-livestream>
 ```
 
 Custom relays:
 ```html
-<nostr-stream naddr="naddr1..." relays="wss://relay1.com,wss://relay2.com"></nostr-stream>
+<nostr-livestream naddr="naddr1..." relays="wss://relay1.com,wss://relay2.com"></nostr-livestream>
 ```
 
 Hide participant count:
 ```html
-<nostr-stream naddr="naddr1..." show-participant-count="false"></nostr-stream>
+<nostr-livestream naddr="naddr1..." show-participant-count="false"></nostr-livestream>
 ```
 
 ## Participant Roles
 
 The component displays participant roles as defined by NIP-53:
 
-- `Host` - Full stream management capabilities
-- `Speaker` - Allowed to present/speak in stream
+- `Host` - Full livestream management capabilities
+- `Speaker` - Allowed to present/speak in livestream
 - `Participant` - Regular participant/viewer
 
 Participants with proof are verified participants who agreed to join. Participants without proof may be displayed as "invited".
 
 ## Future Enhancements
 
-- Live event subscriptions: Real-time updates when stream status or participants change
+- Live event subscriptions: Real-time updates when livestream status or participants change
 - Live chat integration (kind:1311 events with `a` tag reference)
 - Meeting spaces support (kind:30312, 30313)
 - Participant proof verification
-- Zap button integration for streams
+- Zap button integration for livestreams
 - Full-screen video mode
 - Video quality selector (if HLS with multiple variants)
 - Real-time participant presence indicators
 - Enhanced video player controls
-- Notification when stream goes live
-- Staleness detection: Marking live streams as ended if no updates received for extended period
+- Notification when livestream goes live
+- Staleness detection: Marking live livestreams as ended if no updates received for extended period

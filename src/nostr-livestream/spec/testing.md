@@ -1,4 +1,4 @@
-# Nostr Stream Component – Testing Considerations
+# Nostr Livestream Component – Testing Considerations
 
 ## Core Functionality
 
@@ -18,7 +18,7 @@
 ## Edge Cases
 
 - Invalid or missing `naddr` attribute
-- Non-existent stream event
+- Non-existent livestream event
 - Missing optional tags (title, summary, image, streaming URL)
 - Missing participant data
 - Relay connection failures

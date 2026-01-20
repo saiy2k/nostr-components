@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
-  title: 'Stream/Testing/Valid',
+  title: 'Livestream/Testing/Valid',
   tags: ['test', 'valid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -12,7 +12,7 @@ const meta: Meta = {
     test: {
       enabled: true,
       a11y: {
-        element: 'nostr-stream',
+        element: 'nostr-livestream',
         config: {
           rules: {
             'color-contrast': { enabled: true },

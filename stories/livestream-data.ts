@@ -1,4 +1,4 @@
-export interface Stream {
+export interface Livestream {
   name: string;
   naddr: string;
 }
@@ -9,47 +9,47 @@ export interface InputType {
   name: string;
 }
 
-export const STREAM_DATA: Record<string, Stream> = {
+export const LIVESTREAM_DATA: Record<string, Livestream> = {
   ended: {
-    name: 'Ended Stream',
+    name: 'Ended Livestream',
     naddr: 'naddr1qqjrqvfevyekzv3495unqdnz95mngcen94skze3494nxgvrzvvenvwfjxvmrxqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzq0d4uxua4ftuc6na254gd2r4wnh2ye0qwkwaawragns8ylmeakydqvzqqqrkvu5jsvfk',
   },
   live: {
-    name: 'Live Stream',
+    name: 'Live Livestream',
     naddr: 'naddr1qqjxgdrzv9jnwdmr94skgwpn956r2ety943xgwr995urwvtyvsckzd33x33xxqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzpn6956apxcad0mfp8grcuugdysg44eepex68h50t73zcathmfs49qvzqqqrkvu0mc7et',
   },
   live2: {
-    name: 'Live Stream 2',
+    name: 'Live Livestream 2',
     naddr: 'naddr1qqjrydm9vsmryerz95mrqv3h956rgvrz95urzdty943r2d3jxy6kvcn9xsckxqg4waehxw309aex2mrp0yhxgctdw4eju6t09upzpn98aa2pmwpk39qnm96ufa4rte8vwwg45fvkcacyztvjsmnnyvtkqvzqqqrkvu7qdk0f',
   },
   planned: {
-    name: 'Planned Stream',
+    name: 'Planned Livestream',
     naddr: 'naddr1placeholderforplannedstreamthatwillberepacedwhenavailable',
   },
 };
 
-export const getRandomStream = (): Stream => {
-  const streams = Object.values(STREAM_DATA);
-  return streams[Math.floor(Math.random() * streams.length)];
+export const getRandomLivestream = (): Livestream => {
+  const livestreams = Object.values(LIVESTREAM_DATA);
+  return livestreams[Math.floor(Math.random() * livestreams.length)];
 };
 
-export const getStreamsByType = (type: 'naddr'): InputType[] => {
-  return Object.values(STREAM_DATA)
-    .filter(stream => Boolean(stream[type]))
-    .map(stream => ({
+export const getLivestreamsByType = (type: 'naddr'): InputType[] => {
+  return Object.values(LIVESTREAM_DATA)
+    .filter(livestream => Boolean(livestream[type]))
+    .map(livestream => ({
       type,
-      value: stream[type],
-      name: stream.name,
+      value: livestream[type],
+      name: livestream.name,
     }));
 };
 
 export const getAllInputTypes = (): InputType[] => {
-  const streams = Object.values(STREAM_DATA);
+  const livestreams = Object.values(LIVESTREAM_DATA);
   const inputs: InputType[] = [];
   
-  streams.forEach(stream => {
-    if (stream.naddr) {
-      inputs.push({ type: 'naddr', value: stream.naddr, name: stream.name });
+  livestreams.forEach(livestream => {
+    if (livestream.naddr) {
+      inputs.push({ type: 'naddr', value: livestream.naddr, name: livestream.name });
     }
   });
   

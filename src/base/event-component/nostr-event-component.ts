@@ -101,7 +101,7 @@ export class NostrEventComponent extends NostrBaseComponent {
    * Returns true if this component requires naddr (addressable events).
    * Returns false if this component uses hex/noteid/eventid (regular events).
    * Override this method in subclasses to specify which identifier type is required.
-   * Right now NostrStreamComponent uses this function to return true,
+   * Right now NostrLivestreamComponent uses this function to return true,
    * so it requires naddr only.
    * In future, if more components need naddr only,
    * we can create a NostrAddressableEventComponent that extends NostrEventComponent and requires naddr only.
