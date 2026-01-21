@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { NDKEvent } from '@nostr-dev-kit/ndk';
-import { parseLivestreamEvent } from '../livestream-utils';
+import { parseLivestreamEvent, findHostParticipant, getUniqueParticipantPubkeys, getVideoErrorMessage, shouldVideoBeLoading, validateStatus } from '../livestream-utils';
 
 /**
  * Helper to create a mock NDKEvent with tags
@@ -19,6 +19,36 @@ function createMockEvent(tags: string[][], kind: number = 30311): NDKEvent {
   } as unknown as NDKEvent;
   return event;
 }
+
+describe('validateStatus', () => {
+  it('should return valid status for "planned"', () => {
+    expect(validateStatus('planned')).toBe('planned');
+  });
+
+  it('should return valid status for "live"', () => {
+    expect(validateStatus('live')).toBe('live');
+  });
+
+  it('should return valid status for "ended"', () => {
+    expect(validateStatus('ended')).toBe('ended');
+  });
+
+  it('should default to "planned" for undefined', () => {
+    expect(validateStatus(undefined)).toBe('planned');
+  });
+
+  it('should default to "planned" for empty string', () => {
+    expect(validateStatus('')).toBe('planned');
+  });
+
+  it('should default to "planned" for invalid status values', () => {
+    expect(validateStatus('invalid-status')).toBe('planned');
+    expect(validateStatus('LIVE')).toBe('planned'); // Case sensitive
+    expect(validateStatus('Planned')).toBe('planned'); // Case sensitive
+    expect(validateStatus('123')).toBe('planned');
+    expect(validateStatus('null')).toBe('planned');
+  });
+});
 
 describe('parseLivestreamEvent', () => {
   it('should parse event with all tags present', () => {
@@ -290,5 +320,191 @@ describe('parseLivestreamEvent', () => {
     // Empty string is falsy, so it's treated as missing (undefined)
     expect(result.participants[0].relay).toBeUndefined();
     expect(result.participants[0].role).toBe('Participant');
+  });
+});
+
+describe('findHostParticipant', () => {
+  it('should find host participant with capitalized role', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['p', 'host-pubkey', '', 'Host'],
+      ['p', 'speaker-pubkey', '', 'Speaker'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    const host = findHostParticipant(parsed);
+
+    expect(host).toBeDefined();
+    expect(host?.pubkey).toBe('host-pubkey');
+    expect(host?.role).toBe('Host');
+  });
+
+  it('should find host participant with lowercase role (case-insensitive)', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['p', 'host-pubkey', '', 'host'],
+      ['p', 'speaker-pubkey', '', 'Speaker'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    const host = findHostParticipant(parsed);
+
+    expect(host).toBeDefined();
+    expect(host?.pubkey).toBe('host-pubkey');
+    expect(host?.role).toBe('host');
+  });
+
+  it('should return undefined when no host participant exists', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['p', 'speaker-pubkey', '', 'Speaker'],
+      ['p', 'participant-pubkey', '', 'Participant'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    const host = findHostParticipant(parsed);
+
+    expect(host).toBeUndefined();
+  });
+
+  it('should return undefined when no participants exist', () => {
+    const tags: string[][] = [['d', 'test']];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    const host = findHostParticipant(parsed);
+
+    expect(host).toBeUndefined();
+  });
+});
+
+describe('getUniqueParticipantPubkeys', () => {
+  it('should return unique pubkeys from participants', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['p', 'pubkey1', '', 'Host'],
+      ['p', 'pubkey2', '', 'Speaker'],
+      ['p', 'pubkey1', '', 'Participant'], // Duplicate
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    const uniquePubkeys = getUniqueParticipantPubkeys(parsed);
+
+    expect(uniquePubkeys).toHaveLength(2);
+    expect(uniquePubkeys).toContain('pubkey1');
+    expect(uniquePubkeys).toContain('pubkey2');
+  });
+
+  it('should return empty array when no participants exist', () => {
+    const tags: string[][] = [['d', 'test']];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    const uniquePubkeys = getUniqueParticipantPubkeys(parsed);
+
+    expect(uniquePubkeys).toEqual([]);
+  });
+
+  it('should return single pubkey when all participants have same pubkey', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['p', 'pubkey1', '', 'Host'],
+      ['p', 'pubkey1', '', 'Speaker'],
+      ['p', 'pubkey1', '', 'Participant'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    const uniquePubkeys = getUniqueParticipantPubkeys(parsed);
+
+    expect(uniquePubkeys).toEqual(['pubkey1']);
+  });
+});
+
+describe('shouldVideoBeLoading', () => {
+  it('should return true for live status with streaming URL', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['status', 'live'],
+      ['streaming', 'https://example.com/stream.m3u8'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    
+    expect(shouldVideoBeLoading(parsed)).toBe(true);
+  });
+
+  it('should return false for live status without streaming URL', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['status', 'live'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    
+    expect(shouldVideoBeLoading(parsed)).toBe(false);
+  });
+
+  it('should return false for planned status even with streaming URL', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['status', 'planned'],
+      ['streaming', 'https://example.com/stream.m3u8'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    
+    expect(shouldVideoBeLoading(parsed)).toBe(false);
+  });
+
+  it('should return false for ended status even with streaming URL', () => {
+    const tags: string[][] = [
+      ['d', 'test'],
+      ['status', 'ended'],
+      ['streaming', 'https://example.com/stream.m3u8'],
+    ];
+    const event = createMockEvent(tags);
+    const parsed = parseLivestreamEvent(event);
+    
+    expect(shouldVideoBeLoading(parsed)).toBe(false);
+  });
+
+  it('should return false for null parsed livestream', () => {
+    expect(shouldVideoBeLoading(null)).toBe(false);
+  });
+});
+
+describe('getVideoErrorMessage', () => {
+  // MediaError constants (from MDN)
+  const MEDIA_ERR_ABORTED = 1;
+  const MEDIA_ERR_NETWORK = 2;
+  const MEDIA_ERR_DECODE = 3;
+  const MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
+
+  it('should return default message for null/undefined error', () => {
+    expect(getVideoErrorMessage(null)).toBe('Video failed to load');
+    expect(getVideoErrorMessage(undefined)).toBe('Video failed to load');
+  });
+
+  it('should return appropriate message for MEDIA_ERR_ABORTED', () => {
+    const error = { code: MEDIA_ERR_ABORTED } as MediaError;
+    expect(getVideoErrorMessage(error)).toBe('Video loading aborted');
+  });
+
+  it('should return appropriate message for MEDIA_ERR_NETWORK', () => {
+    const error = { code: MEDIA_ERR_NETWORK } as MediaError;
+    expect(getVideoErrorMessage(error)).toBe('Network error while loading video');
+  });
+
+  it('should return appropriate message for MEDIA_ERR_DECODE', () => {
+    const error = { code: MEDIA_ERR_DECODE } as MediaError;
+    expect(getVideoErrorMessage(error)).toBe('Video decode error');
+  });
+
+  it('should return appropriate message for MEDIA_ERR_SRC_NOT_SUPPORTED', () => {
+    const error = { code: MEDIA_ERR_SRC_NOT_SUPPORTED } as MediaError;
+    expect(getVideoErrorMessage(error)).toBe('Video format not supported');
+  });
+
+  it('should return default message for unknown error codes', () => {
+    const error = { code: 999 } as MediaError;
+    expect(getVideoErrorMessage(error)).toBe('Video failed to load');
   });
 });

@@ -239,8 +239,6 @@ export class NostrEventComponent extends NostrBaseComponent {
         // Resolve addressable event via naddr
         event = await this.eventResolver.resolveAddressableEvent({ naddr });
 
-        console.log('[NostrEventComponent] Resolved addressable event:', event);
-
         // Store decoded naddr data for subscription use
         try {
           const decoded = nip19.decode(naddr);

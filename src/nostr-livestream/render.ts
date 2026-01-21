@@ -45,7 +45,7 @@ export function renderLivestream(options: RenderLivestreamOptions): string {
   // Handle ready state - full livestream display
   return `
     <div class="nostr-livestream-container">
-      ${renderLivestreamHeader(isLoading, author, parsedLivestream)}
+      ${renderLivestreamHeader(author, parsedLivestream)}
       ${renderLivestreamMedia(parsedLivestream, options.autoPlay, videoStatus)}
       ${renderLivestreamMetadata(parsedLivestream, showParticipantCount)}
       ${showParticipants ? renderParticipants(parsedLivestream, participantProfiles, participantsStatus) : ''}
@@ -54,29 +54,9 @@ export function renderLivestream(options: RenderLivestreamOptions): string {
 }
 
 function renderLivestreamHeader(
-  isLoading: boolean,
   author: NDKUserProfile | null,
   parsedLivestream: ParsedLivestreamEvent
 ): string {
-  if (isLoading) {
-    return `
-      <div class="livestream-header">
-        <div class="livestream-title-row">
-          <div style="display: block; width: 70%; height: 20px; border-radius: 10px; margin-bottom: 0;" class="skeleton"></div>
-          <div style="display: block; width: 80px; height: 24px; border-radius: 12px; margin-bottom: 0;" class="skeleton"></div>
-        </div>
-        <div class="livestream-author-row">
-          <div class="author-picture">
-            <div style="display: block; width: 35px; height: 35px; border-radius: 50%; margin-bottom: 0;" class="skeleton"></div>
-          </div>
-          <div class="livestream-author-info">
-            <div style="display: block; width: 150px; height: 16px; border-radius: 8px; margin-bottom: 4px;" class="skeleton"></div>
-            <div style="display: block; width: 120px; height: 14px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
 
   const authorImage = author?.picture || author?.image || '';
   const authorName = author?.displayName || author?.name || 'Unknown';
@@ -84,13 +64,14 @@ function renderLivestreamHeader(
   const title = parsedLivestream.title || 'Untitled Livestream';
   const status = parsedLivestream.status || 'planned';
   const statusBadgeClass = `livestream-status-badge livestream-status-${status}`;
+  const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
   return `
     <div class="livestream-header">
       <div class="livestream-title-row">
         <div class="livestream-title">${escapeHtml(title)}</div>
         <div class="livestream-header-right">
-          <span class="${statusBadgeClass}">${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</span>
+          <span class="${statusBadgeClass}">${escapeHtml(statusLabel)}</span>
         </div>
       </div>
       <div class="livestream-author-row">
@@ -195,13 +176,64 @@ function renderRecordingLink(url: string): string {
   `;
 }
 
+function formatParticipantCount(current?: number, total?: number): string {
+  if (current !== undefined && total !== undefined) {
+    return `${current} / ${total}`;
+  }
+  if (current !== undefined) {
+    return `${current}`;
+  }
+  return `${total || 0}`;
+}
+
+function getParticipantDisplayName(participant: { pubkey: string }, profile: any): string {
+  if (profile?.displayName) return profile.displayName;
+  if (profile?.name) return profile.name;
+  
+  // Fallback to shortened npub format
+  try {
+    const npub = hexToNpub(participant.pubkey);
+    return `${npub.slice(0, 8)}...${npub.slice(-8)}`;
+  } catch {
+    // If hexToNpub fails, use hex format
+    return `${participant.pubkey.slice(0, 8)}...${participant.pubkey.slice(-8)}`;
+  }
+}
+
+function renderParticipantItem(participant: { pubkey: string; role?: string; proof?: string }, participantProfiles: Map<string, any>): string {
+  const profile = participantProfiles.get(participant.pubkey);
+  const displayName = getParticipantDisplayName(participant, profile);
+  const image = profile?.picture || profile?.image || '';
+  const role = participant.role || 'Participant';
+  const roleClass = `participant-role participant-role-${role.toLowerCase()}`;
+
+  return `
+    <div class="participant-item">
+      <div class="participant-avatar">
+        ${image
+          ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(displayName)}" loading="lazy" />`
+          : '<div class="participant-avatar-placeholder"></div>'
+        }
+      </div>
+      <div class="participant-info">
+        <span class="participant-name">${escapeHtml(displayName)}</span>
+        <span class="${roleClass}">${escapeHtml(role)}</span>
+      </div>
+      ${participant.proof ? '<span class="participant-proof" title="Verified">✓</span>' : ''}
+    </div>
+  `;
+}
+
 function renderLivestreamMetadata(
   parsedLivestream: ParsedLivestreamEvent,
   showParticipantCount: boolean
 ): string {
   const summary = parsedLivestream.summary;
   const hashtags = parsedLivestream.hashtags || [];
-  const currentParticipants = parsedLivestream.currentParticipants || parsedLivestream.participants.length;
+  // Use explicit undefined check to preserve 0 as a valid value
+  const currentParticipants = parsedLivestream.currentParticipants !== undefined 
+    ? parsedLivestream.currentParticipants 
+    : parsedLivestream.participants.length;
   const totalParticipants = parsedLivestream.totalParticipants;
   const starts = parsedLivestream.starts;
   const ends = parsedLivestream.ends;
@@ -219,12 +251,7 @@ function renderLivestreamMetadata(
 
   // Participant count
   if (showParticipantCount && (currentParticipants !== undefined || totalParticipants !== undefined)) {
-    const countText = currentParticipants !== undefined && totalParticipants !== undefined
-      ? `${currentParticipants} / ${totalParticipants}`
-      : currentParticipants !== undefined
-        ? `${currentParticipants}`
-        : `${totalParticipants || 0}`;
-    
+    const countText = formatParticipantCount(currentParticipants, totalParticipants);
     metadataHtml += `
       <div class="livestream-participant-count">
         <strong>Participants:</strong> ${countText}
@@ -272,8 +299,8 @@ function renderParticipants(
         <div class="participants-list">
           ${Array.from({ length: 3 }, () => `
             <div class="participant-item">
-              <div style="width: 32px; height: 32px; border-radius: 50%;" class="skeleton"></div>
-              <div style="width: 120px; height: 14px; border-radius: 4px; margin-left: 8px;" class="skeleton"></div>
+              <div class="skeleton" style="width: 32px; height: 32px; border-radius: 50%;"></div>
+              <div class="skeleton" style="width: 120px; height: 14px; border-radius: 4px; margin-left: 8px;"></div>
             </div>
           `).join('')}
         </div>
@@ -295,49 +322,7 @@ function renderParticipants(
     <div class="livestream-participants">
       <h3 class="participants-title">Participants (${participants.length})</h3>
       <div class="participants-list">
-        ${participants.map(participant => {
-          const profile = participantProfiles.get(participant.pubkey);
-          
-          // Get display name: profile.displayName or profile.name or npub short format
-          let displayName: string;
-          if (profile?.displayName) {
-            displayName = profile.displayName;
-          } else if (profile?.name) {
-            displayName = profile.name;
-          } else {
-            // Fallback to shortened npub format
-            try {
-              const npub = hexToNpub(participant.pubkey);
-              displayName = `${npub.slice(0, 8)}...${npub.slice(-8)}`;
-            } catch {
-              // If hexToNpub fails, use hex format
-              displayName = `${participant.pubkey.slice(0, 8)}...${participant.pubkey.slice(-8)}`;
-            }
-          }
-          
-          // Get avatar image
-          const image = profile?.picture || profile?.image || '';
-          
-          // Get role (Host/Speaker/Participant) - default to 'Participant'
-          const role = participant.role || 'Participant';
-          const roleClass = `participant-role participant-role-${role.toLowerCase()}`;
-
-          return `
-            <div class="participant-item">
-              <div class="participant-avatar">
-                ${image
-                  ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(displayName)}" loading="lazy" />`
-                  : '<div class="participant-avatar-placeholder"></div>'
-                }
-              </div>
-              <div class="participant-info">
-                <span class="participant-name">${escapeHtml(displayName)}</span>
-                <span class="${roleClass}">${escapeHtml(role)}</span>
-              </div>
-              ${participant.proof ? '<span class="participant-proof" title="Verified">✓</span>' : ''}
-            </div>
-          `;
-        }).join('')}
+        ${participants.map(participant => renderParticipantItem(participant, participantProfiles)).join('')}
       </div>
     </div>
   `;
@@ -354,31 +339,37 @@ function renderError(errorMessage: string): string {
   `;
 }
 
+function renderSkeletonHeader(): string {
+  return `
+    <div class="livestream-header">
+      <div class="livestream-title-row">
+        <div class="skeleton" style="width: 70%; height: 20px; border-radius: 10px;"></div>
+        <div class="skeleton" style="width: 80px; height: 24px; border-radius: 12px;"></div>
+      </div>
+      <div class="livestream-author-row">
+        <div class="author-picture">
+          <div class="skeleton" style="width: 35px; height: 35px; border-radius: 50%;"></div>
+        </div>
+        <div class="livestream-author-info">
+          <div class="skeleton" style="width: 150px; height: 16px; border-radius: 8px; margin-bottom: 4px;"></div>
+          <div class="skeleton" style="width: 120px; height: 14px; border-radius: 8px;"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderLoading(): string {
   return `
     <div class="nostr-livestream-container">
-      <div class="livestream-header">
-        <div class="livestream-title-row">
-          <div style="display: block; width: 70%; height: 20px; border-radius: 10px; margin-bottom: 0;" class="skeleton"></div>
-          <div style="display: block; width: 80px; height: 24px; border-radius: 12px; margin-bottom: 0;" class="skeleton"></div>
-        </div>
-        <div class="livestream-author-row">
-          <div class="author-picture">
-            <div style="display: block; width: 35px; height: 35px; border-radius: 50%; margin-bottom: 0;" class="skeleton"></div>
-          </div>
-          <div class="livestream-author-info">
-            <div style="display: block; width: 150px; height: 16px; border-radius: 8px; margin-bottom: 4px;" class="skeleton"></div>
-            <div style="display: block; width: 120px; height: 14px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
-          </div>
-        </div>
-      </div>
+      ${renderSkeletonHeader()}
       <div class="livestream-media">
-        <div style="display: block; width: 100%; height: 300px; border-radius: 8px; margin-bottom: 0;" class="skeleton"></div>
+        <div class="skeleton" style="width: 100%; height: 300px; border-radius: 8px;"></div>
       </div>
       <div class="livestream-metadata">
-        <div style="display: block; width: 100%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
-        <div style="display: block; width: 80%; height: 14px; border-radius: 4px; margin-bottom: 12px;" class="skeleton"></div>
-        <div style="display: block; width: 60%; height: 14px; border-radius: 4px; margin-bottom: 0;" class="skeleton"></div>
+        <div class="skeleton" style="width: 100%; height: 14px; border-radius: 4px; margin-bottom: 12px;"></div>
+        <div class="skeleton" style="width: 80%; height: 14px; border-radius: 4px; margin-bottom: 12px;"></div>
+        <div class="skeleton" style="width: 60%; height: 14px; border-radius: 4px;"></div>
       </div>
     </div>
   `;

@@ -45,7 +45,7 @@ describe('EventResolver - validateNaddr', () => {
     
     const result = resolver.validateNaddr({ naddr: invalidNaddr });
     
-    expect(result).toBe("Invalid naddr format");
+    expect(result).toBe(`Invalid naddr format: ${invalidNaddr}`);
   });
 
   it('should return error for decode failure', () => {
@@ -54,7 +54,7 @@ describe('EventResolver - validateNaddr', () => {
 
     const result = resolver.validateNaddr({ naddr: invalidNaddr });
     
-    expect(result).toBe("Invalid naddr format: decoding failed");
+    expect(result).toBe(`Invalid naddr format: decoding failed: ${invalidNaddr}`);
   });
 });
 

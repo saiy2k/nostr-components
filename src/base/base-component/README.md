@@ -134,6 +134,7 @@ The base provides `delegateEvent(type, selector, handler)` to attach **one liste
 * No per-node add/remove on each render.
 * Works with full `innerHTML` re-renders.
 * Prevents listener leaks and keeps code terse.
+* **Automatic cleanup**: All delegated listeners are automatically removed in `disconnectedCallback()` to prevent memory leaks when components are disconnected from the DOM.
 
 ### Usage
 
@@ -153,6 +154,14 @@ connectedCallback() {
   });
 }
 ```
+
+**Note**: You don't need to manually remove these listeners. The base class automatically cleans them up in `disconnectedCallback()` to prevent memory leaks. This is especially important in SPAs where components may be disconnected and reconnected multiple times.
+
+### Memory management
+
+* **Automatic cleanup**: The base class stores references to all delegated listeners and removes them in `disconnectedCallback()`. This prevents memory leaks when components are removed from the DOM.
+* **Duplicate prevention**: The base class uses an internal Set to prevent attaching duplicate listeners for the same `(type, selector)` combination within a single connection cycle.
+* **Reconnection safe**: When a component is disconnected and reconnected (common in SPAs), old listeners are properly removed before new ones are attached, preventing duplicate event handlers.
 
 ### Priority & guards
 

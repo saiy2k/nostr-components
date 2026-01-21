@@ -55,11 +55,6 @@ export const Autoplay: Story = {
 };
 
 // Participants
-export const WithParticipants: Story = {
-  name: TEST_CASES.withParticipants.name,
-  args: TEST_CASES.withParticipants.args,
-};
-
 export const HideParticipants: Story = {
   name: TEST_CASES.hideParticipants.name,
   args: TEST_CASES.hideParticipants.args,

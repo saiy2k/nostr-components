@@ -44,7 +44,6 @@ export const ValidCasesDashboard: Story = {
     TEST_CASES.liveStatus,
     TEST_CASES.endedStatus,
     TEST_CASES.autoplay,
-    TEST_CASES.withParticipants,
     TEST_CASES.hideParticipants,
     TEST_CASES.hideParticipantCount,
   ], '✅ Valid Cases Dashboard', '#16a34a'),

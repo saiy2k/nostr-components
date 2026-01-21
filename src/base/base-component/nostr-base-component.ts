@@ -52,6 +52,13 @@ export abstract class NostrBaseComponent extends HTMLElement {
   // guard to ignore stale connects
   private connectSeq = 0;
 
+  // Store delegated event listener references for proper cleanup
+  private _delegatedListeners: Array<{
+    type: string;
+    handler: EventListener;
+    useCapture: boolean;
+  }> = [];
+
   constructor(shadow: boolean = true) {
     super();
     if (shadow) this.attachShadow({ mode: 'open' });
@@ -74,7 +81,15 @@ export abstract class NostrBaseComponent extends HTMLElement {
   }
 
   disconnectedCallback() {
-    // Clean up delegated event listeners if shadow root exists
+    // Remove all delegated event listeners to prevent memory leaks
+    if (this.shadowRoot && this._delegatedListeners.length > 0) {
+      for (const { type, handler, useCapture } of this._delegatedListeners) {
+        this.shadowRoot.removeEventListener(type, handler, useCapture);
+      }
+      this._delegatedListeners = [];
+    }
+
+    // Clear the Set used for duplicate prevention
     if (this.shadowRoot && (this as any)._delegated) {
       (this as any)._delegated.clear();
     }
@@ -274,6 +289,8 @@ export abstract class NostrBaseComponent extends HTMLElement {
   /**
    * Delegate events within shadow DOM.
    * Example: this.delegateEvent('click', '#npub-copy', (e) => this.copyNpub(e));
+   * 
+   * Note: Listeners are automatically cleaned up in disconnectedCallback() to prevent memory leaks.
   */
   protected delegateEvent<K extends keyof HTMLElementEventMap>(
     type: K,
@@ -290,11 +307,23 @@ export abstract class NostrBaseComponent extends HTMLElement {
     if (!(this as any)._delegated) (this as any)._delegated = new Set<string>();
     (this as any)._delegated.add(key);
 
-    root.addEventListener(type, (e) => {
+    // Create wrapped listener that handles delegation
+    // Store reference so we can remove it later
+    const wrappedHandler: EventListener = (e) => {
       const t = e.target as HTMLElement;
       if (t.closest(selector)) {
         handler(e as any);
       }
+    };
+
+    // Add listener (using bubble phase by default)
+    root.addEventListener(type, wrappedHandler, false);
+
+    // Store reference for cleanup
+    this._delegatedListeners.push({
+      type: type as string,
+      handler: wrappedHandler,
+      useCapture: false
     });
   }
 

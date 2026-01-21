@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { NDKEvent } from '@nostr-dev-kit/ndk';
+import { getTagValue, getTagValues, parseTimestamp, parseNumber } from '../common/utils';
 
 export interface ParsedLivestreamEvent {
   dTag: string;
@@ -11,7 +12,7 @@ export interface ParsedLivestreamEvent {
   recordingUrl?: string;
   starts?: number; // Unix timestamp in seconds
   ends?: number; // Unix timestamp in seconds
-  status?: 'planned' | 'live' | 'ended';
+  status: LivestreamStatus;
   currentParticipants?: number;
   totalParticipants?: number;
   participants: Participant[];
@@ -27,53 +28,21 @@ export interface Participant {
 }
 
 /**
- * Get the first value of a tag by tag name
- * @param tags Array of tag arrays from NDKEvent
- * @param tagName The tag name to search for (e.g., 'd', 'title')
- * @param index Index of the tag occurrence (0 for first)
- * @returns The tag value or undefined if not found
+ * Valid livestream status values
  */
-function getTagValue(tags: string[][], tagName: string, index: number = 0): string | undefined {
-  const matchingTags = tags.filter(tag => tag[0] === tagName);
-  if (matchingTags.length > index && matchingTags[index].length > 1) {
-    return matchingTags[index][1];
+export type LivestreamStatus = 'planned' | 'live' | 'ended';
+
+/**
+ * Validate and normalize a livestream status value
+ * @param statusValue Raw status value from event tag
+ * @returns Valid status or 'planned' as default
+ */
+export function validateStatus(statusValue: string | undefined): LivestreamStatus {
+  if (statusValue === 'planned' || statusValue === 'live' || statusValue === 'ended') {
+    return statusValue;
   }
-  return undefined;
-}
-
-/**
- * Get all values for a tag by tag name
- * @param tags Array of tag arrays from NDKEvent
- * @param tagName The tag name to search for (e.g., 't', 'relays')
- * @returns Array of all values for the tag (excluding the tag name itself)
- */
-function getTagValues(tags: string[][], tagName: string): string[] {
-  return tags
-    .filter(tag => tag[0] === tagName)
-    .map(tag => tag.slice(1)) // Get all values after tag name
-    .flat();
-}
-
-/**
- * Parse a timestamp string to a number
- * @param value String value to parse
- * @returns Unix timestamp as number, or undefined if invalid
- */
-function parseTimestamp(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? undefined : parsed;
-}
-
-/**
- * Parse a number string to a number
- * @param value String value to parse
- * @returns Number or undefined if invalid
- */
-function parseNumber(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? undefined : parsed;
+  // Invalid or missing status value, default to 'planned'
+  return 'planned';
 }
 
 /**
@@ -104,13 +73,7 @@ export function parseLivestreamEvent(event: NDKEvent): ParsedLivestreamEvent {
 
   // Extract and validate status tag
   const statusValue = getTagValue(tags, 'status');
-  let status: 'planned' | 'live' | 'ended' | undefined;
-  if (statusValue === 'planned' || statusValue === 'live' || statusValue === 'ended') {
-    status = statusValue;
-  } else if (statusValue) {
-    // Invalid status value, default to 'planned'
-    status = 'planned';
-  }
+  const status = validateStatus(statusValue);
 
   // Parse participant count tags
   const currentParticipants = parseNumber(getTagValue(tags, 'current_participants'));
@@ -158,11 +121,71 @@ export function parseLivestreamEvent(event: NDKEvent): ParsedLivestreamEvent {
     recordingUrl,
     starts,
     ends,
-    status: status || 'planned', // Default to 'planned' if not specified
+    status,
     currentParticipants,
     totalParticipants,
     participants,
     relays: relays.length > 0 ? relays : undefined,
     hashtags: hashtags.length > 0 ? hashtags : [],
   };
+}
+
+/**
+ * Find the host participant from a parsed livestream event
+ * @param parsedLivestream Parsed livestream event
+ * @returns Host participant or undefined if not found
+ */
+export function findHostParticipant(parsedLivestream: ParsedLivestreamEvent): Participant | undefined {
+  return parsedLivestream.participants.find(
+    p => p.role && p.role.toLowerCase() === 'host'
+  );
+}
+
+/**
+ * Extract unique participant pubkeys from a parsed livestream event
+ * @param parsedLivestream Parsed livestream event
+ * @returns Array of unique participant pubkeys
+ */
+export function getUniqueParticipantPubkeys(parsedLivestream: ParsedLivestreamEvent): string[] {
+  const participantPubkeys = parsedLivestream.participants.map(p => p.pubkey);
+  return [...new Set(participantPubkeys)];
+}
+
+/**
+ * Check if video should be loading based on livestream status and streaming URL
+ * @param parsedLivestream Parsed livestream event
+ * @returns true if video should be loading (status is 'live' and streamingUrl exists)
+ */
+export function shouldVideoBeLoading(parsedLivestream: ParsedLivestreamEvent | null): boolean {
+  return parsedLivestream?.status === 'live' && !!parsedLivestream?.streamingUrl;
+}
+
+// MediaError code constants (from MDN)
+const MEDIA_ERR_ABORTED = 1;
+const MEDIA_ERR_NETWORK = 2;
+const MEDIA_ERR_DECODE = 3;
+const MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
+
+/**
+ * Get a user-friendly error message from a MediaError
+ * @param error MediaError object or null/undefined
+ * @returns User-friendly error message string
+ */
+export function getVideoErrorMessage(error: MediaError | null | undefined): string {
+  if (!error) {
+    return 'Video failed to load';
+  }
+
+  switch (error.code) {
+    case MEDIA_ERR_ABORTED:
+      return 'Video loading aborted';
+    case MEDIA_ERR_NETWORK:
+      return 'Network error while loading video';
+    case MEDIA_ERR_DECODE:
+      return 'Video decode error';
+    case MEDIA_ERR_SRC_NOT_SUPPORTED:
+      return 'Video format not supported';
+    default:
+      return 'Video failed to load';
+  }
 }

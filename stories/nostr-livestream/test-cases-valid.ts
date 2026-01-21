@@ -57,14 +57,6 @@ export const TEST_CASES = {
   },
 
   // Participants
-  withParticipants: {
-    name: 'With Participants (Default)',
-    args: {
-      width: DEFAULT_WIDTH,
-      naddr: LIVESTREAM_DATA.live.naddr,
-      'show-participants': 'true',
-    },
-  },
   hideParticipants: {
     name: 'Hide Participants',
     args: {

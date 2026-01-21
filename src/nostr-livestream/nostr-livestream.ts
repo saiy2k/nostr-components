@@ -3,10 +3,10 @@
 import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
-import { parseLivestreamEvent, ParsedLivestreamEvent } from './livestream-utils';
+import { parseLivestreamEvent, ParsedLivestreamEvent, findHostParticipant, getUniqueParticipantPubkeys, getVideoErrorMessage, shouldVideoBeLoading } from './livestream-utils';
 import { renderLivestream, RenderLivestreamOptions } from './render';
 import { getLivestreamStyles } from './style';
-import { getBatchedProfileMetadata } from '../nostr-zap-button/zap-utils';
+import { getBatchedProfileMetadata, extractProfileMetadataContent } from '../nostr-zap-button/zap-utils';
 import { hexToNpub } from '../common/utils';
 import 'hls-video-element';
 
@@ -23,6 +23,8 @@ export default class NostrLivestream extends NostrEventComponent {
   // Status channels
   protected participantsStatus = this.channel('participants');
   protected videoStatus = this.channel('video');
+
+  private participantsLoadSeq = 0;
 
   constructor() {
     super();
@@ -42,6 +44,7 @@ export default class NostrLivestream extends NostrEventComponent {
   connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
+    this.attachVideoListenersIfNeeded();
     this.render();
   }
 
@@ -63,14 +66,21 @@ export default class NostrLivestream extends NostrEventComponent {
   }
 
   /**
+   * Check if event and author are ready
+   * @returns true if both event and author are ready
+   */
+  private isEventAndAuthorReady(): boolean {
+    return this.eventStatus.get() === NCStatus.Ready && this.authorStatus.get() === NCStatus.Ready;
+  }
+
+  /**
    * Override updateHostClasses to only check eventStatus and authorStatus,
    * not participantsStatus or videoStatus (which don't affect overall component state)
    */
   protected updateHostClasses() {
-    const eventReady = this.eventStatus.get() === NCStatus.Ready;
-    const authorReady = this.authorStatus.get() === NCStatus.Ready;
+    const isReady = this.isEventAndAuthorReady();
     const isError = this.eventStatus.get() === NCStatus.Error || this.authorStatus.get() === NCStatus.Error;
-    const isLoading = !isError && !(eventReady && authorReady);
+    const isLoading = !isError && !isReady;
     
     // Remove all state classes
     this.classList.remove('is-clickable', 'is-disabled', 'is-error');
@@ -80,7 +90,7 @@ export default class NostrLivestream extends NostrEventComponent {
       this.classList.add('is-error');
     } else if (isLoading) {
       this.classList.add('is-disabled');
-    } else if (eventReady && authorReady) {
+    } else if (isReady) {
       this.classList.add('is-clickable');
     }
   }
@@ -88,7 +98,6 @@ export default class NostrLivestream extends NostrEventComponent {
   private parseLivestreamEvent(event: NDKEvent) {
     try {
       this.parsedLivestream = parseLivestreamEvent(event);
-      console.log('[NostrLivestream] Parsed livestream event:', this.parsedLivestream);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to parse livestream event';
       console.error('[NostrLivestream] ' + msg, error);
@@ -97,78 +106,95 @@ export default class NostrLivestream extends NostrEventComponent {
       return;
     }
 
-    // Find host participant (role === 'Host')
-    const hostParticipant = this.parsedLivestream?.participants.find(p => p.role === 'host');
+    // Find host participant
+    const hostParticipant = this.parsedLivestream ? findHostParticipant(this.parsedLivestream) : undefined;
     this.hostPubkey = hostParticipant?.pubkey || null;
-    console.log('[NostrLivestream] Host pubkey:', this.hostPubkey);
 
     // Reset video status if we have a live stream with video URL
-    if (this.parsedLivestream?.status === 'live' && this.parsedLivestream?.streamingUrl) {
-      this.videoStatus.set(NCStatus.Loading);
-    } else {
-      this.videoStatus.set(NCStatus.Idle);
-    }
+    this.videoStatus.set(shouldVideoBeLoading(this.parsedLivestream) ? NCStatus.Loading : NCStatus.Idle);
+
+    // Attach video listeners if video will be rendered
+    this.attachVideoListenersIfNeeded();
 
     this.loadParticipantProfiles();
   }
  
   private async loadParticipantProfiles(): Promise<void> {
+    // Increment sequence guard at the start to prevent stale operations
+    const seq = ++this.participantsLoadSeq;
+
+    // Check if participants should be shown (defaults to true)
+    const showParticipants = this.getAttribute('show-participants') !== 'false';
+
+    // Early returns for empty cases (synchronous, no guard needed)
     if (!this.parsedLivestream || !this.parsedLivestream.participants || this.parsedLivestream.participants.length === 0) {
       this.participantsStatus.set(NCStatus.Ready);
       return;
     }
 
-    const participantPubkeys = this.parsedLivestream.participants.map(p => p.pubkey);
+    // Determine which pubkeys to fetch
+    let pubkeysToFetch: string[];
     
-    // Remove duplicates
-    const uniquePubkeys = [...new Set(participantPubkeys)];
+    if (showParticipants) {
+      // Fetch all participant profiles
+      pubkeysToFetch = getUniqueParticipantPubkeys(this.parsedLivestream);
+    } else {
+      // Only fetch host profile (needed for author display)
+      pubkeysToFetch = this.hostPubkey ? [this.hostPubkey] : [];
+    }
 
-    if (uniquePubkeys.length === 0) {
+    if (pubkeysToFetch.length === 0) {
       this.participantsStatus.set(NCStatus.Ready);
       return;
     }
 
-    // Set status to loading
+    // Set status to loading (check guard first in case another call started)
+    if (seq !== this.participantsLoadSeq || !this.isConnected) return;
     this.participantsStatus.set(NCStatus.Loading);
     this.render();
 
     try {
-      // Fetch all profiles in a single batched call
-      const profileResults = await getBatchedProfileMetadata(uniquePubkeys);
+      // Fetch profiles in a single batched call
+      const profileResults = await getBatchedProfileMetadata(pubkeysToFetch);
+
+      // Guard against stale operations after async operation
+      if (seq !== this.participantsLoadSeq || !this.isConnected) {
+        // This operation is stale, ignore results
+        return;
+      }
 
       // Store profiles in Map for quick lookup
       profileResults.forEach(result => {
         // Extract profile metadata content (kind 0 events have JSON content)
-        let profileData = null;
-        if (result.profile) {
-          try {
-            profileData = JSON.parse(result.profile.content || '{}');
-          } catch (parseError) {
-            console.warn('[NostrLivestream] Failed to parse profile content for', result.id, parseError);
-            profileData = {};
-          }
+        const profileData = result.profile ? extractProfileMetadataContent(result.profile) : null;
+        
+        // Only store in participantProfiles Map if we're showing participants
+        // (host profile is always stored separately if it's the host)
+        if (showParticipants) {
+          this.participantProfiles.set(result.id, profileData);
         }
-        this.participantProfiles.set(result.id, profileData);
 
-        // Store host profile separately if this is the host
+        // Store host profile separately if this is the host (needed for author display)
         if (this.hostPubkey && result.id === this.hostPubkey && profileData) {
           this.hostProfile = profileData as NDKUserProfile;
         }
       });
 
+      // Final guard before updating status and rendering
+      if (seq !== this.participantsLoadSeq || !this.isConnected) return;
+
       // Set status to ready
       this.participantsStatus.set(NCStatus.Ready);
-
-      console.log('[NostrLivestream] Host profile:', this.hostProfile);
-      console.log('participant profiles:', this.participantProfiles);
       
       // Re-render to show profiles
       this.render();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to load participants';
-      const userFriendlyMsg = 'Failed to load participants';
-      console.error('[NostrLivestream] Participant profile fetch error:', msg, error);
-      this.participantsStatus.set(NCStatus.Error, userFriendlyMsg);
+      // Guard against stale operations in error handler
+      if (seq !== this.participantsLoadSeq || !this.isConnected) return;
+
+      const errorMessage = 'Failed to load participants';
+      console.error('[NostrLivestream] Participant profile fetch error:', error);
+      this.participantsStatus.set(NCStatus.Error, errorMessage);
       this.render();
     }
   }
@@ -182,24 +208,52 @@ export default class NostrLivestream extends NostrEventComponent {
     super.attributeChangedCallback?.(name, oldValue, newValue);
 
     if (name === 'naddr') {
+      // Reset all component-specific state when naddr changes
+      // This prevents stale data from being displayed during loading
+      this.resetLivestreamState();
       // Base class will trigger resolveEventAndLoad
       return;
     }
 
     // Handle component-specific attributes
-    if (name === 'show-participants' || name === 'show-participant-count' || name === 'auto-play') {
+    if (name === 'show-participants') {
+      // If show-participants changed from false to true, load participant profiles
+      const wasHidden = oldValue === 'false';
+      const isNowShown = newValue !== 'false';
+      if (wasHidden && isNowShown && this.parsedLivestream) {
+        // Reload profiles to fetch all participants (previously only host was fetched)
+        this.loadParticipantProfiles();
+      } else {
+        this.render();
+      }
+    } else if (name === 'show-participant-count' || name === 'auto-play') {
       this.render();
     }
+  }
+
+  /**
+   * Reset all livestream-specific state when naddr changes
+   * This ensures old data doesn't persist while new data is loading
+   */
+  private resetLivestreamState(): void {
+    this.parsedLivestream = null;
+    this.participantProfiles.clear();
+    this.hostProfile = null;
+    this.hostPubkey = null;
+    
+    // Reset status channels to idle
+    this.participantsStatus.set(NCStatus.Idle);
+    this.videoStatus.set(NCStatus.Idle);
+    
+    // Increment sequence guard to cancel any in-flight profile loading operations
+    this.participantsLoadSeq++;
   }
 
   /**
    * Handle click on the livestream component - opens zap.stream
    */
   private onLivestreamClick(): void {
-    // Check if component is ready (event and author loaded)
-    const eventReady = this.eventStatus.get() === NCStatus.Ready;
-    const authorReady = this.authorStatus.get() === NCStatus.Ready;
-    if (!eventReady || !authorReady) return;
+    if (!this.isEventAndAuthorReady()) return;
 
     const naddr = this.getAttribute('naddr');
     if (!naddr) return;
@@ -225,10 +279,7 @@ export default class NostrLivestream extends NostrEventComponent {
    * Handle click on author info - opens njump.me profile
    */
   private onAuthorClick(): void {
-    // Check if component is ready (event and author loaded)
-    const eventReady = this.eventStatus.get() === NCStatus.Ready;
-    const authorReady = this.authorStatus.get() === NCStatus.Ready;
-    if (!eventReady || !authorReady) return;
+    if (!this.isEventAndAuthorReady()) return;
 
     // Get host pubkey or fallback to event author
     const pubkey = this.hostPubkey || this.event?.pubkey;
@@ -269,7 +320,6 @@ export default class NostrLivestream extends NostrEventComponent {
     // Click anywhere on the livestream container (except interactive elements)
     this.delegateEvent('click', '.nostr-livestream-container', (e: Event) => {
       const target = e.target as HTMLElement;
-      // Don't trigger livestream click if clicking on author info, video controls, or links
       if (!target.closest('.livestream-author-row, video, hls-video, a, .livestream-video')) {
         this.onLivestreamClick();
       }
@@ -279,31 +329,27 @@ export default class NostrLivestream extends NostrEventComponent {
     this.delegateEvent('click', '.livestream-author-row', () => {
       this.onAuthorClick();
     });
+  }
+
+  /**
+   * Attach video event listeners only when video will actually be rendered
+   * This prevents unnecessary event handling overhead when video isn't present
+   */
+  private attachVideoListenersIfNeeded(): void {
+    // Only attach video listeners if video should be rendered
+    // Video is rendered when: status === 'live' && streamingUrl exists
+    if (!this.parsedLivestream) return;
+    
+    const shouldRenderVideo = this.parsedLivestream.status === 'live' && 
+                              !!this.parsedLivestream.streamingUrl;
+    
+    if (!shouldRenderVideo) return;
 
     // Listen for video error events
     this.delegateEvent('error', '.livestream-video', (e: Event) => {
       const target = e.target as HTMLMediaElement;
       const error = target.error;
-      let errorMessage = 'Video failed to load';
-      
-      if (error) {
-        switch (error.code) {
-          case MediaError.MEDIA_ERR_ABORTED:
-            errorMessage = 'Video loading aborted';
-            break;
-          case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage = 'Network error while loading video';
-            break;
-          case MediaError.MEDIA_ERR_DECODE:
-            errorMessage = 'Video decode error';
-            break;
-          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            errorMessage = 'Video format not supported';
-            break;
-          default:
-            errorMessage = 'Video failed to load';
-        }
-      }
+      const errorMessage = getVideoErrorMessage(error);
       
       console.error('[NostrLivestream] Video error:', errorMessage, error);
       this.videoStatus.set(NCStatus.Error, errorMessage);
@@ -322,10 +368,7 @@ export default class NostrLivestream extends NostrEventComponent {
   }
 
   protected renderContent() {
-    // Check if event and author are ready (don't include participants/video status in overall)
-    const eventReady = this.eventStatus.get() === NCStatus.Ready;
-    const authorReady = this.authorStatus.get() === NCStatus.Ready;
-    const isLoading = !(eventReady && authorReady);
+    const isLoading = !this.isEventAndAuthorReady();
     
     // Use host profile if available, otherwise fallback to author profile (for backwards compatibility)
     const displayProfile = this.hostProfile || this.authorProfile;
