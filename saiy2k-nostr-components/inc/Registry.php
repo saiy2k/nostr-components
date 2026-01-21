@@ -112,6 +112,22 @@ class Registry {
                     'text'    => ['type' => 'string', 'default' => 'Like'],
                 ],
             ],
+            'nostr-livestream' => [
+                'title'       => 'Nostr Livestream',
+                'description' => 'Display Nostr livestreams (NIP-53)',
+                'shortcode'   => 'nostr_livestream',
+                'block'       => 'nostr/nostr-livestream',
+                'esm'         => 'assets/nostr-livestream.es.js',
+                'dependencies' => [],
+                'attributes'  => [
+                    'naddr'   => ['type' => 'string'], // NIP-19 addressable event code (naddr1...)
+                    'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
+                    'relays'  => ['type' => 'string'],
+                    'show-participants' => ['type' => 'boolean', 'default' => true],
+                    'show-participant-count' => ['type' => 'boolean', 'default' => true],
+                    'auto-play' => ['type' => 'boolean', 'default' => false],
+                ],
+            ],
         ];
     }
 

@@ -3,7 +3,7 @@
  * Plugin Name: Saiy2k Nostr Components
  * Plugin URI:  https://github.com/saiy2k/nostr-components
  * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zaps button, follow button, posts, profiles with selective component loading for optimal performance.
- * Version:     0.4.3
+ * Version:     0.5.0
  * Author:      saiy2k
  * Author URI:  https://github.com/saiy2k
  * License:     MIT
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 define('NOSTR_WP_FILE', __FILE__);
-define('NOSTR_WP_VERSION', '0.4.3');
+define('NOSTR_WP_VERSION', '0.5.0');
 define('NOSTR_WP_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_WP_URL', plugin_dir_url(__FILE__));
 
@@ -47,6 +47,20 @@ require_once NOSTR_WP_DIR . 'inc/Kses.php';
 
 // Initialize plugin classes
 add_action('plugins_loaded', function() {
+    // Version migration: auto-enable new components for existing installations
+    $saved_version = get_option('nostr_wp_version', '0.0.0');
+    if (version_compare($saved_version, NOSTR_WP_VERSION, '<')) {
+        // Migrate enabled components for version 0.5.0
+        if (version_compare($saved_version, '0.5.0', '<')) {
+            $enabled = get_option('nostr_wp_enabled_components', []);
+            if (is_array($enabled) && !in_array('nostr-livestream', $enabled, true)) {
+                $enabled[] = 'nostr-livestream';
+                update_option('nostr_wp_enabled_components', $enabled);
+            }
+        }
+        update_option('nostr_wp_version', NOSTR_WP_VERSION);
+    }
+    
     NostrComponentsWP\Settings::boot();
     NostrComponentsWP\Assets::boot();
     NostrComponentsWP\Shortcodes::boot();
@@ -58,7 +72,7 @@ add_action('plugins_loaded', function() {
 register_activation_hook(__FILE__, function() {
     // Set default enabled components only if option doesn't exist
     if (get_option('nostr_wp_enabled_components') === false) {
-        add_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button', 'nostr-zap-button', 'nostr-like-button']);
+        add_option('nostr_wp_enabled_components', ['nostr-post', 'nostr-profile', 'nostr-profile-badge', 'nostr-follow-button', 'nostr-zap-button', 'nostr-like-button', 'nostr-livestream']);
     }
     
     // Set default shared settings only if option doesn't exist
@@ -68,6 +82,9 @@ register_activation_hook(__FILE__, function() {
             'theme' => 'light'
         ]);
     }
+    
+    // Set plugin version
+    update_option('nostr_wp_version', NOSTR_WP_VERSION);
 });
 
 // Plugin deactivation hook

@@ -1,3 +1,7 @@
+= 0.5.0 - 2025-01-22 =
+
+* Added nostr-livestream component (NIP-53)
+
 = 0.4.3 - 2025-01-07 =
 
 * Temporarily disabled nostr-comment, nostr-dm, and nostr-live-chat components due to asset resolution issues in React applications

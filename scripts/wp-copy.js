@@ -15,7 +15,8 @@ const components = [
     'nostr-profile-badge',
     'nostr-follow-button',
     'nostr-zap-button',
-    'nostr-like-button'
+    'nostr-like-button',
+    'nostr-livestream'
 ];
 
 console.log('🚀 Starting WordPress plugin build...');
