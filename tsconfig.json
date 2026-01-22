@@ -22,6 +22,7 @@
     "src",
     "vite.config.ts",
     "vite.config.esm.ts",
-    "vite.config.umd.ts"
+    "vite.config.umd.ts",
+    "vitest.config.ts"
   ]
 }

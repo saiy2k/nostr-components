@@ -1,8 +1,20 @@
-= 0.4.3 - 2025-01-07 =
+= 0.5.2 - 2026-01-22 =
+
+* Rebuild with mobile view stream title layout fix (0.5.1 fix was not included in build)
+
+= 0.5.1 - 2026-01-22 =
+
+* Fixed mobile view stream title layout issue (prevented vertical character rendering)
+
+= 0.5.0 - 2026-01-22 =
+
+* Added nostr-livestream component (NIP-53)
+
+= 0.4.3 - 2026-01-07 =
 
 * Temporarily disabled nostr-comment, nostr-dm, and nostr-live-chat components due to asset resolution issues in React applications
 
-= 0.4.0 - 2025-01-07 =
+= 0.4.0 - 2026-01-07 =
 
 * Improved relay connection handling - service now continues working even if some relays fail
 * Fixed relay connection status detection to correctly identify connected vs failed relays

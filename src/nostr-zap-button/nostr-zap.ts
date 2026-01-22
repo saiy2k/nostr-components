@@ -204,6 +204,7 @@ export default class NostrZap extends NostrUserComponent {
       await openZappersDialog({
         zapDetails: this.cachedZapDetails,
         theme: this.theme === 'dark' ? 'dark' : 'light',
+        relays: this.getRelays(),
       });
     } catch (error) {
       console.error("Nostr-Components: Zap button: Error opening zappers dialog", error);

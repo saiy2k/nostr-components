@@ -4,7 +4,7 @@ Tags: nostr, social, blocks, gutenberg, shortcodes, zap, like
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.4.3
+Stable tag: 0.5.2
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -18,7 +18,7 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 
 = Key Features =
 
-* **Gutenberg Blocks**: Modern block editor integration for Nostr Zap button, Post, Profile, Profile Badge, and Follow Button
+* **Gutenberg Blocks**: Modern block editor integration for Nostr Zap button, Post, Profile, Profile Badge, Follow Button, Like Button, and Livestream
 * **Shortcodes**: Classic editor support with simple shortcode syntax
 * **Selective Loading**: Enable only the components you need for optimal performance
 * **Customizable**: Configure relays, themes, and component settings
@@ -32,6 +32,8 @@ Nostr Components brings the power of Nostr (Notes and Other Stuff Transmitted by
 * **Nostr Post**: Display Nostr notes/posts with full content and metadata
 * **Nostr Profile**: Show complete Nostr user profiles with bio, stats, and social links
 * **Nostr Profile Badge**: Compact profile display perfect for sidebars and footers
+* **Nostr Like Button**: Like URLs using Nostr reactions (NIP-25)
+* **Nostr Livestream**: Display Nostr livestreams (NIP-53) with video playback and participant information
 
 = How It Works =
 
@@ -53,6 +55,7 @@ Simply add the Nostr blocks from the block inserter and configure them in the bl
 `[nostr_profile_badge pubkey="npub1abc..."]`
 `[nostr_follow_button pubkey="npub1abc..."]`
 `[nostr_like_button]`
+`[nostr_livestream naddr="naddr1abc..."]`
 
 = Adding Like and Zap Buttons to All Posts/Pages =
 

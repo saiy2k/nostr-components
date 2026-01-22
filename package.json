@@ -1,6 +1,6 @@
 {
   "name": "nostr-components",
-  "version": "0.4.3",
+  "version": "0.5.2",
   "type": "module",
   "description": "Embed Nostr anywhere on the internet, a Zap Button for every webpage",
   "keywords": [
@@ -82,6 +82,10 @@
     "./components/nostr-live-chat": {
       "import": "./dist/components/nostr-live-chat.es.js",
       "types": "./dist/components/nostr-live-chat.d.ts"
+    },
+    "./components/nostr-livestream": {
+      "import": "./dist/components/nostr-livestream.es.js",
+      "types": "./dist/components/nostr-livestream.d.ts"
     }
   },
   "files": [
@@ -99,6 +103,9 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "wp-build": "npm run build:esm && npm run build:themes && npm run wp-copy",
     "wp-copy": "node scripts/wp-copy.js",
     "wp-prepare-svn": "node scripts/prepare-svn.js",
@@ -120,7 +127,9 @@
     "storybook": "^9.1.8",
     "typescript": "^5.8.3",
     "vite": "^5.4.1",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.17"
   },
   "dependencies": {
     "@glidejs/glide": "^3.7.1",
@@ -128,6 +137,7 @@
     "@types/dompurify": "^3.0.5",
     "@types/qrcode": "^1.5.5",
     "dompurify": "^3.2.6",
+    "hls-video-element": "^1.5.10",
     "light-bolt11-decoder": "^3.2.0",
     "nostr-login": "^1.7.12",
     "nostr-tools": "^2.7.2",

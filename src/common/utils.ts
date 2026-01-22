@@ -261,6 +261,56 @@ export function copyToClipboard(text: string): Promise<void> {
 }
 
 /**
+ * Get the first value of a tag by tag name
+ * @param tags Array of tag arrays from NDKEvent
+ * @param tagName The tag name to search for (e.g., 'd', 'title')
+ * @param index Index of the tag occurrence (0 for first)
+ * @returns The tag value or undefined if not found
+ */
+export function getTagValue(tags: string[][], tagName: string, index: number = 0): string | undefined {
+  const matchingTags = tags.filter(tag => tag[0] === tagName);
+  if (matchingTags.length > index && matchingTags[index].length > 1) {
+    return matchingTags[index][1];
+  }
+  return undefined;
+}
+
+/**
+ * Get all values for a tag by tag name
+ * @param tags Array of tag arrays from NDKEvent
+ * @param tagName The tag name to search for (e.g., 't', 'relays')
+ * @returns Array of all values for the tag (excluding the tag name itself)
+ */
+export function getTagValues(tags: string[][], tagName: string): string[] {
+  return tags
+    .filter(tag => tag[0] === tagName)
+    .map(tag => tag.slice(1)) // Get all values after tag name
+    .flat();
+}
+
+/**
+ * Parse a timestamp string to a number
+ * @param value String value to parse
+ * @returns Unix timestamp as number, or undefined if invalid
+ */
+export function parseTimestamp(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? undefined : parsed;
+}
+
+/**
+ * Parse a number string to a number
+ * @param value String value to parse
+ * @returns Number or undefined if invalid
+ */
+export function parseNumber(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? undefined : parsed;
+}
+
+/**
  * Format timestamp as relative time (e.g., "2 mins ago", "1 month ago")
  * @param ts Timestamp in seconds
  * @returns Formatted relative time string

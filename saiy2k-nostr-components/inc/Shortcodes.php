@@ -135,6 +135,7 @@ class Shortcodes {
                 'nostr-follow-button' => ['npub', 'pubkey', 'nip05'],
                 'nostr-zap-button' => ['npub', 'pubkey', 'nip05', 'url'],
                 'nostr-like-button' => ['url'],
+                'nostr-livestream' => ['naddr'],
             ];
             
             $component_identifiers = $identifier_priority[$component] ?? [];
@@ -148,7 +149,7 @@ class Shortcodes {
                 }
             }
             
-            $all_identifier_attrs = ['noteid', 'hex', 'eventid', 'npub', 'pubkey', 'nip05', 'url'];
+            $all_identifier_attrs = ['noteid', 'hex', 'eventid', 'npub', 'pubkey', 'nip05', 'url', 'naddr'];
             $optional_attrs = array_filter($info['attributes'], function($config, $attr_key) use ($all_identifier_attrs) {
                 if (in_array($attr_key, $all_identifier_attrs) || !is_array($config)) {
                     return false;
@@ -210,6 +211,8 @@ class Shortcodes {
                 return '21';
             case 'url':
                 return 'https://nostr.com';
+            case 'naddr':
+                return 'naddr1qq8xumn8ghj7un9d3shjtnyv9khzuewd9hsz6tn0v4kx2t99wumn8ghj7mn0wvhxcmmv9uq32amnwvaz7tmwdaehgu3wvfskuctwvyhxxmmd9u3x7a3x';
             case 'show-stats':
             case 'show-npub':
             case 'show-follow':

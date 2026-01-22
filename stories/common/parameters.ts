@@ -20,11 +20,11 @@ export interface ParameterDefinition {
 /**
  * Common parameters shared across all Nostr components
  */
-const COMMON_PARAMETERS: ParameterDefinition[] = [
+export const COMMON_PARAMETERS: ParameterDefinition[] = [
   {
     variable: 'relays',
     description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: DEFAULT_RELAYS.join(',\n'),
+    defaultValue: DEFAULT_RELAYS.join(','),
     control: 'text',
   },
   {

@@ -21,6 +21,7 @@ import { LikeDetails } from './like-utils';
 export interface OpenLikersModalParams {
   likeDetails: LikeDetails[];
   theme?: 'light' | 'dark';
+  relays?: string[];
 }
 
 /**
@@ -109,7 +110,7 @@ function renderSkeletonLikeEntry(like: LikeDetails, npub: string, index: number)
  * Opens the likers dialog showing individual like details
  */
 export async function openLikersDialog(params: OpenLikersModalParams): Promise<DialogComponent> {
-  const { likeDetails, theme = 'light' } = params;
+  const { likeDetails, theme = 'light', relays } = params;
   
   // Inject styles
   injectLikersDialogStyles(theme);
@@ -149,7 +150,7 @@ export async function openLikersDialog(params: OpenLikersModalParams): Promise<D
   
   // Start progressive enhancement
   if (dialog && likeDetails.length > 0) {
-    enhanceLikeDetailsProgressively(dialog, likeDetails);
+    enhanceLikeDetailsProgressively(dialog, likeDetails, relays);
   }
 
   return dialogComponent;
@@ -188,7 +189,7 @@ async function renderInitialContent(likeDetails: LikeDetails[]): Promise<string>
 /**
  * Progressively enhance like details with profile information (batched approach)
  */
-async function enhanceLikeDetailsProgressively(dialog: HTMLDialogElement, likeDetails: LikeDetails[]): Promise<void> {
+async function enhanceLikeDetailsProgressively(dialog: HTMLDialogElement, likeDetails: LikeDetails[], relays?: string[]): Promise<void> {
   const likersList = dialog.querySelector('.likers-list') as HTMLElement;
   if (!likersList) return;
 
@@ -198,7 +199,7 @@ async function enhanceLikeDetailsProgressively(dialog: HTMLDialogElement, likeDe
 
   try {
     // Fetch all profiles in a single batched call
-    const profileResults = await getBatchedProfileMetadata(uniqueAuthorIds);
+    const profileResults = await getBatchedProfileMetadata(uniqueAuthorIds, relays);
     
     // Create a map for quick lookup
     const profileMap = new Map<string, any>();
@@ -251,14 +252,14 @@ async function enhanceLikeDetailsProgressively(dialog: HTMLDialogElement, likeDe
     
     // Fallback to individual processing if batched approach fails
     console.log("Nostr-Components: Likers dialog: Falling back to individual profile fetching");
-    await enhanceLikeDetailsIndividually(dialog, likeDetails);
+    await enhanceLikeDetailsIndividually(dialog, likeDetails, relays);
   }
 }
 
 /**
  * Fallback: Enhance like details individually (original approach)
  */
-async function enhanceLikeDetailsIndividually(dialog: HTMLDialogElement, likeDetails: LikeDetails[]): Promise<void> {
+async function enhanceLikeDetailsIndividually(dialog: HTMLDialogElement, likeDetails: LikeDetails[], relays?: string[]): Promise<void> {
   const likersList = dialog.querySelector('.likers-list') as HTMLElement;
   if (!likersList) return;
 
@@ -283,7 +284,7 @@ async function enhanceLikeDetailsIndividually(dialog: HTMLDialogElement, likeDet
 
     try {
       const { getProfileMetadata } = await import('../nostr-zap-button/zap-utils');
-      const profileMetadata = await getProfileMetadata(like.authorPubkey);
+      const profileMetadata = await getProfileMetadata(like.authorPubkey, relays);
       const profileContent = extractProfileMetadataContent(profileMetadata);
       const npub = hexToNpub(like.authorPubkey);
       

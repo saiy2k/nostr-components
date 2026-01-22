@@ -64,4 +64,84 @@ export class EventResolver {
 
     return event;
   }
+
+  /**
+   * Validate naddr (NIP-19 addressable event code)
+   * @param naddr NIP-19 addressable event code
+   * @returns Error message string if validation fails, null if valid
+   */
+  validateNaddr({ naddr }: { naddr?: string | null }): string | null {
+    if (!naddr || naddr.trim() === '') {
+      return "Provide naddr attribute";
+    }
+
+    // Validate format: must start with 'naddr1' (bech32-encoded)
+    if (!naddr.startsWith('naddr1')) {
+      return `Invalid naddr format: ${naddr}`;
+    }
+
+    // Attempt to decode using nip19
+    try {
+      const decoded = nip19.decode(naddr);
+      if (decoded.type !== 'naddr') {
+        return `Invalid naddr: expected naddr type, got ${decoded.type}`;
+      }
+    } catch (error) {
+      return `Invalid naddr format: decoding failed: ${naddr}`;
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolve an addressable event using naddr (NIP-19 addressable event code)
+   * @param naddr NIP-19 addressable event code
+   * @returns The resolved NDKEvent (latest if multiple exist)
+   */
+  async resolveAddressableEvent({ naddr }: { naddr: string }): Promise<NDKEvent> {
+    // First validate the format
+    const validationError = this.validateNaddr({ naddr });
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    // Decode naddr
+    const decoded = nip19.decode(naddr);
+    if (decoded.type !== 'naddr') {
+      throw new Error("Invalid naddr: expected naddr type");
+    }
+
+    const { kind, pubkey, identifier: dTag } = decoded.data;
+
+    // Query for the addressable event
+    const filter = {
+      kinds: [kind],
+      authors: [pubkey],
+      '#d': [dTag],
+    };
+
+    const events = await this.nostrService.getNDK().fetchEvents(filter);
+
+    if (!events || events.size === 0) {
+      throw new Error("Addressable event not found");
+    }
+
+    // If multiple events exist (shouldn't happen, but handle gracefully),
+    // return the latest one (highest created_at)
+    let latestEvent: NDKEvent | null = null;
+    let latestCreatedAt = 0;
+
+    for (const event of events) {
+      if (event.created_at && event.created_at > latestCreatedAt) {
+        latestCreatedAt = event.created_at;
+        latestEvent = event;
+      }
+    }
+
+    if (!latestEvent) {
+      throw new Error("Addressable event not found");
+    }
+
+    return latestEvent;
+  }
 }

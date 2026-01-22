@@ -8,8 +8,7 @@
  * These parameters define like button-specific attributes like url, text, and theme options.
  */
 
-import { ParameterDefinition } from '../common/parameters';
-import { DEFAULT_RELAYS } from '../../src/common/constants';
+import { ParameterDefinition, COMMON_PARAMETERS } from '../common/parameters';
 
 /**
  * Like button parameters used by nostr-like component
@@ -27,16 +26,5 @@ export const LIKE_BUTTON_PARAMETERS: ParameterDefinition[] = [
     defaultValue: 'Like',
     control: 'text',
   },
-  {
-    variable: 'relays',
-    description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: DEFAULT_RELAYS.join(',\n'),
-    control: 'text',
-  },
-  {
-    variable: 'data-theme',
-    description: 'Theme for the component (light, dark)',
-    defaultValue: '',
-    control: 'text',
-  },
+  ...COMMON_PARAMETERS,
 ];

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "nostr/nostr-livestream",
+  "version": "0.1.0",
+  "title": "Nostr Livestream",
+  "category": "nostr",
+  "icon": "video-alt3",
+  "description": "Display Nostr livestreams (NIP-53)",
+  "supports": {
+    "html": false
+  },
+  "attributes": {
+    "naddr": {
+      "type": "string",
+      "default": ""
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["", "light", "dark"],
+      "default": ""
+    },
+    "relays": {
+      "type": "string",
+      "default": ""
+    },
+    "show-participants": {
+      "type": "boolean",
+      "default": true
+    },
+    "show-participant-count": {
+      "type": "boolean",
+      "default": true
+    },
+    "auto-play": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

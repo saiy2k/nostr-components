@@ -10,7 +10,8 @@ addons.setConfig({
       'Like Button', 
       'Profile Badge',
       'Profile', 
-      'Post', 
+      'Post',
+      'Stream',
       'Documentation'
     ],
   },
