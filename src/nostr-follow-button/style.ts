@@ -26,6 +26,9 @@ export function getFollowButtonStyles(): string {
       --nostrc-follow-btn-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
       --nostrc-follow-btn-hover-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-follow-btn-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
+      
+      /* Focus state variables */
+      --nostrc-follow-button-focus-color: var(--nostrc-color-primary, #007bff);
 
       /* Make the host the visual button surface */
       display: inline-flex;
@@ -51,9 +54,9 @@ export function getFollowButtonStyles(): string {
       border: var(--nostrc-follow-btn-hover-border);
     }
 
-    /* Focus state for accessibility */
-    :host(:focus-visible) {
-      outline: 2px solid var(--nostrc-color-primary, #007bff);
+    /* Focus state for accessibility (container has tabindex) */
+    .nostr-follow-button-container:focus-visible {
+      outline: 2px solid var(--nostrc-follow-button-focus-color);
       outline-offset: 2px;
     }
 
@@ -65,7 +68,7 @@ export function getFollowButtonStyles(): string {
     .nostr-follow-button-container {
       display: flex;
       gap: var(--nostrc-spacing-md);
-      width: fit-content;
+      width: 100%;
       padding: var(--nostrc-follow-btn-padding);
     }
     

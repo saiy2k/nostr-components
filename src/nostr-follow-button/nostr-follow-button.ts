@@ -9,7 +9,7 @@ import { ensureInitialized } from '../common/nostr-login-service';
 
 export default class NostrFollowButton extends NostrUserComponent {
   protected followStatus = this.channel('follow');
-  private isFollowed = false;
+  private isFollowed: boolean = false;
 
   static get observedAttributes() {
     return [...super.observedAttributes, 'show-avatar', 'text', 'disabled'];
@@ -17,7 +17,7 @@ export default class NostrFollowButton extends NostrUserComponent {
 
   connectedCallback() {
     super.connectedCallback?.();
-    this.addEventListener('click', this.onClick);
+    this.attachDelegatedListeners();
     this.render();
   }
 
@@ -63,17 +63,12 @@ export default class NostrFollowButton extends NostrUserComponent {
     if (this.hasAttribute('disabled')) return;
     if (this.computeOverall() !== NCStatus.Ready) return;
 
-    const nip07signer = new NDKNip07Signer();
     this.followStatus.set(NCStatus.Loading);
     this.render();
 
     try {
       // Ensure NostrLogin is initialized
       await ensureInitialized();
-
-      const signer = new NDKNip07Signer();
-      const ndk = this.nostrService.getNDK();
-      ndk.signer = signer;
 
       if (!this.user) {
         this.followStatus.set(
@@ -82,6 +77,10 @@ export default class NostrFollowButton extends NostrUserComponent {
         );
         return;
       }
+
+      const signer = new NDKNip07Signer();
+      const ndk = this.nostrService.getNDK();
+      ndk.signer = signer;
 
       const signedUser = await signer.user();
       if (signedUser) {
@@ -125,12 +124,16 @@ export default class NostrFollowButton extends NostrUserComponent {
     this.setAttribute('role', 'button');
     this.setAttribute('aria-pressed', String(this.isFollowed));
 
-    if (isDisabled) {
-      this.setAttribute('aria-disabled', 'true');
-      this.removeAttribute('tabindex');
-    } else {
-      this.removeAttribute('aria-disabled');
-      this.setAttribute('tabindex', '0');
+    // Set tabindex on container (inside shadow DOM) so delegateEvent can catch keydown
+    const container = this.shadowRoot?.querySelector('.nostr-follow-button-container') as HTMLElement;
+    if (container) {
+      if (isDisabled) {
+        container.setAttribute('aria-disabled', 'true');
+        container.removeAttribute('tabindex');
+      } else {
+        container.removeAttribute('aria-disabled');
+        container.setAttribute('tabindex', '0');
+      }
     }
   }
 }
