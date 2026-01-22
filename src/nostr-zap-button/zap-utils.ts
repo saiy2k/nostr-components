@@ -129,7 +129,7 @@ const makeZapEvent = async ({
   url?: string;
 }) => {
   const req: any = {
-    pubkey: profile,
+    profile: profile,
     amount,
     relays,
     comment: comment || '',
