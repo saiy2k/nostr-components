@@ -1,3 +1,11 @@
+= 0.5.2 - 2025-01-22 =
+
+* Rebuild with mobile view stream title layout fix (0.5.1 fix was not included in build)
+
+= 0.5.1 - 2025-01-22 =
+
+* Fixed mobile view stream title layout issue (prevented vertical character rendering)
+
 = 0.5.0 - 2025-01-22 =
 
 * Added nostr-livestream component (NIP-53)

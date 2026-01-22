@@ -3,7 +3,7 @@
  * Plugin Name: Saiy2k Nostr Components
  * Plugin URI:  https://github.com/saiy2k/nostr-components
  * Description: Gutenberg blocks and shortcodes for Nostr web components. Display Nostr zaps button, follow button, posts, profiles with selective component loading for optimal performance.
- * Version:     0.5.0
+ * Version:     0.5.2
  * Author:      saiy2k
  * Author URI:  https://github.com/saiy2k
  * License:     MIT
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 define('NOSTR_WP_FILE', __FILE__);
-define('NOSTR_WP_VERSION', '0.5.0');
+define('NOSTR_WP_VERSION', '0.5.2');
 define('NOSTR_WP_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_WP_URL', plugin_dir_url(__FILE__));
 

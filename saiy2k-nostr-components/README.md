@@ -20,13 +20,15 @@ wp-plugin/
 │   ├── nostr-follow-button/
 │   ├── nostr-post/
 │   ├── nostr-profile/
-│   └── nostr-profile-badge/
+│   ├── nostr-profile-badge/
+│   └── nostr-livestream/
 ├── assets/                   # All component bundles and dependencies
 │   ├── manifest.json         # Asset manifest
 │   ├── nostr-post.es.js
 │   ├── nostr-profile.es.js
 │   ├── nostr-profile-badge.es.js
 │   ├── nostr-follow-button.es.js
+│   ├── nostr-livestream.es.js
 │   ├── nostr-service-w4c-zprD.js
 │   ├── base-styles-B5J6mwtp.js
 │   ├── utils-Blx44Hni.js

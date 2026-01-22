@@ -87,7 +87,9 @@ export function getLivestreamStyles(): string {
       color: var(--nostrc-livestream-text-primary);
       font-weight: var(--nostrc-font-weight-bold);
       font-size: var(--nostrc-font-size-large);
-      word-break: break-word;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      white-space: normal;
       line-height: 1.3;
       flex: 1;
       min-width: 0;
@@ -475,8 +477,22 @@ export function getLivestreamStyles(): string {
         gap: var(--nostrc-spacing-md);
       }
 
+      .livestream-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--nostrc-spacing-xs);
+      }
+
       .livestream-title {
         font-size: var(--nostrc-font-size-base);
+        width: 100%;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        white-space: normal;
+      }
+
+      .livestream-header-right {
+        align-self: flex-start;
       }
 
       .livestream-video,
@@ -488,11 +504,6 @@ export function getLivestreamStyles(): string {
 
       .livestream-header {
         flex-wrap: wrap;
-      }
-
-      .livestream-header-right {
-        width: 100%;
-        margin-top: var(--nostrc-spacing-xs);
       }
 
       .livestream-status-badge {
@@ -510,8 +521,22 @@ export function getLivestreamStyles(): string {
     }
 
     @media only screen and (max-width: 480px) {
+      .livestream-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--nostrc-spacing-xs);
+      }
+
       .livestream-title {
         font-size: var(--nostrc-font-size-base);
+        width: 100%;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        white-space: normal;
+      }
+
+      .livestream-header-right {
+        align-self: flex-start;
       }
 
       .livestream-video,
