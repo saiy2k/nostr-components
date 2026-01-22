@@ -125,7 +125,16 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     const authorId = npubHex;
     const relaysArray = relays.split(',').map(r => r.trim()).filter(Boolean);
     const meta = await getProfileMetadata(authorId, relaysArray);
+    
+    if (!meta) {
+      throw new Error('Profile not found. The user may not have a profile set up on the relays.');
+    }
+    
     const endpoint = await getZapEndpoint(meta);
+    if (!endpoint) {
+      throw new Error('Zap endpoint not found. The user may not have a Lightning address configured.');
+    }
+    
     const invoice = await fetchInvoice({
       zapEndpoint: endpoint,
       amount: amountSats * 1000, // -> msats
@@ -150,9 +159,14 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   }
 
   async function qrImgSrc(invoice: string): Promise<string> {
+    if (!invoice || invoice.trim().length === 0) {
+      console.error('Empty invoice provided to QR code generator');
+      throw new Error('Invoice is empty');
+    }
+    
     try {
       // Generate QR code as a data URL (base64 encoded image)
-      return await QRCode.toDataURL(invoice, {
+      const dataUrl = await QRCode.toDataURL(invoice, {
         width: 240,
         margin: 1,
         color: {
@@ -160,13 +174,20 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
           light: '#ffffff'
         }
       });
+      
+      if (!dataUrl || !dataUrl.startsWith('data:image')) {
+        throw new Error('Invalid QR code data URL generated');
+      }
+      
+      return dataUrl;
     } catch (error) {
       console.error('Failed to generate QR code:', error);
       // Fallback to text representation if QR generation fails
+      const escapedInvoice = invoice.substring(0, 20).replace(/[<>]/g, '');
       return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 100 100">
         <rect width="100%" height="100%" fill="white"/>
         <text x="50%" y="50%" font-family="monospace" font-size="10" text-anchor="middle" dominant-baseline="middle" fill="black">
-          Invoice: ${invoice.substring(0, 10)}...
+          Invoice: ${escapedInvoice}...
         </text>
       </svg>`;
     }
@@ -186,13 +207,74 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     dialog.classList.add('loading');
     try {
       await loadInvoice(selectedAmount, customComment);
-      const qrImg = dialog.querySelector('img.qr') as HTMLImageElement;
-      qrImgSrc(currentInvoice).then(src => {
+      
+      // Try to find QR image in dialog content (more specific selector)
+      const dialogContent = dialog.querySelector('.dialog-content') as HTMLElement;
+      const qrImg = (dialogContent || dialog).querySelector('img.qr') as HTMLImageElement;
+      
+      if (!qrImg) {
+        console.error('QR image element not found in dialog');
+        return;
+      }
+      
+      if (!currentInvoice || currentInvoice.trim().length === 0) {
+        console.error('Invoice is empty, cannot generate QR code');
+        qrImg.alt = 'No invoice available';
+        qrImg.style.display = 'none';
+        return;
+      }
+      
+      try {
+        const src = await qrImgSrc(currentInvoice);
         qrImg.src = src;
-      });
+        qrImg.style.display = 'block';
+        qrImg.onerror = () => {
+          console.error('Failed to load QR code image');
+          qrImg.alt = 'QR code failed to load';
+          qrImg.style.display = 'none';
+        };
+      } catch (error) {
+        console.error('Failed to generate QR code:', error);
+        qrImg.alt = 'QR code generation failed';
+        qrImg.style.display = 'none';
+      }
 
       const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
-      payBtn.disabled = false;
+      if (payBtn) {
+        payBtn.disabled = false;
+      }
+    } catch (error: any) {
+      console.error('Failed to load invoice:', error);
+      // Show error message in dialog
+      const dialogContent = dialog.querySelector('.dialog-content') as HTMLElement;
+      if (dialogContent) {
+        const errorMsg = error?.message || 'Failed to load invoice';
+        const existingError = dialogContent.querySelector('.zap-error-message');
+        if (existingError) {
+          existingError.textContent = errorMsg;
+        } else {
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'zap-error-message';
+          errorDiv.style.cssText = 'color: #dc3545; padding: 12px; margin: 16px 0; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px;';
+          errorDiv.textContent = errorMsg;
+          const qrImg = dialogContent.querySelector('img.qr');
+          if (qrImg && qrImg.parentNode) {
+            qrImg.parentNode.insertBefore(errorDiv, qrImg);
+          } else {
+            dialogContent.insertBefore(errorDiv, dialogContent.firstChild);
+          }
+        }
+      }
+      // Hide QR image on error
+      const qrImg = dialog.querySelector('img.qr') as HTMLImageElement;
+      if (qrImg) {
+        qrImg.style.display = 'none';
+      }
+      // Disable pay button
+      const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
+      if (payBtn) {
+        payBtn.disabled = true;
+      }
     } finally {
       dialog.classList.remove('loading');
     }
@@ -229,7 +311,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
           <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
           <button type="button" class="add-comment-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Add</button>
         </div>`}
-        <img class="qr" width="240" height="240" alt="QR" style="cursor:pointer" />
+        <img class="qr" width="240" height="240" alt="QR Code" style="cursor:pointer;display:block;margin:0 auto;" />
         <br />
         <button type="button" class="copy-btn">Copy invoice</button>
         <button type="button" class="cta-btn" disabled>Open in wallet</button>

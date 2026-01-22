@@ -79,7 +79,7 @@ export const TEST_CASES = {
     name: 'URL-Based Zap with Custom Text',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.fiatjaf.npub,
+      npub: PROFILE_DATA.saiy2k.npub,
       url: 'https://saiy2k.in/',
       text: 'Support this article',
     },
@@ -88,7 +88,7 @@ export const TEST_CASES = {
     name: 'URL-Based Zap with Fixed Amount',
     args: {
       width: DEFAULT_WIDTH,
-      npub: PROFILE_DATA.fiatjaf.npub,
+      npub: PROFILE_DATA.saiy2k.npub,
       url: 'https://saiy2k.in/',
       amount: '5000',
       text: 'Support this article',
