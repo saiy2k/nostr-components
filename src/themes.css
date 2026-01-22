@@ -25,25 +25,9 @@
   --nostrc-theme-hover-bg: rgba(0, 0, 0, 0.05);
 }
 
-.theme-light {
-  --nostrc-theme-bg: #ffffff;
-  --nostrc-theme-text-primary: #333333;
-  --nostrc-theme-text-secondary: #666666;
-  --nostrc-theme-border: #e0e0e0;
-  --nostrc-theme-hover-bg: rgba(0, 0, 0, 0.05);
-}
-
 /* Dark Theme */
 [data-theme="dark"],
 :host([data-theme="dark"]) {
-  --nostrc-theme-bg: #1a1a1a;
-  --nostrc-theme-text-primary: #cccccc;
-  --nostrc-theme-text-secondary: #999999;
-  --nostrc-theme-border: #333333;
-  --nostrc-theme-hover-bg: #333333;
-}
-
-.theme-dark {
   --nostrc-theme-bg: #1a1a1a;
   --nostrc-theme-text-primary: #cccccc;
   --nostrc-theme-text-secondary: #999999;

@@ -521,24 +521,6 @@ export function getLivestreamStyles(): string {
     }
 
     @media only screen and (max-width: 480px) {
-      .livestream-title-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--nostrc-spacing-xs);
-      }
-
-      .livestream-title {
-        font-size: var(--nostrc-font-size-base);
-        width: 100%;
-        overflow-wrap: break-word;
-        word-wrap: break-word;
-        white-space: normal;
-      }
-
-      .livestream-header-right {
-        align-self: flex-start;
-      }
-
       .livestream-video,
       .livestream-video-placeholder,
       .livestream-preview-placeholder {

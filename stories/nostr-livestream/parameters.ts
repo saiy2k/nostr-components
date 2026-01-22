@@ -8,8 +8,7 @@
  * These parameters define livestream-specific attributes like naddr and livestream-specific features.
  */
 
-import { ParameterDefinition } from '../common/parameters';
-import { DEFAULT_RELAYS } from '../../src/common/constants';
+import { ParameterDefinition, COMMON_PARAMETERS } from '../common/parameters';
 
 /**
  * Livestream-specific parameters used by nostr-livestream component
@@ -39,16 +38,5 @@ export const LIVESTREAM_PARAMETERS: ParameterDefinition[] = [
     defaultValue: 'false',
     control: 'boolean',
   },
-  {
-    variable: 'relays',
-    description: `Comma separated list of valid relays urls in the wss:// protocol\n\nCan be used to customize the list of relays`,
-    defaultValue: DEFAULT_RELAYS.join(',\n'),
-    control: 'text',
-  },
-  {
-    variable: 'data-theme',
-    description: 'Theme for the component (light, dark)',
-    defaultValue: '',
-    control: 'text',
-  },
+  ...COMMON_PARAMETERS,
 ];

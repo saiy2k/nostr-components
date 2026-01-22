@@ -22,6 +22,7 @@ import { isValidPublicKey } from '../nostr-comment/utils';
 export interface OpenZappersModalParams {
   zapDetails: ZapDetails[];
   theme?: 'light' | 'dark';
+  relays?: string[];
 }
 
 /**
@@ -106,7 +107,7 @@ function renderSkeletonZapEntry(zap: ZapDetails, npub: string, index: number): s
  * Opens the zappers dialog showing individual zap details
  */
 export async function openZappersDialog(params: OpenZappersModalParams): Promise<DialogComponent> {
-  const { zapDetails, theme = 'light' } = params;
+  const { zapDetails, theme = 'light', relays } = params;
   
   // Inject styles
   injectZappersDialogStyles(theme);
@@ -148,7 +149,7 @@ export async function openZappersDialog(params: OpenZappersModalParams): Promise
   
   // Start progressive enhancement
   if (dialog && zapDetails.length > 0) {
-    enhanceZapDetailsProgressively(dialog, zapDetails);
+    enhanceZapDetailsProgressively(dialog, zapDetails, relays);
   }
 
   return dialogComponent;
@@ -187,7 +188,7 @@ async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
 /**
  * Progressively enhance zap details with profile information (batched approach)
  */
-async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDetails: ZapDetails[]): Promise<void> {
+async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDetails: ZapDetails[], relays?: string[]): Promise<void> {
   const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
   if (!zappersList) return;
 
@@ -197,7 +198,7 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
 
   try {
     // Fetch all profiles in a single batched call
-    const profileResults = await getBatchedProfileMetadata(uniqueAuthorIds);
+    const profileResults = await getBatchedProfileMetadata(uniqueAuthorIds, relays);
     
     // Create a map for quick lookup
     const profileMap = new Map<string, any>();
@@ -250,14 +251,14 @@ async function enhanceZapDetailsProgressively(dialog: HTMLDialogElement, zapDeta
     
     // Fallback to individual processing if batched approach fails
     console.log("Nostr-Components: Zappers dialog: Falling back to individual profile fetching");
-    await enhanceZapDetailsIndividually(dialog, zapDetails);
+    await enhanceZapDetailsIndividually(dialog, zapDetails, relays);
   }
 }
 
 /**
  * Fallback: Enhance zap details individually (original approach)
  */
-async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetails: ZapDetails[]): Promise<void> {
+async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetails: ZapDetails[], relays?: string[]): Promise<void> {
   const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
   if (!zappersList) return;
 
@@ -282,7 +283,7 @@ async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetai
 
     try {
       const { getProfileMetadata } = await import('./zap-utils');
-      const profileMetadata = await getProfileMetadata(zap.authorPubkey);
+      const profileMetadata = await getProfileMetadata(zap.authorPubkey, relays);
       const profileContent = extractProfileMetadataContent(profileMetadata);
       const npub = hexToNpub(zap.authorPubkey);
       

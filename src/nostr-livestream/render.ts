@@ -3,7 +3,7 @@
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { ParsedLivestreamEvent } from './livestream-utils';
-import { escapeHtml, hexToNpub } from '../common/utils';
+import { escapeHtml, hexToNpub, isValidUrl } from '../common/utils';
 import { formatEventDate } from '../common/date-utils';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 
@@ -15,7 +15,6 @@ export interface RenderLivestreamOptions extends IRenderOptions {
   autoPlay: boolean;
   participantProfiles: Map<string, any>;
   participantsStatus: NCStatus;
-  videoStatus: NCStatus;
 }
 
 export function renderLivestream(options: RenderLivestreamOptions): string {
@@ -29,7 +28,7 @@ export function renderLivestream(options: RenderLivestreamOptions): string {
     showParticipantCount,
     participantProfiles,
     participantsStatus,
-    videoStatus,
+    autoPlay
   } = options;
 
   // Handle error state
@@ -46,7 +45,7 @@ export function renderLivestream(options: RenderLivestreamOptions): string {
   return `
     <div class="nostr-livestream-container">
       ${renderLivestreamHeader(author, parsedLivestream)}
-      ${renderLivestreamMedia(parsedLivestream, options.autoPlay, videoStatus)}
+      ${renderLivestreamMedia(parsedLivestream, autoPlay)}
       ${renderLivestreamMetadata(parsedLivestream, showParticipantCount)}
       ${showParticipants ? renderParticipants(parsedLivestream, participantProfiles, participantsStatus) : ''}
     </div>
@@ -89,28 +88,18 @@ function renderLivestreamHeader(
 
 function renderLivestreamMedia(
   parsedLivestream: ParsedLivestreamEvent,
-  autoPlay: boolean,
-  videoStatus: NCStatus
+  autoPlay: boolean
 ): string {
   const status = parsedLivestream.status || 'planned';
   const streamingUrl = parsedLivestream.streamingUrl;
   const recordingUrl = parsedLivestream.recordingUrl;
   const imageUrl = parsedLivestream.image;
 
-  // If live and has streaming URL, render video player (unless video failed)
-  if (status === 'live' && streamingUrl && videoStatus !== NCStatus.Error) {
+  // If live and has streaming URL, render video player
+  if (status === 'live' && streamingUrl) {
     return `
       <div class="livestream-media">
         ${renderVideoPlayer(streamingUrl, autoPlay)}
-      </div>
-    `;
-  }
-
-  // If video failed (error status), show preview image as fallback
-  if (status === 'live' && streamingUrl && videoStatus === NCStatus.Error) {
-    return `
-      <div class="livestream-media">
-        ${renderPreviewImage(imageUrl)}
       </div>
     `;
   }
@@ -134,6 +123,15 @@ function renderLivestreamMedia(
 }
 
 function renderVideoPlayer(url: string, autoPlay: boolean): string {
+  // Validate URL scheme for defense in depth
+  if (!isValidUrl(url)) {
+    return `
+      <div class="livestream-video-placeholder">
+        <p>Invalid streaming URL</p>
+      </div>
+    `;
+  }
+
   // Use <hls-video> custom element (not <video>) for cross-browser HLS support
   const autoplayAttr = autoPlay ? 'autoplay' : '';
   return `
@@ -166,6 +164,20 @@ function renderPreviewImage(imageUrl?: string): string {
 }
 
 function renderRecordingLink(url: string): string {
+  // Validate URL scheme to prevent XSS (only allow http: and https:)
+  if (!isValidUrl(url)) {
+    // Render safe fallback: non-clickable div with escaped URL text
+    return `
+      <div class="livestream-recording-link">
+        <div>
+          <span class="recording-icon">▶</span>
+          <span>Watch Recording: ${escapeHtml(url)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Safe URL: render as clickable link
   return `
     <div class="livestream-recording-link">
       <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
@@ -200,12 +212,24 @@ function getParticipantDisplayName(participant: { pubkey: string }, profile: any
   }
 }
 
+/**
+ * Sanitizes a participant role for safe use in CSS class names.
+ * Normalizes the role by: defaulting to 'participant', lowercasing, and replacing
+ * any non-alphanumeric characters with hyphens.
+ */
+function sanitizeRoleForClass(role: string | undefined): string {
+  const normalized = (role || 'participant').toLowerCase();
+  // Replace any character that's not a-z0-9 with '-'
+  return normalized.replace(/[^a-z0-9]+/g, '-');
+}
+
 function renderParticipantItem(participant: { pubkey: string; role?: string; proof?: string }, participantProfiles: Map<string, any>): string {
   const profile = participantProfiles.get(participant.pubkey);
   const displayName = getParticipantDisplayName(participant, profile);
   const image = profile?.picture || profile?.image || '';
   const role = participant.role || 'Participant';
-  const roleClass = `participant-role participant-role-${role.toLowerCase()}`;
+  const safeRole = sanitizeRoleForClass(participant.role);
+  const roleClass = `participant-role participant-role-${safeRole}`;
 
   return `
     <div class="participant-item">

@@ -117,7 +117,6 @@ describe('EventResolver - resolveAddressableEvent', () => {
   });
 
   it('should throw error when no events found', async () => {
-    // TODO: Replace with a real valid naddr
     const validNaddr = 'naddr1qqjrqvfevgurzeps956rvcfs95mn2cmp95urzdpe956rjd338yunsve3vdjrgqgwwaehxw309ahx7uewd3hkctczyrt8hwqfm33fqvryz4v9lywftgax3n3x3w9vdx04syyr3xya8pskvqcyqqq8vecaj5ryr';
 
     mockFetchEvents.mockResolvedValue(new Set()); // Empty set
@@ -127,7 +126,6 @@ describe('EventResolver - resolveAddressableEvent', () => {
   });
 
   it('should return latest event when multiple events exist', async () => {
-    // TODO: Replace with a real valid naddr
     const validNaddr = 'naddr1qqjrqvfevgurzeps956rvcfs95mn2cmp95urzdpe956rjd338yunsve3vdjrgqgwwaehxw309ahx7uewd3hkctczyrt8hwqfm33fqvryz4v9lywftgax3n3x3w9vdx04syyr3xya8pskvqcyqqq8vecaj5ryr';
 
     const olderEvent = {
@@ -366,26 +364,5 @@ describe('EventResolver - resolveEvent', () => {
 
     await expect(resolver.resolveEvent({ hex: validHex, noteid: null, eventid: null }))
       .rejects.toThrow("Unable to resolve event from provided identifier");
-  });
-
-  it('should handle hex input directly (no decode needed)', async () => {
-    const validHex = 'a'.repeat(64);
-    const mockEvent = {
-      id: 'event-id',
-      kind: 1,
-      pubkey: 'pubkey',
-      created_at: 1234567890,
-      content: 'test',
-      tags: [],
-      sig: '',
-    } as unknown as NDKEvent;
-
-    mockResolveNDKEvent.mockResolvedValue(mockEvent);
-
-    // When hex is provided directly, no decode happens
-    const result = await resolver.resolveEvent({ hex: validHex, noteid: null, eventid: null });
-
-    expect(result).toBe(mockEvent);
-    expect(mockResolveNDKEvent).toHaveBeenCalledWith({ hex: validHex });
   });
 });

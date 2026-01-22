@@ -149,7 +149,7 @@ class Shortcodes {
                 }
             }
             
-            $all_identifier_attrs = ['noteid', 'hex', 'eventid', 'npub', 'pubkey', 'nip05', 'url'];
+            $all_identifier_attrs = ['noteid', 'hex', 'eventid', 'npub', 'pubkey', 'nip05', 'url', 'naddr'];
             $optional_attrs = array_filter($info['attributes'], function($config, $attr_key) use ($all_identifier_attrs) {
                 if (in_array($attr_key, $all_identifier_attrs) || !is_array($config)) {
                     return false;

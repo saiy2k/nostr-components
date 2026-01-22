@@ -123,7 +123,8 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
 
   async function loadInvoice(amountSats: number, comment: string) {
     const authorId = npubHex;
-    const meta = await getProfileMetadata(authorId);
+    const relaysArray = relays.split(',').map(r => r.trim()).filter(Boolean);
+    const meta = await getProfileMetadata(authorId, relaysArray);
     const endpoint = await getZapEndpoint(meta);
     const invoice = await fetchInvoice({
       zapEndpoint: endpoint,
@@ -131,18 +132,17 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       comment,
       authorId,
       nip19Target: undefined,
-      normalizedRelays: relays.split(','),
+      normalizedRelays: relaysArray,
       anon: params.anon ?? false,
       url: url,
     });
     currentInvoice = invoice;
 
     // Zap receipt listener
-    const relaysArr = relays.split(',');
     // Dispose previous listener before creating a new one
     if (cleanupReceipt) cleanupReceipt();
     cleanupReceipt = listenForZapReceipt({
-      relays: relaysArr,
+      relays: relaysArray,
       receiversPubKey: npubHex,
       invoice,
       onSuccess: markSuccess

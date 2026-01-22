@@ -120,7 +120,7 @@ class Registry {
                 'esm'         => 'assets/nostr-livestream.es.js',
                 'dependencies' => [],
                 'attributes'  => [
-                    'naddr'   => ['type' => 'string'], // NIP-19 addressable event code (naddr1...)
+                    'naddr'   => ['type' => 'string', 'required' => true], // NIP-19 addressable event code (naddr1...)
                     'theme'   => ['type' => 'string', 'enum' => ['light','dark'], 'default' => 'light'],
                     'relays'  => ['type' => 'string'],
                     'show-participants' => ['type' => 'boolean', 'default' => true],

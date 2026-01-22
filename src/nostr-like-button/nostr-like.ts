@@ -303,6 +303,7 @@ export default class NostrLike extends NostrBaseComponent {
       await openLikersDialog({
         likeDetails: this.cachedLikeDetails.likeDetails,
         theme: this.theme === 'dark' ? 'dark' : 'light',
+        relays: this.getRelays(),
       });
     } catch (error) {
       console.error('[NostrLike] Error opening likers dialog:', error);

@@ -8,6 +8,7 @@ import {
 } from 'nostr-tools';
 import { decodeNip19Entity } from '../common/utils';
 import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
+import { DEFAULT_RELAYS } from '../common/constants';
 
 /**
  * Helper utilities for Nostr zap operations (adapted from the original `nostr-zap` repo).
@@ -18,30 +19,25 @@ import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../comm
 // Basic in-memory cache – sufficient for component lifetime.
 const profileCache: Record<string, any> = {};
 
-export const getProfileMetadata = async (authorId: string) => {
+export const getProfileMetadata = async (authorId: string, relays?: string[]) => {
   if (profileCache[authorId]) return profileCache[authorId];
 
   const pool = new SimplePool();
-  const relays = [
-    // 'wss://relay.nostr.band',
-    'wss://purplepag.es',
-    'wss://relay.damus.io',
-    'wss://nostr.wine',
-  ];
+  const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
 
   try {
-    const event = await pool.get(relays, {
+    const event = await pool.get(relayList, {
       authors: [authorId],
       kinds: [0],
     });
     profileCache[authorId] = event;
     return event;
   } finally {
-    pool.close(relays);
+    pool.close(relayList);
   }
 };
 
-export const getBatchedProfileMetadata = async (authorIds: string[]) => {
+export const getBatchedProfileMetadata = async (authorIds: string[], relays?: string[]) => {
   // Filter out already cached profiles
   const uncachedIds = authorIds.filter(id => !profileCache[id]);
 
@@ -51,17 +47,11 @@ export const getBatchedProfileMetadata = async (authorIds: string[]) => {
   }
 
   const pool = new SimplePool();
-  // TODO: Hard coded relays?!
-  const relays = [
-    'wss://relay.nostr.band',
-    'wss://purplepag.es',
-    'wss://relay.damus.io',
-    'wss://nostr.wine',
-  ];
+  const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
 
   try {
     // Fetch all uncached profiles in a single query
-    const events = await pool.querySync(relays, {
+    const events = await pool.querySync(relayList, {
       authors: uncachedIds,
       kinds: [0],
     });
@@ -79,7 +69,7 @@ export const getBatchedProfileMetadata = async (authorIds: string[]) => {
 
     return allProfiles;
   } finally {
-    pool.close(relays);
+    pool.close(relayList);
   }
 };
 

@@ -82,6 +82,10 @@
     "./components/nostr-live-chat": {
       "import": "./dist/components/nostr-live-chat.es.js",
       "types": "./dist/components/nostr-live-chat.d.ts"
+    },
+    "./components/nostr-livestream": {
+      "import": "./dist/components/nostr-livestream.es.js",
+      "types": "./dist/components/nostr-livestream.d.ts"
     }
   },
   "files": [
@@ -124,7 +128,8 @@
     "typescript": "^5.8.3",
     "vite": "^5.4.1",
     "vite-plugin-dts": "^4.5.4",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.17"
   },
   "dependencies": {
     "@glidejs/glide": "^3.7.1",

@@ -3,7 +3,7 @@
 import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
-import { parseLivestreamEvent, ParsedLivestreamEvent, findHostParticipant, getUniqueParticipantPubkeys, getVideoErrorMessage, shouldVideoBeLoading } from './livestream-utils';
+import { parseLivestreamEvent, ParsedLivestreamEvent, findHostParticipant, getUniqueParticipantPubkeys } from './livestream-utils';
 import { renderLivestream, RenderLivestreamOptions } from './render';
 import { getLivestreamStyles } from './style';
 import { getBatchedProfileMetadata, extractProfileMetadataContent } from '../nostr-zap-button/zap-utils';
@@ -22,14 +22,12 @@ export default class NostrLivestream extends NostrEventComponent {
 
   // Status channels
   protected participantsStatus = this.channel('participants');
-  protected videoStatus = this.channel('video');
 
   private participantsLoadSeq = 0;
 
   constructor() {
     super();
     this.initChannelStatus('participants', NCStatus.Idle, { reflectOverall: false });
-    this.initChannelStatus('video', NCStatus.Idle, { reflectOverall: false });
   }
 
   static get observedAttributes() {
@@ -44,7 +42,6 @@ export default class NostrLivestream extends NostrEventComponent {
   connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
-    this.attachVideoListenersIfNeeded();
     this.render();
   }
 
@@ -75,7 +72,7 @@ export default class NostrLivestream extends NostrEventComponent {
 
   /**
    * Override updateHostClasses to only check eventStatus and authorStatus,
-   * not participantsStatus or videoStatus (which don't affect overall component state)
+   * not participantsStatus (which doesn't affect overall component state)
    */
   protected updateHostClasses() {
     const isReady = this.isEventAndAuthorReady();
@@ -109,12 +106,6 @@ export default class NostrLivestream extends NostrEventComponent {
     // Find host participant
     const hostParticipant = this.parsedLivestream ? findHostParticipant(this.parsedLivestream) : undefined;
     this.hostPubkey = hostParticipant?.pubkey || null;
-
-    // Reset video status if we have a live stream with video URL
-    this.videoStatus.set(shouldVideoBeLoading(this.parsedLivestream) ? NCStatus.Loading : NCStatus.Idle);
-
-    // Attach video listeners if video will be rendered
-    this.attachVideoListenersIfNeeded();
 
     this.loadParticipantProfiles();
   }
@@ -155,7 +146,8 @@ export default class NostrLivestream extends NostrEventComponent {
 
     try {
       // Fetch profiles in a single batched call
-      const profileResults = await getBatchedProfileMetadata(pubkeysToFetch);
+      const relays = this.getRelays();
+      const profileResults = await getBatchedProfileMetadata(pubkeysToFetch, relays);
 
       // Guard against stale operations after async operation
       if (seq !== this.participantsLoadSeq || !this.isConnected) {
@@ -243,7 +235,6 @@ export default class NostrLivestream extends NostrEventComponent {
     
     // Reset status channels to idle
     this.participantsStatus.set(NCStatus.Idle);
-    this.videoStatus.set(NCStatus.Idle);
     
     // Increment sequence guard to cancel any in-flight profile loading operations
     this.participantsLoadSeq++;
@@ -288,7 +279,8 @@ export default class NostrLivestream extends NostrEventComponent {
     // Convert pubkey to npub for njump URL
     let npub: string;
     try {
-      npub = hexToNpub(pubkey);
+      const convertedNpub = hexToNpub(pubkey);
+      npub = (convertedNpub && convertedNpub.trim()) || pubkey;
     } catch {
       // Fallback to raw pubkey if conversion fails
       npub = pubkey;
@@ -331,42 +323,6 @@ export default class NostrLivestream extends NostrEventComponent {
     });
   }
 
-  /**
-   * Attach video event listeners only when video will actually be rendered
-   * This prevents unnecessary event handling overhead when video isn't present
-   */
-  private attachVideoListenersIfNeeded(): void {
-    // Only attach video listeners if video should be rendered
-    // Video is rendered when: status === 'live' && streamingUrl exists
-    if (!this.parsedLivestream) return;
-    
-    const shouldRenderVideo = this.parsedLivestream.status === 'live' && 
-                              !!this.parsedLivestream.streamingUrl;
-    
-    if (!shouldRenderVideo) return;
-
-    // Listen for video error events
-    this.delegateEvent('error', '.livestream-video', (e: Event) => {
-      const target = e.target as HTMLMediaElement;
-      const error = target.error;
-      const errorMessage = getVideoErrorMessage(error);
-      
-      console.error('[NostrLivestream] Video error:', errorMessage, error);
-      this.videoStatus.set(NCStatus.Error, errorMessage);
-      this.render(); // Re-render to show fallback preview image
-    });
-
-    // Listen for video loaded metadata (ready to play)
-    this.delegateEvent('loadedmetadata', '.livestream-video', () => {
-      this.videoStatus.set(NCStatus.Ready);
-    });
-
-    // Set loading status when video starts loading
-    this.delegateEvent('loadstart', '.livestream-video', () => {
-      this.videoStatus.set(NCStatus.Loading);
-    });
-  }
-
   protected renderContent() {
     const isLoading = !this.isEventAndAuthorReady();
     
@@ -384,7 +340,6 @@ export default class NostrLivestream extends NostrEventComponent {
       autoPlay            :  this.getAttribute('auto-play') === 'true',
       participantProfiles :  this.participantProfiles,
       participantsStatus  :  this.participantsStatus.get(),
-      videoStatus         :  this.videoStatus.get(),
     };
 
     // Get styles
