@@ -85,4 +85,10 @@ export const FOLLOW_BUTTON_CSS_VARIABLES: ParameterDefinition[] = [
     defaultValue: 'var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border))',
     control: 'text',
   },
+  {
+    variable: '--nostrc-follow-button-focus-color',
+    description: 'Focus outline color for the button',
+    defaultValue: 'var(--nostrc-color-primary, #007bff)',
+    control: 'color',
+  },
 ];

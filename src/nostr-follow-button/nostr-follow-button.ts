@@ -7,18 +7,12 @@ import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
 import { ensureInitialized } from '../common/nostr-login-service';
 
-/**
- * TODO:
- *  1. To have a text attribute. Default value being "Follow me on Nostr"
- *  2. show-avatar attribute to show the avatar of the user, instead of nostr logo.
- */
 export default class NostrFollowButton extends NostrUserComponent {
-
   protected followStatus = this.channel('follow');
   private isFollowed: boolean = false;
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'show-avatar', 'text'];
+    return [...super.observedAttributes, 'show-avatar', 'text', 'disabled'];
   }
 
   connectedCallback() {
@@ -27,46 +21,66 @@ export default class NostrFollowButton extends NostrUserComponent {
     this.render();
   }
 
-  attributeChangedCallback(
-    name: string,
-    oldValue: string | null,
-    newValue: string | null
-  ) {
-    if (oldValue === newValue) return;
-    super.attributeChangedCallback(name, oldValue, newValue);
+  protected onStatusChange() {
     this.render();
   }
 
-  /** Base class functions */
-  protected onStatusChange(_status: NCStatus) {
+  protected onUserReady() {
     this.render();
   }
 
-  protected onUserReady(_user: any, _profile: any) {
-    this.render();
+  /** Event delegation (required by BaseComponent design) */
+  private attachDelegatedListeners() {
+    // Mouse click
+    this.delegateEvent(
+      'click',
+      '.nostr-follow-button-container',
+      (e) => {
+        if (this.hasAttribute('disabled')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void this.handleFollowClick();
+      }
+    );
+
+    // Keyboard support (Enter / Space)
+    this.delegateEvent(
+      'keydown',
+      '.nostr-follow-button-container',
+      (e: KeyboardEvent) => {
+        if (this.hasAttribute('disabled')) return;
+
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          void this.handleFollowClick();
+        }
+      }
+    );
   }
 
-  /** Private functions */
   private async handleFollowClick() {
+    if (this.hasAttribute('disabled')) return;
     if (this.computeOverall() !== NCStatus.Ready) return;
 
     this.followStatus.set(NCStatus.Loading);
     this.render();
 
     try {
-      // Ensure NostrLogin is initialized (sets up window.nostr)
+      // Ensure NostrLogin is initialized
       await ensureInitialized();
 
-      // Use NDKNip07Signer which works with window.nostr from NostrLogin
+      if (!this.user) {
+        this.followStatus.set(
+          NCStatus.Error,
+          'Could not resolve user to follow.'
+        );
+        return;
+      }
+
       const signer = new NDKNip07Signer();
       const ndk = this.nostrService.getNDK();
       ndk.signer = signer;
-
-      if (!this.user) {
-        this.followStatus.set(NCStatus.Error, "Could not resolve user to follow.");
-        this.render();
-        return;
-      }
 
       const signedUser = await signer.user();
       if (signedUser) {
@@ -77,46 +91,50 @@ export default class NostrFollowButton extends NostrUserComponent {
       this.followStatus.set(NCStatus.Ready);
     } catch (err) {
       const error = err as Error;
-      // Generic error message - NostrLogin handles its own UI/errors
-      const errorMessage = error.message || 'Please authorize, click the button to try again!';
-      this.followStatus.set(NCStatus.Error, errorMessage);
+      this.followStatus.set(
+        NCStatus.Error,
+        error.message || 'Please authorize, click the button to try again!'
+      );
     } finally {
       this.render();
     }
   }
 
-  private attachDelegatedListeners() {
-    this.delegateEvent('click', '.nostr-follow-button-container', (e) => {
-      e.preventDefault?.();
-      e.stopPropagation?.();
-      void this.handleFollowClick();
-    });
-  }
-
   protected renderContent() {
-    const isLoading           = this.computeOverall() == NCStatus.Loading;
-    const isFollowing         = this.followStatus.get() == NCStatus.Loading;
-    const isError             = this.computeOverall() === NCStatus.Error;
-    const errorMessage        = super.renderError(this.errorMessage);
-    const showAvatar          = this.hasAttribute('show-avatar');
-    const customText          = this.getAttribute('text') || 'Follow me on nostr';
+    const isDisabled = this.hasAttribute('disabled');
 
     const renderOptions: RenderFollowButtonOptions = {
-      isLoading   : isLoading,
-      isError     : isError,
-      errorMessage: errorMessage,
-      isFollowed  : this.isFollowed,
-      isFollowing : isFollowing,
-      showAvatar  : showAvatar,
-      user        : this.user,
-      profile     : this.profile,
-      customText  : customText,
+      isLoading: this.computeOverall() === NCStatus.Loading,
+      isError: this.computeOverall() === NCStatus.Error,
+      errorMessage: super.renderError(this.errorMessage),
+      isFollowed: this.isFollowed,
+      isFollowing: this.followStatus.get() === NCStatus.Loading,
+      showAvatar: this.hasAttribute('show-avatar'),
+      user: this.user,
+      profile: this.profile,
+      customText: this.getAttribute('text') || 'Follow me on nostr',
     };
 
     this.shadowRoot!.innerHTML = `
       ${getFollowButtonStyles()}
       ${renderFollowButton(renderOptions)}
-    `
+    `;
+
+    // Accessibility (profile-badge pattern)
+    this.setAttribute('role', 'button');
+    this.setAttribute('aria-pressed', String(this.isFollowed));
+
+    // Set tabindex on container (inside shadow DOM) so delegateEvent can catch keydown
+    const container = this.shadowRoot?.querySelector('.nostr-follow-button-container') as HTMLElement;
+    if (container) {
+      if (isDisabled) {
+        container.setAttribute('aria-disabled', 'true');
+        container.removeAttribute('tabindex');
+      } else {
+        container.removeAttribute('aria-disabled');
+        container.setAttribute('tabindex', '0');
+      }
+    }
   }
 }
 
