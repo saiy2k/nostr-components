@@ -36,18 +36,25 @@ export function getProfileBadgeStyles(): string {
     }
 
     /* Hover state */
-    :host(.is-clickable:hover) {
-      background: var(--nostrc-profile-badge-hover-bg);
-      color: var(--nostrc-profile-badge-hover-color);
-      border: var(--nostrc-profile-badge-hover-border);
-    }
+:host(.is-clickable:hover) {
+  background: var(--nostrc-profile-badge-hover-bg);
+  color: var(--nostrc-profile-badge-hover-color);
+  border: var(--nostrc-profile-badge-hover-border);
+}
 
-    :host(.is-error) .nostr-profile-badge-container {
-      justify-content: center;
-      align-items: center;
-      color: var(--nostrc-color-error-text);
-      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
-    }
+/* Focus-visible state for keyboard navigation */
+.nostr-profile-badge-container:focus-visible {
+  outline: 2px solid var(--nostrc-focus-color, currentColor);
+  outline-offset: 2px;
+}
+
+:host(.is-error) .nostr-profile-badge-container {
+  justify-content: center;
+  align-items: center;
+  color: var(--nostrc-color-error-text);
+  border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
+}
+
     
     .nostr-profile-badge-left-container {
       width: 48px;

@@ -80,18 +80,46 @@ export default class NostrProfileBadge extends NostrUserComponent {
     }
   }
 
-  private attachDelegatedListeners() {
+ private attachDelegatedListeners() {
 
-    // Click anywhere on the profile badge (except follow button, copy buttons)
-    this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button')) {
-        this.onProfileClick();
+  // Click anywhere on the profile badge (except follow button, copy buttons)
+  this.delegateEvent('click', '.nostr-profile-badge-container', (e: Event) => {
+    const target = e.target as HTMLElement
+    if (
+      !target.closest(
+        '.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button'
+      )
+    ) {
+      this.onProfileClick()
+    }
+  })
+
+  // Keyboard accessibility (Enter + Space)
+  this.delegateEvent(
+    'keydown',
+    '.nostr-profile-badge-container',
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const target = e.target as HTMLElement
+
+        // Ignore nested interactive elements
+        if (
+          target.closest(
+            '.nc-copy-btn, .nostr-follow-button-container, nostr-follow-button'
+          )
+        ) {
+          return
+        }
+
+        e.preventDefault()
+        e.stopPropagation()
+        this.onProfileClick()
       }
-    });
+    }
+  )
 
-    // Copy is handled via attachCopyDelegation() using `.nc-copy-btn`
-  }
+  // Copy is handled via attachCopyDelegation() using `.nc-copy-btn`
+}
 
   protected renderContent() {
     const overall       = this.computeOverall();
