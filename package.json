@@ -1,6 +1,6 @@
 {
   "name": "nostr-components",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "type": "module",
   "description": "Embed Nostr anywhere on the internet, a Zap Button for every webpage",
   "keywords": [
@@ -139,7 +139,6 @@
     "dompurify": "^3.2.6",
     "hls-video-element": "^1.5.10",
     "light-bolt11-decoder": "^3.2.0",
-    "nostr-login": "^1.7.12",
     "nostr-tools": "^2.7.2",
     "qrcode": "^1.5.4"
   }

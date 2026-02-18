@@ -66,11 +66,11 @@ import 'nostr-components';
 
 ### Authentication
 
-All interactive components (Follow, Like, Zap) require user authentication. Components use [NostrLogin](https://github.com/nostrband/nostr-login) which supports:
+All interactive components (Follow, Like, Zap) require user authentication. Components use [window.nostr.js](https://github.com/fiatjaf/window.nostr.js) which supports:
 - **NIP-07 Browser Extensions** (Alby, nos2x, etc.)
 - **NIP-46 Remote Signers** (Bunkers)
 
-The authentication flow is handled automatically when users interact with components.
+The script is loaded automatically on first interaction — no setup required. Users without an extension will see a floating widget to connect their Nostr account.
 
 ---
 
