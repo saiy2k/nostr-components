@@ -27,6 +27,9 @@ import { getDialogComponentStyles } from './style';
 export class DialogComponent extends HTMLElement {
   private dialog: HTMLDialogElement | null = null;
   private backdrop: HTMLDivElement | null = null;
+  private _escHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _focusTrapHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _previouslyFocused: HTMLElement | null = null;
 
   constructor() {
     super();
@@ -117,11 +120,39 @@ export class DialogComponent extends HTMLElement {
       }
     });
 
-    // ESC key handler
-    this.dialog.addEventListener('cancel', (e) => {
-      e.preventDefault();
-      this.close();
-    });
+    // ESC key handler (cancel event only fires for showModal; use keydown for show())
+    this._escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this.close();
+      }
+    };
+    document.addEventListener('keydown', this._escHandler);
+
+    // Focus trap — keep Tab/Shift+Tab cycling within the dialog
+    this._focusTrapHandler = (e: KeyboardEvent) => {
+      if (!this.dialog || e.key !== 'Tab') return;
+      const focusable = Array.from(
+        this.dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', this._focusTrapHandler);
 
     // Cleanup on close
     this.dialog.addEventListener('close', () => {
@@ -140,14 +171,23 @@ export class DialogComponent extends HTMLElement {
    * Show the dialog as modal
    */
   public showModal(): void {
-    if (!this.dialog) {
-      this.render();
+    if (this.dialog || this.backdrop) {
+      return;
     }
+    this._previouslyFocused = document.activeElement as HTMLElement;
+    this.render();
     this.backdrop = document.createElement('div');
     this.backdrop.className = 'nostr-dialog-backdrop';
     this.backdrop.addEventListener('click', () => this.close());
     document.body.appendChild(this.backdrop);
-    this.dialog?.show();
+    this.dialog!.setAttribute('aria-modal', 'true');
+    this.dialog!.show();
+
+    // Move focus into the dialog after it is visible
+    const firstFocusable = this.dialog!.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    (firstFocusable ?? this.dialog!).focus();
   }
 
   /**
@@ -161,6 +201,16 @@ export class DialogComponent extends HTMLElement {
    * Cleanup when dialog is closed
    */
   private cleanup(): void {
+    if (this._escHandler) {
+      document.removeEventListener('keydown', this._escHandler);
+      this._escHandler = null;
+    }
+    if (this._focusTrapHandler) {
+      document.removeEventListener('keydown', this._focusTrapHandler);
+      this._focusTrapHandler = null;
+    }
+    this._previouslyFocused?.focus();
+    this._previouslyFocused = null;
     if (this.backdrop && this.backdrop.isConnected) {
       this.backdrop.remove();
     }
