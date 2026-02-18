@@ -1,56 +1,54 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * NostrLoginService
- * =================
- * Service for lazy-loading and initializing NostrLogin.
- * 
- * This service ensures NostrLogin is initialized only when needed,
- * and provides a unified interface for components that require authentication.
- * 
- * NostrLogin provides window.nostr interface which is compatible with
- * NDKNip07Signer from @nostr-dev-kit/ndk.
+ * WindowNostrService
+ * ==================
+ * Service for lazy-loading window.nostr.js and ensuring window.nostr is available.
+ *
+ * Injects the window.nostr.js script on first call, which provides a floating
+ * NIP-07/NIP-46 widget compatible with NDKNip07Signer from @nostr-dev-kit/ndk.
  */
+
+const WINDOW_NOSTR_JS_SRC = 'https://cdn.jsdelivr.net/npm/window.nostr.js/dist/window.nostr.min.js';
 
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 
+function injectScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    document.head.appendChild(el);
+  });
+}
+
 /**
- * Ensures NostrLogin is initialized.
- * This will lazy-load the nostr-login package and initialize it on first call.
- * Subsequent calls will return the same promise.
- * 
- * @returns Promise that resolves when NostrLogin is initialized
+ * Ensures window.nostr.js is loaded.
+ * Injects the script tag on first call; subsequent calls return immediately.
+ *
+ * @returns Promise that resolves when window.nostr.js is loaded
  */
 export async function ensureInitialized(): Promise<void> {
-  // If already initialized, return immediately
   if (isInitialized) {
     return;
   }
 
-  // If initialization is in progress, return the existing promise
   if (initPromise) {
     return initPromise;
   }
 
-  // Start initialization
   initPromise = (async () => {
     try {
-      // Dynamic import to avoid SSR issues and only load when needed
-      const { init } = await import('nostr-login');
-      
-      // Signup description should be:
-      // Nostr is a simple, open protocol that enables a global, decentralized and censorship-resistant social network.
-      // Watch a 1-min video
-      // Watch a long video
-      init({
-        "methods": ["connect", "extension"],
-      });
-      
+      await injectScript(WINDOW_NOSTR_JS_SRC);
       isInitialized = true;
     } catch (error) {
-      console.error('Failed to initialize NostrLogin:', error);
-      // Reset promise so we can retry
+      console.error('Failed to load window.nostr.js:', error);
       initPromise = null;
       throw error;
     }
@@ -60,7 +58,7 @@ export async function ensureInitialized(): Promise<void> {
 }
 
 /**
- * Check if NostrLogin is available (window.nostr exists)
+ * Check if window.nostr is available
  * @returns boolean indicating if window.nostr is available
  */
 export function isAvailable(): boolean {
@@ -69,7 +67,6 @@ export function isAvailable(): boolean {
 
 /**
  * Get the public key from window.nostr
- * This will trigger NostrLogin auth flow if user isn't authenticated
  * @returns Promise resolving to public key or null
  */
 export async function getPublicKey(): Promise<string | null> {
@@ -83,14 +80,13 @@ export async function getPublicKey(): Promise<string | null> {
     const pubkey = await (window as any).nostr.getPublicKey();
     return pubkey || null;
   } catch (error) {
-    console.error('Failed to get public key from NostrLogin:', error);
+    console.error('Failed to get public key from window.nostr:', error);
     return null;
   }
 }
 
 /**
  * Sign an event using window.nostr
- * This will trigger NostrLogin auth flow if user isn't authenticated
  * @param event - The event to sign
  * @returns Promise resolving to signed event
  */
@@ -98,14 +94,14 @@ export async function signEvent(event: any): Promise<any> {
   await ensureInitialized();
   
   if (!isAvailable()) {
-    throw new Error('NostrLogin is not available');
+    throw new Error('window.nostr is not available');
   }
 
   try {
     const signedEvent = await (window as any).nostr.signEvent(event);
     return signedEvent;
   } catch (error) {
-    console.error('Failed to sign event with NostrLogin:', error);
+    console.error('Failed to sign event with window.nostr:', error);
     throw error;
   }
 }

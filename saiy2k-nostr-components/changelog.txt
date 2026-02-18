@@ -1,3 +1,8 @@
+= 0.5.5 - 2026-02-18 =
+
+* Replaced nostr-login with window.nostr.js for lighter authentication widget
+* Fixed dialog backdrop z-index covering window.nostr.js floating widget
+
 = 0.5.4 - 2026-01-22 =
 
 * Fixed follow button keyboard event handling (moved tabindex to container for delegateEvent compatibility)

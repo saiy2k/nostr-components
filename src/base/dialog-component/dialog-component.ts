@@ -26,6 +26,7 @@ import { getDialogComponentStyles } from './style';
  */
 export class DialogComponent extends HTMLElement {
   private dialog: HTMLDialogElement | null = null;
+  private backdrop: HTMLDivElement | null = null;
 
   constructor() {
     super();
@@ -142,7 +143,11 @@ export class DialogComponent extends HTMLElement {
     if (!this.dialog) {
       this.render();
     }
-    this.dialog?.showModal();
+    this.backdrop = document.createElement('div');
+    this.backdrop.className = 'nostr-dialog-backdrop';
+    this.backdrop.addEventListener('click', () => this.close());
+    document.body.appendChild(this.backdrop);
+    this.dialog?.show();
   }
 
   /**
@@ -156,6 +161,10 @@ export class DialogComponent extends HTMLElement {
    * Cleanup when dialog is closed
    */
   private cleanup(): void {
+    if (this.backdrop && this.backdrop.isConnected) {
+      this.backdrop.remove();
+    }
+    this.backdrop = null;
     if (this.dialog && this.dialog.isConnected) {
       this.dialog.remove();
     }
