@@ -1,3 +1,13 @@
+= 0.5.6 - 2026-02-18 =
+
+* SSR guard in ensureInitialized to avoid DOM access in Node/SSR environments
+* Typed signEvent with UnsignedEvent/NostrEvent from nostr-tools
+* Pinned window.nostr.js CDN to @0.7.1 with SRI hash for supply-chain safety
+* Fixed race condition in injectScript when script tag exists but hasn't loaded
+* Fixed failed script element left in DOM blocking retries
+* Fixed duplicate backdrop creation on repeated showModal() calls
+* Added focus trap, aria-modal, and focus restore to dialog component
+
 = 0.5.5 - 2026-02-18 =
 
 * Replaced nostr-login with window.nostr.js for lighter authentication widget
