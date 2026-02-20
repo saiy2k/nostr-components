@@ -143,19 +143,23 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - `decodeNip19Entity()`: General NIP-19 entity decoder
 
 ### Zap-Specific Utilities (`src/nostr-zap/zap-utils.ts`)
-- `fetchTotalZapAmount()`: Fetches total and individual zap data with URL filtering
+- `fetchTotalZapAmount()`: Fetches total and individual zap data with relay-side URL filtering via `#a`
+- `buildUrlATag()`: Computes the deterministic `a` tag value (`39735:pubkey:url`) for a given recipient pubkey and URL
 - `getProfileMetadata()`: Caches user profile data
 - `getZapEndpoint()`: Resolves Lightning zap endpoints
-- `fetchInvoice()`: Generates Lightning invoices with URL-based zap tags
-- `makeZapEvent()`: Creates zap request events (NIP-73 compliance)
+- `fetchInvoice()`: Generates Lightning invoices with URL-based zap `a` tag
+- `makeZapEvent()`: Creates zap request events with `["a", "39735:pubkey:url"]` for URL-based zaps
 - `listenForZapReceipt()`: Monitors for zap payment confirmations
 
 ## Zap Count
 
+> **Kind 39735** was chosen as the URL-zap coordinate kind. It is a custom, non-standard kind in the NIP-01 addressable range (30000–39999). No actual event of this kind is ever published — the coordinate string (`39735:pubkey:url`) is used purely as a stable `a` tag value that NIP-57 relays copy to zap receipts.
+
 ### Data Fetching
 - Queries kind 9735 events with `#p` tag matching user's pubkey
 - Limit: 1000 events
-- URL filtering is done post-fetch by parsing each event's `description` JSON to check that the wrapped zap request contains `k="web"` and `i=url` (when URL provided), rather than relying on `#k`/`#i` tags on the receipt itself (This works, but bad!)
+- When `url` attribute is provided, adds `#a` filter with value `39735:<pubkey>:<normalized_url>` — the relay returns only URL-specific receipts, eliminating client-side description tag parsing
+- The `a` tag value is a valid NIP-01 addressable event coordinate (kind 39735 is in the 30000–39999 addressable range); per NIP-57 Appendix E, relays copy the `a` tag from the zap request to the receipt, making relay-side `#a` filtering reliable
 
 ### Amount Calculation
 - Extracts amounts from zap request description tags

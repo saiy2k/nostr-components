@@ -87,6 +87,16 @@ export const getZapEndpoint = async (profileMetadata: any) => {
   return endpoint;
 };
 
+/**
+ * Builds the deterministic `a` tag value for a URL-based zap.
+ * Format: "39735:<recipient_pubkey>:<normalized_url>"
+ * Kind 39735 is in the NIP-01 addressable event range (30000-39999), making
+ * this a valid event coordinate that NIP-57 relays copy from the zap request
+ * to the zap receipt, enabling relay-side #a filtering.
+ */
+export const buildUrlATag = (pubkey: string, url: string): string =>
+  `39735:${pubkey}:${normalizeURL(url)}`;
+
 interface NostrExtension {
   signEvent(event: any): Promise<{
     id: string;
@@ -145,10 +155,11 @@ const makeZapEvent = async ({
     event.tags.push(['a', `${naddrData.kind}:${naddrData.pubkey}:${naddrData.identifier}`, relayTag]);
   }
 
-  // Add URL-based zap tags if URL is provided
+  // Add URL-based zap a tag if URL is provided.
+  // Uses a deterministic addressable event coordinate (kind 39735) so relays
+  // copy it to the zap receipt, enabling relay-side #a filtering.
   if (url) {
-    event.tags.push(['k', 'web']);
-    event.tags.push(['i', normalizeURL(url)]);
+    event.tags.push(['a', buildUrlATag(profile, url)]);
   }
 
   // Check if NostrLogin is available (will initialize if needed)
@@ -305,79 +316,47 @@ export const fetchTotalZapAmount = async ({
   relays: string[];
   url?: string;
 }): Promise<ZapAmountResult> => {
-  // Normalize URL at the beginning for consistent comparison with tags
-  const normalizedUrl = url ? normalizeURL(url) : undefined;
-  
   const pool = new SimplePool();
   let totalAmount = 0;
   const zapDetails: ZapDetails[] = [];
 
   try {
-    // Build filter for zap receipt events
     const filter: any = {
-      kinds: [9735], // Zap receipt
+      kinds: [9735],
       '#p': [pubkey],
       limit: 1000,
     };
 
-    // Add URL-based filtering if URL is provided
-    // TODO: These tags doesn't appear in zap receipt event.
-    // They goes into the description tag, which has the zap request JSON.
-    /*
-    if (normalizedUrl) {
-      filter['#k'] = ['web'];
-      filter['#i'] = [normalizedUrl];
+    // When a URL is provided, filter at the relay level using the #a tag.
+    // The a tag value (39735:pubkey:url) is copied from the zap request to the
+    // zap receipt by NIP-57-compliant relays, so only URL-specific receipts
+    // are returned — no client-side description parsing needed for filtering.
+    if (url) {
+      filter['#a'] = [buildUrlATag(pubkey, url)];
     }
-    */
 
-    // Use pool.querySync to fetch multiple zap receipt events
     const events = await pool.querySync(relays, filter);
 
     for (const event of events) {
       const descriptionTag = event.tags?.find((tag: string[]) => tag[0] === 'description');
-      if (descriptionTag?.[1]) {
-        try {
-          const zapRequest = JSON.parse(descriptionTag[1]);
-          const amountTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'amount');
-          
-          // If URL is provided, check for URL-based zap tags
-          // TODO: Too much work, since #k and #i tags doesn't appear in zap receipt event.
-          // This is not a practical solution, but it's working for now!
-          if (normalizedUrl) {
-            const kTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'k');
-            const iTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'i');
-            
-            const iTagNormalized = iTag?.[1] ? normalizeURL(iTag[1]) : '';
-            if (kTag?.[1] === 'web' && iTagNormalized === normalizedUrl && amountTag?.[1]) {
-              const amount = parseInt(amountTag[1], 10);
-              if (amount > 0) {
-                totalAmount += amount;
-                zapDetails.push({
-                  amount: amount / 1000, // convert from msats to sats
-                  date: new Date(event.created_at * 1000),
-                  authorPubkey: zapRequest.pubkey,
-                  comment: zapRequest.content,
-                });
-              }
-            }
-          } else {
-            // No URL filtering - count all zaps
-            if (amountTag?.[1]) {
-              const amount = parseInt(amountTag[1], 10);
-              if (amount > 0) {
-                totalAmount += amount;
-                zapDetails.push({
-                  amount: amount / 1000, // convert from msats to sats
-                  date: new Date(event.created_at * 1000),
-                  authorPubkey: zapRequest.pubkey,
-                  comment: zapRequest.content,
-                });
-              }
-            }
+      if (!descriptionTag?.[1]) continue;
+      try {
+        const zapRequest = JSON.parse(descriptionTag[1]);
+        const amountTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'amount');
+        if (amountTag?.[1]) {
+          const amount = parseInt(amountTag[1], 10);
+          if (amount > 0) {
+            totalAmount += amount;
+            zapDetails.push({
+              amount: amount / 1000, // convert from msats to sats
+              date: new Date(event.created_at * 1000),
+              authorPubkey: zapRequest.pubkey,
+              comment: zapRequest.content,
+            });
           }
-        } catch (e) {
-          console.error("Nostr-Components: Zap button: Could not parse zap request from description tag", e);
         }
+      } catch (e) {
+        console.error("Nostr-Components: Zap button: Could not parse zap request from description tag", e);
       }
     }
   } catch (error) {

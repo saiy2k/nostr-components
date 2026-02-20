@@ -33,9 +33,13 @@
 
 ## URL-Based Zaps
 
+Kind **39735** is used as the custom addressable event kind for URL-based zap correlation.(`39735:pubkey:url`) so NIP-57 relay tag-copying gives us free relay-side `#a` filtering.
+
 When `url` attribute is provided:
-- Zap requests include `["k", "web"]` and `["i", url]` tags
-- Total zap amount filters to show only URL-specific zaps
+- Zap requests include an `["a", "39735:<recipient_pubkey>:<normalized_url>"]` tag
+- The `a` tag value is computed deterministically from the component's `npub` and `url` attributes — no event pre-creation required
+- Per NIP-57, relays copy the `a` tag from the zap request (kind 9734) to the zap receipt (kind 9735), enabling relay-side filtering with `#a`
+- Total zap amount is fetched with `{"kinds": [9735], "#a": ["39735:pubkey:url"]}` — only URL-specific receipts are returned, no client-side parsing needed
 - Enables content creators to track zaps per article/post
 
 ## Limitations
