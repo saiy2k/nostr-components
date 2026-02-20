@@ -66,7 +66,7 @@ At least one:
 - `text` (string, default: "Zap") - Button text (max 128 chars)
 - `amount` (string) - Fixed zap amount in sats (1-210,000), hides amount selection
 - `default-amount` (string, default: 21) - Default amount in modal (1-210,000)
-- `url` (string) - URL for URL-based zaps, includes `["k", "web"]` and `["i", url]` tags
+- `url` (string) - URL for URL-based zaps; adds an `["a", "39735:<pubkey>:<url>"]` tag (see URL-Based Zaps section)
 - `data-theme` (string, default: "light") - Allowed values: "light" or "dark"
 - `relays` (string) - Comma-separated relay URLs
 

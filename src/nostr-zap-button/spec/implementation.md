@@ -153,7 +153,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 
 ## Zap Count
 
-> **Kind 39735** was chosen as the URL-zap coordinate kind. It is a custom, non-standard kind in the NIP-01 addressable range (30000–39999). No actual event of this kind is ever published — the coordinate string (`39735:pubkey:url`) is used purely as a stable `a` tag value that NIP-57 relays copy to zap receipts.
+> **Kind 39735** was chosen as the URL-zap coordinate kind. It is a custom, non-standard kind in the NIP-01 addressable range (30000–39999). No actual event of this kind is ever published — the coordinate string (`39735:pubkey:url`) is used purely as a stable `a` tag value that NIP-57 relays copy to zap receipts. Kind 39735 is also referenced by the publsp project for Lightning LSP liquidity offers; however, the `d`-field here is always a normalized URL, which is semantically distinct from publsp identifiers, making the overlap benign in practice.
 
 ### Data Fetching
 - Queries kind 9735 events with `#p` tag matching user's pubkey

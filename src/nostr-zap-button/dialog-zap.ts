@@ -140,7 +140,6 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       amount: amountSats * 1000, // -> msats
       comment,
       authorId,
-      nip19Target: undefined,
       normalizedRelays: relaysArray,
       anon: params.anon ?? false,
       url: url,

@@ -93,21 +93,15 @@ export const getZapEndpoint = async (profileMetadata: any) => {
  * Kind 39735 is in the NIP-01 addressable event range (30000-39999), making
  * this a valid event coordinate that NIP-57 relays copy from the zap request
  * to the zap receipt, enabling relay-side #a filtering.
+ *
+ * Note: kind 39735 is also referenced by the publsp project for Lightning LSP
+ * liquidity offers. No actual kind 39735 event is ever published here — the
+ * number is used purely as a stable coordinate prefix. The d-field is always a
+ * normalized URL, which is semantically distinct from publsp identifiers, so
+ * the overlap is benign in practice.
  */
 export const buildUrlATag = (pubkey: string, url: string): string =>
   `39735:${pubkey}:${normalizeURL(url)}`;
-
-interface NostrExtension {
-  signEvent(event: any): Promise<{
-    id: string;
-    sig: string;
-    kind: number;
-    tags: string[][];
-    pubkey: string;
-    content: string;
-    created_at: number;
-  }>;
-}
 
 const signEvent = async (zapEvent: any, anon?: boolean) => {
   if (!anon) {
@@ -123,7 +117,6 @@ const signEvent = async (zapEvent: any, anon?: boolean) => {
 
 const makeZapEvent = async ({
   profile,
-  nip19Target,
   amount,
   relays,
   comment,
@@ -144,16 +137,7 @@ const makeZapEvent = async ({
     relays,
     comment: comment || '',
   };
-  if (nip19Target?.startsWith('note')) {
-    req.event = decodeNip19Entity(nip19Target);
-  }
   const event = nip57.makeZapRequest(req);
-
-  if (nip19Target?.startsWith('naddr')) {
-    const naddrData: any = decodeNip19Entity(nip19Target);
-    const relayTag = naddrData?.relays?.join(',') ?? '';
-    event.tags.push(['a', `${naddrData.kind}:${naddrData.pubkey}:${naddrData.identifier}`, relayTag]);
-  }
 
   // Add URL-based zap a tag if URL is provided.
   // Uses a deterministic addressable event coordinate (kind 39735) so relays
@@ -188,7 +172,6 @@ export const fetchInvoice = async ({
   amount,
   comment,
   authorId,
-  nip19Target,
   normalizedRelays,
   anon,
   url,
@@ -197,14 +180,12 @@ export const fetchInvoice = async ({
   amount: number;
   comment?: string;
   authorId: string;
-  nip19Target?: string;
   normalizedRelays: string[];
   anon?: boolean;
   url?: string;
 }): Promise<string> => {
   const zapEvent = await makeZapEvent({
     profile: authorId,
-    nip19Target,
     amount,
     relays: normalizedRelays,
     comment: comment ?? '',
