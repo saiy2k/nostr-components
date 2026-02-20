@@ -11,7 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [0.6.0] - 2026-02-18
+## [0.6.1] - 2026-02-20
 
 ### Changed
 - URL-based zaps now use `["a", "39735:<pubkey>:<url>"]` tag instead of `["k", "web"]` + `["i", url]` tags. The `a` tag is a valid NIP-01 addressable event coordinate that NIP-57 relays copy from the zap request (kind 9734) to the zap receipt (kind 9735), enabling true relay-side `#a` filtering. `fetchTotalZapAmount()` no longer downloads all receipts and parses `description` tags client-side when a `url` is provided.
@@ -136,8 +136,8 @@ This is a breaking change. Zaps sent to any URL via the previous strategy will n
 - Custom relay configuration via `relays` attribute
 - Responsive design for all components
 
-[Unreleased]: https://github.com/saiy2k/nostr-components/compare/v0.6.0...HEAD
-[0.6.0]: https://github.com/saiy2k/nostr-components/compare/v0.5.6...v0.6.0
+[Unreleased]: https://github.com/saiy2k/nostr-components/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/saiy2k/nostr-components/compare/v0.5.6...v0.6.1
 [0.5.6]: https://github.com/saiy2k/nostr-components/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/saiy2k/nostr-components/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/saiy2k/nostr-components/compare/v0.5.3...v0.5.4

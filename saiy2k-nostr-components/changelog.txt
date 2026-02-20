@@ -1,3 +1,8 @@
+= 0.6.1 - 2026-02-20 =
+
+* Changed URL-based zaps to use ["a", "39735:<pubkey>:<url>"] tag instead of ["k", "web"] + ["i", url] tags, enabling relay-side #a filtering without client-side description tag parsing
+* Breaking change: zaps sent to any URL via the previous strategy will no longer be shown
+
 = 0.5.6 - 2026-02-18 =
 
 * SSR guard in ensureInitialized to avoid DOM access in Node/SSR environments
