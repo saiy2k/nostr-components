@@ -20,5 +20,11 @@ export const POST_PARAMETERS: ParameterDefinition[] = [
     description: `Whether need to show the stats of the post or not`,
     defaultValue: 'false',
     control: 'boolean',
+  },
+  {
+    variable: 'show-replies',
+    description: `Whether replies should start expanded below the post`,
+    defaultValue: 'false',
+    control: 'boolean',
   }
 ];
