@@ -73,7 +73,7 @@ export const AllAttributes: Story = {
       { type: 'noteid', value: INVALID_TEST_CASES.emptyValues.args.noteid, name: 'Empty Note ID' },
     ],
     widths: [600, 500, 400, 700],
-    booleanAttributes: ['show-stats'],
+    booleanAttributes: ['show-stats', 'show-replies'],
     updateInterval: 8000
   }),
 };
