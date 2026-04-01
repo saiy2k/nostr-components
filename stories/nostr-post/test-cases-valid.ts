@@ -39,6 +39,14 @@ export const TEST_CASES = {
       'show-stats': "true",
     },
   },
+  showReplies: {
+    name: 'Show Replies',
+    args: {
+      width: DEFAULT_WIDTH,
+      noteid: POST_DATA.jack_rough_consensus.noteid,
+      'show-replies': "true",
+    },
+  },
 
   // Theme Variations
   oceanGlassTheme: {

@@ -12,7 +12,7 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: 'A web component that displays Nostr posts with content, metadata, and statistics. Supports note IDs, event IDs, and raw hex inputs.',
+        component: 'A web component that displays Nostr posts with content, metadata, optional stats, and a minimal expandable replies view. Supports note IDs, event IDs, and raw hex inputs.',
       },
       source: {
         transform: (code, storyContext) =>
@@ -52,6 +52,11 @@ export const RawHex: Story = {
 export const ShowStats: Story = {
   name: TEST_CASES.showStats.name,
   args: TEST_CASES.showStats.args,
+};
+
+export const ShowReplies: Story = {
+  name: TEST_CASES.showReplies.name,
+  args: TEST_CASES.showReplies.args,
 };
 
 // Content Type Stories

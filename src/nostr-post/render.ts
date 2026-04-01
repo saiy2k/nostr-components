@@ -7,6 +7,7 @@ import { replyIcon, heartIcon } from '../common/icons';
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { escapeHtml } from '../common/utils';
+import { ReplyItem } from './reply-utils';
 
 export interface RenderPostOptions extends IRenderOptions {
   author: NDKUserProfile | null| undefined;
@@ -18,6 +19,11 @@ export interface RenderPostOptions extends IRenderOptions {
   } | null;
   statsLoading: boolean;
   htmlToRender: string;
+  repliesExpanded: boolean;
+  repliesLoaded: boolean;
+  repliesLoading: boolean;
+  repliesError: string | null;
+  replyItems: ReplyItem[];
 }
 
 export function renderPost(options: RenderPostOptions): string {
@@ -31,6 +37,11 @@ export function renderPost(options: RenderPostOptions): string {
     stats,
     statsLoading,
     htmlToRender,
+    repliesExpanded,
+    repliesLoaded,
+    repliesLoading,
+    repliesError,
+    replyItems,
   } = options;
 
   if (isError) {
@@ -41,7 +52,23 @@ export function renderPost(options: RenderPostOptions): string {
     <div class="nostr-post-container">
       ${renderPostHeader(isLoading, author, date)}
       ${renderPostBody(isLoading, htmlToRender)}
-      ${shouldShowStats ? renderPostFooter(isLoading, stats, statsLoading) : ''}
+      ${renderPostFooter(
+        isLoading,
+        shouldShowStats,
+        stats,
+        statsLoading,
+        repliesExpanded,
+        repliesLoaded,
+        replyItems
+      )}
+      ${renderRepliesSection(
+        isLoading,
+        repliesExpanded,
+        repliesLoaded,
+        repliesLoading,
+        repliesError,
+        replyItems
+      )}
     </div>
   `;
 }
@@ -118,37 +145,136 @@ function renderPostBody(
 
 function renderPostFooter(
   isLoading: boolean,
+  shouldShowStats: boolean,
   stats: { replies: number; likes: number } | null,
-  statsLoading: boolean
+  statsLoading: boolean,
+  repliesExpanded: boolean,
+  repliesLoaded: boolean,
+  replyItems: ReplyItem[]
 ): string {
-  if (isLoading || statsLoading) {
+  if (isLoading) {
     return `
       <div class="post-footer">
-        <div class='stats-container'>
-          <div class="stat">
-            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-          </div>
-          <div class="stat">
-            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-          </div>
+        <div class="stats-container">
+          ${shouldShowStats ? `
+            <div class="stat">
+              <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+              <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            </div>
+            <div class="stat">
+              <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+              <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            </div>
+          ` : ''}
+          <button class="stat reply-toggle-btn" type="button" disabled aria-expanded="false">
+            <span class="skeleton reply-toggle-skeleton"></span>
+          </button>
         </div>
       </div>
     `;
   }
 
+  const replyCount =
+    stats?.replies ?? (repliesLoaded ? replyItems.length : undefined);
+  const replyCountLabel =
+    !repliesExpanded && replyCount && replyCount > 0
+      ? ` (${replyCount})`
+      : '';
+
   return `
     <div class="post-footer">
-      <div class='stats-container'>
-        <div class="stat">
-          ${replyIcon}
-          <span>${stats?.replies ?? 0}</span>
-        </div>
-        <div class="stat">
-          ${heartIcon}
-          <span>${stats?.likes ?? 0}</span>
-        </div>
+      <div class="stats-container">
+        ${shouldShowStats ? `
+          <div class="stat">
+            ${statsLoading ? '<span class="skeleton reply-count-skeleton"></span>' : `${replyIcon}<span>${stats?.replies ?? 0}</span>`}
+          </div>
+          <div class="stat">
+            ${statsLoading ? '<span class="skeleton like-count-skeleton"></span>' : `${heartIcon}<span>${stats?.likes ?? 0}</span>`}
+          </div>
+        ` : ''}
+        <button
+          class="stat reply-toggle-btn"
+          type="button"
+          aria-expanded="${repliesExpanded}"
+        >
+          <span class="reply-toggle-label">
+            ${repliesExpanded ? 'Hide Replies' : `Show Replies${replyCountLabel}`}
+          </span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderRepliesSection(
+  isLoading: boolean,
+  repliesExpanded: boolean,
+  repliesLoaded: boolean,
+  repliesLoading: boolean,
+  repliesError: string | null,
+  replyItems: ReplyItem[]
+): string {
+  if (isLoading || !repliesExpanded) {
+    return '';
+  }
+
+  if (repliesLoading) {
+    return `
+      <div class="post-replies post-replies-loading" aria-live="polite">
+        <div class="post-replies-state-label">Loading replies</div>
+        ${renderReplySkeleton()}
+        ${renderReplySkeleton()}
+      </div>
+    `;
+  }
+
+  if (repliesError) {
+    return `
+      <div class="post-replies post-replies-error" aria-live="polite">
+        <div class="post-replies-state-label">Unable to load replies right now.</div>
+      </div>
+    `;
+  }
+
+  if (repliesLoaded && replyItems.length === 0) {
+    return `
+      <div class="post-replies post-replies-empty" aria-live="polite">
+        <div class="post-replies-state-label">No replies yet.</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="post-replies" aria-live="polite">
+      ${replyItems.map(renderReplyItem).join('')}
+    </div>
+  `;
+}
+
+function renderReplyItem(reply: ReplyItem): string {
+  return `
+    <div class="post-reply" data-reply-id="${escapeHtml(reply.id)}">
+      <div class="post-reply-avatar">
+        ${reply.authorImage ? `<img src="${escapeHtml(reply.authorImage)}" alt="${escapeHtml(reply.authorName)}" loading="lazy" />` : ''}
+      </div>
+      <div class="post-reply-main">
+        <div class="post-reply-author">${escapeHtml(reply.authorName)}</div>
+        <div class="post-reply-content">${reply.contentHtml}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderReplySkeleton(): string {
+  return `
+    <div class="post-reply post-reply-skeleton">
+      <div class="post-reply-avatar">
+        <div class="skeleton reply-avatar-skeleton"></div>
+      </div>
+      <div class="post-reply-main">
+        <div class="skeleton reply-author-skeleton"></div>
+        <div class="skeleton reply-line-skeleton"></div>
+        <div class="skeleton reply-line-skeleton short"></div>
       </div>
     </div>
   `;

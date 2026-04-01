@@ -46,6 +46,11 @@ export const ShowStats: Story = {
   args: TEST_CASES.showStats.args,
 };
 
+export const ShowReplies: Story = {
+  name: TEST_CASES.showReplies.name,
+  args: TEST_CASES.showReplies.args,
+};
+
 export const VideoContent: Story = {
   name: TEST_CASES.jackVideoProgramming.name,
   args: TEST_CASES.jackVideoProgramming.args,

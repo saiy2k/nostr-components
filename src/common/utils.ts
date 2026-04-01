@@ -88,6 +88,27 @@ export type Stats = {
   replies: number;
 };
 
+export function isDirectReplyToEvent(reply: NDKEvent, parentEventId: string): boolean {
+  if (!parentEventId) return false;
+
+  const eTags = reply.tags.filter(tag => tag[0] === 'e');
+  if (eTags.length === 0) return false;
+
+  const matchingETags = eTags.filter(tag => tag[1] === parentEventId);
+  if (matchingETags.length === 0) return false;
+
+  return eTags.length === 1 || matchingETags.some(tag => tag[3] === 'reply');
+}
+
+export function filterDirectReplies(
+  replies: Iterable<NDKEvent>,
+  parentEventId: string
+): NDKEvent[] {
+  return Array.from(replies).filter(reply =>
+    isDirectReplyToEvent(reply, parentEventId)
+  );
+}
+
 export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
   const reposts = await ndk.fetchEvents({
     kinds: [NDKKind.Repost],
@@ -97,11 +118,6 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
   const isDirectRepost = (repost: NDKEvent): boolean => {
     const pTagCounts = repost.tags.filter(tag => tag[0] === 'p').length;
     return pTagCounts === 1;
-  };
-
-  const isDirectReply = (reply: NDKEvent): boolean => {
-    const eTagsCount = reply.tags.filter(tag => tag[0] === 'e').length;
-    return eTagsCount === 1;
   };
 
   // Only take the count of direct reposts
@@ -154,9 +170,7 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
     '#e': [postId || ''],
   });
 
-  // Only take the direct replies
-  // https://github.com/nostr-protocol/nips/blob/master/10.md#positional-e-tags-deprecated
-  const replyCount = Array.from(replies).filter(isDirectReply).length;
+  const replyCount = filterDirectReplies(replies, postId).length;
 
   return {
     likes: likes.size,
@@ -198,9 +212,22 @@ export function parseBooleanAttribute(attr: string | null): boolean {
 }
 
 export function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return String(text).replace(/[&<>"']/g, char => {
+    switch (char) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      case '\'':
+        return '&#39;';
+      default:
+        return char;
+    }
+  });
 }
 
 export function isValidUrl(url: string): boolean {
