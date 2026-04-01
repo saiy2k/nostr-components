@@ -1,10 +1,10 @@
-# Nostr-like Component – Testing Considerations
+# Nostr Like Button – Testing Considerations
 
 ## Functional Tests
 
-- Test like action with NIP-07
+- Test like action with a connected signer via `window.nostr.js`
 - Test unlike action with confirmation dialog
-- Test without NIP-07 (error state)
+- Test without a connected signer (error state)
 - Test with 0 likes
 - Test with 1 like
 - Test with many likes (100+)

@@ -1,8 +1,8 @@
-# Nostr Zap Component - Technical Implementation
+# Nostr Zap Button - Technical Implementation
 
 ## Overview
 
-This document contains the technical implementation details for the `nostr-zap` component. For component usage and API specifications, see [spec.md](./spec.md).
+This document contains the technical implementation details for the `nostr-zap-button` component. For component usage and API specifications, see [spec.md](./spec.md).
 
 ## Architecture
 
@@ -54,6 +54,7 @@ This document contains the technical implementation details for the `nostr-zap` 
 - NostrUserComponent: Base class for user-specific components
 - UserResolver: User identity validation and resolution
 - NostrService: Relay connection management
+- Nostr Login Service: Lazy-loads `window.nostr.js` and signs zap requests when a connected signer is available
 - getComponentStyles(): Utility for CSS injection with design tokens
 - Common Utils: `decodeNpub()` and `decodeNip19Entity()` for NIP-19 decoding
 
@@ -97,7 +98,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - WebLN Integration: Direct wallet connection
 - Copy Functionality: Clipboard API for invoice copying
 - Payment Confirmation: Uses `listenForZapReceipt()` to detect successful payments
-- URL-Based Zaps: Passes URL parameter through `OpenZapModalParams` for NIP-73 compliance
+- URL-Based Zaps: Passes URL parameter through `OpenZapModalParams` for URL-based zap correlation and receipt filtering
 - Success State: Shows "⚡ Thank you!" overlay and hides controls
 
 ### Help Dialog Features
@@ -142,7 +143,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - `decodeNpub()`: Decodes npub strings to hex pubkeys
 - `decodeNip19Entity()`: General NIP-19 entity decoder
 
-### Zap-Specific Utilities (`src/nostr-zap/zap-utils.ts`)
+### Zap-Specific Utilities (`src/nostr-zap-button/zap-utils.ts`)
 - `fetchTotalZapAmount()`: Fetches total and individual zap data with relay-side URL filtering via `#a`
 - `buildUrlATag()`: Computes the deterministic `a` tag value (`39735:pubkey:url`) for a given recipient pubkey and URL
 - `getProfileMetadata()`: Caches user profile data
