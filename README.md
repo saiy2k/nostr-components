@@ -216,7 +216,9 @@ A detailed profile card showing avatar, name, bio, notes count, followers, etc.
 
 ## 6. Nostr Post
 
-Embed any Nostr post by providing the event ID.
+Embed any Nostr post by providing a note ID, event ID, or raw hex event ID.
+
+Use `show-stats="true"` to display like/reply counts, and `show-replies="true"` to start with the minimal replies list expanded below the post.
 
 **Usage:**
 
@@ -228,7 +230,9 @@ Embed any Nostr post by providing the event ID.
 </head>
 <body>
   <nostr-post
-    eventId="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"
+    noteid="note1t2jvt5vpusrwrxkfu8x8r7q65zzvm32xuur6y7am4zn475r8ucjqmwwhd2"
+    show-stats="true"
+    show-replies="true"
   ></nostr-post>
 </body>
 ```

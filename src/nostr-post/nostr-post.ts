@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: MIT
 
-import { NDKEvent } from '@nostr-dev-kit/ndk';
+import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import Glide from '@glidejs/glide';
-import { getPostStats, Stats } from '../common/utils';
+import {
+  filterDirectReplies,
+  getPostStats,
+  parseBooleanAttribute,
+  Stats,
+} from '../common/utils';
 import { renderPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
 import { renderContent, replaceEmbeddedPostPlaceholders } from './render-content';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getPostStyles } from './style';
+import { buildReplyItem, ReplyItem } from './reply-utils';
 
 const EVT_POST = 'nc:post';
 const EVT_AUTHOR = 'nc:author';
@@ -19,13 +25,21 @@ export default class NostrPost extends NostrEventComponent {
   protected stats: Stats | null = null;
   protected statsLoading: boolean = false;
   protected embeddedPosts: Map<string, NDKEvent> = new Map();
+  protected replyItems: ReplyItem[] = [];
+  protected repliesExpanded: boolean = false;
+  protected repliesLoaded: boolean = false;
+  protected repliesLoading: boolean = false;
+  protected repliesError: string | null = null;
   private glideInitialized: boolean = false;
   private cachedParsedContent: string | null = null;
   private cachedHtmlToRender: string | null = null;
+  private statsRequestSeq: number = 0;
+  private repliesRequestSeq: number = 0;
 
   async connectedCallback() {
     super.connectedCallback?.();
     this.attachDelegatedListeners();
+    this.repliesExpanded = this.shouldShowReplies();
     this.render();
   }
 
@@ -33,6 +47,7 @@ export default class NostrPost extends NostrEventComponent {
     return [
       ...super.observedAttributes,
       'show-stats',
+      'show-replies',
     ];
   }
 
@@ -44,6 +59,21 @@ export default class NostrPost extends NostrEventComponent {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
     if (name === 'show-stats') {
+      if (this.shouldShowStats() && this.event) {
+        void this.getPostStats();
+      } else {
+        this.resetStatsState();
+        this.render();
+      }
+    }
+
+    if (name === 'show-replies') {
+      this.repliesExpanded = this.shouldShowReplies();
+
+      if (this.event && this.repliesExpanded && !this.repliesLoaded && !this.repliesLoading) {
+        void this.loadReplies();
+      }
+
       this.render();
     }
   }
@@ -55,7 +85,17 @@ export default class NostrPost extends NostrEventComponent {
 
   protected async onEventReady(_event: any) {
     this.invalidateCache();
-    this.getPostStats();
+    this.resetStatsState();
+    this.resetReplyState();
+
+    if (this.shouldShowStats()) {
+      void this.getPostStats();
+    }
+
+    if (this.repliesExpanded) {
+      void this.loadReplies();
+    }
+
     this.render();
   }
 
@@ -65,28 +105,149 @@ export default class NostrPost extends NostrEventComponent {
     this.glideInitialized = false;
   }
 
-  async getPostStats() {
-    try {
-      const shouldShowStats = this.getAttribute('show-stats') === 'true';
+  private resetStatsState() {
+    this.statsRequestSeq++;
+    this.stats = null;
+    this.statsLoading = false;
+  }
 
-      if (this.event && shouldShowStats) {
-        this.statsLoading = true;
-        this.render();
-        
-        const stats = await getPostStats(
-          this.nostrService.getNDK(),
-          this.event.id
-        );
-        if (stats) {
-          this.stats = stats;
-        }
+  private resetReplyState() {
+    this.repliesRequestSeq++;
+    this.replyItems = [];
+    this.repliesLoaded = false;
+    this.repliesLoading = false;
+    this.repliesError = null;
+    this.repliesExpanded = this.shouldShowReplies();
+  }
+
+  private shouldShowStats(): boolean {
+    return parseBooleanAttribute(this.getAttribute('show-stats'));
+  }
+
+  private shouldShowReplies(): boolean {
+    return parseBooleanAttribute(this.getAttribute('show-replies'));
+  }
+
+  async getPostStats() {
+    const shouldShowStats = this.shouldShowStats();
+    const eventId = this.event?.id;
+
+    if (!shouldShowStats || !eventId) {
+      this.resetStatsState();
+      this.render();
+      return;
+    }
+
+    const seq = ++this.statsRequestSeq;
+
+    try {
+      this.stats = null;
+      this.statsLoading = true;
+      this.render();
+      
+      const stats = await getPostStats(
+        this.nostrService.getNDK(),
+        eventId
+      );
+
+      if (seq !== this.statsRequestSeq || this.event?.id !== eventId) {
+        return;
+      }
+
+      if (stats) {
+        this.stats = stats;
       }
     } catch (err) {
+      if (seq !== this.statsRequestSeq || this.event?.id !== eventId) {
+        return;
+      }
+
       const msg = err instanceof Error ? err.message : 'Failed to load post stats';
       console.error('[NostrPostComponent] ' + msg, err);
       this.eventStatus.set(NCStatus.Error, msg);
     } finally {
+      if (seq !== this.statsRequestSeq || this.event?.id !== eventId) {
+        return;
+      }
+
       this.statsLoading = false;
+      this.render();
+    }
+  }
+
+  private async loadReplies() {
+    const eventId = this.event?.id;
+
+    if (!eventId || this.repliesLoading || this.repliesLoaded) {
+      return;
+    }
+
+    const seq = ++this.repliesRequestSeq;
+
+    try {
+      this.repliesLoading = true;
+      this.repliesError = null;
+      this.render();
+
+      const replies = await this.nostrService.getNDK().fetchEvents({
+        kinds: [1],
+        '#e': [eventId],
+      });
+
+      if (seq !== this.repliesRequestSeq || this.event?.id !== eventId) {
+        return;
+      }
+
+      const directReplies = filterDirectReplies(replies, eventId).sort(
+        (a, b) => (a.created_at || 0) - (b.created_at || 0)
+      );
+
+      const uniqueAuthors = new Map<string, typeof directReplies[number]['author']>();
+      for (const reply of directReplies) {
+        uniqueAuthors.set(reply.pubkey, reply.author);
+      }
+
+      const authorProfiles = await Promise.all(
+        Array.from(uniqueAuthors.entries()).map(async ([pubkey, author]) => {
+          try {
+            const profile = await author.fetchProfile();
+            return [pubkey, profile] as const;
+          } catch (error) {
+            console.error(
+              `[NostrPostComponent] Failed to fetch profile for reply author ${pubkey}:`,
+              error
+            );
+            return [pubkey, null] as const;
+          }
+        })
+      );
+
+      if (seq !== this.repliesRequestSeq || this.event?.id !== eventId) {
+        return;
+      }
+
+      const authorProfileMap = new Map<string, NDKUserProfile | null>(authorProfiles);
+
+      this.replyItems = directReplies.map(reply =>
+        buildReplyItem(reply, authorProfileMap.get(reply.pubkey))
+      );
+      this.repliesLoaded = true;
+    } catch (err) {
+      if (seq !== this.repliesRequestSeq || this.event?.id !== eventId) {
+        return;
+      }
+
+      const msg = err instanceof Error ? err.message : 'Failed to load replies';
+      console.error('[NostrPostComponent] ' + msg, err);
+      this.replyItems = [];
+      this.repliesLoaded = false;
+      this.repliesError = msg;
+    } finally {
+      if (seq !== this.repliesRequestSeq || this.event?.id !== eventId) {
+        return;
+      }
+
+      this.repliesLoading = false;
       this.render();
     }
   }
@@ -116,11 +277,22 @@ export default class NostrPost extends NostrEventComponent {
     this.handleNjumpClick(EVT_MENTION, { username }, `p/${username}`);
   }
 
+  private onToggleReplies(e: Event) {
+    e.preventDefault();
+
+    if (this.repliesExpanded) {
+      this.removeAttribute('show-replies');
+      return;
+    }
+
+    this.setAttribute('show-replies', 'true');
+  }
+
   private attachDelegatedListeners() {
     // Click anywhere on the post container (except interactive elements)
     this.delegateEvent('click', '.nostr-post-container', (_e: Event) => {
       const target = _e.target as HTMLElement;
-      if (!target.closest('a, .nostr-mention, video, img, .nc-copy-btn, .post-header-left, .post-header-middle')) {
+      if (!target.closest('a, .nostr-mention, video, img, .nc-copy-btn, .post-header-left, .post-header-middle, .reply-toggle-btn, .post-replies')) {
         this.onPostClick();
       }
     });
@@ -143,6 +315,10 @@ export default class NostrPost extends NostrEventComponent {
         this.onMentionClick(username);
       }
     });
+
+    this.delegateEvent('click', '.reply-toggle-btn', (e: Event) => {
+      this.onToggleReplies(e);
+    });
   }
 
   protected async renderContent() {
@@ -162,7 +338,7 @@ export default class NostrPost extends NostrEventComponent {
     const htmlToRender  = this.cachedHtmlToRender;
     const errorMessage  = this.errorMessage;
 
-    const shouldShowStats = this.getAttribute('show-stats') === 'true';
+    const shouldShowStats = this.shouldShowStats();
 
     const renderOptions: RenderPostOptions = {
       isLoading: isLoading,
@@ -174,6 +350,11 @@ export default class NostrPost extends NostrEventComponent {
       stats: this.stats,
       statsLoading: this.statsLoading,
       htmlToRender,
+      repliesExpanded: this.repliesExpanded,
+      repliesLoaded: this.repliesLoaded,
+      repliesLoading: this.repliesLoading,
+      repliesError: this.repliesError,
+      replyItems: this.replyItems,
     };
 
     this.shadowRoot!.innerHTML = `
