@@ -78,19 +78,21 @@ Then import components in your JavaScript/TypeScript:
 import 'nostr-components';
 ```
 
+{/* Keep this shared auth/docs copy aligned with README.md and the active Like/Zap specs. */}
 ### Authentication
 
-All interactive components (Follow, Like, Zap) require user authentication. Components use [window.nostr.js](https://github.com/fiatjaf/window.nostr.js) which supports:
+All interactive components (Follow, Like, Zap) require user authentication. Components lazily load [window.nostr.js](https://github.com/fiatjaf/window.nostr.js) on first interaction, which supports:
 - **NIP-07 Browser Extensions** (Alby, nos2x, etc.)
 - **NIP-46 Remote Signers** (Bunkers)
 
-The script is loaded automatically on first interaction — no setup required. Users without an extension will see a floating widget to connect their Nostr account.
+No host-page setup is required. Users can connect with an existing signer or through the floating `window.nostr.js` widget when prompted.
 
 ---
 
 ## 1. Nostr Zap
 
-A Zap button that allows users to send sats to any Nostr user or a URL associated with a User.
+A Zap button that sends sats to a Nostr user and can optionally scope those zaps to a specific URL for open-web attribution.
+When `url` is provided, the component uses a deterministic `["a", "39735:<pubkey>:<normalized_url>"]` tag so relays can apply URL-specific `#a` filtering when fetching zap receipts.
 What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)? 
 
 **Usage:**
@@ -105,7 +107,7 @@ What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)?
 <body>
   <nostr-zap-button 
     npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
-    theme="dark"
+    data-theme="dark"
     url="https://nostr-components.web.app/"
     text="⚡ Zap Me"
   ></nostr-zap-button>
@@ -146,8 +148,8 @@ A simple button that allows users to follow a Nostr profile.
 
 ## 3. Nostr Like
 
-A like button that uses NIP-25 (External Content Reactions) to like any URL on the web.
-When URL is not specified, current URL is taken.
+A like button that uses NIP-25 external content reactions to like or unlike any URL on the web and display the net reaction count.
+If `url` is omitted, the component automatically uses the current page URL.
 
 **Usage:**
 
