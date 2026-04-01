@@ -88,7 +88,7 @@ Button:
 
 ## Wireframes
 
-![Nostr Zap Component Wireframes](./wireframes.png)
+![Nostr Zap Component Wireframe](./wireframe.png)
 
 ### States
 

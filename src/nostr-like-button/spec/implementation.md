@@ -1,8 +1,8 @@
-# Nostr Like Component - Technical Implementation
+# Nostr Like Button - Technical Implementation
 
 ## Overview
 
-This document contains the technical implementation details for the `nostr-like` component. For component usage and API specifications, see [spec.md](./spec.md).
+This document contains the technical implementation details for the `nostr-like-button` component. For component usage and API specifications, see [spec.md](./spec.md).
 
 ## Architecture
 
@@ -41,6 +41,7 @@ This document contains the technical implementation details for the `nostr-like`
 ### Internal Dependencies
 - NostrBaseComponent: Base class with relay and status management
 - NostrService: Relay connection management
+- Nostr Login Service: Lazy-loads `window.nostr.js`, resolves the current signer, and signs events
 - getComponentStyles(): Utility for CSS injection
 - Common Utils: `formatRelativeTime()`
 - Zap Utils: `getBatchedProfileMetadata()` (reused for profile fetching)
@@ -62,15 +63,15 @@ This document contains the technical implementation details for the `nostr-like`
 ### Like/Unlike Action Flow
 ```typescript
 handleLikeClick():
-  - Check NIP-07 availability → error if not available
-  - Get user's pubkey via NIP-07
+  - Ensure window.nostr.js is initialized → error if no signer is available
+  - Get user's pubkey via the connected signer
   - Check if user has already liked this URL
   - If liked: show confirmation dialog → handleUnlike() if confirmed
   - If not liked: handleLike()
 
 handleLike():
   - Create kind 17 event with content: '+'
-  - Sign with NIP-07
+  - Sign with window.nostr.js
   - Publish to relays
   - Optimistic update: isLiked = true, count++
   - Refresh like count
@@ -78,7 +79,7 @@ handleLike():
 
 handleUnlike():
   - Create kind 17 event with content: '-'
-  - Sign with NIP-07
+  - Sign with window.nostr.js
   - Publish to relays
   - Optimistic update: isLiked = false, count--
   - Refresh like count
@@ -87,7 +88,7 @@ handleUnlike():
 
 ## Utility Functions
 
-### Like-Specific Utilities (`src/nostr-like/like-utils.ts`)
+### Like-Specific Utilities (`src/nostr-like-button/like-utils.ts`)
 
 ```typescript
 fetchLikesForUrl(url, relays):
@@ -112,7 +113,7 @@ hasUserLiked(url, userPubkey, relays):
 
 ### Reused Utilities
 - `formatRelativeTime()` from `src/common/utils.ts`
-- `getBatchedProfileMetadata()` from `src/nostr-zap/zap-utils.ts`
+- `getBatchedProfileMetadata()` from `src/nostr-zap-button/zap-utils.ts`
 
 ## Like Count
 
@@ -160,7 +161,7 @@ hasUserLiked(url, userPubkey, relays):
 ## File Structure
 
 ```
-src/nostr-like/
+src/nostr-like-button/
 ├── nostr-like.ts              # Main component class
 ├── render.ts                  # Rendering logic
 ├── style.ts                   # Component styles

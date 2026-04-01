@@ -11,7 +11,9 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: 'A web component that displays a zap button for Nostr profiles. Supports npub, nip05, and pubkey inputs with theme customization, zap amount configuration, and URL-based zaps for content creators.\n\n**Note on URL-based zaps:** Zap receipts don\'t carry `#k` or `#i` tags. URL-specific totals are derived by parsing the zap request stored in the receipt\'s description field.\n\n⚠️ **Scalability Limitation:** The component queries up to 1000 zap receipt events per user. For high-traffic creators, total zap amounts and zappers lists may be incomplete.',
+        // Keep this description aligned with README.md, stories/Introduction.mdx,
+        // and src/nostr-zap-button/spec/spec.md.
+        component: 'A web component that displays a zap button for Nostr profiles. Supports npub, nip05, and pubkey inputs with theme customization, zap amount configuration, and URL-based zaps for content creators.\n\n**URL-based zaps:** When `url` is provided, zap requests include `["a", "39735:<recipient_pubkey>:<normalized_url>"]`. NIP-57 relays copy that tag into zap receipts, enabling relay-side `#a` filtering for URL-specific totals and zappers lists.\n\n⚠️ **Scalability Limitation:** The component queries up to 1000 matching zap receipt events. For high-traffic creators, total zap amounts and zappers lists may be incomplete.',
       },
       source: {
         transform: (code, storyContext) =>

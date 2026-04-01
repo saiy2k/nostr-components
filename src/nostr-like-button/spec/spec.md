@@ -1,8 +1,8 @@
-# Nostr Like Component Specification
+# Nostr Like Button Specification
 
 ## Overview
 
-- Component: `nostr-like`
+- Component: `nostr-like-button`
 - Purpose: Like/unlike web pages using Nostr reactions
 - Architecture: Extends `NostrBaseComponent`
 - NIP: [NIP-25 External Content Reactions (kind 17)](https://github.com/nostr-protocol/nips/blob/master/25.md#external-content-reactions)
@@ -11,7 +11,7 @@
 
 - Display like button with thumbs-up icon and like count
 - Show net like count (likes minus unlikes) for current or specified URL
-- Click button to like (one-way action initially)
+- Click button to like and optionally unlike later
 - If already liked, show confirmation dialog to unlike
 - Unlike publishes kind 17 event with '-' content
 - Click count to view individual likers/dislikers in modal
@@ -22,8 +22,8 @@
 
 ### Like
 1. User clicks like button
-2. Check for NIP-07 extension (browser signer) // TODO: Onboarding module
-3. Check current user's like status
+2. Ensure `window.nostr.js` is available and a signer is connected
+3. Check the current user's like status
 4. If not liked, create kind 17 reaction event with '+' content
 5. Request user signature
 6. Broadcast to relays
@@ -32,8 +32,8 @@
 
 ### Unlike
 1. User clicks like button (when already liked)
-2. Check for NIP-07 extension (browser signer) // TODO: Onboarding module
-3. Check current user's like status
+2. Ensure `window.nostr.js` is available and a signer is connected
+3. Check the current user's like status
 4. Show confirmation dialog: "You have already liked this. Do you want to unlike it?"
 5. If confirmed, create kind 17 reaction event with '-' content
 6. Request user signature
@@ -187,36 +187,36 @@ No Likes:
 
 Basic (likes current page):
 ```html
-<nostr-like></nostr-like>
+<nostr-like-button></nostr-like-button>
 ```
 
 Specific URL:
 ```html
-<nostr-like url="https://saiy2k.in/2025/04/01/nostr-components/"></nostr-like>
+<nostr-like-button url="https://saiy2k.in/2025/04/01/nostr-components/"></nostr-like-button>
 ```
 
 Custom text:
 ```html
-<nostr-like text="Love it!"></nostr-like>
+<nostr-like-button text="Love it!"></nostr-like-button>
 ```
 
 Dark theme:
 ```html
-<nostr-like data-theme="dark"></nostr-like>
+<nostr-like-button data-theme="dark"></nostr-like-button>
 ```
 
 Custom relays:
 ```html
-<nostr-like relays="wss://relay1.com,wss://relay2.com"></nostr-like>
+<nostr-like-button relays="wss://relay1.com,wss://relay2.com"></nostr-like-button>
 ```
 
 Custom styling:
 ```html
-<nostr-like style="
+<nostr-like-button style="
   --nostrc-icon-width: 24px;
   --nostrc-like-btn-bg: #f0f0f0;
   --nostrc-like-btn-liked-color: #ff0000;
-"></nostr-like>
+"></nostr-like-button>
 ```
 
 ## Likers Dialog
@@ -246,12 +246,13 @@ Each reaction entry shows:
 
 **Features:**
 - One-click liking of any URL
+- Optional unlike flow with confirmation
 - View who liked your content
 - See total like counts
 - All data stored on Nostr relays
 
 **Requirement:**
-Requires a Nostr browser extension (Alby, nos2x, etc.) to sign and publish likes. // TODO:Onboarding
+Requires a connected signer via `window.nostr.js` (for example an extension-backed NIP-07 signer or a NIP-46 remote signer) to sign and publish likes.
 
 ## NIP-25 Event Structure
 
@@ -283,9 +284,8 @@ Requires a Nostr browser extension (Alby, nos2x, etc.) to sign and publish likes
 ## Future Enhancements
 
 - Reaction emoji support (heart, fire, etc.) beyond just like (+) /unlike (-)
-- Anonymous reactions (without NIP-07)
+- Anonymous reactions (without a connected signer)
 - Bulk profile fetching optimization (NIP-45)
 - Pagination for 1000+ likes
 - Real-time updates via subscriptions
-
 
