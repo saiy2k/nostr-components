@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { registerStoryCleanup } from './play-cleanup';
+
 /**
  * Primary Attribute Changes Utility
  * ================================
@@ -8,7 +10,7 @@
  * primary attributes (npub/nip05/pubkey or eventid/noteid/hex) in dynamic stories.
  * 
  * Features:
- * - Automatic cleanup of intervals to prevent memory leaks
+ * - Cleanup on abort or re-run to prevent timer leaks
  * - Configurable update intervals
  * - Console logging for debugging
  * - Component-specific cleanup functions
@@ -29,17 +31,23 @@ export function createPrimaryAttributeChangesPlay(
   testInputs: Array<{ type: string; value: string; name: string }>,
   updateInterval: number = 8000
 ) {
-  return async ({ canvasElement }) => {
+  return async ({ canvasElement, abortSignal }) => {
     // Wait for component to be ready
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const component = canvasElement.querySelector(componentName);
+    const component = canvasElement.querySelector<HTMLElement>(componentName);
     if (!component) return;
 
     let currentIndex = 0;
-    let intervalId: ReturnType<typeof setInterval>;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let cleanup = () => {};
     
     const updateInput = () => {
+      if (!component.isConnected) {
+        cleanup();
+        return;
+      }
+
       currentIndex = (currentIndex + 1) % testInputs.length;
       const input = testInputs[currentIndex];
       
@@ -54,13 +62,13 @@ export function createPrimaryAttributeChangesPlay(
 
     // Start the interval
     intervalId = setInterval(updateInput, updateInterval);
-    
-    // Store cleanup function on the component for manual cleanup
-    (component as any).__cleanup = () => {
-      if (intervalId) {
+
+    cleanup = registerStoryCleanup(component, abortSignal, () => {
+      if (intervalId !== null) {
         clearInterval(intervalId);
+        intervalId = null;
         console.log(`${componentName}: Interval cleared`);
       }
-    };
+    });
   };
 }

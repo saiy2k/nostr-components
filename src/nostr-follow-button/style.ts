@@ -16,7 +16,7 @@ export function getFollowButtonStyles(): string {
       --nostrc-follow-btn-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
       --nostrc-follow-btn-min-height: auto;
       --nostrc-follow-btn-width: auto;
-      --nostrc-follow-btn-horizontal-alignment: left;
+      --nostrc-follow-btn-horizontal-alignment: flex-start;
       --nostrc-follow-btn-bg: var(--nostrc-theme-bg, #ffffff);
       --nostrc-follow-btn-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-follow-btn-font-family: var(--nostrc-font-family-primary);

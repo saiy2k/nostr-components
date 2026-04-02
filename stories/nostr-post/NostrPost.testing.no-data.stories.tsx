@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from './utils';
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
 const meta: Meta = {
-  title: 'Post/Testing',
+  title: 'Post/Testing/No Data',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -24,9 +24,9 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const ValidNoteIdNoDataRelay: Story = {
-  name: 'No Data',
+  name: NO_DATA_TEST_CASES.validNoteIdNoDataRelay.name,
   args: NO_DATA_TEST_CASES.validNoteIdNoDataRelay.args,
 };

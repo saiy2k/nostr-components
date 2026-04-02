@@ -24,7 +24,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const DarkTheme: Story = {
   name: TEST_CASES.darkTheme.name,
@@ -50,4 +50,3 @@ export const CustomText: Story = {
   name: TEST_CASES.customText.name,
   args: TEST_CASES.customText.args,
 };
-

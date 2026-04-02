@@ -17,7 +17,7 @@ export const POST_PARAMETERS: ParameterDefinition[] = [
   ...EVENT_PARAMETERS,
   {
     variable: 'show-stats',
-    description: `Whether need to show the stats of the post or not`,
+    description: `Whether to show post stats`,
     defaultValue: 'false',
     control: 'boolean',
   }

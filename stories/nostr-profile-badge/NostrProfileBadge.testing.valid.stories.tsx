@@ -4,6 +4,7 @@ import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
   title: 'Profile Badge/Testing/Valid',
+  tags: ['test', 'valid'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
@@ -23,7 +24,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const DarkTheme: Story = {
   name: TEST_CASES.darkTheme.name,
