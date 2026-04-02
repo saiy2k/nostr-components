@@ -5,6 +5,7 @@ import { NostrUserComponent } from '../base/user-component/nostr-user-component'
 import { renderProfile, RenderProfileOptions } from './render';
 import { getProfileStyles } from './style';
 import { attachCopyDelegation } from '../base/copy-delegation';
+import { parseBooleanAttribute } from '../common/utils';
 
 const EVT_PROFILE = 'nc:profile';
 
@@ -169,8 +170,8 @@ export default class NostrProfile extends NostrUserComponent {
   protected renderContent() {
     const isLoading     = this.computeOverall() === NCStatus.Loading;
     const isError       = this.computeOverall() === NCStatus.Error;
-    const showNpub      = this.getAttribute('show-npub') === 'true';
-    const showFollow    = this.getAttribute('show-follow') === 'true';
+    const showNpub      = parseBooleanAttribute(this.getAttribute('show-npub'));
+    const showFollow    = parseBooleanAttribute(this.getAttribute('show-follow'));
 
     const renderOptions: RenderProfileOptions = {
       isLoading: isLoading,

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { registerStoryCleanup } from './play-cleanup';
+
 /**
  * Comprehensive Dynamic Stories Utility
  * ====================================
@@ -12,9 +14,9 @@
  * - Status display with current configuration
  * - Change log with timestamps
  * - Multiple attribute cycling (inputs, data-theme, widths, boolean attributes)
- * - Automatic cleanup to prevent memory leaks
+ * - Cleanup on abort or re-run to prevent timer leaks
  * - Configurable update intervals
- * - Simple boolean attribute toggling (true/false)
+ * - Presence-based boolean attribute toggling
  * - Streamlined, easy-to-read implementation
  */
 
@@ -43,11 +45,11 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
     updateInterval = 5000
   } = config;
 
-  return async ({ canvasElement }) => {
+  return async ({ canvasElement, abortSignal }) => {
     // Wait for component to be ready
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const component = canvasElement.querySelector(componentName);
+    const component = canvasElement.querySelector<HTMLElement>(componentName);
     if (!component) return;
 
     // Create status display container
@@ -81,23 +83,27 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
     const themes = ['light', 'dark'];
 
     // Helper functions
-    const updateStatus = (input: any, theme: string, width?: number) => {
-      const inputEl = document.getElementById('current-input');
-      const themeEl = document.getElementById('current-theme');
-      const widthEl = document.getElementById('current-width');
+    const updateStatus = (
+      input: { type: string; value: string; name: string },
+      theme: string,
+      width?: number
+    ) => {
+      const inputEl = statusContainer.querySelector<HTMLElement>('#current-input');
+      const themeEl = statusContainer.querySelector<HTMLElement>('#current-theme');
+      const widthEl = statusContainer.querySelector<HTMLElement>('#current-width');
       
       if (inputEl) inputEl.innerHTML = `<strong>Input:</strong> ${input.name} (${input.type})`;
       if (themeEl) themeEl.innerHTML = `<strong>Theme:</strong> ${theme}`;
-      if (widthEl && width) widthEl.innerHTML = `<strong>Width:</strong> ${width}px`;
+      if (widthEl && width !== undefined) widthEl.innerHTML = `<strong>Width:</strong> ${width}px`;
       
       booleanAttributes.forEach((attr, index) => {
-        const el = document.getElementById(`current-${attr}`);
+        const el = statusContainer.querySelector<HTMLElement>(`#current-${attr}`);
         if (el) el.innerHTML = `<strong>${attr}:</strong> ${booleanStates[index]}`;
       });
     };
 
     const addLog = (message: string) => {
-      const logEl = document.getElementById('change-log');
+      const logEl = statusContainer.querySelector<HTMLElement>('#change-log');
       if (logEl) {
         const timestamp = new Date().toLocaleTimeString();
         logEl.innerHTML = `${timestamp}: ${message}<br>` + logEl.innerHTML;
@@ -108,7 +114,15 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
       }
     };
 
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let cleanup = () => {};
+
     const updateAll = () => {
+      if (!component.isConnected) {
+        cleanup();
+        return;
+      }
+
       // Update input
       const input = testInputs[inputIndex];
       inputAttributes.forEach(attr => component.removeAttribute(attr));
@@ -132,7 +146,7 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
       // Update boolean attributes
       booleanAttributes.forEach((attr, index) => {
         booleanStates[index] = !booleanStates[index];
-        component.setAttribute(attr, booleanStates[index].toString());
+        component.toggleAttribute(attr, booleanStates[index]);
       });
 
       // Log and update display
@@ -157,14 +171,15 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
     updateStatus(testInputs[inputIndex], themes[themeIndex], widths[0]);
 
     // Start interval
-    const intervalId = setInterval(updateAll, updateInterval);
-    
-    // Store cleanup function on the component for manual cleanup
-    (component as any).__cleanup = () => {
-      if (intervalId) {
+    intervalId = setInterval(updateAll, updateInterval);
+
+    cleanup = registerStoryCleanup(component, abortSignal, () => {
+      if (intervalId !== null) {
         clearInterval(intervalId);
+        intervalId = null;
         console.log(`${componentName}: Interval cleared`);
       }
-    };
+      statusContainer.remove();
+    });
   };
 }
