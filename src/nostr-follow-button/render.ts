@@ -43,7 +43,7 @@ export function renderFollowButton({
   }
 
   const iconContent = isFollowed
-    ? getSuccessAnimation('light')
+    ? getSuccessAnimation()
     : showAvatar && user && profile?.image
       ? `<img src="${escapeHtml(profile.image)}" alt="${escapeHtml(profile.name || user.npub)}" class="user-avatar" />`
       : getNostrLogo();

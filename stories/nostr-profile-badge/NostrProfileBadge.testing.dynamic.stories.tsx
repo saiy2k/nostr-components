@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
-import { PROFILE_DATA, getAllInputTypes } from '../profile-data';
+import { PROFILE_DATA } from '../profile-data';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 import { createPrimaryAttributeChangesPlay } from '../common/primary-attribute-changes';
 import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic';
@@ -12,6 +12,7 @@ const meta: Meta = {
   argTypes: getArgTypes(),
   args: {},
   parameters: {
+    chromatic: { disableSnapshot: true },
     test: {
       enabled: true,
       a11y: {
@@ -27,7 +28,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const NPubChanges: Story = {
   name: 'Npub Changes',
@@ -123,4 +124,3 @@ export const NPubAndRelays: Story = {
     fastDelayMax: 200
   }),
 };
-

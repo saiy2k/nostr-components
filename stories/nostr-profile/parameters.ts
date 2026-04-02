@@ -17,13 +17,13 @@ export const PROFILE_PARAMETERS: ParameterDefinition[] = [
   ...USER_PARAMETERS,
   {
     variable: 'show-npub',
-    description: `Whether need to show the npub in the profile or not`,
+    description: `Whether to show the npub in the profile`,
     defaultValue: 'false',
     control: 'boolean',
   },
   {
     variable: 'show-follow',
-    description: `Whether need to show the follow button in the profile or not`,
+    description: `Whether to show the follow button in the profile`,
     defaultValue: 'false',
     control: 'boolean',
   },

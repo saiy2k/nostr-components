@@ -24,14 +24,14 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const DarkTheme: Story = {
   name: TEST_CASES.darkTheme.name,
   args: TEST_CASES.darkTheme.args,
 };
 
-export const Lyn: Story = {
+export const Nip05: Story = {
   name: TEST_CASES.nip05.name,
   args: TEST_CASES.nip05.args,
 };
