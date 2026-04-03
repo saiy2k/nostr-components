@@ -149,8 +149,7 @@ export default class NostrZap extends NostrUserComponent {
         return;
       }
 
-      let signerPubkey = await getPublicKey();
-      if (!signerPubkey) {
+      if (!(await getPublicKey())) {
         const onboardingResult = await showAuthOnboarding({
           action: 'zap',
           theme: this.theme === 'dark' ? 'dark' : 'light',
@@ -165,8 +164,7 @@ export default class NostrZap extends NostrUserComponent {
           return;
         }
 
-        signerPubkey = await getPublicKey();
-        if (!signerPubkey) {
+        if (!(await getPublicKey())) {
           this.zapActionStatus.set(
             NCStatus.Error,
             'Signer is not ready yet. Complete connection and try again.'

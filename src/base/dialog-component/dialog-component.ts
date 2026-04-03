@@ -168,6 +168,13 @@ export class DialogComponent extends HTMLElement {
   }
 
   /**
+   * Returns the native dialog element created by this component instance.
+   */
+  public getDialogElement(): HTMLDialogElement | null {
+    return this.dialog;
+  }
+
+  /**
    * Show the dialog as modal
    */
   public showModal(): void {

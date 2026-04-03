@@ -79,8 +79,7 @@ export default class NostrFollowButton extends NostrUserComponent {
         return;
       }
 
-      let signerPubkey = await getPublicKey();
-      if (!signerPubkey) {
+      if (!(await getPublicKey())) {
         const onboardingResult = await showAuthOnboarding({
           action: 'follow',
           theme: this.theme === 'dark' ? 'dark' : 'light',
@@ -94,8 +93,7 @@ export default class NostrFollowButton extends NostrUserComponent {
           return;
         }
 
-        signerPubkey = await getPublicKey();
-        if (!signerPubkey) {
+        if (!(await getPublicKey())) {
           this.followStatus.set(
             NCStatus.Error,
             'Signer is not ready yet. Complete connection and try again.'

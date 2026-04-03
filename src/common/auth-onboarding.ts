@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import { nip19 } from 'nostr-tools';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import '../base/dialog-component/dialog-component';
-import { isValidHex } from './utils';
 import { getAuthOnboardingDialogStyles } from './auth-onboarding-style';
 import { getPublicKey } from './nostr-login-service';
 
 type OnboardingAction = 'like' | 'zap' | 'follow';
-type AdvancedInputKind = 'nsec' | 'bunker' | 'invalid';
+type AdvancedInputKind = 'bunker' | 'invalid';
 
 interface ShowAuthOnboardingOptions {
   action: OnboardingAction;
@@ -55,7 +53,7 @@ function parseAdvancedInput(value: string): {
   if (!trimmed) {
     return {
       kind: 'invalid',
-      message: 'Paste an nsec key or bunker:// token to validate the format.',
+      message: 'Paste a bunker:// token to validate the format.',
     };
   }
 
@@ -80,37 +78,9 @@ function parseAdvancedInput(value: string): {
     }
   }
 
-  if (trimmed.startsWith('nsec1')) {
-    try {
-      const decoded = nip19.decode(trimmed);
-      if (decoded.type === 'nsec') {
-        return {
-          kind: 'nsec',
-          message: 'Valid nsec format. Import it into your signer app, then press Connect.',
-        };
-      }
-      return {
-        kind: 'invalid',
-        message: 'This bech32 value is not an nsec key.',
-      };
-    } catch {
-      return {
-        kind: 'invalid',
-        message: 'Invalid nsec format.',
-      };
-    }
-  }
-
-  if (isValidHex(trimmed)) {
-    return {
-      kind: 'nsec',
-      message: 'Valid raw private key format. Import it into your signer app, then press Connect.',
-    };
-  }
-
   return {
     kind: 'invalid',
-    message: 'Input is not recognized as nsec or bunker:// format.',
+    message: 'Input is not recognized as bunker:// format.',
   };
 }
 
@@ -160,15 +130,18 @@ export async function showAuthOnboarding(
       </div>
 
       <details class="onboarding-advanced">
-        <summary>Advanced users: nsec or bunker validation</summary>
+        <summary>Advanced users: bunker token validation</summary>
         <p>
-          Paste an nsec key or bunker:// token to verify format before connecting with your signer flow.
+          Paste a bunker:// token to verify format before connecting with your remote signer flow.
+        </p>
+        <p>
+          Never paste private keys (nsec or raw hex) into websites.
         </p>
         <div class="onboarding-advanced-row">
           <input
-            type="text"
+            type="password"
             class="onboarding-advanced-input"
-            placeholder="nsec1... or bunker://..."
+            placeholder="bunker://..."
             autocomplete="off"
           />
           <button type="button" class="onboarding-advanced-apply">Validate input</button>
@@ -181,10 +154,7 @@ export async function showAuthOnboarding(
 
   dialogComponent.showModal();
 
-  const dialogNodes = document.querySelectorAll<HTMLDialogElement>(
-    '.nostr-base-dialog'
-  );
-  const dialog = dialogNodes[dialogNodes.length - 1];
+  const dialog = dialogComponent.getDialogElement();
   if (!dialog) {
     return { connected: false, source: 'dismissed' };
   }
@@ -258,8 +228,8 @@ export async function showAuthOnboarding(
         const pubkey = await getPublicKey();
         if (pubkey) {
           setStatus('Connected. Continuing action...', 'success');
-          dialogComponent.close();
           settle({ connected: true, source: 'connect' });
+          dialogComponent.close();
           return;
         }
 
