@@ -26,7 +26,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const ValidCasesDashboard: Story = {
   name: 'Valid Cases Dashboard',

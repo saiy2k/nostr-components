@@ -3,7 +3,7 @@ import { generateCode, getArgTypes } from "./utils";
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
 const meta: Meta = {
-  title: 'Profile/Testing',
+  title: 'Profile/Testing/No Data',
   tags: ['test', 'no-data'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
@@ -24,10 +24,10 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 // Individual story exports for better organization
 export const SaiNpubNoDataRelay: Story = {
-  name: 'No Data',
+  name: NO_DATA_TEST_CASES.saiNpubNoDataRelay.name,
   args: NO_DATA_TEST_CASES.saiNpubNoDataRelay.args,
 };

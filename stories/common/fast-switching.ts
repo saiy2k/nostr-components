@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { registerStoryCleanup } from './play-cleanup';
+
 /**
  * Fast Switching Dynamic Stories Utility
  * =====================================
@@ -13,7 +15,7 @@
  * - Pause pattern after specified number of updates
  * - Status display with current configuration
  * - Change logging with timestamps
- * - Automatic cleanup to prevent memory leaks
+ * - Cleanup on abort or re-run to prevent timer leaks
  * - Configurable update counts and pause duration
  */
 
@@ -50,11 +52,11 @@ export function createFastSwitchingPlay(config: FastSwitchingConfig) {
     fastDelayMax = 200
   } = config;
 
-  return async ({ canvasElement }) => {
+  return async ({ canvasElement, abortSignal }) => {
     // Wait for component to be ready
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const component = canvasElement.querySelector(componentName);
+    const component = canvasElement.querySelector<HTMLElement>(componentName);
     if (!component) return;
 
     // Create status display container
@@ -84,11 +86,15 @@ export function createFastSwitchingPlay(config: FastSwitchingConfig) {
     let isFastMode = true;
     let fastUpdateCount = 0;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cleanup = () => {};
 
     // Helper functions
-    const updateStatus = (currentAttr1?: any, currentAttr2?: any) => {
-      const attr1El = document.getElementById(`current-${attribute1.name}`);
-      const attr2El = document.getElementById(`current-${attribute2.name}`);
+    const updateStatus = (
+      currentAttr1?: { value: string; name: string } | null,
+      currentAttr2?: { value: string; name: string } | null
+    ) => {
+      const attr1El = statusContainer.querySelector<HTMLElement>(`#current-${attribute1.name}`);
+      const attr2El = statusContainer.querySelector<HTMLElement>(`#current-${attribute2.name}`);
       
       if (attr1El && currentAttr1) {
         const displayValue = currentAttr1.value.length > 20 
@@ -106,7 +112,7 @@ export function createFastSwitchingPlay(config: FastSwitchingConfig) {
     };
 
     const addLog = (message: string) => {
-      const logEl = document.getElementById('change-log');
+      const logEl = statusContainer.querySelector<HTMLElement>('#change-log');
       if (logEl) {
         const timestamp = new Date().toLocaleTimeString();
         logEl.innerHTML = `${timestamp}: ${message}<br>` + logEl.innerHTML;
@@ -162,6 +168,11 @@ export function createFastSwitchingPlay(config: FastSwitchingConfig) {
     };
 
     const performFastUpdate = () => {
+      if (!component.isConnected) {
+        cleanup();
+        return;
+      }
+
       if (fastUpdateCount >= maxFastUpdates) {
         // Switch to pause mode
         isFastMode = false;
@@ -199,13 +210,14 @@ export function createFastSwitchingPlay(config: FastSwitchingConfig) {
     // Start the fast update cycle
     addLog(`Starting fast update cycle...`);
     performFastUpdate();
-    
-    // Store cleanup function on the component for manual cleanup
-    (component as any).__cleanup = () => {
-      if (timeoutId) {
+
+    cleanup = registerStoryCleanup(component, abortSignal, () => {
+      if (timeoutId !== null) {
         clearTimeout(timeoutId);
+        timeoutId = null;
         console.log(`${componentName}: Timeout cleared`);
       }
-    };
+      statusContainer.remove();
+    });
   };
 }

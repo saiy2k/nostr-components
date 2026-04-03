@@ -13,6 +13,7 @@ const meta: Meta = {
   argTypes: getArgTypes(),
   args: {},
   parameters: {
+    chromatic: { disableSnapshot: true },
     test: {
       enabled: true,
       a11y: {
@@ -28,7 +29,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const InputChanges: Story = {
   name: 'Input Changes',
@@ -86,7 +87,7 @@ export const FastSwitching: Story = {
   play: createFastSwitchingPlay({
     componentName: 'nostr-follow-button',
     attribute1: {
-      name: 'theme',
+      name: 'data-theme',
       values: [
         { value: 'light', name: 'Light Theme' },
         { value: 'dark', name: 'Dark Theme' },

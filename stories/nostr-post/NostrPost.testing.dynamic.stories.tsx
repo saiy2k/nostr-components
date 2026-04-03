@@ -13,6 +13,7 @@ const meta: Meta = {
   argTypes: getArgTypes(),
   args: {},
   parameters: {
+    chromatic: { disableSnapshot: true },
     test: {
       enabled: true,
       a11y: {
@@ -28,7 +29,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const InputChanges: Story = {
   name: 'Input Changes',
@@ -83,7 +84,7 @@ export const FastSwitching: Story = {
   args: {
     width: DEFAULT_WIDTH,
     noteid: POST_DATA.gigi_free_web.noteid,
-    'show-stats': "true",
+    'show-stats': true,
   },
   play: createFastSwitchingPlay({
     componentName: 'nostr-post',
@@ -94,10 +95,9 @@ export const FastSwitching: Story = {
         { value: INVALID_TEST_CASES.invalidNoteId.args.noteid, name: 'Invalid Note ID' },
         { value: POST_DATA.utxo_us_dollar_backing.noteid, name: 'UTXO Dollar' },
         { value: POST_DATA.jack_video_programming_you.noteid, name: 'Jack Video' },
-        { value: POST_DATA.nvk_future_here.noteid, name: 'NVK Future' },
-        { value: POST_DATA.gigi_free_web.hex, name: 'Gigi Hex' },
+        { value: POST_DATA.utxo_bitcoin_threat_govt.noteid, name: 'UTXO Threat Govt' },
+        { value: POST_DATA.toxic_bitcoiner_image_state_exists.noteid, name: 'Toxic Bitcoiner' },
         { value: INVALID_TEST_CASES.emptyValues.args.noteid, name: 'Empty Note ID' },
-        { value: POST_DATA.utxo_us_dollar_backing.hex, name: 'UTXO Hex' },
       ]
     },
     attribute2: {

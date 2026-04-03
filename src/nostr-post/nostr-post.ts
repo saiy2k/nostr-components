@@ -2,7 +2,7 @@
 
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 import Glide from '@glidejs/glide';
-import { getPostStats, Stats } from '../common/utils';
+import { getPostStats, parseBooleanAttribute, Stats } from '../common/utils';
 import { renderPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
 import { renderContent, replaceEmbeddedPostPlaceholders } from './render-content';
@@ -67,7 +67,7 @@ export default class NostrPost extends NostrEventComponent {
 
   async getPostStats() {
     try {
-      const shouldShowStats = this.getAttribute('show-stats') === 'true';
+      const shouldShowStats = parseBooleanAttribute(this.getAttribute('show-stats'));
 
       if (this.event && shouldShowStats) {
         this.statsLoading = true;
@@ -162,7 +162,7 @@ export default class NostrPost extends NostrEventComponent {
     const htmlToRender  = this.cachedHtmlToRender;
     const errorMessage  = this.errorMessage;
 
-    const shouldShowStats = this.getAttribute('show-stats') === 'true';
+    const shouldShowStats = parseBooleanAttribute(this.getAttribute('show-stats'));
 
     const renderOptions: RenderPostOptions = {
       isLoading: isLoading,
