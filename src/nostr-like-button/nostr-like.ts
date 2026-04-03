@@ -17,6 +17,7 @@ import {
   LikeCountResult 
 } from './like-utils';
 import { ensureInitialized } from '../common/nostr-login-service';
+import { showAuthOnboarding } from '../common/auth-onboarding';
 import { normalizeURL } from 'nostr-tools/utils';
 
 /**
@@ -172,10 +173,31 @@ export default class NostrLike extends NostrBaseComponent {
       await ensureInitialized();
 
       // Check user like status
-      const userPubkey = await getUserPubkey();
-      if (userPubkey) {
-        this.isLiked = await hasUserLiked(this.currentUrl, userPubkey, this.getRelays());
+      let userPubkey = await getUserPubkey();
+      if (!userPubkey) {
+        const onboardingResult = await showAuthOnboarding({
+          action: 'like',
+          theme: this.theme === 'dark' ? 'dark' : 'light',
+        });
+
+        if (!onboardingResult.connected) {
+          this.likeActionStatus.set(NCStatus.Error, 'Connect a Nostr signer to like this page.');
+          this.render();
+          return;
+        }
+
+        userPubkey = await getUserPubkey();
+        if (!userPubkey) {
+          this.likeActionStatus.set(
+            NCStatus.Error,
+            'Signer is not ready yet. Complete connection and try again.'
+          );
+          this.render();
+          return;
+        }
       }
+
+      this.isLiked = await hasUserLiked(this.currentUrl, userPubkey, this.getRelays());
 
       // If already liked, show confirmation dialog
       if (this.isLiked) {
