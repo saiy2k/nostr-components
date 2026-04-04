@@ -2,6 +2,7 @@
 
 import NDK, { NDKKind, NDKEvent } from '@nostr-dev-kit/ndk';
 import { nip19 } from "nostr-tools";
+import DOMPurify from 'dompurify';
 
 
 import { Theme } from './types';
@@ -197,7 +198,54 @@ export function parseBooleanAttribute(attr: string | null): boolean {
   return false;
 }
 
-export function escapeHtml(text: string): string {
+
+/**
+ * Sanitizes rich HTML content using DOMPurify with a strict whitelist.
+ * ONLY use this for dynamically formatted strings containing intended HTML tags (e.g. parsed embedded links).
+ */
+export function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      // Standard text and structure
+      'div', 'span', 'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'small', 'strong', 'em', 'b', 'i', 'u', 'strike',
+      // Media
+      'img', 'video', 'source', 'a', 'iframe',
+      // SVG support for icons
+      'svg', 'path', 'circle'
+    ],
+    ALLOWED_ATTR: [
+      // Standard attributes
+      'src', 'href', 'alt', 'title', 'class', 'style', 'width', 'height',
+      'loading', 'decoding', 'controls', 'autoplay', 'muted', 'loop', 'preload',
+      'target', 'rel', 'role', 'aria-label', 'aria-busy', 'aria-live', 'type', 'name', 'value',
+      'placeholder', 'rows', 'disabled',
+      // Data attributes
+      'data-role', 'data-comment-id', 'data-depth', 'data-username', 'data-copy',
+      'data-zap-index', 'data-author-pubkey', 'data-val', 'data-orientation',
+      'data-glide-dir', 'data-note-id',
+      // SVG attributes
+      'fill', 'cx', 'cy', 'r', 'd', 'stroke', 'stroke-width', 'xmlns', 'viewBox'
+    ]
+  });
+}
+
+// Safely escapes HTML using regular expressions..
+export function escapeHtml(input: string | null | undefined): string {
+  if (input === null || input === undefined) {
+    return '';
+  }
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Safely escapes HTML utilizing the browser's native DOM parser.
+export function escapeHtmlDOM(text: string): string {
+  if (typeof document === 'undefined') return escapeHtml(text);
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;

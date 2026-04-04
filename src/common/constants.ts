@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-export const DEFAULT_RELAYS = [
+export const DEFAULT_RELAYS: string[] = [
   'wss://relay.damus.io',
   'wss://nostr.wine',
   'wss://relay.nostr.net',
@@ -11,7 +11,7 @@ export const DEFAULT_RELAYS = [
   'wss://relay.primal.net',
   // 'wss://nostr.malin.onl',
   // 'wss://nostrsatva.net',
-] as const;
+];
 
 export const MILLISATS_PER_SAT = 1000;
 

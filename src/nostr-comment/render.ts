@@ -12,14 +12,7 @@ interface Comment {
   depth?: number;
 }
 
-function escapeHtml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+import { escapeHtml } from '../common/utils';
 
 function formatTimeAgo(timestamp: number): string {
   const now = Date.now() / 1000;
