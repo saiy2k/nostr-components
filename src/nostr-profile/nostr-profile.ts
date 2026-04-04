@@ -6,6 +6,7 @@ import { renderProfile, RenderProfileOptions } from './render';
 import { getProfileStyles } from './style';
 import { attachCopyDelegation } from '../base/copy-delegation';
 
+
 const EVT_PROFILE = 'nc:profile';
 
 export default class NostrProfile extends NostrUserComponent {

@@ -7,6 +7,7 @@ import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
 import { ensureInitialized } from '../common/nostr-login-service';
 
+
 export default class NostrFollowButton extends NostrUserComponent {
   protected followStatus = this.channel('follow');
   private isFollowed: boolean = false;

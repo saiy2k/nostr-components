@@ -4,7 +4,7 @@ import { Theme } from '../common/types';
 import { renderCommentWidget, getCommentStyles } from './render';
 import { NostrService } from '../common/nostr-service';
 import { normalizeURL } from './utils';
-import DOMPurify from 'dompurify';
+
 
 interface Comment {
     id: string;
@@ -53,7 +53,7 @@ export default class NostrComment extends HTMLElement {
         if (userRelays) {
             return userRelays.split(',').map(r => r.trim());
         }
-        return DEFAULT_RELAYS;
+        return [...DEFAULT_RELAYS];
     };
 
     getTheme = (): void => {
@@ -208,7 +208,8 @@ export default class NostrComment extends HTMLElement {
             const profilePromises = Array.from(uniquePubkeys).map(async (pubkey) => {
                 try {
                     console.log('Fetching profile for pubkey:', pubkey);
-                    const profile = await this.nostrService.getProfile({ pubkey });
+                    const user = await this.nostrService.resolveNDKUser({ pubkey });
+                    const profile = user ? await this.nostrService.getProfile(user) : null;
                     console.log('Profile fetched for', pubkey, ':', profile);
                     return { pubkey, profile };
                 } catch (error) {
@@ -363,7 +364,8 @@ export default class NostrComment extends HTMLElement {
         if (this.userPublicKey) {
             try {
                 console.log('Fetching profile for user:', this.userPublicKey);
-                const profile = await this.nostrService.getProfile({ pubkey: this.userPublicKey });
+                const user = await this.nostrService.resolveNDKUser({ pubkey: this.userPublicKey });
+                const profile = user ? await this.nostrService.getProfile(user) : null;
                 console.log('Profile fetched for current user:', profile);
 
                 if (profile) {
@@ -477,7 +479,8 @@ export default class NostrComment extends HTMLElement {
             } else {
                 // Try to fetch profile again for new comments
                 try {
-                    const profile = await this.nostrService.getProfile({ pubkey: signedEvent.pubkey });
+                    const user = await this.nostrService.resolveNDKUser({ pubkey: signedEvent.pubkey });
+                    const profile = user ? await this.nostrService.getProfile(user) : null;
                     if (profile) {
                         newComment.userProfile = profile;
                         this.currentUserProfile = profile; // Update for future comments
@@ -907,18 +910,11 @@ export default class NostrComment extends HTMLElement {
             this.hasNip07
         );
 
-        // Sanitize only the dynamic content to prevent XSS attacks
-        const sanitizedContent = DOMPurify.sanitize(contentHTML, {
-            ALLOWED_TAGS: ['div', 'span', 'button', 'textarea', 'img', 'a', 'h3', 'h4', 'p', 'ul', 'li', 'small', 'strong', 'em'],
-            ALLOWED_ATTR: ['class', 'data-role', 'data-comment-id', 'data-depth', 'src', 'alt', 'href', 'target', 'rel', 'placeholder', 'rows', 'disabled'],
-            ALLOW_DATA_ATTR: false
-        });
-
-        // Combine styles and sanitized content for shadow DOM
+        // Combine styles and rendered content for shadow DOM
         this.shadow.innerHTML = `
       ${getCommentStyles(this.theme)}
       <div class="nostr-comment-wrapper">
-        ${sanitizedContent}
+        ${contentHTML}
       </div>
     `;
 

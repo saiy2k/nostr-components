@@ -26,6 +26,7 @@ import { getLiveChatStyles, renderLiveChatInner, RenderLiveChatOptions } from ".
 import { nip19 } from "nostr-tools";
 import { NostrService } from "../common/nostr-service";
 import { resolveNip05 } from "../common/nip05-utils";
+import { escapeHtml } from "../common/utils";
 
 type DisplayType = 'fab' | 'bottom-bar' | 'full' | 'embed';
 
@@ -107,7 +108,7 @@ export default class NostrLiveChat extends HTMLElement {
         .filter(r => r.length > 0)
         .filter((r, i, arr) => arr.indexOf(r) === i);
     }
-    return DEFAULT_RELAYS;
+    return [...DEFAULT_RELAYS];
   };
 
   private async getCurrentUserInfo(): Promise<void> {
@@ -1043,14 +1044,7 @@ export default class NostrLiveChat extends HTMLElement {
     this.keySupplier = supplier;
   }
 
-  private escapeHtml(s: string): string {
-    return s
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+
 
   private render() {
     const renderOptions: RenderLiveChatOptions = {
@@ -1090,8 +1084,8 @@ export default class NostrLiveChat extends HTMLElement {
         ${this.isOpen ? '' : `
           <div class="nostr-chat-launcher fab" role="button" aria-label="Open live chat">
             <div class="bubble">
-              <div class="title">${this.escapeHtml(this.onlineText)}</div>
-              <div class="subtitle">${this.escapeHtml(this.helpText)}</div>
+              <div class="title">${escapeHtml(this.onlineText)}</div>
+              <div class="subtitle">${escapeHtml(this.helpText)}</div>
             </div>
             <button class="fab-btn" aria-label="Open chat">💬</button>
           </div>

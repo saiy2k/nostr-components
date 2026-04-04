@@ -3,7 +3,7 @@
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { ParsedLivestreamEvent } from './livestream-utils';
-import { escapeHtml, hexToNpub, isValidUrl } from '../common/utils';
+import { escapeHtml, hexToNpub, isValidUrl, sanitizeUrl } from '../common/utils';
 import { formatEventDate } from '../common/date-utils';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 
@@ -75,7 +75,7 @@ function renderLivestreamHeader(
       </div>
       <div class="livestream-author-row">
         <div class="author-picture">
-          ${authorImage ? `<img src="${escapeHtml(authorImage)}" alt="${escapeHtml(authorName)}" />` : ''}
+          ${authorImage ? `<img src="${sanitizeUrl(authorImage)}" alt="${escapeHtml(authorName)}" />` : ''}
         </div>
         <div class="livestream-author-info">
           ${authorName ? `<span class="author-name">${escapeHtml(authorName)}</span>` : ''}
@@ -149,7 +149,7 @@ function renderPreviewImage(imageUrl?: string): string {
   if (imageUrl) {
     return `
       <div class="livestream-preview-image">
-        <img src="${escapeHtml(imageUrl)}" alt="Livestream preview" loading="lazy" />
+        <img src="${sanitizeUrl(imageUrl)}" alt="Livestream preview" loading="lazy" />
       </div>
     `;
   }
@@ -235,7 +235,7 @@ function renderParticipantItem(participant: { pubkey: string; role?: string; pro
     <div class="participant-item">
       <div class="participant-avatar">
         ${image
-          ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(displayName)}" loading="lazy" />`
+          ? `<img src="${sanitizeUrl(image)}" alt="${escapeHtml(displayName)}" loading="lazy" />`
           : '<div class="participant-avatar-placeholder"></div>'
         }
       </div>

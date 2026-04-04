@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-  import { ContentItem } from './parse-text';
-  import { isValidUrl } from '../common/utils';
+import { ContentItem } from './parse-text';
+  import { isValidUrl, sanitizeHtml, escapeHtml } from '../common/utils';
   import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { parseText } from './parse-text';
   import { renderEmbeddedPost } from './render';
@@ -19,18 +19,18 @@
         // Handle embedded note placeholder
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${sanitizeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
 
         html.push(
-          `<div class="embedded-post-placeholder" data-note-id="${item.noteId}"></div>`
+          `<div class="embedded-post-placeholder" data-note-id="${escapeHtml(item.noteId)}"></div>`
         );
       } else {
         if (textBuffer) {
           html.push(
-            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+            `<span class="text-content">${sanitizeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
           );
           textBuffer = '';
         }
@@ -65,7 +65,7 @@
 
     if (textBuffer) {
       html.push(
-        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+        `<span class="text-content">${sanitizeHtml(textBuffer).replace(/\n/g, '<br />')}</span>`
       );
     }
 
@@ -147,7 +147,7 @@
   export async function renderEmbeddedPostContent(
     noteId: string,
     embeddedPosts: Map<string, NDKEvent>,
-    event: NDKEvent | null,
+    _event: NDKEvent | null,
     nostrService: any
   ): Promise<string> {
     const post = embeddedPosts.get(noteId);

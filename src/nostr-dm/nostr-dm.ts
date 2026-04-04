@@ -27,6 +27,7 @@ import { NostrService } from "../common/nostr-service";
 // Import the resolveNip05 function from our common utils
 import { resolveNip05 } from '../common/nip05-utils';
 
+
 /**
  * Debug utility that only logs in development mode or when debug attribute is set
  * @param message The message to log
@@ -81,7 +82,7 @@ export default class NostrDm extends HTMLElement {
     if (userRelays) {
       return userRelays.split(",");
     }
-    return DEFAULT_RELAYS;
+    return [...DEFAULT_RELAYS];
   };
 
   getTheme = async () => {

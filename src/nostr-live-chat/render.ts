@@ -1,5 +1,6 @@
 import { Theme } from "../common/types";
 import { getLoadingNostrich, getNostrLogo } from "../common/theme";
+import { escapeHtml, sanitizeUrl } from "../common/utils";
 
 export interface ChatMessage {
   id: string;
@@ -95,22 +96,7 @@ export interface RenderLiveChatOptions {
   maxMessageLength: number;
 }
 
-/**
- * Sanitizes a string to prevent XSS attacks
- * @param input String to sanitize
- * @returns Sanitized string with HTML special characters escaped
- */
-function sanitizeHtml(input: string | null | undefined): string {
-  if (input === null || input === undefined) {
-    return '';
-  }
-  return String(input)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+
 
 export function renderLiveChat({
   theme,
@@ -164,7 +150,7 @@ export function renderLiveChat({
 
 // Returns only the chat UI (no <style>) for composing inside wrappers
 export function renderLiveChatInner({
-  theme,
+  theme: _theme,
   recipientNpub,
   recipientName,
   recipientPicture,
@@ -197,12 +183,12 @@ export function renderLiveChatInner({
             <div class="nostr-chat-recipient">
               <div class="nostr-chat-recipient-info">
                 <img 
-                  src="${sanitizeHtml(recipientPicture) || ''}" 
-                  alt="${sanitizeHtml(recipientName) || ''}" 
+                  src="${sanitizeUrl(recipientPicture) || ''}" 
+                  alt="${escapeHtml(recipientName) || ''}" 
                   class="nostr-chat-recipient-avatar"
                   onerror="this.onerror=null; this.src='https://via.placeholder.com/40';"
                 >
-                <span class="nostr-chat-recipient-name">${sanitizeHtml(recipientName) || sanitizeHtml(recipientNpub)}</span>
+                <span class="nostr-chat-recipient-name">${escapeHtml(recipientName) || escapeHtml(recipientNpub)}</span>
               </div>
             </div>
           `
@@ -219,12 +205,12 @@ export function renderLiveChatInner({
       ? `
           <div class="nostr-chat-self">
             <img 
-              src="${sanitizeHtml(currentUserPicture) || ''}"
-              alt="${sanitizeHtml(currentUserName) || 'You'}"
+              src="${sanitizeUrl(currentUserPicture) || ''}"
+              alt="${escapeHtml(currentUserName) || 'You'}"
               class="nostr-chat-self-avatar"
               onerror="this.onerror=null; this.src='https://via.placeholder.com/32';"
             >
-            <span class="nostr-chat-self-name">${sanitizeHtml(currentUserName)}</span>
+            <span class="nostr-chat-self-name">${escapeHtml(currentUserName)}</span>
           </div>
         ` : ''
     }
@@ -248,17 +234,17 @@ export function renderLiveChatInner({
       : showWelcome
         ? `
           <div class="nostr-chat-welcome">
-            <div class="nostr-chat-welcome-text">${sanitizeHtml(welcomeText) || 'Welcome!'}</div>
-            <button class="nostr-chat-start-btn">${sanitizeHtml(startChatText) || 'Start chat'}</button>
+            <div class="nostr-chat-welcome-text">${escapeHtml(welcomeText) || 'Welcome!'}</div>
+            <button class="nostr-chat-start-btn">${escapeHtml(startChatText) || 'Start chat'}</button>
           </div>
         `
         : `
           <div class="nostr-chat-history">
             ${messages.map(msg => `
               <div class="nostr-chat-message-row nostr-chat-message-${safeSenderClass((msg as any).sender)} ${msg.sender === 'me' && msg.status === 'sending' ? 'sending' : ''} ${msg.sender === 'me' && msg.status === 'failed' ? 'failed' : ''}">
-                <div class="nostr-chat-message-bubble">${sanitizeHtml(msg.text)}</div>
+                <div class="nostr-chat-message-bubble">${escapeHtml(msg.text)}</div>
                 <div class="nostr-chat-message-meta">
-                  <span class="nostr-chat-message-timestamp" title="${sanitizeHtml(formatTimestamp(msg.timestamp))}">${sanitizeHtml(formatRelativeTime(msg.timestamp))}</span>
+                  <span class="nostr-chat-message-timestamp" title="${escapeHtml(formatTimestamp(msg.timestamp))}">${escapeHtml(formatRelativeTime(msg.timestamp))}</span>
                 </div>
               </div>
             `).join('')}
@@ -268,7 +254,7 @@ export function renderLiveChatInner({
               class="nostr-chat-textarea" 
               placeholder="Type your message..."
               maxlength="${maxLen}"
-            >${sanitizeHtml(message)}</textarea>
+            >${escapeHtml(message)}</textarea>
             <div class="${counterClass}" aria-live="polite">${remaining} chars left</div>
             <button class="nostr-chat-send-btn" ${isLoading ? "disabled" : ""}>
               ${isLoading
@@ -281,7 +267,7 @@ export function renderLiveChatInner({
     }
       </div>
 
-      ${isError ? `<small class="nostr-chat-error-message">${sanitizeHtml(errorMessage)}</small>` : ""}
+      ${isError ? `<small class="nostr-chat-error-message">${escapeHtml(errorMessage)}</small>` : ""}
     </div>
   `;
 }

@@ -93,7 +93,7 @@ export class NostrService {
   }
 
   public getRelays(): string[] {
-    return this.ndk.explicitRelayUrls || DEFAULT_RELAYS;
+    return this.ndk.explicitRelayUrls ? [...this.ndk.explicitRelayUrls] : [...DEFAULT_RELAYS];
   }
 
   public async resolveNDKUser(identifier: {
