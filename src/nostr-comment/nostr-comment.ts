@@ -53,7 +53,7 @@ export default class NostrComment extends HTMLElement {
         if (userRelays) {
             return userRelays.split(',').map(r => r.trim());
         }
-        return DEFAULT_RELAYS;
+        return [...DEFAULT_RELAYS];
     };
 
     getTheme = (): void => {

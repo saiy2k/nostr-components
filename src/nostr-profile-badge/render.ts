@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { escapeHtml, maskNPub } from '../common/utils';
+import { escapeHtml, maskNPub, sanitizeUrl } from '../common/utils';
 import { DEFAULT_PROFILE_IMAGE } from '../common/constants';
 import { renderNpub } from '../base/text-row/render-npub';
 import { renderNip05 } from '../base/text-row/render-nip05';
@@ -39,7 +39,7 @@ export function renderProfileBadge({
     userProfile.name ||
     maskNPub(ndkUser?.npub || '')
   const escapedName = escapeHtml(rawName);
-  const profileImage = escapeHtml(userProfile.picture || DEFAULT_PROFILE_IMAGE);
+  const profileImage = sanitizeUrl(userProfile.picture) || DEFAULT_PROFILE_IMAGE;
   const npub = ndkUser?.npub || '';
   const nip05 = userProfile?.nip05 || '';
   const pubkey = escapeHtml(ndkUser?.pubkey || '');

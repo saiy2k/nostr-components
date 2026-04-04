@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-export const DEFAULT_RELAYS: string[] = [
+export const DEFAULT_RELAYS: readonly string[] = [
   'wss://relay.damus.io',
   'wss://nostr.wine',
   'wss://relay.nostr.net',

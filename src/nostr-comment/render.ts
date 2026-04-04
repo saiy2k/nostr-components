@@ -12,7 +12,7 @@ interface Comment {
   depth?: number;
 }
 
-import { escapeHtml } from '../common/utils';
+import { escapeHtml, sanitizeUrl } from '../common/utils';
 
 function formatTimeAgo(timestamp: number): string {
   const now = Date.now() / 1000;
@@ -75,7 +75,7 @@ function renderComment(comment: Comment, readonly: boolean = false, replyingToCo
     <div class="modern-comment" data-comment-id="${escapeHtml(comment.id)}" data-depth="${depth}">
       <div class="comment-content-wrapper">
         <div class="comment-avatar-section">
-          <img src="${avatar}" alt="Avatar" class="comment-avatar" />
+          <img src="${sanitizeUrl(avatar)}" alt="Avatar" class="comment-avatar" onerror="this.onerror=null;this.src='../../assets/default_dp.png'" />
         </div>
         <div class="comment-body">
           <div class="comment-header">
@@ -141,7 +141,7 @@ function renderInlineReplyForm(parentComment: Comment, currentUserProfile: NDKUs
       </div>
       <div class="reply-input-container">
         <div class="reply-input-avatar">
-          <img src="${userAvatar}" alt="Your avatar" class="user-avatar" />
+          <img src="${sanitizeUrl(userAvatar)}" alt="Your avatar" class="user-avatar" onerror="this.onerror=null;this.src='../../assets/default_dp.png'" />
         </div>
         <div class="reply-input-main">
           <textarea 

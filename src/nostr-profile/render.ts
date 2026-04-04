@@ -7,7 +7,7 @@ import { renderNip05 } from '../base/text-row/render-nip05';
 import { renderStats } from './render-stats';
 import { renderName } from '../base/text-row/render-name';
 import { renderTextRow } from '../base/text-row/render-text-row';
-import { escapeHtml, isValidUrl } from '../common/utils';
+import { escapeHtml, isValidUrl, sanitizeUrl } from '../common/utils';
 
 export interface Stats {
   notes: number;
@@ -72,7 +72,7 @@ export function renderProfile(options: RenderProfileOptions): string {
         ${isLoading
           ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
           : userProfile?.banner
-            ? `<img src="${escapeHtml(userProfile.banner)}" width="524px"/>`
+            ? `<img src="${sanitizeUrl(userProfile.banner)}" width="524px"/>`
             : '<div class="banner-placeholder"></div>'
         }
 
@@ -81,7 +81,7 @@ export function renderProfile(options: RenderProfileOptions): string {
             ${isLoading
               ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
               : `<img
-                  src="${escapeHtml(image)}"
+                  src="${sanitizeUrl(image)}"
                   alt="${escapeHtml(displayName)}"
                   width="142" height="142"
                   loading="lazy" decoding="async"
@@ -131,7 +131,7 @@ export function renderProfile(options: RenderProfileOptions): string {
           ? '<div style="width: 150px" class="skeleton"></div>'
           : website && isValidUrl(website)
             ? `<div class="website">
-              <a target="_blank" href="${escapeHtml(website)}">${escapeHtml(website)}</a>
+              <a target="_blank" href="${sanitizeUrl(website)}">${escapeHtml(website)}</a>
               </div>`
             : ''
         }

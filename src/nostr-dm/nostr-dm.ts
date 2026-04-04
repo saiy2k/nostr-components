@@ -82,7 +82,7 @@ export default class NostrDm extends HTMLElement {
     if (userRelays) {
       return userRelays.split(",");
     }
-    return DEFAULT_RELAYS;
+    return [...DEFAULT_RELAYS];
   };
 
   getTheme = async () => {

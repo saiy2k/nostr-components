@@ -200,8 +200,9 @@ export function parseBooleanAttribute(attr: string | null): boolean {
 
 
 /**
- * Sanitizes rich HTML content using DOMPurify with a strict whitelist.
- * ONLY use this for dynamically formatted strings containing intended HTML tags (e.g. parsed embedded links).
+ * Sanitizes an HTML string via DOMPurify using a strict tag/attribute allowlist.
+ * @param html Raw HTML string to sanitize
+ * @returns Sanitized HTML with disallowed tags and attributes removed
  */
 export function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
@@ -210,13 +211,13 @@ export function sanitizeHtml(html: string): string {
       'div', 'span', 'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'small', 'strong', 'em', 'b', 'i', 'u', 'strike',
       // Media
-      'img', 'video', 'source', 'a', 'iframe',
+      'img', 'video', 'source', 'a',
       // SVG support for icons
       'svg', 'path', 'circle'
     ],
     ALLOWED_ATTR: [
       // Standard attributes
-      'src', 'href', 'alt', 'title', 'class', 'style', 'width', 'height',
+      'src', 'href', 'alt', 'title', 'class', 'width', 'height',
       'loading', 'decoding', 'controls', 'autoplay', 'muted', 'loop', 'preload',
       'target', 'rel', 'role', 'aria-label', 'aria-busy', 'aria-live', 'type', 'name', 'value',
       'placeholder', 'rows', 'disabled',
@@ -230,7 +231,44 @@ export function sanitizeHtml(html: string): string {
   });
 }
 
-// Safely escapes HTML using regular expressions..
+/**
+ * Opt-in DOMPurify sanitizer for trusted rich embeds; allows iframe and style, enforces sandbox on iframes.
+ * @param html Raw HTML string from a verified trusted source
+ * @returns Sanitized HTML with all iframes sandboxed and disallowed tags/attributes removed
+ */
+export function sanitizeRichEmbedHtml(html: string): string {
+  const clean = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'div', 'span', 'p', 'br', 'a', 'img', 'video', 'source', 'iframe',
+      'svg', 'path', 'circle'
+    ],
+    ALLOWED_ATTR: [
+      'src', 'href', 'alt', 'title', 'class', 'style', 'width', 'height',
+      'loading', 'decoding', 'controls', 'autoplay', 'muted', 'loop', 'preload',
+      'target', 'rel', 'sandbox', 'allow', 'allowfullscreen',
+      'fill', 'cx', 'cy', 'r', 'd', 'stroke', 'stroke-width', 'xmlns', 'viewBox'
+    ],
+  });
+
+  // Post-process: add sandbox attribute to any iframe that is missing it
+  const div = typeof document !== 'undefined' ? document.createElement('div') : null;
+  if (div) {
+    div.innerHTML = clean;
+    div.querySelectorAll('iframe').forEach(frame => {
+      if (!frame.hasAttribute('sandbox')) {
+        frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+      }
+    });
+    return div.innerHTML;
+  }
+  return clean;
+}
+
+/**
+ * Escapes HTML special characters in a string using regex replacements.
+ * @param input Plain-text string to escape, or null/undefined
+ * @returns HTML-escaped string, or an empty string for null/undefined
+ */
 export function escapeHtml(input: string | null | undefined): string {
   if (input === null || input === undefined) {
     return '';
@@ -243,7 +281,28 @@ export function escapeHtml(input: string | null | undefined): string {
     .replace(/'/g, '&#039;');
 }
 
-// Safely escapes HTML utilizing the browser's native DOM parser.
+/**
+ * Returns the URL unchanged if its scheme is http or https, otherwise returns an empty string.
+ * @param input URL string to validate, or null/undefined
+ * @returns The trimmed input URL for http/https schemes, or an empty string for invalid/dangerous schemes
+ */
+export function sanitizeUrl(input: string | null | undefined): string {
+  const trimmed = (input ?? '').trim();
+  if (!trimmed) return '';
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === 'http:' || url.protocol === 'https:') return trimmed;
+  } catch {
+    // Not a valid absolute URL
+  }
+  return '';
+}
+
+/**
+ * Escapes HTML special characters using the browser's native DOM API; falls back to escapeHtml when document is unavailable.
+ * @param text Plain-text string to escape
+ * @returns HTML-escaped string
+ */
 export function escapeHtmlDOM(text: string): string {
   if (typeof document === 'undefined') return escapeHtml(text);
   const div = document.createElement('div');

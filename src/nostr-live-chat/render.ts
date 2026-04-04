@@ -1,6 +1,6 @@
 import { Theme } from "../common/types";
 import { getLoadingNostrich, getNostrLogo } from "../common/theme";
-import { escapeHtml } from "../common/utils";
+import { escapeHtml, sanitizeUrl } from "../common/utils";
 
 export interface ChatMessage {
   id: string;
@@ -183,7 +183,7 @@ export function renderLiveChatInner({
             <div class="nostr-chat-recipient">
               <div class="nostr-chat-recipient-info">
                 <img 
-                  src="${escapeHtml(recipientPicture) || ''}" 
+                  src="${sanitizeUrl(recipientPicture) || ''}" 
                   alt="${escapeHtml(recipientName) || ''}" 
                   class="nostr-chat-recipient-avatar"
                   onerror="this.onerror=null; this.src='https://via.placeholder.com/40';"
@@ -205,7 +205,7 @@ export function renderLiveChatInner({
       ? `
           <div class="nostr-chat-self">
             <img 
-              src="${escapeHtml(currentUserPicture) || ''}"
+              src="${sanitizeUrl(currentUserPicture) || ''}"
               alt="${escapeHtml(currentUserName) || 'You'}"
               class="nostr-chat-self-avatar"
               onerror="this.onerror=null; this.src='https://via.placeholder.com/32';"

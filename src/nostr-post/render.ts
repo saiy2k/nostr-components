@@ -6,7 +6,7 @@ import * as DomUtils from 'domutils';
 import { replyIcon, heartIcon } from '../common/icons';
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { escapeHtml } from '../common/utils';
+import { escapeHtml, sanitizeUrl } from '../common/utils';
 
 export interface RenderPostOptions extends IRenderOptions {
   author: NDKUserProfile | null| undefined;
@@ -81,7 +81,7 @@ function renderPostHeader(
     <div class="post-header">
       <div class="post-header-left">
         <div class="author-picture">
-          ${author?.image ? `<img src="${escapeHtml(author.image)}" alt="Author" />` : ''}
+          ${author?.image ? `<img src="${sanitizeUrl(author.image)}" alt="Author" />` : ''}
         </div>
       </div>
       <div class="post-header-middle">
@@ -236,9 +236,9 @@ export function renderEmbeddedPost(
     mediaHtml = '<div class="embedded-media-list">';
     for (const item of mediaItems) {
       if (item.type === 'image') {
-        mediaHtml += `<div class="embedded-media-item"><img src="${escapeHtml(item.url)}" alt="Embedded image" loading="lazy" /></div>`;
+        mediaHtml += `<div class="embedded-media-item"><img src="${sanitizeUrl(item.url)}" alt="Embedded image" loading="lazy" /></div>`;
       } else if (item.type === 'video') {
-        mediaHtml += `<div class="embedded-media-item"><video src="${escapeHtml(item.url)}" controls preload="none"></video></div>`;
+        mediaHtml += `<div class="embedded-media-item"><video src="${sanitizeUrl(item.url)}" controls preload="none"></video></div>`;
       }
     }
     mediaHtml += '</div>';
@@ -248,7 +248,7 @@ export function renderEmbeddedPost(
     <div class="embedded-post" data-note-id="${escapeHtml(noteId)}">
       <div class="embedded-post-header">
         <div class="embedded-author-avatar" style="cursor: pointer;">
-          ${authorProfile?.image ? `<img src="${escapeHtml(authorProfile.image)}" alt="Profile">` : ''}
+          ${authorProfile?.image ? `<img src="${sanitizeUrl(authorProfile.image)}" alt="Profile">` : ''}
         </div>
         <div class="embedded-author-info" style="cursor: pointer;">
           <span class="embedded-author-name">${escapeHtml(authorDisplayName)}</span>

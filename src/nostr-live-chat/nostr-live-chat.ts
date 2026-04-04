@@ -108,7 +108,7 @@ export default class NostrLiveChat extends HTMLElement {
         .filter(r => r.length > 0)
         .filter((r, i, arr) => arr.indexOf(r) === i);
     }
-    return DEFAULT_RELAYS;
+    return [...DEFAULT_RELAYS];
   };
 
   private async getCurrentUserInfo(): Promise<void> {

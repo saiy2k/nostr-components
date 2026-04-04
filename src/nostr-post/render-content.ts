@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ContentItem } from './parse-text';
-  import { isValidUrl, sanitizeHtml } from '../common/utils';
+  import { isValidUrl, sanitizeHtml, escapeHtml } from '../common/utils';
   import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { parseText } from './parse-text';
   import { renderEmbeddedPost } from './render';
@@ -25,7 +25,7 @@ import { ContentItem } from './parse-text';
         }
 
         html.push(
-          `<div class="embedded-post-placeholder" data-note-id="${item.noteId}"></div>`
+          `<div class="embedded-post-placeholder" data-note-id="${escapeHtml(item.noteId)}"></div>`
         );
       } else {
         if (textBuffer) {
