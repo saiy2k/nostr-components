@@ -60,7 +60,7 @@ function parseAdvancedInput(value: string): {
   if (trimmed.startsWith('bunker://')) {
     try {
       const parsed = new URL(trimmed);
-      if (!parsed.hostname && !parsed.pathname) {
+      if (!parsed.hostname || !parsed.search) {
         return {
           kind: 'invalid',
           message: 'Bunker token looks incomplete. Include host and query params.',
@@ -141,6 +141,7 @@ export async function showAuthOnboarding(
           <input
             type="password"
             class="onboarding-advanced-input"
+            aria-label="Bunker password or URL"
             placeholder="bunker://..."
             autocomplete="off"
           />
