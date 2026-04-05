@@ -11,6 +11,7 @@ import './nostr-zap-button/nostr-zap.ts';
 // import './nostr-live-chat/nostr-live-chat.ts'; // Temporarily disabled due to asset resolution issues
 import './nostr-like-button/nostr-like.ts';
 import './nostr-livestream/nostr-livestream.ts';
+import './nostr-fundraiser/nostr-fundraiser.ts';
 
 // Import classes for default export
 import NostrProfileBadge from './nostr-profile-badge/nostr-profile-badge.ts';
@@ -23,6 +24,7 @@ import NostrZap from './nostr-zap-button/nostr-zap.ts';
 // import NostrLiveChat from './nostr-live-chat/nostr-live-chat.ts'; // Temporarily disabled due to asset resolution issues
 import NostrLike from './nostr-like-button/nostr-like.ts';
 import NostrLivestream from './nostr-livestream/nostr-livestream.ts';
+import NostrFundraiser from './nostr-fundraiser/nostr-fundraiser.ts';
 
 // Export classes for TypeScript types
 export { default as NostrProfileBadge } from './nostr-profile-badge/nostr-profile-badge.ts';
@@ -35,6 +37,7 @@ export { default as NostrZap } from './nostr-zap-button/nostr-zap.ts';
 // export { default as NostrLiveChat } from './nostr-live-chat/nostr-live-chat.ts'; // Temporarily disabled due to asset resolution issues
 export { default as NostrLike } from './nostr-like-button/nostr-like.ts';
 export { default as NostrLivestream } from './nostr-livestream/nostr-livestream.ts';
+export { default as NostrFundraiser } from './nostr-fundraiser/nostr-fundraiser.ts';
 
 // Export init function for explicit initialization (optional, for compatibility)
 export function init() {
@@ -58,4 +61,5 @@ export default {
   // NostrLiveChat, // Temporarily disabled due to asset resolution issues
   NostrLike,
   NostrLivestream,
+  NostrFundraiser,
 };

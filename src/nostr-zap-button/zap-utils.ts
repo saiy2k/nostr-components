@@ -6,7 +6,7 @@ import {
   finalizeEvent,
   SimplePool,
 } from 'nostr-tools';
-import { decodeNip19Entity } from '../common/utils';
+import type { NostrEvent } from 'nostr-tools';
 import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 import { DEFAULT_RELAYS } from '../common/constants';
 
@@ -122,28 +122,44 @@ const makeZapEvent = async ({
   comment,
   anon,
   url,
+  targetEvent,
+  extraTags,
 }: {
-  profile: string;
+  profile?: string;
   nip19Target?: string;
   amount: number;
   relays: string[];
   comment?: string;
   anon?: boolean;
   url?: string;
+  targetEvent?: NostrEvent;
+  extraTags?: string[][];
 }) => {
-  const req: any = {
-    profile: profile,
-    amount,
-    relays,
-    comment: comment || '',
-  };
+  const req: any = targetEvent
+    ? {
+        event: targetEvent,
+        amount,
+        relays,
+        comment: comment || '',
+      }
+    : {
+        pubkey: profile,
+        amount,
+        relays,
+        comment: comment || '',
+      };
+
   const event = nip57.makeZapRequest(req);
 
   // Add URL-based zap a tag if URL is provided.
   // Uses a deterministic addressable event coordinate (kind 39735) so relays
   // copy it to the zap receipt, enabling relay-side #a filtering.
-  if (url) {
+  if (url && profile) {
     event.tags.push(['a', buildUrlATag(profile, url)]);
+  }
+
+  if (extraTags?.length) {
+    event.tags.push(...extraTags.map(tag => [...tag]));
   }
 
   // Check if NostrLogin is available (will initialize if needed)
@@ -175,6 +191,8 @@ export const fetchInvoice = async ({
   normalizedRelays,
   anon,
   url,
+  targetEvent,
+  extraTags,
 }: {
   zapEndpoint: string;
   amount: number;
@@ -183,6 +201,8 @@ export const fetchInvoice = async ({
   normalizedRelays: string[];
   anon?: boolean;
   url?: string;
+  targetEvent?: NostrEvent;
+  extraTags?: string[][];
 }): Promise<string> => {
   const zapEvent = await makeZapEvent({
     profile: authorId,
@@ -191,6 +211,8 @@ export const fetchInvoice = async ({
     comment: comment ?? '',
     anon,
     url,
+    targetEvent,
+    extraTags,
   });
 
 
