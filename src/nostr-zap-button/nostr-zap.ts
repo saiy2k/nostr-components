@@ -10,7 +10,8 @@ import { getZapButtonStyles } from './style';
 import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
 import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
-import { ensureInitialized } from '../common/nostr-login-service';
+import { ensureInitialized, getPublicKey } from '../common/nostr-login-service';
+import { showAuthOnboarding } from '../common/auth-onboarding';
 
 /**
  * <nostr-zap-button>
@@ -146,6 +147,31 @@ export default class NostrZap extends NostrUserComponent {
         this.zapActionStatus.set(NCStatus.Error, "Could not resolve user to zap.");
         this.render();
         return;
+      }
+
+      if (!(await getPublicKey())) {
+        const onboardingResult = await showAuthOnboarding({
+          action: 'zap',
+          theme: this.theme === 'dark' ? 'dark' : 'light',
+        });
+
+        if (!onboardingResult.connected) {
+          this.zapActionStatus.set(
+            NCStatus.Error,
+            'Connect a Nostr signer to send a zap.'
+          );
+          this.render();
+          return;
+        }
+
+        if (!(await getPublicKey())) {
+          this.zapActionStatus.set(
+            NCStatus.Error,
+            'Signer is not ready yet. Complete connection and try again.'
+          );
+          this.render();
+          return;
+        }
       }
 
       const relays = this.getRelays().join(",");

@@ -5,7 +5,8 @@ import { NostrUserComponent } from '../base/user-component/nostr-user-component'
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
-import { ensureInitialized } from '../common/nostr-login-service';
+import { ensureInitialized, getPublicKey } from '../common/nostr-login-service';
+import { showAuthOnboarding } from '../common/auth-onboarding';
 
 export default class NostrFollowButton extends NostrUserComponent {
   protected followStatus = this.channel('follow');
@@ -76,6 +77,29 @@ export default class NostrFollowButton extends NostrUserComponent {
           'Could not resolve user to follow.'
         );
         return;
+      }
+
+      if (!(await getPublicKey())) {
+        const onboardingResult = await showAuthOnboarding({
+          action: 'follow',
+          theme: this.theme === 'dark' ? 'dark' : 'light',
+        });
+
+        if (!onboardingResult.connected) {
+          this.followStatus.set(
+            NCStatus.Error,
+            'Connect a Nostr signer to follow this profile.'
+          );
+          return;
+        }
+
+        if (!(await getPublicKey())) {
+          this.followStatus.set(
+            NCStatus.Error,
+            'Signer is not ready yet. Complete connection and try again.'
+          );
+          return;
+        }
       }
 
       const signer = new NDKNip07Signer();
