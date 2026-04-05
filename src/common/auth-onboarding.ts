@@ -225,8 +225,7 @@ export async function showAuthOnboarding(
       setStatus('Opening signer connection...', 'neutral');
 
       try {
-        const pubkey = await getPublicKey();
-        if (pubkey) {
+        if (await getPublicKey()) {
           setStatus('Connected. Continuing action...', 'success');
           settle({ connected: true, source: 'connect' });
           dialogComponent.close();
