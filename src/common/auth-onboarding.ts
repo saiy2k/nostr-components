@@ -224,25 +224,18 @@ export async function showAuthOnboarding(
       connectButton.disabled = true;
       setStatus('Opening signer connection...', 'neutral');
 
-      try {
-        if (await getPublicKey()) {
-          setStatus('Connected. Continuing action...', 'success');
-          settle({ connected: true, source: 'connect' });
-          dialogComponent.close();
-          return;
-        }
-
-        setStatus(
-          'Connection is still pending. Complete signer auth, then try Connect again.',
-          'error'
-        );
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Could not start signer connection.';
-        setStatus(message, 'error');
-      } finally {
-        connectButton.disabled = false;
+      if (await getPublicKey()) {
+        setStatus('Connected. Continuing action...', 'success');
+        settle({ connected: true, source: 'connect' });
+        dialogComponent.close();
+        return;
       }
+
+      setStatus(
+        'Connection is still pending. Complete signer auth, then try Connect again.',
+        'error'
+      );
+      connectButton.disabled = false;
     });
   });
 }
