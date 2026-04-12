@@ -23,7 +23,7 @@ describe('optimistic-state', () => {
     expect(next).toEqual({ isLiked: false, likeCount: 0 });
   });
 
-  it('does not rollback when optimistic update was never applied', () => {
+  it('failure-before-optimistic keeps current state unchanged', () => {
     const result = rollbackOptimisticLikeState({
       current: { isLiked: false, likeCount: 5 },
       snapshot: { isLiked: false, likeCount: 6 },
@@ -33,7 +33,17 @@ describe('optimistic-state', () => {
     expect(result).toEqual({ isLiked: false, likeCount: 5 });
   });
 
-  it('restores snapshot when optimistic update was applied', () => {
+  it('failure-before-optimistic still clamps invalid current counts', () => {
+    const result = rollbackOptimisticLikeState({
+      current: { isLiked: false, likeCount: -9 },
+      snapshot: { isLiked: false, likeCount: 6 },
+      didApplyOptimisticUpdate: false,
+    });
+
+    expect(result).toEqual({ isLiked: false, likeCount: 0 });
+  });
+
+  it('failure-after-optimistic restores pre-mutation snapshot', () => {
     const result = rollbackOptimisticLikeState({
       current: { isLiked: true, likeCount: 6 },
       snapshot: { isLiked: false, likeCount: 5 },
