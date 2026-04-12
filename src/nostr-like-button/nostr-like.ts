@@ -48,6 +48,7 @@ export default class NostrLike extends NostrBaseComponent {
   private cachedLikeDetails: LikeCountResult | null = null;
   private loadSeq = 0;
   private isResyncingLikeCount = false;
+  private needsResyncLikeCount = false;
 
   constructor() {
     super();
@@ -167,12 +168,16 @@ export default class NostrLike extends NostrBaseComponent {
    * This keeps local UI from staying stale when an operation partially fails.
    */
   private queueAuthoritativeCountResync(): void {
+    this.needsResyncLikeCount = true;
     if (this.isResyncingLikeCount) return;
 
     this.isResyncingLikeCount = true;
     void (async () => {
       try {
-        await this.updateLikeCount();
+        while (this.needsResyncLikeCount) {
+          this.needsResyncLikeCount = false;
+          await this.updateLikeCount();
+        }
       } finally {
         this.isResyncingLikeCount = false;
       }
@@ -262,7 +267,7 @@ export default class NostrLike extends NostrBaseComponent {
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
 
-    const snapshot: LikeUiState = {
+    let rollbackSnapshot: LikeUiState = {
       isLiked: this.isLiked,
       likeCount: this.likeCount,
     };
@@ -274,16 +279,21 @@ export default class NostrLike extends NostrBaseComponent {
       
       // Sign with NIP-07
       const signedEvent = await signEvent(event);
+
+      // Apply optimistic state from the latest UI state at mutation time.
+      rollbackSnapshot = {
+        isLiked: this.isLiked,
+        likeCount: this.likeCount,
+      };
+      const optimisticState = applyOptimisticLike(rollbackSnapshot);
+      this.isLiked = optimisticState.isLiked;
+      this.likeCount = optimisticState.likeCount;
+      didApplyOptimisticUpdate = true;
       
       // Create NDKEvent and publish
       const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
       await ndkEvent.publish();
-      
-      // Update state optimistically
-      const optimisticState = applyOptimisticLike(snapshot);
-      this.isLiked = optimisticState.isLiked;
-      this.likeCount = optimisticState.likeCount;
-      didApplyOptimisticUpdate = true;
+
       this.likeActionStatus.set(NCStatus.Ready);
       
       // Refresh like count to get accurate data
@@ -293,7 +303,7 @@ export default class NostrLike extends NostrBaseComponent {
 
       this.handleLikeMutationFailure(
         error,
-        snapshot,
+        rollbackSnapshot,
         didApplyOptimisticUpdate,
         'Failed to like'
       );
@@ -315,7 +325,7 @@ export default class NostrLike extends NostrBaseComponent {
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
 
-    const snapshot: LikeUiState = {
+    let rollbackSnapshot: LikeUiState = {
       isLiked: this.isLiked,
       likeCount: this.likeCount,
     };
@@ -327,16 +337,21 @@ export default class NostrLike extends NostrBaseComponent {
       
       // Sign with NIP-07
       const signedEvent = await signEvent(event);
+
+      // Apply optimistic state from the latest UI state at mutation time.
+      rollbackSnapshot = {
+        isLiked: this.isLiked,
+        likeCount: this.likeCount,
+      };
+      const optimisticState = applyOptimisticUnlike(rollbackSnapshot);
+      this.isLiked = optimisticState.isLiked;
+      this.likeCount = optimisticState.likeCount;
+      didApplyOptimisticUpdate = true;
       
       // Create NDKEvent and publish
       const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
       await ndkEvent.publish();
-      
-      // Update state optimistically
-      const optimisticState = applyOptimisticUnlike(snapshot);
-      this.isLiked = optimisticState.isLiked;
-      this.likeCount = optimisticState.likeCount;
-      didApplyOptimisticUpdate = true;
+
       this.likeActionStatus.set(NCStatus.Ready);
       
       // Refresh like count to get accurate data
@@ -346,7 +361,7 @@ export default class NostrLike extends NostrBaseComponent {
 
       this.handleLikeMutationFailure(
         error,
-        snapshot,
+        rollbackSnapshot,
         didApplyOptimisticUpdate,
         'Failed to unlike'
       );
