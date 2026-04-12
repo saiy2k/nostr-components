@@ -18,6 +18,12 @@ import {
 } from './like-utils';
 import { ensureInitialized } from '../common/nostr-login-service';
 import { normalizeURL } from 'nostr-tools/utils';
+import {
+  applyOptimisticLike,
+  applyOptimisticUnlike,
+  rollbackOptimisticLikeState,
+  type LikeUiState,
+} from './optimistic-state';
 
 /**
  * <nostr-like-button>
@@ -213,6 +219,12 @@ export default class NostrLike extends NostrBaseComponent {
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
 
+    const snapshot: LikeUiState = {
+      isLiked: this.isLiked,
+      likeCount: this.likeCount,
+    };
+    let didApplyOptimisticUpdate = false;
+
     try {
       // Create like event
       const event = createLikeEvent(this.currentUrl);
@@ -225,8 +237,10 @@ export default class NostrLike extends NostrBaseComponent {
       await ndkEvent.publish();
       
       // Update state optimistically
-      this.isLiked = true;
-      this.likeCount++;
+      const optimisticState = applyOptimisticLike(snapshot);
+      this.isLiked = optimisticState.isLiked;
+      this.likeCount = optimisticState.likeCount;
+      didApplyOptimisticUpdate = true;
       this.likeActionStatus.set(NCStatus.Ready);
       
       // Refresh like count to get accurate data
@@ -234,9 +248,17 @@ export default class NostrLike extends NostrBaseComponent {
     } catch (error) {
       console.error('[NostrLike] Failed to like:', error);
       
-      // Rollback optimistic update
-      this.isLiked = false;
-      this.likeCount--;
+      // Restore previous state only if local optimistic state was applied.
+      const restoredState = rollbackOptimisticLikeState({
+        current: {
+          isLiked: this.isLiked,
+          likeCount: this.likeCount,
+        },
+        snapshot,
+        didApplyOptimisticUpdate,
+      });
+      this.isLiked = restoredState.isLiked;
+      this.likeCount = restoredState.likeCount;
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to like';
       this.likeActionStatus.set(NCStatus.Error, errorMessage);
@@ -257,6 +279,12 @@ export default class NostrLike extends NostrBaseComponent {
 
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
+
+    const snapshot: LikeUiState = {
+      isLiked: this.isLiked,
+      likeCount: this.likeCount,
+    };
+    let didApplyOptimisticUpdate = false;
     
     try {
       // Create unlike event
@@ -270,10 +298,10 @@ export default class NostrLike extends NostrBaseComponent {
       await ndkEvent.publish();
       
       // Update state optimistically
-      this.isLiked = false;
-      if (this.likeCount > 0) {
-        this.likeCount--;
-      }
+      const optimisticState = applyOptimisticUnlike(snapshot);
+      this.isLiked = optimisticState.isLiked;
+      this.likeCount = optimisticState.likeCount;
+      didApplyOptimisticUpdate = true;
       this.likeActionStatus.set(NCStatus.Ready);
       
       // Refresh like count to get accurate data
@@ -281,9 +309,17 @@ export default class NostrLike extends NostrBaseComponent {
     } catch (error) {
       console.error('[NostrLike] Failed to unlike:', error);
       
-      // Rollback optimistic update
-      this.isLiked = true;
-      this.likeCount++;
+      // Restore previous state only if local optimistic state was applied.
+      const restoredState = rollbackOptimisticLikeState({
+        current: {
+          isLiked: this.isLiked,
+          likeCount: this.likeCount,
+        },
+        snapshot,
+        didApplyOptimisticUpdate,
+      });
+      this.isLiked = restoredState.isLiked;
+      this.likeCount = restoredState.likeCount;
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to unlike';
       this.likeActionStatus.set(NCStatus.Error, errorMessage);
