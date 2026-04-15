@@ -26,7 +26,8 @@ Nostr Components makes it easy to embed Nostr profiles, posts, and follow button
  * **[Profile](#5-nostr-profile)** 
  * **[Post](#6-nostr-post)**
  * **[Livestream](#7-nostr-livestream)**
- * **[WordPress Integration](#8-wordpress-integration)**
+ * **[Fundraiser](#8-nostr-fundraiser)**
+ * **[WordPress Integration](#9-wordpress-integration)**
 
 ## Usage
 
@@ -80,7 +81,7 @@ import 'nostr-components';
 
 ### Authentication
 
-All interactive components (Follow, Like, Zap) require user authentication. Components use [window.nostr.js](https://github.com/fiatjaf/window.nostr.js) which supports:
+All interactive actions (Follow, Like, Zap, and fundraiser zaps) require user authentication. Components use [window.nostr.js](https://github.com/fiatjaf/window.nostr.js) which supports:
 - **NIP-07 Browser Extensions** (Alby, nos2x, etc.)
 - **NIP-46 Remote Signers** (Bunkers)
 
@@ -283,7 +284,37 @@ Display Nostr livestreams (NIP-53) with video playback, participant information,
 
 ---
 
-## 8. WordPress Integration
+## 8. Nostr Fundraiser
+
+Render NIP-75 fundraiser goals with a banner, fundraiser copy, progress bar, donor list, and event-targeted zap flow.
+
+**Usage:**
+
+```html
+<head>
+  <script
+    type="module"
+    src="https://cdn.jsdelivr.net/npm/nostr-components@latest/dist/components/nostr-fundraiser.es.js">
+  </script>
+</head>
+<body>
+  <nostr-fundraiser
+    hex="YOUR_KIND_9041_EVENT_HEX"
+    text="Support this fundraiser">
+  </nostr-fundraiser>
+</body>
+```
+
+**Notes:**
+
+- Provide exactly one identifier: `hex`, `noteid`, or `eventid`
+- Reads required NIP-75 `amount` and `relays` tags from the fundraiser event
+- Uses zap receipts (`kind: 9735`) linked to the fundraiser event id to compute progress
+- In Storybook, use `Fundraiser > Manual Event Input` for a preview-first playground, `Fundraiser/Testing/Valid` for fixture-based happy paths, and `Fundraiser/Testing/Invalid` for identifier validation states
+
+---
+
+## 9. WordPress Integration
 
 The Nostr Components WordPress plugin provides Gutenberg blocks and shortcodes for all components, making it easy to embed Nostr functionality in your WordPress site.
 

@@ -5,6 +5,7 @@ import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getDialogStyles } from './dialog-zap-style';
 import { decodeNpub } from '../common/utils';
+import type { NostrEvent } from 'nostr-tools';
 
 /**
  * Modal dialog helper for <nostr-zap> component.
@@ -43,11 +44,14 @@ export interface OpenZapModalParams {
   cachedDialogComponent?: DialogComponent | null;
   buttonColor?: string;
   theme?: 'light' | 'dark';
+  header?: string;
   fixedAmount?: number; // if supplied, hide amount UI
   defaultAmount?: number; // preselect but allow change
   initialAmount?: number; // legacy support
   anon?: boolean;
   url?: string; // URL to send zap to (enables URL-based zaps)
+  targetEvent?: NostrEvent; // Event to zap (NIP-57 event zaps / NIP-75 goals)
+  extraTags?: string[][];
 }
 
 export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
@@ -66,7 +70,19 @@ export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
  * can cache it between clicks.
  */
 export async function init(params: OpenZapModalParams): Promise<DialogComponent> {
-  const { npub, relays, cachedDialogComponent, buttonColor, fixedAmount, defaultAmount, initialAmount, url } = params;
+  const {
+    npub,
+    relays,
+    cachedDialogComponent,
+    buttonColor,
+    fixedAmount,
+    defaultAmount,
+    initialAmount,
+    anon,
+    url,
+    targetEvent,
+    extraTags,
+  } = params;
   const npubHex = decodeNpub(npub);
   
   // Ensure custom element is defined
@@ -141,8 +157,10 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       comment,
       authorId,
       normalizedRelays: relaysArray,
-      anon: params.anon ?? false,
+      anon: anon ?? false,
       url: url,
+      targetEvent,
+      extraTags,
     });
     currentInvoice = invoice;
 
@@ -287,7 +305,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
 
   // Create dialog component (not added to DOM)
   const dialogComponent = document.createElement('dialog-component') as DialogComponent;
-  dialogComponent.setAttribute('header', 'Send a Zap');
+  dialogComponent.setAttribute('header', params.header || 'Send a Zap');
   if (params.theme) {
     dialogComponent.setAttribute('data-theme', params.theme);
   }

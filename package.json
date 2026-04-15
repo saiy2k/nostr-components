@@ -13,7 +13,8 @@
     "nostr-profile",
     "nostr-post",
     "nostr-like-button",
-    "nostr-zap-button"
+    "nostr-zap-button",
+    "nostr-fundraiser"
   ],
   "author": "saiy2k",
   "license": "MIT",
@@ -86,6 +87,10 @@
     "./components/nostr-livestream": {
       "import": "./dist/components/nostr-livestream.es.js",
       "types": "./dist/components/nostr-livestream.d.ts"
+    },
+    "./components/nostr-fundraiser": {
+      "import": "./dist/components/nostr-fundraiser.es.js",
+      "types": "./dist/components/nostr-fundraiser.d.ts"
     }
   },
   "files": [

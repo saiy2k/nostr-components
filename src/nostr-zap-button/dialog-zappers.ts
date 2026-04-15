@@ -23,6 +23,7 @@ export interface OpenZappersModalParams {
   zapDetails: ZapDetails[];
   theme?: 'light' | 'dark';
   relays?: string[];
+  header?: string;
 }
 
 /**
@@ -107,7 +108,7 @@ function renderSkeletonZapEntry(zap: ZapDetails, npub: string, index: number): s
  * Opens the zappers dialog showing individual zap details
  */
 export async function openZappersDialog(params: OpenZappersModalParams): Promise<DialogComponent> {
-  const { zapDetails, theme = 'light', relays } = params;
+  const { zapDetails, theme = 'light', relays, header = 'Zappers' } = params;
   
   // Inject styles
   injectZappersDialogStyles(theme);
@@ -119,7 +120,7 @@ export async function openZappersDialog(params: OpenZappersModalParams): Promise
   
   // Create dialog component (not added to DOM)
   const dialogComponent = document.createElement('dialog-component') as DialogComponent;
-  dialogComponent.setAttribute('header', 'Zappers');
+  dialogComponent.setAttribute('header', header);
   if (params.theme) {
     dialogComponent.setAttribute('data-theme', params.theme);
   }
@@ -337,4 +338,3 @@ async function enhanceZapDetailsIndividually(dialog: HTMLDialogElement, zapDetai
     }
   }
 }
-
