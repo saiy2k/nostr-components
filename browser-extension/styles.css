@@ -1,0 +1,66 @@
+.nostr-competency-action-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.nostr-competency-action-button {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(113, 118, 123);
+  font: 400 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+}
+
+.nostr-competency-action-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.nostr-competency-action-svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+}
+
+.nostr-competency-action-button:hover .nostr-competency-action-icon-wrap,
+.nostr-competency-action-button:focus-visible .nostr-competency-action-icon-wrap {
+  background: rgba(29, 155, 240, 0.12);
+}
+
+.nostr-competency-action-button:hover,
+.nostr-competency-action-button:focus-visible {
+  color: rgb(29, 155, 240);
+  outline: none;
+}
+
+.nostr-competency-action-button[data-liked="true"] {
+  color: rgb(29, 155, 240);
+}
+
+.nostr-competency-action-button[data-busy="true"] {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.nostr-competency-action-button[data-liked="true"] .nostr-competency-action-icon-wrap {
+  background: rgba(29, 155, 240, 0.12);
+}
+
+.nostr-competency-action-button[data-liked="true"] .nostr-competency-action-svg path {
+  fill: currentColor;
+  stroke: currentColor;
+}
