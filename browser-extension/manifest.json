@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Nostr Competency Test - X Like Button",
+  "version": "0.1.0",
+  "description": "Injects a static Nostr Like button on individual x.com status pages for the competency test.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page-bridge.js",
+        "verified-directory.json"
+      ],
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ]
+    }
+  ]
+}
