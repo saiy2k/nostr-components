@@ -3,7 +3,14 @@
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { SimplePool } from 'nostr-tools';
 import { MILLISATS_PER_SAT } from '../common/constants';
-import { getTagValue, getTagValues, parseNumber, parseTimestamp } from '../common/utils';
+import {
+  escapeHtml,
+  getTagValue,
+  getTagValues,
+  isValidHex,
+  parseNumber,
+  parseTimestamp,
+} from '../common/utils';
 import type { ZapDetails } from '../nostr-zap-button/zap-utils';
 
 export interface ParsedFundraiserEvent {
@@ -28,6 +35,26 @@ export interface FundraiserProgressResult {
   remainingAmount: number;
   isClosed: boolean;
   zapDetails: ZapDetails[];
+}
+
+const RECEIPT_PAGE_SIZE = 1000;
+
+function sanitizeZapComment(comment: unknown): string | undefined {
+  if (typeof comment !== 'string') {
+    return undefined;
+  }
+
+  const normalizedComment = comment
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .trim();
+
+  return normalizedComment ? escapeHtml(normalizedComment) : undefined;
+}
+
+function normalizeZapAuthorPubkey(pubkey: unknown): string {
+  return typeof pubkey === 'string' && isValidHex(pubkey)
+    ? pubkey.toLowerCase()
+    : '';
 }
 
 function deriveFundraiserTitle(content: string, summary?: string, titleTag?: string): string {
@@ -116,40 +143,73 @@ export async function fetchFundraiserProgress({
   const pool = new SimplePool();
   let totalRaisedMsats = 0;
   const zapDetails: ZapDetails[] = [];
+  const seenReceiptIds = new Set<string>();
+  let cursorUntil = closedAt;
 
   try {
-    const filter: any = {
-      kinds: [9735],
-      '#e': [eventId],
-      limit: 1000,
-    };
+    while (true) {
+      const filter: any = {
+        kinds: [9735],
+        '#e': [eventId],
+        limit: RECEIPT_PAGE_SIZE,
+      };
 
-    if (closedAt) {
-      filter.until = closedAt;
-    }
-
-    const events = await pool.querySync(relays, filter);
-
-    for (const event of events) {
-      const descriptionTag = event.tags?.find((tag: string[]) => tag[0] === 'description');
-      if (!descriptionTag?.[1]) continue;
-
-      try {
-        const zapRequest = JSON.parse(descriptionTag[1]);
-        const amountTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'amount');
-        const amountMsats = amountTag?.[1] ? parseInt(amountTag[1], 10) : 0;
-        if (!amountMsats || amountMsats <= 0) continue;
-
-        totalRaisedMsats += amountMsats;
-        zapDetails.push({
-          amount: amountMsats / MILLISATS_PER_SAT,
-          date: new Date(event.created_at * 1000),
-          authorPubkey: zapRequest.pubkey,
-          comment: zapRequest.content,
-        });
-      } catch (error) {
-        console.error('Nostr-Components: Fundraiser: Failed to parse zap receipt', error);
+      if (typeof cursorUntil === 'number') {
+        filter.until = cursorUntil;
       }
+
+      const events = await pool.querySync(relays, filter);
+      const freshEvents = events.filter(event => {
+        if (!event.id || seenReceiptIds.has(event.id)) {
+          return false;
+        }
+
+        seenReceiptIds.add(event.id);
+        return true;
+      });
+
+      for (const event of freshEvents) {
+        const descriptionTag = event.tags?.find((tag: string[]) => tag[0] === 'description');
+        if (!descriptionTag?.[1]) continue;
+
+        try {
+          const zapRequest = JSON.parse(descriptionTag[1]);
+          const amountTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'amount');
+          const amountMsats = amountTag?.[1] ? parseInt(amountTag[1], 10) : 0;
+          if (!amountMsats || amountMsats <= 0) continue;
+
+          totalRaisedMsats += amountMsats;
+          zapDetails.push({
+            amount: amountMsats / MILLISATS_PER_SAT,
+            date: new Date(event.created_at * 1000),
+            authorPubkey: normalizeZapAuthorPubkey(zapRequest?.pubkey),
+            comment: sanitizeZapComment(zapRequest?.content),
+          });
+        } catch (error) {
+          console.error('Nostr-Components: Fundraiser: Failed to parse zap receipt', error);
+        }
+      }
+
+      if (events.length < RECEIPT_PAGE_SIZE) {
+        break;
+      }
+
+      const oldestCreatedAt = events.reduce((oldest, event) => (
+        typeof event.created_at === 'number' && event.created_at < oldest
+          ? event.created_at
+          : oldest
+      ), Number.POSITIVE_INFINITY);
+
+      if (!Number.isFinite(oldestCreatedAt)) {
+        break;
+      }
+
+      const nextCursorUntil = oldestCreatedAt - 1;
+      if (nextCursorUntil < 0 || nextCursorUntil === cursorUntil) {
+        break;
+      }
+
+      cursorUntil = nextCursorUntil;
     }
   } finally {
     pool.close(relays);
@@ -158,7 +218,11 @@ export async function fetchFundraiserProgress({
   zapDetails.sort((a, b) => b.date.getTime() - a.date.getTime());
 
   const totalRaised = totalRaisedMsats / MILLISATS_PER_SAT;
-  const donorCount = new Set(zapDetails.map(zap => zap.authorPubkey)).size;
+  const donorCount = new Set(
+    zapDetails
+      .map(zap => zap.authorPubkey)
+      .filter(Boolean)
+  ).size;
   const percentRaised = targetAmountMsats > 0
     ? (totalRaisedMsats / targetAmountMsats) * 100
     : 0;

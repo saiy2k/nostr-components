@@ -9,6 +9,7 @@ const previewFundraiser: ParsedFundraiserEvent = {
   title: 'Support browser extension work',
   description: 'Help fund the next round of extension work for like and zap buttons on mainstream apps.',
   summary: 'Support browser extension work',
+  image: 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?auto=format&fit=crop&w=1200&q=80',
   targetAmountMsats: 21_000_000,
   targetAmountSats: 21_000,
   relays: ['wss://relay.damus.io', 'wss://nos.lol'],
@@ -49,6 +50,10 @@ function escapeForHtml(text: string): string {
 
 describe('renderFundraiser', () => {
   beforeAll(() => {
+    // This lightweight document stub returns escaped text from innerHTML so our
+    // string-based assertions stay deterministic without a full DOM. If future
+    // tests need browser-accurate innerHTML behavior, replace this with a raw
+    // HTML-capable test DOM instead of escapeForHtml().
     Object.defineProperty(globalThis, 'document', {
       configurable: true,
       value: {
@@ -99,6 +104,7 @@ describe('renderFundraiser', () => {
     const html = renderFundraiser(baseOptions);
 
     expect(html).toContain('Support browser extension work');
+    expect(html).toContain('https://images.unsplash.com/photo-1517487881594-2787fef5ebf7');
     expect(html).toContain('12,600 sats');
     expect(html).toContain('18 donors');
     expect(html).toContain('60% funded');

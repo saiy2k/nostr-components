@@ -35,6 +35,7 @@ const PREVIEW_FUNDRAISER: ParsedFundraiserEvent = {
   title: 'Support browser extension work',
   description: 'Help fund the next round of extension work for like and zap buttons on mainstream apps.',
   summary: 'Support browser extension work',
+  image: 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?auto=format&fit=crop&w=1200&q=80',
   targetAmountMsats: 21_000_000,
   targetAmountSats: 21_000,
   relays: ['wss://relay.damus.io', 'wss://nos.lol'],

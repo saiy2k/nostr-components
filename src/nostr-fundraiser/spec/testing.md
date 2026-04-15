@@ -49,13 +49,22 @@ await Promise.all(relays.map(url => new Promise((resolve, reject) => {
   ws.onopen = () => ws.send(JSON.stringify(['EVENT', signed]));
   ws.onmessage = event => {
     const data = JSON.parse(event.data);
-    if (data[0] === 'OK' && data[1] === signed.id) {
+    if (data[0] === 'OK' && data[1] === signed.id && data[2] === true) {
       clearTimeout(timeout);
       ws.close();
       resolve(data);
     }
+    if (data[0] === 'OK' && data[1] === signed.id && data[2] === false) {
+      clearTimeout(timeout);
+      ws.close();
+      reject(new Error(data[3] || `Relay rejected fundraiser publish on ${url}`));
+    }
   };
-  ws.onerror = reject;
+  ws.onerror = error => {
+    clearTimeout(timeout);
+    ws.close();
+    reject(error);
+  };
 })));
 
 console.log('Fundraiser hex id:', signed.id);

@@ -18,6 +18,9 @@ import {
 import { renderFundraiser, RenderFundraiserOptions } from './render';
 import { getFundraiserStyles } from './style';
 
+const MAX_TEXT_LENGTH = 48;
+const TEXT_LENGTH_ERROR = `Max text length: ${MAX_TEXT_LENGTH} characters`;
+
 export default class NostrFundraiser extends NostrEventComponent {
   protected parsedFundraiser: ParsedFundraiserEvent | null = null;
 
@@ -64,13 +67,17 @@ export default class NostrFundraiser extends NostrEventComponent {
     if (oldValue === newValue) return;
     super.attributeChangedCallback(name, oldValue, newValue);
 
-    if (name === 'hex' || name === 'noteid' || name === 'eventid') {
+    if (name === 'hex' || name === 'noteid' || name === 'eventid' || name === 'naddr') {
       this.resetFundraiserState();
       this.render();
       return;
     }
 
     if (name === 'text') {
+      this.clearTextValidationError();
+      if (this.validateInputs() && !this.event && this.hasFundraiserIdentifier()) {
+        void this.resolveEventAndLoad();
+      }
       this.render();
     }
   }
@@ -80,9 +87,8 @@ export default class NostrFundraiser extends NostrEventComponent {
       return false;
     }
 
-    const textAttr = this.getAttribute('text');
-    if (textAttr && textAttr.length > 48) {
-      const errorMessage = 'Max text length: 48 characters';
+    const errorMessage = this.getTextValidationError();
+    if (errorMessage) {
       this.eventStatus.set(NCStatus.Error, errorMessage);
       this.authorStatus.set(NCStatus.Error, errorMessage);
       console.error(`Nostr-Components: ${this.tagName.toLowerCase()}: ${errorMessage}`);
@@ -90,6 +96,7 @@ export default class NostrFundraiser extends NostrEventComponent {
       return false;
     }
 
+    this.clearTextValidationError();
     return true;
   }
 
@@ -168,6 +175,7 @@ export default class NostrFundraiser extends NostrEventComponent {
   }
 
   private async handleZapClick(): Promise<void> {
+    if (this.isZapLoading) return;
     if (!this.event || !this.parsedFundraiser) return;
 
     const npub = this.author?.npub || hexToNpub(this.event.pubkey);
@@ -214,6 +222,8 @@ export default class NostrFundraiser extends NostrEventComponent {
         relays: this.getFundraiserRelays(),
         header: 'Donors',
       });
+      this.donationErrorMessage = '';
+      this.render();
     } catch (error) {
       console.error('[NostrFundraiser] Failed to open donors dialog:', error);
       this.donationErrorMessage = 'Failed to open donors dialog';
@@ -248,6 +258,37 @@ export default class NostrFundraiser extends NostrEventComponent {
     this.isZapLoading = false;
     this.zapErrorMessage = '';
     this.progressLoadSeq++;
+  }
+
+  private getTextValidationError(): string | null {
+    const textAttr = this.getAttribute('text');
+    return textAttr && textAttr.length > MAX_TEXT_LENGTH
+      ? TEXT_LENGTH_ERROR
+      : null;
+  }
+
+  private clearTextValidationError() {
+    if (this.errorMessage !== TEXT_LENGTH_ERROR) {
+      return;
+    }
+
+    this.errorMessage = '';
+
+    if (this.eventStatus.get() === NCStatus.Error) {
+      this.eventStatus.set(this.event ? NCStatus.Ready : NCStatus.Idle);
+    }
+
+    if (this.authorStatus.get() === NCStatus.Error) {
+      this.authorStatus.set(this.author || this.authorProfile ? NCStatus.Ready : NCStatus.Idle);
+    }
+  }
+
+  private hasFundraiserIdentifier(): boolean {
+    return Boolean(
+      this.getAttribute('hex') ||
+      this.getAttribute('noteid') ||
+      this.getAttribute('eventid')
+    );
   }
 
   protected renderContent() {

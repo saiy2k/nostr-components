@@ -242,7 +242,7 @@ export function getFundraiserStyles(): string {
       padding: var(--nostrc-spacing-md);
       border-radius: var(--nostrc-border-radius-md);
       background: var(--nostrc-fundraiser-hover-bg);
-      border: 1px solid var(--nostrc-fundraiser-border);
+      border: var(--nostrc-fundraiser-border);
     }
 
     .fundraiser-progress-head,
