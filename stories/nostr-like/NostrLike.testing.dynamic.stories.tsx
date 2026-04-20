@@ -1,28 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from './utils';
-import { TEST_CASES } from './test-cases-valid';
+import { DYNAMIC_TEST_TAGS, generateCode, getArgTypes, getTestingParameters } from './utils';
 import { TEST_CASES as INVALID_TEST_CASES } from './test-cases-invalid';
 import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic';
 import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta: Meta = {
   title: 'Like Button/Testing/Dynamic',
+  tags: [...DYNAMIC_TEST_TAGS],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
-  parameters: {
-    test: {
-      enabled: true,
-      a11y: {
-        element: 'nostr-like-button',
-        config: {
-          rules: {
-            'color-contrast': { enabled: true },
-          },
-        },
-      },
-    },
-  },
+  parameters: getTestingParameters({ disableSnapshot: true }),
 };
 
 export default meta;
@@ -94,4 +82,3 @@ export const FastSwitching: Story = {
     fastDelayMax: 200
   }),
 };
-

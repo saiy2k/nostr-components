@@ -6,7 +6,7 @@ import { TEST_CASES } from './test-cases-valid';
 import { TEST_CASES as INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'Like Button/Testing',
+  title: 'Like Button/Testing/Dashboard',
   tags: ['autodocs'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),

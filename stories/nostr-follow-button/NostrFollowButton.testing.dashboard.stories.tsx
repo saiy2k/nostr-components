@@ -1,27 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, generateDashboardHTML, getArgTypes } from "./utils";
+import { generateCode, generateDashboardHTML, getArgTypes, getTestingParameters } from "./utils";
 import { TEST_CASES } from './test-cases-valid';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
-  title: 'Follow Button/Testing',
+  title: 'Follow Button/Testing/Dashboard',
   tags: ['test', 'dev'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
-  parameters: {
-    test: {
-      enabled: true,
-      a11y: {
-        element: 'nostr-follow-button',
-        config: {
-          rules: {
-            'color-contrast': { enabled: true },
-          },
-        },
-      },
-    },
-  },
+  parameters: getTestingParameters(),
 };
 
 export default meta;

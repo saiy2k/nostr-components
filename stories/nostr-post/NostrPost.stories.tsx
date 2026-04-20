@@ -1,4 +1,3 @@
-import { fn } from 'storybook/test';
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
@@ -15,7 +14,7 @@ const meta: Meta = {
         component: 'A web component that displays Nostr posts with content, metadata, optional stats, and a minimal expandable replies view. Supports note IDs, event IDs, and raw hex inputs.',
       },
       source: {
-        transform: (code, storyContext) =>
+        transform: (_code, storyContext) =>
           generateCodeWithScript(storyContext.args),
       },
       prepend: `

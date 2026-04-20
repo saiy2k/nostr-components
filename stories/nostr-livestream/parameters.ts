@@ -25,12 +25,14 @@ export const LIVESTREAM_PARAMETERS: ParameterDefinition[] = [
     description: 'Display participant list',
     defaultValue: 'true',
     control: 'boolean',
+    booleanMode: 'explicit-false',
   },
   {
     variable: 'show-participant-count',
     description: 'Display current/total participant counts',
     defaultValue: 'true',
     control: 'boolean',
+    booleanMode: 'explicit-false',
   },
   {
     variable: 'auto-play',

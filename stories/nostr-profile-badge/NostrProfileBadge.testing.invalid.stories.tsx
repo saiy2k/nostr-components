@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from "./utils";
+import { generateCode, getArgTypes, getTestingParameters } from "./utils";
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
@@ -7,19 +7,7 @@ const meta: Meta = {
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
-  parameters: {
-    test: {
-      enabled: true,
-      a11y: {
-        element: 'nostr-profile-badge',
-        config: {
-          rules: {
-            'color-contrast': { enabled: true },
-          },
-        },
-      },
-    },
-  },
+  parameters: getTestingParameters(),
 };
 
 export default meta;

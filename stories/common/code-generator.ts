@@ -15,7 +15,7 @@
  * - Type-safe configuration
  */
 
-import { ParameterDefinition } from './parameters';
+import { ParameterDefinition, getBooleanAttributeMode } from './parameters';
 import { escapeHtml } from '../../src/common/utils';
 
 export interface CodeGeneratorConfig {
@@ -28,6 +28,7 @@ export interface CodeGeneratorConfig {
 export interface GenerateCodeOptions {
   args: any;
   config: CodeGeneratorConfig;
+  parameters: ParameterDefinition[];
   cssVariables: ParameterDefinition[];
   forCodeGen?: boolean;
 }
@@ -37,6 +38,7 @@ export interface GenerateDashboardOptions {
   title: string;
   color: string;
   config: CodeGeneratorConfig;
+  parameters: ParameterDefinition[];
 }
 
 // Shared constants
@@ -49,12 +51,30 @@ export const generateBundleScript = (componentName: string): string => {
   return `<script type="module" src="/components/${componentName}.es.js"></script>`;
 };
 
+const serializeAttribute = (
+  key: string,
+  value: unknown,
+  parameters: ParameterDefinition[]
+): string => {
+  if (typeof value === 'boolean') {
+    const mode = getBooleanAttributeMode(parameters, key);
+
+    if (mode === 'explicit-false') {
+      return `${key}="${value ? 'true' : 'false'}"`;
+    }
+
+    return value ? `${key}="true"` : '';
+  }
+
+  return `${key}="${escapeHtml(String(value))}"`;
+};
+
 /**
  * Generates HTML code for a component with CSS variables and attributes
  */
 export function generateCode(options: GenerateCodeOptions): string {
-  const { args, config, cssVariables, forCodeGen = false } = options;
-  const { componentName, defaultWidth, eventHandlers } = config;
+  const { args, config, parameters, cssVariables } = options;
+  const { componentName, defaultWidth } = config;
   
   // Extract event handlers and other args
   const { width = defaultWidth, wrapperDataTheme, ...otherArgs } = args;
@@ -74,12 +94,7 @@ export function generateCode(options: GenerateCodeOptions): string {
       if (cssVarNames.includes(key)) return false;
       return value !== undefined && value !== null && value !== '';
     })
-    .map(([key, value]) => {
-      if (typeof value === 'boolean') {
-        return value ? `${key}="true"` : '';
-      }
-      return `${key}="${escapeHtml(String(value))}"`;
-    })
+    .map(([key, value]) => serializeAttribute(key, value, parameters))
     .filter(Boolean)
     .join('\n  ');
 
@@ -107,18 +122,13 @@ export function generateCodeWithScript(options: GenerateCodeOptions): string {
  * Generates dashboard HTML from test cases
  */
 export function generateDashboardHTML(options: GenerateDashboardOptions): string {
-  const { testCases, title, color, config } = options;
+  const { testCases, title, color, config, parameters } = options;
   const { componentName, gridColumns } = config;
   
   const testCaseHTML = testCases.map(testCase => {
     const attributes = Object.entries(testCase.args)
       .filter(([key, value]) => value !== undefined && value !== null && value !== '')
-      .map(([key, value]) => {
-        if (typeof value === 'boolean') {
-          return value ? `${key}="true"` : '';
-        }
-        return `${key}="${escapeHtml(String(value))}"`;
-      })
+      .map(([key, value]) => serializeAttribute(key, value, parameters))
       .filter(Boolean)
       .join(' ');
 

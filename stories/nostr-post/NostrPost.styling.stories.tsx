@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, getArgTypes } from './utils';
 import { POST_THEMES } from './theme';
-import { POST_DATA } from '../post-data';
 import { TEST_CASES } from './test-cases-valid';
 
 const meta: Meta = {
@@ -45,4 +44,3 @@ export const BitcoinOrange: Story = {
     ...POST_THEMES['bitcoin-orange'],
   },
 };
-

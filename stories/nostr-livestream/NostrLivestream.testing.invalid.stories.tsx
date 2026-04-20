@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from './utils';
+import { generateCode, getArgTypes, getTestingParameters } from './utils';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 
 const meta: Meta = {
@@ -9,17 +9,7 @@ const meta: Meta = {
   argTypes: getArgTypes(),
   args: {},
   parameters: {
-    test: {
-      enabled: true,
-      a11y: {
-        element: 'nostr-livestream',
-        config: {
-          rules: {
-            'color-contrast': { enabled: true },
-          },
-        },
-      },
-    },
+    ...getTestingParameters(),
     docs: {
       description: {
         component: 'Invalid test cases for the nostr-livestream component demonstrating error handling and validation.',

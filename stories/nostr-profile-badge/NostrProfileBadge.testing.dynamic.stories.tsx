@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
+import { BOOLEAN_ATTRIBUTE_MODES, DEFAULT_WIDTH, DYNAMIC_TEST_TAGS, generateCode, getArgTypes, getTestingParameters } from "./utils";
 import { PROFILE_DATA } from '../profile-data';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 import { createPrimaryAttributeChangesPlay } from '../common/primary-attribute-changes';
@@ -8,23 +8,11 @@ import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta: Meta = {
   title: 'Profile Badge/Testing/Dynamic',
+  tags: [...DYNAMIC_TEST_TAGS],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
-  parameters: {
-    chromatic: { disableSnapshot: true },
-    test: {
-      enabled: true,
-      a11y: {
-        element: 'nostr-profile-badge',
-        config: {
-          rules: {
-            'color-contrast': { enabled: true },
-          },
-        },
-      },
-    },
-  },
+  parameters: getTestingParameters({ disableSnapshot: true }),
 };
 
 export default meta;
@@ -77,6 +65,7 @@ export const AllAttributes: Story = {
     ],
     widths: [600, 500, 400, 700],
     booleanAttributes: ['show-follow', 'show-npub'],
+    booleanAttributeModes: BOOLEAN_ATTRIBUTE_MODES,
     updateInterval: 5000
   }),
 };
