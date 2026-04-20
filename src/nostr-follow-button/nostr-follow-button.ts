@@ -5,8 +5,8 @@ import { NostrUserComponent } from '../base/user-component/nostr-user-component'
 import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
-import { ensureInitialized } from '../common/nostr-login-service';
 import { parseBooleanAttribute } from '../common/utils';
+import { ensureSignerForAction } from '../common/auth-onboarding';
 
 export default class NostrFollowButton extends NostrUserComponent {
   protected followStatus = this.channel('follow');
@@ -68,8 +68,23 @@ export default class NostrFollowButton extends NostrUserComponent {
     this.render();
 
     try {
-      // Ensure NostrLogin is initialized
-      await ensureInitialized();
+      const signerResult = await ensureSignerForAction({
+        action: 'follow',
+        theme: this.theme,
+      });
+
+      if (signerResult.status === 'dismissed') {
+        this.followStatus.set(NCStatus.Ready);
+        return;
+      }
+
+      if (!signerResult.publicKey) {
+        this.followStatus.set(
+          NCStatus.Error,
+          signerResult.message || 'Connect a Nostr signer to follow this profile.'
+        );
+        return;
+      }
 
       if (!this.user) {
         this.followStatus.set(

@@ -15,7 +15,7 @@ const meta: Meta = {
       description: {
         // Keep this description aligned with README.md, stories/Introduction.mdx,
         // and src/nostr-like-button/spec/spec.md.
-        component: 'A web component that displays a like button for URLs using NIP-25 External Content Reactions (kind 17). Supports URL-based likes with theme customization and shows net like counts with a clickable likers list.\n\n**Features:**\n- Like and unlike support with confirmation before unlike\n- Automatic URL detection from the current page\n- Connected signer support via `window.nostr.js` (NIP-07 / NIP-46)\n- Progressive profile loading in the likers dialog\n\n⚠️ **Scalability Limitation:** The component queries up to 1000 reaction events per URL. For viral content, net like counts and likers lists may be incomplete.',
+        component: 'A web component that displays a like button for URLs using NIP-25 External Content Reactions (kind 17). Supports URL-based likes with theme customization and shows net like counts with a clickable likers list.\n\n**Features:**\n- Like and unlike support with confirmation before unlike\n- Automatic URL detection from the current page\n- First-click onboarding before the signer approval flow\n- Connected signer support via `window.nostr.js` (NIP-07 / NIP-46)\n- Progressive profile loading in the likers dialog\n\n⚠️ **Scalability Limitation:** The component queries up to 1000 reaction events per URL. For viral content, net like counts and likers lists may be incomplete.',
       },
       source: {
         transform: (code, storyContext) =>

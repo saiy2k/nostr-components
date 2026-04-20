@@ -168,6 +168,13 @@ export class DialogComponent extends HTMLElement {
   }
 
   /**
+   * Returns the native dialog element rendered by this component instance.
+   */
+  public getDialogElement(): HTMLDialogElement | null {
+    return this.dialog;
+  }
+
+  /**
    * Show the dialog as modal
    */
   public showModal(): void {
@@ -254,4 +261,3 @@ export class DialogComponent extends HTMLElement {
 if (!customElements.get('dialog-component')) {
   customElements.define('dialog-component', DialogComponent);
 }
-
