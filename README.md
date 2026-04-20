@@ -71,14 +71,14 @@ All interactive components (Follow, Like, Zap) require user authentication. Comp
 - **NIP-07 Browser Extensions** (Alby, nos2x, etc.)
 - **NIP-46 Remote Signers** (Bunkers)
 
-No host-page setup is required. Users can connect with an existing signer or through the floating `window.nostr.js` widget when prompted.
+No host-page setup is required. First-time users are guided through a lightweight onboarding dialog with a quick setup path and signer install links, while already-connected users go straight into the signer approval flow.
 
 ---
 
 ## 1. Nostr Zap
 
 A Zap button that sends sats to a Nostr user and can optionally scope those zaps to a specific URL for open-web attribution.
-When `url` is provided, the component uses a deterministic `["a", "39735:<pubkey>:<normalized_url>"]` tag so relays can apply URL-specific `#a` filtering when fetching zap receipts.
+When `url` is provided, the component uses a deterministic `["a", "39735:<pubkey>:<normalized_url>"]` tag so relays can apply URL-specific `#a` filtering when fetching zap receipts. First-time users are guided through a quick signer onboarding flow before the zap modal opens.
 What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)? 
 
 **Usage:**
@@ -108,7 +108,7 @@ What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)?
 
 ## 2. Nostr Follow
 
-A simple button that allows users to follow a Nostr profile.
+A simple button that allows users to follow a Nostr profile. If the user has not connected a signer yet, the first click opens a short onboarding flow and then continues with the follow action.
 
 **Usage:**
 
@@ -135,7 +135,7 @@ A simple button that allows users to follow a Nostr profile.
 ## 3. Nostr Like
 
 A like button that uses NIP-25 external content reactions to like or unlike any URL on the web and display the net reaction count.
-If `url` is omitted, the component automatically uses the current page URL.
+First-time users get a short onboarding flow before the like/unlike action continues. If `url` is omitted, the component automatically uses the current page URL.
 
 **Usage:**
 

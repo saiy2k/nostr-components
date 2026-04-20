@@ -10,7 +10,7 @@ import { getZapButtonStyles } from './style';
 import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
 import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
-import { ensureInitialized } from '../common/nostr-login-service';
+import { ensureSignerForAction } from '../common/auth-onboarding';
 
 /**
  * <nostr-zap-button>
@@ -139,8 +139,25 @@ export default class NostrZap extends NostrUserComponent {
     this.render();
 
     try {
-      // Ensure NostrLogin is initialized (sets up window.nostr)
-      await ensureInitialized();
+      const signerResult = await ensureSignerForAction({
+        action: 'zap',
+        theme: this.theme,
+      });
+
+      if (signerResult.status === 'dismissed') {
+        this.zapActionStatus.set(NCStatus.Ready);
+        this.render();
+        return;
+      }
+
+      if (!signerResult.publicKey) {
+        this.zapActionStatus.set(
+          NCStatus.Error,
+          signerResult.message || 'Connect a Nostr signer to send a zap.'
+        );
+        this.render();
+        return;
+      }
 
       if (!this.user) {
         this.zapActionStatus.set(NCStatus.Error, "Could not resolve user to zap.");

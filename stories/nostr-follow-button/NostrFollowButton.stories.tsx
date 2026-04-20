@@ -11,7 +11,8 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: 'A web component that displays a follow button for Nostr profiles. Supports npub, nip05, and pubkey inputs with theme customization.',
+        // Keep this copy aligned with README.md and stories/Introduction.mdx auth wording.
+        component: 'A web component that displays a follow button for Nostr profiles. Supports npub, nip05, and pubkey inputs with theme customization. First-time users see a short onboarding flow before the follow action continues through window.nostr.js.',
       },
       source: {
         transform: (code, storyContext) =>
