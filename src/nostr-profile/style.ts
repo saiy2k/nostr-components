@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { getComponentStyles } from "../common/base-styles";
+import { getComponentStyles } from '../common/base-styles';
 
 export function getProfileStyles(): string {
   const customStyles = `
@@ -124,6 +124,14 @@ export function getProfileStyles(): string {
       object-fit: cover;
     }
 
+    .avatar-placeholder {
+      inline-size: 100%;
+      block-size: 100%;
+      border-radius: var(--nostrc-border-radius-full);
+      background: var(--nostrc-color-border);
+      display: block;
+    }
+
     .profile_actions {
       height: 56px;
       align-self: flex-end;
@@ -210,7 +218,7 @@ export function getProfileStyles(): string {
     }
 
   `;
-  
+
   // Use component styles - includes design tokens + utilities + custom styles
   return getComponentStyles(customStyles);
 }

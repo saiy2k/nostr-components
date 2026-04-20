@@ -10,7 +10,10 @@ import {
 } from '../common/utils';
 import { renderPost, RenderPostOptions } from './render';
 import { parseText } from './parse-text';
-import { renderContent, replaceEmbeddedPostPlaceholders } from './render-content';
+import {
+  renderContent,
+  replaceEmbeddedPostPlaceholders,
+} from './render-content';
 import { NostrEventComponent } from '../base/event-component/nostr-event-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getPostStyles } from './style';
@@ -21,7 +24,6 @@ const EVT_AUTHOR = 'nc:author';
 const EVT_MENTION = 'nc:mention';
 
 export default class NostrPost extends NostrEventComponent {
-
   protected stats: Stats | null = null;
   protected statsLoading: boolean = false;
   protected statsError: string | null = null;
@@ -55,7 +57,7 @@ export default class NostrPost extends NostrEventComponent {
   attributeChangedCallback(
     name: string,
     oldValue: string | null,
-    newValue: string | null
+    newValue: string | null,
   ) {
     if (oldValue === newValue) return;
     super.attributeChangedCallback?.(name, oldValue, newValue);
@@ -260,16 +262,18 @@ export default class NostrPost extends NostrEventComponent {
   }
 
   private onAuthorClick() {
-    const key =
-      this.author?.npub ||
-      this.authorProfile?.nip05;
+    const key = this.author?.npub || this.authorProfile?.nip05;
 
     if (key) {
-      this.handleNjumpClick(EVT_AUTHOR, {
-        author: this.author,
-        authorProfile: this.authorProfile,
-        npub: this.author?.npub
-      }, key);
+      this.handleNjumpClick(
+        EVT_AUTHOR,
+        {
+          author: this.author,
+          authorProfile: this.authorProfile,
+          npub: this.author?.npub,
+        },
+        key,
+      );
     }
   }
 
@@ -310,7 +314,8 @@ export default class NostrPost extends NostrEventComponent {
     // Click on mentions
     this.delegateEvent('click', '.nostr-mention', (e: Event) => {
       const target = e.target as HTMLElement;
-      const username = target.getAttribute('data-username') || target.textContent?.slice(1);
+      const username =
+        target.getAttribute('data-username') || target.textContent?.slice(1);
       if (username) {
         this.onMentionClick(username);
       }
@@ -322,21 +327,25 @@ export default class NostrPost extends NostrEventComponent {
   }
 
   protected async renderContent() {
-
-    const isLoading     =   this.computeOverall() == NCStatus.Loading;
-    const isError       =   this.computeOverall() === NCStatus.Error;
-    const date          =   this.formattedDate;
+    const isLoading = this.computeOverall() == NCStatus.Loading;
+    const isError = this.computeOverall() === NCStatus.Error;
+    const date = this.formattedDate;
     const content = this.event?.content || '';
-    
+
     // Cache parsed content to avoid re-parsing on every render
     if (!this.cachedParsedContent || !this.cachedHtmlToRender) {
-      const parsedContent = await parseText(content, this.event, this.embeddedPosts, this.nostrService);
+      const parsedContent = await parseText(
+        content,
+        this.event,
+        this.embeddedPosts,
+        this.nostrService,
+      );
       this.cachedParsedContent = JSON.stringify(parsedContent);
       this.cachedHtmlToRender = renderContent(parsedContent);
     }
-    
-    const htmlToRender  = this.cachedHtmlToRender;
-    const errorMessage  = this.errorMessage;
+
+    const htmlToRender = this.cachedHtmlToRender;
+    const errorMessage = this.errorMessage;
 
     const shouldShowStats = this.shouldShowStats();
 
@@ -363,7 +372,7 @@ export default class NostrPost extends NostrEventComponent {
       ${renderPost(renderOptions)}
     `;
 
-    if(htmlToRender.includes('glide') && !this.glideInitialized) {
+    if (htmlToRender.includes('glide') && !this.glideInitialized) {
       // Wait for DOM to be ready
       setTimeout(() => {
         const glideElement = this.shadowRoot?.querySelector('.glide');
@@ -379,10 +388,9 @@ export default class NostrPost extends NostrEventComponent {
     if (htmlToRender.includes('embedded-post-placeholder')) {
       setTimeout(() => {
         replaceEmbeddedPostPlaceholders(
-          this.shadowRoot, 
-          this.embeddedPosts, 
-          this.event, 
-          this.nostrService
+          this.shadowRoot,
+          this.embeddedPosts,
+          this.nostrService,
         );
       }, 0);
     }

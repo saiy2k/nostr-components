@@ -28,7 +28,7 @@ export function renderLivestream(options: RenderLivestreamOptions): string {
     showParticipantCount,
     participantProfiles,
     participantsStatus,
-    autoPlay
+    autoPlay,
   } = options;
 
   // Handle error state
@@ -54,9 +54,8 @@ export function renderLivestream(options: RenderLivestreamOptions): string {
 
 function renderLivestreamHeader(
   author: NDKUserProfile | null,
-  parsedLivestream: ParsedLivestreamEvent
+  parsedLivestream: ParsedLivestreamEvent,
 ): string {
-
   const authorImage = author?.picture || author?.image || '';
   const safeAuthorImage = authorImage ? sanitizeUrl(authorImage) : '';
   const authorName = author?.displayName || author?.name || 'Unknown';
@@ -65,6 +64,7 @@ function renderLivestreamHeader(
   const status = parsedLivestream.status || 'planned';
   const statusBadgeClass = `livestream-status-badge livestream-status-${status}`;
   const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+  const safeAuthorImage = sanitizeHttpUrl(authorImage);
 
   return `
     <div class="livestream-header">
@@ -89,7 +89,7 @@ function renderLivestreamHeader(
 
 function renderLivestreamMedia(
   parsedLivestream: ParsedLivestreamEvent,
-  autoPlay: boolean
+  autoPlay: boolean,
 ): string {
   const status = parsedLivestream.status || 'planned';
   const streamingUrl = parsedLivestream.streamingUrl;
@@ -147,7 +147,7 @@ function renderVideoPlayer(url: string, autoPlay: boolean): string {
 }
 
 function renderPreviewImage(imageUrl?: string): string {
-  const safeImageUrl = imageUrl ? sanitizeUrl(imageUrl) : '';
+  const safeImageUrl = sanitizeUrl(imageUrl);
   if (safeImageUrl) {
     return `
       <div class="livestream-preview-image">
@@ -200,10 +200,13 @@ function formatParticipantCount(current?: number, total?: number): string {
   return `${total || 0}`;
 }
 
-function getParticipantDisplayName(participant: { pubkey: string }, profile: any): string {
+function getParticipantDisplayName(
+  participant: { pubkey: string },
+  profile: any,
+): string {
   if (profile?.displayName) return profile.displayName;
   if (profile?.name) return profile.name;
-  
+
   // Fallback to shortened npub format
   try {
     const npub = hexToNpub(participant.pubkey);
@@ -225,21 +228,25 @@ function sanitizeRoleForClass(role: string | undefined): string {
   return normalized.replace(/[^a-z0-9]+/g, '-');
 }
 
-function renderParticipantItem(participant: { pubkey: string; role?: string; proof?: string }, participantProfiles: Map<string, any>): string {
+function renderParticipantItem(
+  participant: { pubkey: string; role?: string; proof?: string },
+  participantProfiles: Map<string, any>,
+): string {
   const profile = participantProfiles.get(participant.pubkey);
   const displayName = getParticipantDisplayName(participant, profile);
   const image = profile?.picture || profile?.image || '';
-  const safeImage = image ? sanitizeUrl(image) : '';
   const role = participant.role || 'Participant';
   const safeRole = sanitizeRoleForClass(participant.role);
   const roleClass = `participant-role participant-role-${safeRole}`;
+  const safeImage = sanitizeUrl(image);
 
   return `
     <div class="participant-item">
       <div class="participant-avatar">
-        ${safeImage
-          ? `<img src="${safeImage}" alt="${escapeHtml(displayName)}" loading="lazy" />`
-          : '<div class="participant-avatar-placeholder"></div>'
+        ${
+          safeImage
+            ? `<img src="${safeImage}" alt="${escapeHtml(displayName)}" loading="lazy" />`
+            : '<div class="participant-avatar-placeholder"></div>'
         }
       </div>
       <div class="participant-info">
@@ -253,14 +260,15 @@ function renderParticipantItem(participant: { pubkey: string; role?: string; pro
 
 function renderLivestreamMetadata(
   parsedLivestream: ParsedLivestreamEvent,
-  showParticipantCount: boolean
+  showParticipantCount: boolean,
 ): string {
   const summary = parsedLivestream.summary;
   const hashtags = parsedLivestream.hashtags || [];
   // Use explicit undefined check to preserve 0 as a valid value
-  const currentParticipants = parsedLivestream.currentParticipants !== undefined 
-    ? parsedLivestream.currentParticipants 
-    : parsedLivestream.participants.length;
+  const currentParticipants =
+    parsedLivestream.currentParticipants !== undefined
+      ? parsedLivestream.currentParticipants
+      : parsedLivestream.participants.length;
   const totalParticipants = parsedLivestream.totalParticipants;
   const starts = parsedLivestream.starts;
   const ends = parsedLivestream.ends;
@@ -277,8 +285,14 @@ function renderLivestreamMetadata(
   }
 
   // Participant count
-  if (showParticipantCount && (currentParticipants !== undefined || totalParticipants !== undefined)) {
-    const countText = formatParticipantCount(currentParticipants, totalParticipants);
+  if (
+    showParticipantCount &&
+    (currentParticipants !== undefined || totalParticipants !== undefined)
+  ) {
+    const countText = formatParticipantCount(
+      currentParticipants,
+      totalParticipants,
+    );
     metadataHtml += `
       <div class="livestream-participant-count">
         <strong>Participants:</strong> ${countText}
@@ -302,7 +316,7 @@ function renderLivestreamMetadata(
   if (hashtags.length > 0) {
     metadataHtml += `
       <div class="livestream-hashtags">
-        ${hashtags.map(tag => `<span class="hashtag">#${escapeHtml(tag)}</span>`).join(' ')}
+        ${hashtags.map((tag) => `<span class="hashtag">#${escapeHtml(tag)}</span>`).join(' ')}
       </div>
     `;
   }
@@ -314,7 +328,7 @@ function renderLivestreamMetadata(
 function renderParticipants(
   parsedLivestream: ParsedLivestreamEvent,
   participantProfiles: Map<string, any>,
-  participantsStatus: NCStatus
+  participantsStatus: NCStatus,
 ): string {
   const participants = parsedLivestream.participants || [];
 
@@ -324,12 +338,15 @@ function renderParticipants(
       <div class="livestream-participants">
         <h3 class="participants-title">Participants</h3>
         <div class="participants-list">
-          ${Array.from({ length: 3 }, () => `
+          ${Array.from(
+            { length: 3 },
+            () => `
             <div class="participant-item">
               <div class="skeleton" style="width: 32px; height: 32px; border-radius: 50%;"></div>
               <div class="skeleton" style="width: 120px; height: 14px; border-radius: 4px; margin-left: 8px;"></div>
             </div>
-          `).join('')}
+          `,
+          ).join('')}
         </div>
       </div>
     `;
@@ -349,7 +366,7 @@ function renderParticipants(
     <div class="livestream-participants">
       <h3 class="participants-title">Participants (${participants.length})</h3>
       <div class="participants-list">
-        ${participants.map(participant => renderParticipantItem(participant, participantProfiles)).join('')}
+        ${participants.map((participant) => renderParticipantItem(participant, participantProfiles)).join('')}
       </div>
     </div>
   `;

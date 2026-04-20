@@ -7,7 +7,7 @@ import { renderNip05 } from '../base/text-row/render-nip05';
 import { renderStats } from './render-stats';
 import { renderName } from '../base/text-row/render-name';
 import { renderTextRow } from '../base/text-row/render-text-row';
-import { escapeHtml, isValidUrl, sanitizeUrl } from '../common/utils';
+import { escapeHtml, sanitizeUrl } from '../common/utils';
 
 export interface Stats {
   notes: number;
@@ -53,12 +53,12 @@ export function renderProfile(options: RenderProfileOptions): string {
   // Extract profile data with null checks and default values
   const displayName = userProfile?.displayName || userProfile?.name || '';
   const nip05 = userProfile?.nip05 || '';
-  const image = userProfile?.picture || '';
   const about = userProfile?.about || '';
   const website = userProfile?.website || '';
-  const sanitizedBanner = userProfile?.banner ? sanitizeUrl(userProfile.banner) : '';
-  const sanitizedImage = image ? sanitizeUrl(image) : '';
-  const sanitizedWebsite = website && isValidUrl(website) ? sanitizeUrl(website) : '';
+  const sanitizedBanner = sanitizeUrl(userProfile?.banner || '');
+  const sanitizedImage = sanitizeUrl(userProfile?.picture || '');
+  const sanitizedWebsite = sanitizeUrl(website);
+  const safeDisplayName = escapeHtml(displayName);
 
   const renderFollowButton = () => {
     if (!showFollow || npub === '') return '';
@@ -72,76 +72,86 @@ export function renderProfile(options: RenderProfileOptions): string {
   return `
     <div class="nostr-profile-container">
       <div class="profile-banner">
-        ${isLoading
-          ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
-          : sanitizedBanner
-            ? `<img src="${sanitizedBanner}" width="524px"/>`
-            : '<div class="banner-placeholder"></div>'
+        ${
+          isLoading
+            ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
+            : sanitizedBanner
+              ? `<img src="${sanitizedBanner}" width="524px" alt="Profile banner" loading="lazy" />`
+              : '<div class="banner-placeholder"></div>'
         }
 
         <div class="dp-container">
-          <div class="avatar" role="img" aria-label="${escapeHtml(displayName)}">
-            ${isLoading
-              ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
-              : `<img
+          <div class="avatar" role="img" aria-label="${safeDisplayName}">
+            ${
+              isLoading
+                ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
+                : sanitizedImage
+                  ? `<img
                   src="${sanitizedImage}"
-                  alt="${escapeHtml(displayName)}"
+                  alt="${safeDisplayName}"
                   width="142" height="142"
                   loading="lazy" decoding="async"
-                  onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 142 142%22%3E%3Crect width=%22142%22 height=%22142%22 fill=%22%23ccc%22/%3E%3C/svg%3E'"
                 />`
+                  : '<div class="avatar-placeholder"></div>'
             }
           </div>
         </div>
       </div>
 
       <div class="profile_actions">
-        ${showFollow ?
-          isLoading? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
-            : renderFollowButton()
-          : ''
+        ${
+          showFollow
+            ? isLoading
+              ? '<div style="width: 100px; height: 36px; border-radius: 18px;" class="skeleton"></div>'
+              : renderFollowButton()
+            : ''
         }
       </div>
         
       <div class="profile_data">
-        ${isLoading
-          ? '<div style="width: 100px; height: 24px;" class="skeleton"></div>'
-          : renderName({ name: displayName })
+        ${
+          isLoading
+            ? '<div style="width: 100px; height: 24px;" class="skeleton"></div>'
+            : renderName({ name: displayName })
         }
           
-        ${isLoading
-          ? '<div style="width: 75px; height: 20px;" class="skeleton"></div>'
-          : renderNip05(nip05)
-        }
-
-        ${showNpub ?
+        ${
           isLoading
             ? '<div style="width: 75px; height: 20px;" class="skeleton"></div>'
-            : renderNpub(npub)
-          : ''
+            : renderNip05(nip05)
         }
 
-        <div class="margin-bottom-md"> </div>
-        
-        ${isLoading
-          ? `<div style="width: 100%; margin-bottom: 12px; height: 18px" class="skeleton"></div>`
-          : renderTextRow({ display: about, value: about })
-        }
-
-        <div class="margin-bottom-md"> </div>
-        
-        ${isLoading
-          ? '<div style="width: 150px" class="skeleton"></div>'
-          : sanitizedWebsite
-            ? `<div class="website">
-              <a target="_blank" href="${sanitizedWebsite}">${escapeHtml(website)}</a>
-              </div>`
+        ${
+          showNpub
+            ? isLoading
+              ? '<div style="width: 75px; height: 20px;" class="skeleton"></div>'
+              : renderNpub(npub)
             : ''
+        }
+
+        <div class="margin-bottom-md"> </div>
+        
+        ${
+          isLoading
+            ? `<div style="width: 100%; margin-bottom: 12px; height: 18px" class="skeleton"></div>`
+            : renderTextRow({ display: about, value: about })
+        }
+
+        <div class="margin-bottom-md"> </div>
+        
+        ${
+          isLoading
+            ? '<div style="width: 150px" class="skeleton"></div>'
+            : sanitizedWebsite
+              ? `<div class="website">
+              <a target="_blank" rel="noopener noreferrer" href="${sanitizedWebsite}">${escapeHtml(website)}</a>
+              </div>`
+              : ''
         }
       
         <div class="stats">
 
-          ${renderStats('Following', stats.follows, isStatsFollowsLoading)}
+          ${renderStats('Following', stats.follows, isStatsFollowersLoading)}
           
           ${renderStats('Followers', stats.followers, isStatsFollowersLoading)}
 

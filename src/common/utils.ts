@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import NDK, { NDKKind, NDKEvent } from '@nostr-dev-kit/ndk';
-import { nip19 } from "nostr-tools";
-
+import { nip19 } from 'nostr-tools';
 
 import { Theme } from './types';
 import { DEFAULT_RELAYS, MILLISATS_PER_SAT } from './constants';
@@ -20,7 +19,7 @@ export const decodeNpub = (npub: string): string => {
   } catch (error) {
     console.error('Failed to decode npub:', error);
   }
-  
+
   return '';
 };
 
@@ -39,7 +38,10 @@ export function hexToNpub(hex: string): string {
 
 // Could be npub, note1, naddr, nsec, etc.,
 export const decodeNip19Entity = (entity: string): any => {
-  if (typeof entity !== 'string' || !/^[a-z0-9]+1[ac-hj-np-z02-9]+/.test(entity)) {
+  if (
+    typeof entity !== 'string' ||
+    !/^[a-z0-9]+1[ac-hj-np-z02-9]+/.test(entity)
+  ) {
     return null;
   }
 
@@ -124,7 +126,7 @@ export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
   });
 
   const isDirectRepost = (repost: NDKEvent): boolean => {
-    const pTagCounts = repost.tags.filter(tag => tag[0] === 'p').length;
+    const pTagCounts = repost.tags.filter((tag) => tag[0] === 'p').length;
     return pTagCounts === 1;
   };
 
@@ -192,7 +194,7 @@ export function parseRelays(relaysAttr: string | null): string[] {
   if (relaysAttr) {
     const list = relaysAttr
       .split(',')
-      .map(r => r.trim())
+      .map((r) => r.trim())
       .filter(Boolean)
       .filter(isValidRelayUrl);
     // fall back to defaults if user provided no valid entries
@@ -202,7 +204,6 @@ export function parseRelays(relaysAttr: string | null): string[] {
 }
 
 export function parseTheme(themeAttr: string | null): Theme {
-
   const theme = themeAttr?.trim().toLowerCase();
 
   if (theme === 'light' || theme === 'dark') {
@@ -297,7 +298,10 @@ export function validateNip05(nip05: string): boolean {
   return nip05Regex.test(nip05);
 }
 
-function validateBech32OfType(input: string, expected: 'note' | 'nevent'): boolean {
+function validateBech32OfType(
+  input: string,
+  expected: 'note' | 'nevent',
+): boolean {
   try {
     const { type } = nip19.decode(input);
     return type === expected;
@@ -315,7 +319,7 @@ export function validateEventId(eventId: string): boolean {
 }
 
 export function copyToClipboard(text: string): Promise<void> {
-  return navigator.clipboard.writeText(text)
+  return navigator.clipboard.writeText(text);
 }
 
 /**
@@ -325,8 +329,12 @@ export function copyToClipboard(text: string): Promise<void> {
  * @param index Index of the tag occurrence (0 for first)
  * @returns The tag value or undefined if not found
  */
-export function getTagValue(tags: string[][], tagName: string, index: number = 0): string | undefined {
-  const matchingTags = tags.filter(tag => tag[0] === tagName);
+export function getTagValue(
+  tags: string[][],
+  tagName: string,
+  index: number = 0,
+): string | undefined {
+  const matchingTags = tags.filter((tag) => tag[0] === tagName);
   if (matchingTags.length > index && matchingTags[index].length > 1) {
     return matchingTags[index][1];
   }
@@ -341,8 +349,8 @@ export function getTagValue(tags: string[][], tagName: string, index: number = 0
  */
 export function getTagValues(tags: string[][], tagName: string): string[] {
   return tags
-    .filter(tag => tag[0] === tagName)
-    .map(tag => tag.slice(1)) // Get all values after tag name
+    .filter((tag) => tag[0] === tagName)
+    .map((tag) => tag.slice(1)) // Get all values after tag name
     .flat();
 }
 
@@ -399,13 +407,15 @@ export function formatRelativeTime(ts: number): string {
     }
 
     // Days
-    if (diffSec < 2592000) { // ~30 days
+    if (diffSec < 2592000) {
+      // ~30 days
       const days = Math.floor(diffSec / 86400);
       return `${days} ${days === 1 ? 'day' : 'days'} ago`;
     }
 
     // Months
-    if (diffSec < 31536000) { // ~365 days
+    if (diffSec < 31536000) {
+      // ~365 days
       const months = Math.floor(diffSec / 2592000);
       return `${months} ${months === 1 ? 'month' : 'months'} ago`;
     }
