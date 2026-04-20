@@ -17,6 +17,13 @@ import {
 } from './like-utils';
 import { ensureSignerForAction } from '../common/auth-onboarding';
 import { normalizeURL } from 'nostr-tools/utils';
+import {
+  applyOptimisticLike,
+  applyOptimisticUnlike,
+  clampLikeCount,
+  rollbackOptimisticLikeState,
+  type LikeUiState,
+} from './optimistic-state';
 
 /**
  * <nostr-like-button>
@@ -39,6 +46,8 @@ export default class NostrLike extends NostrBaseComponent {
   private likeCount: number   = 0;
   private cachedLikeDetails: LikeCountResult | null = null;
   private loadSeq = 0;
+  private isResyncingLikeCount = false;
+  private needsResyncLikeCount = false;
 
   constructor() {
     super();
@@ -142,7 +151,7 @@ export default class NostrLike extends NostrBaseComponent {
      
       const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
       if (seq !== this.loadSeq) return; // stale
-      this.likeCount = result.totalCount;
+      this.likeCount = clampLikeCount(result.totalCount);
       this.cachedLikeDetails = result;
       this.likeListStatus.set(NCStatus.Ready);
     } catch (error) {
@@ -151,6 +160,47 @@ export default class NostrLike extends NostrBaseComponent {
     } finally {
       this.render();
     }
+  }
+
+  private queueAuthoritativeCountResync(): void {
+    this.needsResyncLikeCount = true;
+    if (this.isResyncingLikeCount) return;
+
+    this.isResyncingLikeCount = true;
+    void (async () => {
+      try {
+        while (this.needsResyncLikeCount) {
+          this.needsResyncLikeCount = false;
+          await this.updateLikeCount();
+        }
+      } finally {
+        this.isResyncingLikeCount = false;
+      }
+    })();
+  }
+
+  private handleLikeMutationFailure(
+    error: unknown,
+    snapshot: LikeUiState,
+    didApplyOptimisticUpdate: boolean,
+    fallbackMessage: string
+  ): void {
+    const restoredState = rollbackOptimisticLikeState({
+      current: {
+        isLiked: this.isLiked,
+        likeCount: this.likeCount,
+      },
+      snapshot,
+      didApplyOptimisticUpdate,
+    });
+
+    this.isLiked = restoredState.isLiked;
+    this.likeCount = restoredState.likeCount;
+
+    const errorMessage = error instanceof Error ? error.message : fallbackMessage;
+    this.likeActionStatus.set(NCStatus.Error, errorMessage);
+
+    this.queueAuthoritativeCountResync();
   }
 
   private async handleLikeClick() {
@@ -230,33 +280,44 @@ export default class NostrLike extends NostrBaseComponent {
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
 
+    let rollbackSnapshot: LikeUiState = {
+      isLiked: this.isLiked,
+      likeCount: this.likeCount,
+    };
+    let didApplyOptimisticUpdate = false;
+
     try {
       // Create like event
       const event = createLikeEvent(this.currentUrl);
       
       // Sign with NIP-07
       const signedEvent = await signEvent(event);
+
+      rollbackSnapshot = {
+        isLiked: this.isLiked,
+        likeCount: this.likeCount,
+      };
+      const optimisticState = applyOptimisticLike(rollbackSnapshot);
+      this.isLiked = optimisticState.isLiked;
+      this.likeCount = optimisticState.likeCount;
+      didApplyOptimisticUpdate = true;
       
       // Create NDKEvent and publish
       const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
       await ndkEvent.publish();
-      
-      // Update state optimistically
-      this.isLiked = true;
-      this.likeCount++;
       this.likeActionStatus.set(NCStatus.Ready);
       
       // Refresh like count to get accurate data
       await this.updateLikeCount();
     } catch (error) {
       console.error('[NostrLike] Failed to like:', error);
-      
-      // Rollback optimistic update
-      this.isLiked = false;
-      this.likeCount--;
-      
-      const errorMessage = error instanceof Error ? error.message : 'Failed to like';
-      this.likeActionStatus.set(NCStatus.Error, errorMessage);
+
+      this.handleLikeMutationFailure(
+        error,
+        rollbackSnapshot,
+        didApplyOptimisticUpdate,
+        'Failed to like'
+      );
     } finally {
       this.render();
     }
@@ -274,6 +335,12 @@ export default class NostrLike extends NostrBaseComponent {
 
     this.likeActionStatus.set(NCStatus.Loading);
     this.render();
+
+    let rollbackSnapshot: LikeUiState = {
+      isLiked: this.isLiked,
+      likeCount: this.likeCount,
+    };
+    let didApplyOptimisticUpdate = false;
     
     try {
       // Create unlike event
@@ -281,29 +348,32 @@ export default class NostrLike extends NostrBaseComponent {
       
       // Sign with NIP-07
       const signedEvent = await signEvent(event);
+
+      rollbackSnapshot = {
+        isLiked: this.isLiked,
+        likeCount: this.likeCount,
+      };
+      const optimisticState = applyOptimisticUnlike(rollbackSnapshot);
+      this.isLiked = optimisticState.isLiked;
+      this.likeCount = optimisticState.likeCount;
+      didApplyOptimisticUpdate = true;
       
       // Create NDKEvent and publish
       const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
       await ndkEvent.publish();
-      
-      // Update state optimistically
-      this.isLiked = false;
-      if (this.likeCount > 0) {
-        this.likeCount--;
-      }
       this.likeActionStatus.set(NCStatus.Ready);
       
       // Refresh like count to get accurate data
       await this.updateLikeCount();
     } catch (error) {
       console.error('[NostrLike] Failed to unlike:', error);
-      
-      // Rollback optimistic update
-      this.isLiked = true;
-      this.likeCount++;
-      
-      const errorMessage = error instanceof Error ? error.message : 'Failed to unlike';
-      this.likeActionStatus.set(NCStatus.Error, errorMessage);
+
+      this.handleLikeMutationFailure(
+        error,
+        rollbackSnapshot,
+        didApplyOptimisticUpdate,
+        'Failed to unlike'
+      );
     } finally {
       this.render();
     }
