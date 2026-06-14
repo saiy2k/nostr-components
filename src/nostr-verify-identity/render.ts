@@ -16,6 +16,8 @@ export interface RenderVerifyOptions extends IRenderOptions {
   proofText: string;
   /** "post a tweet" intent URL, prefilled. */
   intentUrl: string;
+  /** Draft proof tweet URL/status id while the user is retrying verification. */
+  proofUrl?: string;
   /** Verified handle + tweet id, shown on the success screen. */
   verifiedHandle?: string;
   proofTweetId?: string;
@@ -83,9 +85,10 @@ function proofStep(o: RenderVerifyOptions): string {
         </div>
       </li>
       <li>
-        <span class="nc-verify-step-label">2. Paste the link to your proof post</span>
-        <input class="nc-verify-input" type="text" name="proof-url"
+        <label class="nc-verify-step-label" for="nc-proof-url">2. Paste the link to your proof post</label>
+        <input id="nc-proof-url" class="nc-verify-input" type="text" name="proof-url"
           placeholder="https://x.com/${escapeHtml(o.handle || 'yourhandle')}/status/…"
+          value="${escapeHtml(o.proofUrl || '')}"
           ${o.isLoading ? 'disabled' : ''} />
         <span class="nc-verify-hint">A tweet URL or the numeric status id both work.</span>
       </li>

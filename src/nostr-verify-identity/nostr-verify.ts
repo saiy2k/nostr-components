@@ -45,6 +45,7 @@ export default class NostrVerifyIdentity extends NostrBaseComponent {
   private npub = '';
   private verifiedHandle = '';
   private proofTweetId = '';
+  private proofUrlDraft = '';
   private publishedKinds: number[] = [];
 
   constructor() {
@@ -116,6 +117,7 @@ export default class NostrVerifyIdentity extends NostrBaseComponent {
     // Capture the input value BEFORE re-rendering (innerHTML rewrite clears it).
     const input = this.shadowRoot?.querySelector<HTMLInputElement>('input[name="proof-url"]');
     const raw = input?.value || '';
+    this.proofUrlDraft = raw;
     const tweetId = extractTweetId(raw);
 
     if (!tweetId) {
@@ -140,6 +142,7 @@ export default class NostrVerifyIdentity extends NostrBaseComponent {
 
       this.verifiedHandle = result.oembed.handle;
       this.proofTweetId = tweetId;
+      this.proofUrlDraft = raw;
 
       await this.ensureNostrConnected();
       const tag = buildIdentityTag(this.platform, this.verifiedHandle, tweetId);
@@ -180,6 +183,7 @@ export default class NostrVerifyIdentity extends NostrBaseComponent {
     this.step = 'proof';
     this.verifiedHandle = '';
     this.proofTweetId = '';
+    this.proofUrlDraft = '';
     this.publishedKinds = [];
     this.errorMessage = '';
     this.verifyStatus.set(NCStatus.Ready);
@@ -203,6 +207,9 @@ export default class NostrVerifyIdentity extends NostrBaseComponent {
       e.preventDefault?.();
       this.handleReset();
     });
+    this.delegateEvent('input', 'input[name="proof-url"]', (e) => {
+      this.proofUrlDraft = (e.target as HTMLInputElement)?.value || '';
+    });
   }
 
   protected renderContent() {
@@ -219,6 +226,7 @@ export default class NostrVerifyIdentity extends NostrBaseComponent {
       npub: this.npub,
       proofText: buildProofText(this.npub),
       intentUrl: buildTweetIntentUrl(this.npub),
+      proofUrl: this.proofUrlDraft,
       verifiedHandle: this.verifiedHandle,
       proofTweetId: this.proofTweetId,
       publishedKinds: this.publishedKinds,

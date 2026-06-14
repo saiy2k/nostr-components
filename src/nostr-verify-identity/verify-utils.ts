@@ -4,6 +4,9 @@ import { NDKEvent, NDKKind } from '@nostr-dev-kit/ndk';
 import type NDK from '@nostr-dev-kit/ndk';
 import { ensureInitialized, getPublicKey, signEvent } from '../common/nostr-login-service';
 
+const REPLACEABLE_FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMED_OUT = Symbol('fetch-timed-out');
+
 /**
  * Helper utilities for NIP-39 ("Linking Profiles to Other Platforms") identity
  * verification. Kept self-contained so the `<nostr-verify-identity>` Web
@@ -152,6 +155,13 @@ export async function verifyTwitterProof(
   if (!oembed) {
     return { ok: false, reason: 'Could not load that tweet (deleted, private, or network error).' };
   }
+  if (!oembed.handle) {
+    return {
+      ok: false,
+      reason: 'Could not determine the tweet author handle from oEmbed.',
+      oembed,
+    };
+  }
   if (handle && oembed.handle.toLowerCase() !== handle.toLowerCase()) {
     return {
       ok: false,
@@ -208,11 +218,8 @@ export function mergeIdentityTag(
  * replaceable — building it from scratch would wipe the user's
  * name/about/picture/lud16.)
  *
- * Caveat: if `fetchEvent` returns null due to a relay timeout (rather than a
- * genuinely-absent event), the kind:10011 republish could drop other-platform
- * identities. This is the inherent replaceable-event race and matches standard
- * NIP-39 client behavior; a production build should confirm absence across
- * multiple relays before republishing kind:10011.
+ * If the current kind:10011 state cannot be read with confidence, publishing is
+ * aborted rather than risking an empty merge that drops other identity tags.
  *
  * @returns the kinds actually published to.
  */
@@ -228,7 +235,10 @@ export async function publishIdentity(
 
   // --- kind:10011 (canonical) ---
   // 10011 isn't a named NDKKind member, so cast the literal to the enum type.
-  const existing10011 = await ndk.fetchEvent({ kinds: [10011 as NDKKind], authors: [pubkey] });
+  const existing10011 = await fetchReplaceableEvent(ndk, { kinds: [10011 as NDKKind], authors: [pubkey] });
+  if (existing10011 === FETCH_TIMED_OUT) {
+    throw new Error('Could not load your existing identity event. Try again before publishing.');
+  }
   await signAndPublish(ndk, {
     kind: 10011,
     pubkey,
@@ -239,8 +249,8 @@ export async function publishIdentity(
 
   // --- kind:0 mirror (only if a profile already exists; never create a blank one) ---
   if (mirrorToKind0) {
-    const existing0 = await ndk.fetchEvent({ kinds: [NDKKind.Metadata], authors: [pubkey] });
-    if (existing0) {
+    const existing0 = await fetchReplaceableEvent(ndk, { kinds: [NDKKind.Metadata], authors: [pubkey] });
+    if (existing0 !== FETCH_TIMED_OUT && existing0) {
       await signAndPublish(ndk, {
         kind: 0,
         pubkey,
@@ -252,6 +262,22 @@ export async function publishIdentity(
   }
 
   return { published };
+}
+
+async function fetchReplaceableEvent(
+  ndk: NDK,
+  filter: { kinds: NDKKind[]; authors: string[] }
+): Promise<NDKEvent | null | typeof FETCH_TIMED_OUT> {
+  try {
+    return await Promise.race([
+      ndk.fetchEvent(filter),
+      new Promise<typeof FETCH_TIMED_OUT>((resolve) => {
+        setTimeout(() => resolve(FETCH_TIMED_OUT), REPLACEABLE_FETCH_TIMEOUT_MS);
+      }),
+    ]);
+  } catch {
+    return FETCH_TIMED_OUT;
+  }
 }
 
 /** Internal: sign an unsigned event with window.nostr and publish via NDK. */
