@@ -33,6 +33,7 @@ export default defineConfig({
         // 'nostr-live-chat': resolve(__dirname, 'src/nostr-live-chat/nostr-live-chat.ts'), // Temporarily disabled due to asset resolution issues
         'nostr-like-button': resolve(__dirname, 'src/nostr-like-button/nostr-like.ts'),
         'nostr-livestream': resolve(__dirname, 'src/nostr-livestream/nostr-livestream.ts'),
+        'nostr-verify-identity': resolve(__dirname, 'src/nostr-verify-identity/nostr-verify.ts'),
       },
       external: [],
       preserveEntrySignatures: 'exports-only',
