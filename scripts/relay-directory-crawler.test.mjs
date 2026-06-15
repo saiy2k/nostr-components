@@ -76,7 +76,9 @@ describe('extractDirectoryInputs', () => {
         source: 'kind0.about',
       }),
     ]);
-    expect(metadataByPubkey.get(PUBKEY).lud16).toBe('alice@getalby.com');
+    const metadata = metadataByPubkey.get(PUBKEY);
+    expect(metadata).toBeDefined();
+    expect(metadata?.lud16).toBe('alice@getalby.com');
   });
 });
 

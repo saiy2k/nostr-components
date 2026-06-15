@@ -75,6 +75,8 @@ function printHelp() {
 
 Build a verified X/Twitter -> Nostr directory from relay data.
 
+Requires Node.js 22+ for the native WebSocket client used to query relays.
+
 Options:
   --relays <csv>             Relays to query. Default: ${DEFAULT_RELAYS.join(',')}
   --out <file>               JSON output path. Default: ${DEFAULT_OUT}
@@ -287,7 +289,10 @@ function sortClaim(a, b) {
 
 function syndicationToken(tweetId) {
   try {
-    return ((Number(tweetId) / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, '') || 'a';
+    const id = BigInt(tweetId);
+    const divisor = 1000000000000000n;
+    const scaled = Number(id / divisor) + Number(id % divisor) / Number(divisor);
+    return (scaled * Math.PI).toString(36).replace(/(0+|\.)/g, '') || 'a';
   } catch {
     return 'a';
   }
