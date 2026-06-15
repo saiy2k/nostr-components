@@ -104,7 +104,6 @@
     "build:themes": "node scripts/build-themes.js",
     "build:assets": "node scripts/copy-assets.js",
     "build": "npm run build:esm && npm run build:umd && npm run build:themes && npm run build:assets",
-    "crawl:directory": "node scripts/relay-directory-crawler.mjs",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes",
