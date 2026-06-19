@@ -56,4 +56,6 @@ gcloud scheduler jobs update http "${SCHEDULE_NAME}" \
   --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
   --attempt-deadline 1800s
 
-gcloud run jobs execute "${JOB_NAME}" --region "${REGION}"
+if [ "${RUN_AFTER_DEPLOY:-false}" = "true" ]; then
+  gcloud run jobs execute "${JOB_NAME}" --region "${REGION}"
+fi

@@ -26,6 +26,7 @@ import {
   lightningAddressToLnurlp,
   liveStateId,
   normalizeTwitterHandle,
+  parseArgs,
   percentile,
   projectionStatusForRawEvent,
   queueDocIsClaimable,
@@ -47,6 +48,18 @@ describe('normalizeTwitterHandle', () => {
     expect(normalizeTwitterHandle('this-has-dashes')).toBeNull();
     expect(normalizeTwitterHandle('waytoolongtwitterhandle')).toBeNull();
     expect(normalizeTwitterHandle('https://x.com/i/communities/1747149501561778581')).toBeNull();
+  });
+});
+
+describe('parseArgs', () => {
+  it('rejects missing values for value-taking flags', () => {
+    expect(() => parseArgs(['--relays'])).toThrow('--relays requires a value.');
+  });
+
+  it('rejects another option where a value is required', () => {
+    expect(() => parseArgs(['--firestore-project', 'gr-prod', '--relays', '--out'])).toThrow(
+      '--relays requires a value.'
+    );
   });
 });
 
@@ -115,7 +128,7 @@ describe('lightningAddressToLnurlp', () => {
 });
 
 describe('computeWotScores', () => {
-  it('adds ranking signals without changing identity status or auto-zap policy', () => {
+  it('preserves identity status and auto-zap policy when ranking inputs are not valid signed events', () => {
     const claimed = {
       handle: 'alice',
       pubkey: PUBKEY,
@@ -137,6 +150,7 @@ describe('computeWotScores', () => {
 
     expect(scored[0].identityStatus).toBe('claimed');
     expect(scored[0].autoZapAllowed).toBe(false);
+    expect(scored[0].wot.followerGraphMentions).toBe(0);
     expect(scored[0].wot.note).toContain('not identity proof');
   });
 });
@@ -804,6 +818,89 @@ describe('projection helpers', () => {
       });
       expect(write.data.nextAttemptAt).toBeInstanceOf(Date);
     }
+  });
+
+  it('keeps non-rate-limited transient proof failures scoped to their source event', () => {
+    const writes = buildProjectionQueueWrites(
+      [
+        { id: 'retry-doc', data: { id: 'retry-event' } },
+        { id: 'ignored-doc', data: { id: 'ignored-event' } },
+      ],
+      {
+        strategy: {},
+        directory: [],
+        rejected: [],
+        retryLater: [
+          {
+            sourceEventId: 'retry-event',
+            retryReason: 'timeout',
+          },
+        ],
+      },
+      {
+        firestoreQueueCollection: 'queue',
+        projectionExternalRetryMs: 60000,
+      }
+    );
+
+    expect(writes).toHaveLength(2);
+    expect(writes[0]).toMatchObject({
+      collection: 'queue',
+      id: 'retry-event',
+      data: expect.objectContaining({
+        status: 'retry_later',
+        reason: 'timeout',
+        processingStatus: 'retry_later',
+        identityStatus: 'unknown',
+      }),
+    });
+    expect(writes[0].data.nextAttemptAt).toBeInstanceOf(Date);
+    expect(writes[1]).toMatchObject({
+      collection: 'queue',
+      id: 'ignored-event',
+      data: expect.objectContaining({
+        status: 'ignored',
+        reason: 'no_identity_signal',
+        processingStatus: 'ignored',
+        identityStatus: 'none',
+      }),
+    });
+  });
+
+  it('keeps proof-limit overflow candidates retryable instead of ignored', () => {
+    const writes = buildProjectionQueueWrites(
+      [
+        { id: 'overflow-doc', data: { id: 'overflow-event' } },
+      ],
+      {
+        strategy: {},
+        directory: [],
+        rejected: [],
+        retryLater: [
+          {
+            sourceEventId: 'overflow-event',
+            retryReason: 'max_proof_limit_reached',
+          },
+        ],
+      },
+      {
+        firestoreQueueCollection: 'queue',
+        projectionExternalRetryMs: 60000,
+      }
+    );
+
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({
+      collection: 'queue',
+      id: 'overflow-event',
+      data: expect.objectContaining({
+        status: 'retry_later',
+        reason: 'max_proof_limit_reached',
+        processingStatus: 'retry_later',
+        identityStatus: 'unknown',
+      }),
+    });
+    expect(writes[0].data.nextAttemptAt).toBeInstanceOf(Date);
   });
 
   it('marks missing raw queue docs as failed', () => {

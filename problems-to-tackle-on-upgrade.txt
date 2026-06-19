@@ -1,0 +1,287 @@
+i think nextuntil = oldest,  is best option, with de-dupe wvnt, and detect stuck page, ,,, but again i see a problem, when we do nextuntil = oldest with 100 limit, but actual are 500 at that time, and on every nextuntil = oldest, we get same 100?, what we do for that, and also how we detect stuck page and how we resolve it
+
+
+/// learn 
+
+1. how zap works
+
+
+/// staged rollout for relay directory system
+
+Stage 0 - Local proof
+- Goal: prove crawler logic and Firestore write shapes locally.
+- Runtime: local CLI.
+- Done when:
+  - unit tests pass
+  - smoke collections receive test docs
+  - raw event shape is Firestore-safe
+
+Stage 1 - Historical backfill seed
+- Goal: seed old valid signed Nostr identity/profile events.
+- Runtime: Cloud Run Job.
+- Reads: public Nostr relays.
+- Writes:
+  - nostrIdentityEvents
+  - relayCrawlerState
+  - relayCrawlerGaps
+- Key risks:
+  - relay timeout
+  - same-timestamp pagination gaps
+  - duplicate events across relays
+
+Stage 2 - Projection worker
+- Goal: turn raw events into clean directory records.
+- Runtime: scheduled Cloud Run Job first.
+- Reads:
+  - nostrIdentityEvents
+- Writes:
+  - nostrDirectoryEntries
+  - nostrDirectoryHandles
+  - processing/identity status fields on raw events
+- Later upgrade:
+  - process queue.status pending/retry_later docs in batches
+  - add locks
+  - add concurrency
+  - add candidate records per handle/pubkey
+
+Stage 3 - Browser/API lookup
+- Goal: serve fast answers to the extension.
+- Runtime: Cloud Run Service or direct secure API layer.
+- Reads:
+  - nostrDirectoryHandles
+- Must not query relays in user path.
+
+Stage 4 - Live relay listener
+- Goal: ingest new events after backfill.
+- Runtime: Cloud Run Worker Pool or long-running Cloud Run service with min instances.
+- Reads: public Nostr relays over wss.
+- Writes:
+  - nostrIdentityEvents with pending queue state when not already terminal
+- Key risks:
+  - reconnect handling
+  - relay outages
+  - duplicate events
+
+Stage 5 - Queue/concurrency hardening
+- Goal: keep projection queue draining at scale.
+- Runtime: Cloud Run Job or worker service.
+- Design:
+  - query queue.status pending/retry_later events
+  - claim docs with processing.status = processing
+  - process with bounded concurrency
+  - retry temporary failures with nextRetryAt
+  - release expired locks
+
+Stage 6 - Retention and cleanup
+- Goal: control Firestore size/cost while keeping useful evidence.
+- Keep longer:
+  - verified kind:10011 proof events
+  - current useful kind:0 metadata
+  - conflict evidence
+  - gap records
+- Delete/archive later:
+  - ignored no-identity events after retention window
+  - old superseded kind:0 raw events
+  - permanent rejected low-value records after audit window
+
+Stage 7 - Event-driven wakeup optimization
+- Goal: reduce projection delay without creating trigger storms.
+- Avoid:
+  - one Firestore trigger per raw event
+- Prefer:
+  - wakeup doc
+  - Pub/Sub
+  - Cloud Tasks
+  - scheduled worker as fallback
+
+
+/// monitoring strategy
+
+First implementation
+- Write one summary document per job run.
+- Also log the same summary as structured JSON.
+- Do not write one metric document per event.
+
+Run summary collections
+- relayBackfillRuns: historical backfill run summaries
+- relayProjectionRuns: Firestore projection run summaries
+- relayLiveListenerRuns: live listener run/heartbeat summaries
+
+Run summary fields
+- runId
+- component
+- startedAt
+- finishedAt
+- durationMs
+- memoryRssMb
+- avgProcessingMs
+- p95ProcessingMs
+- counters
+- stats
+- firestore
+- relays
+
+Backfill metrics
+- pagesProcessed
+- relayEventsSeen
+- validEventsSeen
+- invalidEventsDropped
+- eventsWritten
+- cursorUntil
+- oldestSeenAt
+- gapsWritten
+- timeouts
+- relayErrors
+- durationMs
+
+Live listener metrics
+- connectedRelays
+- reconnectCount
+- eventsReceivedPerMinute
+- validEventsWrittenPerMinute
+- duplicateEvents
+- invalidEvents
+- lastEventAt
+- relayDisconnects
+
+Projection metrics
+- pendingCount
+- retryLaterCount
+- processingCount
+- processedCount
+- ignoredCount
+- verifiedCount
+- rejectedCount
+- claimedCount
+- conflictedCount
+- avgProcessingMs
+- p95ProcessingMs
+- externalFetchFailures
+- xProofTimeouts
+- lnurlFailures
+- queueDrainRate
+
+Firestore/cost metrics
+- documentReads
+- documentWrites
+- documentDeletes
+- storageBytes
+- index count
+- collection sizes
+- estimated daily cost
+
+Product/API metrics
+- lookupRequests
+- lookupHitRate
+- verifiedHitRate
+- claimedOnlyRate
+- notFoundRate
+- apiLatencyP50
+- apiLatencyP95
+- autoZapAllowedRate
+
+Alerts
+- pendingCount keeps increasing
+- projection job fails repeatedly
+- live listener receives no events for too long
+- backfill cursor stops moving
+- gapsWritten spikes
+- Firestore errors spike
+- X proof failures spike
+- API p95 latency too high
+- daily cost exceeds budget
+
+
+///////////////////////////////////////
+
+Live listener offline
+If listener is down, relays may emit events we miss.
+
+Backfill overlap strategy implemented in code
+Use short scheduled backfill windows with --backfill-state-prefix overlap,
+--no-backfill-resume, --backfill-until now, and --backfill-since now-window.
+This recovers missed live events without overwriting historical backfill state.
+First deploy setting: run every 30 minutes with a 45 minute window, giving a
+15 minute safety margin beyond the normal interval. Still need to enable/deploy
+Cloud Scheduler or another scheduler in GCP.
+
+Queue claiming implemented in code
+Projection now transactionally claims queue docs with status=processing,
+lockedBy, and lockExpiresAt before reading raw events. Expired processing locks
+can be reclaimed by a later projection run.
+
+Retry timing implemented in claim check
+retry_later queue docs are claimed only when nextAttemptAt <= now.
+
+Projection concurrency not implemented
+Projection still processes the selected batch as one batch, not a bounded worker pool.
+
+Missing raw event for queue doc
+If a queue doc exists but raw event doc is missing/corrupt, we need a clear failure state.
+
+Monitoring alerts not deployed
+We write summaries/heartbeats, but alerts are not configured yet.
+
+Firestore cost/backlog unknown
+Partially implemented in projection summaries. Projection now records queue
+status counts before the run and counters for claimed/read/valid/missing/invalid
+docs. Still need Cloud Monitoring dashboard and billing alerts.
+
+X/Twitter verification reliability
+Retry classification implemented in code for proof fetching. HTTP 429 and other
+temporary external failures schedule retry_later instead of permanent rejection;
+429 also stops further proof checks in that projection run. Still need observe
+real failure rates after deploy.
+
+Retention cleanup
+Ignored/rejected/old raw events can grow Firestore storage if we never clean them.
+
+
+/// deploy today safety checklist
+
+Goal
+- Deploy only after the system can ingest, recover missed live windows, drain the
+  projection queue safely, and show enough metrics that we can see harm early.
+
+Already implemented in code
+- Historical backfill paging with checkpoints and gap recording.
+- Live listener with reconnects, bounded in-memory dedupe, buffering, and
+  heartbeat docs.
+- Raw event storage in nostrIdentityEvents.
+- Projection queue docs in nostrProjectionQueue, created only if missing.
+- Overlap backfill state prefix so recovery windows use overlap:* state instead
+  of overwriting historical backfill:* state.
+- Projection queue claiming with lockedBy and lockExpiresAt.
+- retry_later claim check using nextAttemptAt <= now.
+
+Must understand before deploy
+- How overlap backfill recovers missed live events.
+- Why overlap state must be separate from historical backfill state.
+- How a queue doc can exist while its raw event doc is missing/corrupt.
+- What Firestore reads/writes/backlog/drain rate tell us.
+- Why X/Twitter verification must classify temporary vs permanent failures.
+
+Must solve or explicitly accept before deploy
+- Missing/corrupt raw event for queue doc gets a clear terminal or retry state.
+  DONE in code: queue docs become failed with missing_raw_event/invalid_raw_event.
+- Projection run summary includes enough backlog/cost counters to inspect after
+  deploy. PARTIAL in code: queue status counts and projection counters are
+  written; dashboard/alerts still not deployed.
+- X/Twitter temporary failures do not permanently reject good identity proofs.
+  DONE in code: retryable fetch failures become retry_later.
+- Cloud Run, Cloud Scheduler, Cloud Build, and Artifact Registry APIs are
+  enabled only when ready to deploy.
+- Billing budget/alerts are configured before any long-running worker is left on.
+
+Deploy order
+- Run unit tests.
+- Run smoke backfill into CodexSmoke collections.
+- Run smoke live listener into CodexSmoke collections.
+- Run smoke projection against CodexSmoke queue.
+- Inspect Firestore counts and run summaries.
+- Enable required GCP APIs.
+- Deploy scheduled projection job.
+- Deploy historical backfill job.
+- Deploy live listener.
+- Add overlap backfill schedule.
+- Watch first run summaries, backlog, errors, and billing.

@@ -91,8 +91,14 @@ function parseArgs(argv) {
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    const next = () => argv[++i];
-    if (arg === '--mode') args.mode = next();
+    const next = (flagName) => {
+      const value = argv[++i];
+      if (value === undefined || value.startsWith('--')) {
+        throw new Error(`${flagName} requires a value.`);
+      }
+      return value;
+    };
+    if (arg === '--mode') args.mode = next('--mode');
     else if (arg === '--backfill') {
       args.mode = 'backfill';
       args.writeFirestore = true;
@@ -108,45 +114,45 @@ function parseArgs(argv) {
       args.writeFirestore = true;
       args.out = null;
     }
-    else if (arg === '--relays') args.relays = next().split(',').map((s) => s.trim()).filter(Boolean);
-    else if (arg === '--out') args.out = next();
-    else if (arg === '--timeout-ms') args.timeoutMs = Number(next());
-    else if (arg === '--max-proofs') args.maxProofs = Number(next());
+    else if (arg === '--relays') args.relays = next('--relays').split(',').map((s) => s.trim()).filter(Boolean);
+    else if (arg === '--out') args.out = next('--out');
+    else if (arg === '--timeout-ms') args.timeoutMs = Number(next('--timeout-ms'));
+    else if (arg === '--max-proofs') args.maxProofs = Number(next('--max-proofs'));
     else if (arg === '--firestore') args.writeFirestore = true;
     else if (arg === '--firestore-project') {
-      args.firestoreProject = next();
+      args.firestoreProject = next('--firestore-project');
       args.writeFirestore = true;
     }
-    else if (arg === '--firestore-database') args.firestoreDatabase = next();
-    else if (arg === '--firestore-entries-collection') args.firestoreEntriesCollection = next();
-    else if (arg === '--firestore-handles-collection') args.firestoreHandlesCollection = next();
-    else if (arg === '--firestore-backfill-runs-collection') args.firestoreBackfillRunsCollection = next();
-    else if (arg === '--firestore-projection-runs-collection') args.firestoreProjectionRunsCollection = next();
-    else if (arg === '--firestore-live-runs-collection') args.firestoreLiveRunsCollection = next();
-    else if (arg === '--firestore-events-collection') args.firestoreEventsCollection = next();
-    else if (arg === '--firestore-queue-collection') args.firestoreQueueCollection = next();
-    else if (arg === '--firestore-state-collection') args.firestoreStateCollection = next();
-    else if (arg === '--firestore-gaps-collection') args.firestoreGapsCollection = next();
-    else if (arg === '--backfill-page-limit') args.backfillPageLimit = Number(next());
-    else if (arg === '--backfill-max-page-limit') args.backfillMaxPageLimit = Number(next());
-    else if (arg === '--backfill-max-pages') args.backfillMaxPages = Number(next());
-    else if (arg === '--backfill-until') args.backfillUntil = Number(next());
-    else if (arg === '--backfill-since') args.backfillSince = Number(next());
+    else if (arg === '--firestore-database') args.firestoreDatabase = next('--firestore-database');
+    else if (arg === '--firestore-entries-collection') args.firestoreEntriesCollection = next('--firestore-entries-collection');
+    else if (arg === '--firestore-handles-collection') args.firestoreHandlesCollection = next('--firestore-handles-collection');
+    else if (arg === '--firestore-backfill-runs-collection') args.firestoreBackfillRunsCollection = next('--firestore-backfill-runs-collection');
+    else if (arg === '--firestore-projection-runs-collection') args.firestoreProjectionRunsCollection = next('--firestore-projection-runs-collection');
+    else if (arg === '--firestore-live-runs-collection') args.firestoreLiveRunsCollection = next('--firestore-live-runs-collection');
+    else if (arg === '--firestore-events-collection') args.firestoreEventsCollection = next('--firestore-events-collection');
+    else if (arg === '--firestore-queue-collection') args.firestoreQueueCollection = next('--firestore-queue-collection');
+    else if (arg === '--firestore-state-collection') args.firestoreStateCollection = next('--firestore-state-collection');
+    else if (arg === '--firestore-gaps-collection') args.firestoreGapsCollection = next('--firestore-gaps-collection');
+    else if (arg === '--backfill-page-limit') args.backfillPageLimit = Number(next('--backfill-page-limit'));
+    else if (arg === '--backfill-max-page-limit') args.backfillMaxPageLimit = Number(next('--backfill-max-page-limit'));
+    else if (arg === '--backfill-max-pages') args.backfillMaxPages = Number(next('--backfill-max-pages'));
+    else if (arg === '--backfill-until') args.backfillUntil = Number(next('--backfill-until'));
+    else if (arg === '--backfill-since') args.backfillSince = Number(next('--backfill-since'));
     else if (arg === '--no-backfill-resume') args.backfillResume = false;
-    else if (arg === '--backfill-state-prefix') args.backfillStatePrefix = next();
-    else if (arg === '--projection-limit') args.projectionLimit = Number(next());
-    else if (arg === '--projection-source') args.projectionSource = next();
-    else if (arg === '--projection-worker-id') args.projectionWorkerId = next();
-    else if (arg === '--projection-lock-ms') args.projectionLockMs = Number(next());
-    else if (arg === '--projection-external-retry-ms') args.projectionExternalRetryMs = Number(next());
-    else if (arg === '--live-duration-ms') args.liveDurationMs = Number(next());
-    else if (arg === '--live-flush-limit') args.liveFlushLimit = Number(next());
-    else if (arg === '--live-flush-interval-ms') args.liveFlushIntervalMs = Number(next());
-    else if (arg === '--live-heartbeat-interval-ms') args.liveHeartbeatIntervalMs = Number(next());
-    else if (arg === '--live-reconnect-min-ms') args.liveReconnectMinMs = Number(next());
-    else if (arg === '--live-reconnect-max-ms') args.liveReconnectMaxMs = Number(next());
-    else if (arg === '--live-seen-cache-limit') args.liveSeenCacheLimit = Number(next());
-    else if (arg === '--live-connect-timeout-ms') args.liveConnectTimeoutMs = Number(next());
+    else if (arg === '--backfill-state-prefix') args.backfillStatePrefix = next('--backfill-state-prefix');
+    else if (arg === '--projection-limit') args.projectionLimit = Number(next('--projection-limit'));
+    else if (arg === '--projection-source') args.projectionSource = next('--projection-source');
+    else if (arg === '--projection-worker-id') args.projectionWorkerId = next('--projection-worker-id');
+    else if (arg === '--projection-lock-ms') args.projectionLockMs = Number(next('--projection-lock-ms'));
+    else if (arg === '--projection-external-retry-ms') args.projectionExternalRetryMs = Number(next('--projection-external-retry-ms'));
+    else if (arg === '--live-duration-ms') args.liveDurationMs = Number(next('--live-duration-ms'));
+    else if (arg === '--live-flush-limit') args.liveFlushLimit = Number(next('--live-flush-limit'));
+    else if (arg === '--live-flush-interval-ms') args.liveFlushIntervalMs = Number(next('--live-flush-interval-ms'));
+    else if (arg === '--live-heartbeat-interval-ms') args.liveHeartbeatIntervalMs = Number(next('--live-heartbeat-interval-ms'));
+    else if (arg === '--live-reconnect-min-ms') args.liveReconnectMinMs = Number(next('--live-reconnect-min-ms'));
+    else if (arg === '--live-reconnect-max-ms') args.liveReconnectMaxMs = Number(next('--live-reconnect-max-ms'));
+    else if (arg === '--live-seen-cache-limit') args.liveSeenCacheLimit = Number(next('--live-seen-cache-limit'));
+    else if (arg === '--live-connect-timeout-ms') args.liveConnectTimeoutMs = Number(next('--live-connect-timeout-ms'));
     else if (arg === '--no-processing-status') args.updateProcessingStatus = false;
     else if (arg === '--no-json') args.out = null;
     else if (arg === '--no-tweet-verify') args.verifyTweets = false;
@@ -843,17 +849,30 @@ async function buildDirectoryOutputFromEvents({ events, args, relayResults = nul
   const verifiedOrRejected = [];
   const retryLater = [];
   let proofVerificationStoppedReason = null;
+  let proofTweetsAttempted = 0;
   if (args.verifyTweets) {
     console.log(`Verifying ${proofLimit}/${candidates.length} proof tweets...`);
     for (const candidate of candidates.slice(0, proofLimit)) {
+      proofTweetsAttempted += 1;
       const result = await verifyCandidate(candidate, args.timeoutMs);
       if (result.identityStatus === 'retry_later') {
         retryLater.push(result);
-        proofVerificationStoppedReason = result.retryRateLimited ? 'x_rate_limited' : 'temporary_proof_fetch_failure';
-        if (result.retryRateLimited) break;
+        if (result.retryRateLimited) {
+          proofVerificationStoppedReason = 'x_rate_limited';
+          break;
+        }
       } else {
         verifiedOrRejected.push(result);
       }
+    }
+    for (const candidate of candidates.slice(proofTweetsAttempted)) {
+      retryLater.push({
+        ...candidate,
+        identityStatus: 'retry_later',
+        retryReason: proofVerificationStoppedReason || 'max_proof_limit_reached',
+        retrySource: 'crawler',
+        retryRateLimited: proofVerificationStoppedReason === 'x_rate_limited',
+      });
     }
   } else {
     verifiedOrRejected.push(...candidates.map((candidate) => ({ ...candidate, identityStatus: 'candidate' })));
@@ -913,8 +932,8 @@ async function buildDirectoryOutputFromEvents({ events, args, relayResults = nul
       profileEvents: profileEvents.length,
       verifiableCandidates: candidates.length,
       proofTweetsPlanned: args.verifyTweets ? proofLimit : 0,
-      proofTweetsAttempted: verifiedOrRejected.length + retryLater.length,
-      proofTweetsChecked: verifiedOrRejected.length + retryLater.length,
+      proofTweetsAttempted,
+      proofTweetsChecked: proofTweetsAttempted,
       proofRetriesScheduled: retryLater.length,
       proofVerificationStopped: Boolean(proofVerificationStoppedReason),
       verified: verified.length,
@@ -2454,6 +2473,7 @@ if (isMain) {
 }
 
 export {
+  parseArgs,
   buildBackfillCheckpointWrite,
   buildBackfillEventWrite,
   buildBackfillGapWrite,
