@@ -1,0 +1,16 @@
+FROM node:22-slim
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --legacy-peer-deps
+
+COPY scripts/relay-directory-crawler.mjs ./scripts/relay-directory-crawler.mjs
+
+ENV NODE_ENV=production
+ENV GOOGLE_CLOUD_PROJECT=gr-prod
+ENV FIRESTORE_PROJECT=gr-prod
+ENV WRITE_FIRESTORE=1
+
+ENTRYPOINT ["node"]
+CMD ["scripts/relay-directory-crawler.mjs", "--project-directory", "--firestore-project", "gr-prod", "--no-json"]
