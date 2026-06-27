@@ -24,6 +24,7 @@ export default class NostrPost extends NostrEventComponent {
 
   protected stats: Stats | null = null;
   protected statsLoading: boolean = false;
+  protected statsError: string | null = null;
   protected embeddedPosts: Map<string, NDKEvent> = new Map();
   protected replyItems: ReplyItem[] = [];
   protected repliesExpanded: boolean = false;
@@ -109,6 +110,7 @@ export default class NostrPost extends NostrEventComponent {
     this.statsRequestSeq++;
     this.stats = null;
     this.statsLoading = false;
+    this.statsError = null;
   }
 
   private resetReplyState() {
@@ -143,6 +145,7 @@ export default class NostrPost extends NostrEventComponent {
     try {
       this.stats = null;
       this.statsLoading = true;
+      this.statsError = null;
       this.render();
       
       const stats = await getPostStats(
@@ -164,14 +167,13 @@ export default class NostrPost extends NostrEventComponent {
 
       const msg = err instanceof Error ? err.message : 'Failed to load post stats';
       console.error('[NostrPostComponent] ' + msg, err);
-      this.eventStatus.set(NCStatus.Error, msg);
+      this.stats = null;
+      this.statsError = msg;
     } finally {
-      if (seq !== this.statsRequestSeq || this.event?.id !== eventId) {
-        return;
+      if (seq === this.statsRequestSeq && this.event?.id === eventId) {
+        this.statsLoading = false;
+        this.render();
       }
-
-      this.statsLoading = false;
-      this.render();
     }
   }
 
@@ -243,12 +245,10 @@ export default class NostrPost extends NostrEventComponent {
       this.repliesLoaded = false;
       this.repliesError = msg;
     } finally {
-      if (seq !== this.repliesRequestSeq || this.event?.id !== eventId) {
-        return;
+      if (seq === this.repliesRequestSeq && this.event?.id === eventId) {
+        this.repliesLoading = false;
+        this.render();
       }
-
-      this.repliesLoading = false;
-      this.render();
     }
   }
 
@@ -349,6 +349,7 @@ export default class NostrPost extends NostrEventComponent {
       shouldShowStats,
       stats: this.stats,
       statsLoading: this.statsLoading,
+      statsError: this.statsError,
       htmlToRender,
       repliesExpanded: this.repliesExpanded,
       repliesLoaded: this.repliesLoaded,

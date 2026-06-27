@@ -88,16 +88,24 @@ export type Stats = {
   replies: number;
 };
 
+export function getDirectReplyParentId(reply: NDKEvent): string | null {
+  const eTags = reply.tags.filter(tag => tag[0] === 'e');
+  if (eTags.length === 0) return null;
+
+  const replyTag = eTags.find(tag => tag[3] === 'reply');
+  if (replyTag?.[1]) return replyTag[1];
+
+  const rootTag = eTags.find(tag => tag[3] === 'root');
+  if (rootTag?.[1]) return rootTag[1];
+
+  if (eTags.length === 1) return eTags[0][1] ?? null;
+
+  return eTags[eTags.length - 1][1] ?? null;
+}
+
 export function isDirectReplyToEvent(reply: NDKEvent, parentEventId: string): boolean {
   if (!parentEventId) return false;
-
-  const eTags = reply.tags.filter(tag => tag[0] === 'e');
-  if (eTags.length === 0) return false;
-
-  const matchingETags = eTags.filter(tag => tag[1] === parentEventId);
-  if (matchingETags.length === 0) return false;
-
-  return eTags.length === 1 || matchingETags.some(tag => tag[3] === 'reply');
+  return getDirectReplyParentId(reply) === parentEventId;
 }
 
 export function filterDirectReplies(
