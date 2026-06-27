@@ -54,15 +54,16 @@ export function renderPost(options: RenderPostOptions): string {
     <div class="nostr-post-container">
       ${renderPostHeader(isLoading, author, date)}
       ${renderPostBody(isLoading, htmlToRender)}
-      ${shouldShowStats ? renderPostFooter(
+      ${renderPostFooter(
         isLoading,
+        shouldShowStats,
         stats,
         statsLoading,
         statsError,
         repliesExpanded,
         repliesLoaded,
         replyItems
-      ) : ''}
+      )}
       ${renderRepliesSection(
         isLoading,
         repliesExpanded,
@@ -147,6 +148,7 @@ function renderPostBody(
 
 function renderPostFooter(
   isLoading: boolean,
+  shouldShowStats: boolean,
   stats: { replies: number; likes: number } | null,
   statsLoading: boolean,
   statsError: string | null,
@@ -154,18 +156,20 @@ function renderPostFooter(
   repliesLoaded: boolean,
   replyItems: ReplyItem[]
 ): string {
-  if (isLoading || statsLoading) {
+  if (isLoading) {
     return `
       <div class="post-footer">
         <div class="stats-container">
-          <div class="stat">
-            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-          </div>
-          <div class="stat">
-            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-          </div>
+          ${shouldShowStats ? `
+            <div class="stat">
+              <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+              <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            </div>
+            <div class="stat">
+              <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+              <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            </div>
+          ` : ''}
           <button class="stat reply-toggle-btn" type="button" disabled aria-expanded="false">
             <span class="skeleton reply-toggle-skeleton"></span>
           </button>
@@ -186,12 +190,14 @@ function renderPostFooter(
   return `
     <div class="post-footer">
       <div class="stats-container">
-        <div class="stat" ${statsError ? 'title="Unable to load stats right now."' : ''}>
-          ${replyIcon}<span>${replyStat}</span>
-        </div>
-        <div class="stat" ${statsError ? 'title="Unable to load stats right now."' : ''}>
-          ${heartIcon}<span>${likeStat}</span>
-        </div>
+        ${shouldShowStats ? `
+          <div class="stat" ${statsError ? 'title="Unable to load stats right now."' : ''}>
+            ${statsLoading ? '<span class="skeleton reply-count-skeleton"></span>' : `${replyIcon}<span>${replyStat}</span>`}
+          </div>
+          <div class="stat" ${statsError ? 'title="Unable to load stats right now."' : ''}>
+            ${statsLoading ? '<span class="skeleton like-count-skeleton"></span>' : `${heartIcon}<span>${likeStat}</span>`}
+          </div>
+        ` : ''}
         <button
           class="stat reply-toggle-btn"
           type="button"
