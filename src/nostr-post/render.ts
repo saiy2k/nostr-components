@@ -18,6 +18,7 @@ export interface RenderPostOptions extends IRenderOptions {
     likes: number;
   } | null;
   statsLoading: boolean;
+  statsError: string | null;
   htmlToRender: string;
   repliesExpanded: boolean;
   repliesLoaded: boolean;
@@ -36,6 +37,7 @@ export function renderPost(options: RenderPostOptions): string {
     shouldShowStats,
     stats,
     statsLoading,
+    statsError,
     htmlToRender,
     repliesExpanded,
     repliesLoaded,
@@ -52,15 +54,15 @@ export function renderPost(options: RenderPostOptions): string {
     <div class="nostr-post-container">
       ${renderPostHeader(isLoading, author, date)}
       ${renderPostBody(isLoading, htmlToRender)}
-      ${renderPostFooter(
+      ${shouldShowStats ? renderPostFooter(
         isLoading,
-        shouldShowStats,
         stats,
         statsLoading,
+        statsError,
         repliesExpanded,
         repliesLoaded,
         replyItems
-      )}
+      ) : ''}
       ${renderRepliesSection(
         isLoading,
         repliesExpanded,
@@ -145,27 +147,25 @@ function renderPostBody(
 
 function renderPostFooter(
   isLoading: boolean,
-  shouldShowStats: boolean,
   stats: { replies: number; likes: number } | null,
   statsLoading: boolean,
+  statsError: string | null,
   repliesExpanded: boolean,
   repliesLoaded: boolean,
   replyItems: ReplyItem[]
 ): string {
-  if (isLoading) {
+  if (isLoading || statsLoading) {
     return `
       <div class="post-footer">
         <div class="stats-container">
-          ${shouldShowStats ? `
-            <div class="stat">
-              <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-              <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-            </div>
-            <div class="stat">
-              <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-              <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
-            </div>
-          ` : ''}
+          <div class="stat">
+            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+          </div>
+          <div class="stat">
+            <div style="width: 16px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+            <div style="width: 20px; height: 16px; border-radius: 4px;" class="skeleton"></div>
+          </div>
           <button class="stat reply-toggle-btn" type="button" disabled aria-expanded="false">
             <span class="skeleton reply-toggle-skeleton"></span>
           </button>
@@ -180,18 +180,18 @@ function renderPostFooter(
     !repliesExpanded && replyCount && replyCount > 0
       ? ` (${replyCount})`
       : '';
+  const replyStat = statsError ? '—' : `${stats?.replies ?? 0}`;
+  const likeStat = statsError ? '—' : `${stats?.likes ?? 0}`;
 
   return `
     <div class="post-footer">
       <div class="stats-container">
-        ${shouldShowStats ? `
-          <div class="stat">
-            ${statsLoading ? '<span class="skeleton reply-count-skeleton"></span>' : `${replyIcon}<span>${stats?.replies ?? 0}</span>`}
-          </div>
-          <div class="stat">
-            ${statsLoading ? '<span class="skeleton like-count-skeleton"></span>' : `${heartIcon}<span>${stats?.likes ?? 0}</span>`}
-          </div>
-        ` : ''}
+        <div class="stat" ${statsError ? 'title="Unable to load stats right now."' : ''}>
+          ${replyIcon}<span>${replyStat}</span>
+        </div>
+        <div class="stat" ${statsError ? 'title="Unable to load stats right now."' : ''}>
+          ${heartIcon}<span>${likeStat}</span>
+        </div>
         <button
           class="stat reply-toggle-btn"
           type="button"
