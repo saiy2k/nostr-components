@@ -86,6 +86,10 @@
     "./components/nostr-livestream": {
       "import": "./dist/components/nostr-livestream.es.js",
       "types": "./dist/components/nostr-livestream.d.ts"
+    },
+    "./components/nostr-verify-identity": {
+      "import": "./dist/components/nostr-verify-identity.es.js",
+      "types": "./dist/components/nostr-verify-identity.d.ts"
     }
   },
   "files": [
