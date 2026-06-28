@@ -1,0 +1,9 @@
+node_modules
+dist
+storybook-static
+saiy2k-nostr-components
+sob-proposal-review/relay-directory-output.json
+.git
+.codex
+.agents
+npm-debug.log*

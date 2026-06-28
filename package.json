@@ -100,6 +100,7 @@
     "build:themes": "node scripts/build-themes.js",
     "build:assets": "node scripts/copy-assets.js",
     "build": "npm run build:esm && npm run build:umd && npm run build:themes && npm run build:assets",
+    "crawl:directory:backfill": "node scripts/relay-directory/backfill.mjs --firestore-project gr-prod",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes",
@@ -133,6 +134,7 @@
   },
   "dependencies": {
     "@glidejs/glide": "^3.7.1",
+    "@google-cloud/firestore": "^8.6.0",
     "@nostr-dev-kit/ndk": "^2.10.0",
     "@types/dompurify": "^3.0.5",
     "@types/qrcode": "^1.5.5",
