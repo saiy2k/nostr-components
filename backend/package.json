@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "backfill": "node --env-file-if-exists=.env relay-directory/backfill.js",
+    "live": "node --env-file-if-exists=.env relay-directory/live-monitor.js",
     "test": "vitest run"
   },
   "dependencies": {
