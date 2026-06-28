@@ -14,4 +14,4 @@ ENV FIRESTORE_PROJECT=gr-prod
 
 USER node
 ENTRYPOINT ["node"]
-CMD ["scripts/relay-directory/backfill.mjs", "--firestore-project", "gr-prod", "--no-json"]
+CMD ["scripts/relay-directory/projection.mjs", "--firestore-project", "gr-prod", "--no-json"]
