@@ -5,11 +5,13 @@ import {
   getNostrLogo,
   getSuccessAnimation,
 } from '../common/theme';
+import { Theme } from '../common/types';
 import { escapeHtml } from '../common/utils';
 import { IRenderOptions } from '../base/render-options';
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 
 export interface RenderFollowButtonOptions extends IRenderOptions {
+  theme?: Theme;
   isFollowed: boolean;
   isFollowing: boolean;
   showAvatar?: boolean;
@@ -22,6 +24,7 @@ export function renderFollowButton({
   isLoading,
   isError,
   errorMessage,
+  theme = 'light',
   isFollowed,
   isFollowing,
   showAvatar = false,
@@ -43,7 +46,7 @@ export function renderFollowButton({
   }
 
   const iconContent = isFollowed
-    ? getSuccessAnimation()
+    ? getSuccessAnimation(theme)
     : showAvatar && user && profile?.image
       ? `<img src="${escapeHtml(profile.image)}" alt="${escapeHtml(profile.name || user.npub)}" class="user-avatar" />`
       : getNostrLogo();

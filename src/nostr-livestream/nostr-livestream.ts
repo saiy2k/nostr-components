@@ -7,7 +7,7 @@ import { parseLivestreamEvent, ParsedLivestreamEvent, findHostParticipant, getUn
 import { renderLivestream, RenderLivestreamOptions } from './render';
 import { getLivestreamStyles } from './style';
 import { getBatchedProfileMetadata, extractProfileMetadataContent } from '../nostr-zap-button/zap-utils';
-import { hexToNpub } from '../common/utils';
+import { hexToNpub, parseBooleanAttribute } from '../common/utils';
 import 'hls-video-element';
 
 const EVT_LIVESTREAM = 'nc:livestream';
@@ -337,7 +337,7 @@ export default class NostrLivestream extends NostrEventComponent {
       parsedLivestream    :  this.parsedLivestream,
       showParticipants    :  this.getAttribute('show-participants') !== 'false', // Default to true
       showParticipantCount:  this.getAttribute('show-participant-count') !== 'false', // Default to true
-      autoPlay            :  this.getAttribute('auto-play') === 'true',
+      autoPlay            :  parseBooleanAttribute(this.getAttribute('auto-play')),
       participantProfiles :  this.participantProfiles,
       participantsStatus  :  this.participantsStatus.get(),
     };

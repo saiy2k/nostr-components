@@ -24,7 +24,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const NoLikes: Story = {
   name: TEST_CASES.noLikes.name,
