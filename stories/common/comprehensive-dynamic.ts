@@ -92,13 +92,13 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
       const themeEl = statusContainer.querySelector<HTMLElement>('#current-theme');
       const widthEl = statusContainer.querySelector<HTMLElement>('#current-width');
       
-      if (inputEl) inputEl.innerHTML = `<strong>Input:</strong> ${input.name} (${input.type})`;
-      if (themeEl) themeEl.innerHTML = `<strong>Theme:</strong> ${theme}`;
-      if (widthEl && width !== undefined) widthEl.innerHTML = `<strong>Width:</strong> ${width}px`;
-      
+      if (inputEl) inputEl.textContent = `Input: ${input.name} (${input.type})`;
+      if (themeEl) themeEl.textContent = `Theme: ${theme}`;
+      if (widthEl && width !== undefined) widthEl.textContent = `Width: ${width}px`;
+
       booleanAttributes.forEach((attr, index) => {
         const el = statusContainer.querySelector<HTMLElement>(`#current-${attr}`);
-        if (el) el.innerHTML = `<strong>${attr}:</strong> ${booleanStates[index]}`;
+        if (el) el.textContent = `${attr}: ${booleanStates[index]}`;
       });
     };
 

@@ -25,7 +25,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 // ====================================
 // COMPREHENSIVE TESTING DASHBOARDS

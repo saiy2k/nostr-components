@@ -27,7 +27,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const OceanGlass: Story = {
   name: TEST_CASES.oceanGlass.name,

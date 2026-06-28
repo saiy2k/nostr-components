@@ -23,7 +23,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const InvalidNpub: Story = {
   name: INVALID_TEST_CASES.invalidNpub.name,

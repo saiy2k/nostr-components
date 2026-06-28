@@ -6,6 +6,7 @@ import { renderFollowButton, RenderFollowButtonOptions } from './render';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { getFollowButtonStyles } from './style';
 import { ensureInitialized } from '../common/nostr-login-service';
+import { parseBooleanAttribute } from '../common/utils';
 
 export default class NostrFollowButton extends NostrUserComponent {
   protected followStatus = this.channel('follow');
@@ -104,12 +105,13 @@ export default class NostrFollowButton extends NostrUserComponent {
     const isDisabled = this.hasAttribute('disabled');
 
     const renderOptions: RenderFollowButtonOptions = {
+      theme: this.theme,
       isLoading: this.computeOverall() === NCStatus.Loading,
       isError: this.computeOverall() === NCStatus.Error,
       errorMessage: super.renderError(this.errorMessage),
       isFollowed: this.isFollowed,
       isFollowing: this.followStatus.get() === NCStatus.Loading,
-      showAvatar: this.hasAttribute('show-avatar'),
+      showAvatar: parseBooleanAttribute(this.getAttribute('show-avatar')),
       user: this.user,
       profile: this.profile,
       customText: this.getAttribute('text') || 'Follow me on nostr',

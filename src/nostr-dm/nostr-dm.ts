@@ -26,6 +26,7 @@ import { NostrService } from "../common/nostr-service";
 // ---------------------------------------------------------------------------
 // Import the resolveNip05 function from our common utils
 import { resolveNip05 } from '../common/nip05-utils';
+import { parseBooleanAttribute } from '../common/utils';
 
 /**
  * Debug utility that only logs in development mode or when debug attribute is set
@@ -35,7 +36,7 @@ import { resolveNip05 } from '../common/nip05-utils';
 function debug(component: NostrDm, message: string, data?: any) {
   // Check if we're in development environment or debug attribute is true
   const isDev = process.env.NODE_ENV === 'development';
-  const isDebug = component.getAttribute('debug') === 'true';
+  const isDebug = parseBooleanAttribute(component.getAttribute('debug'));
   
   if (isDev || isDebug) {
     if (data) {

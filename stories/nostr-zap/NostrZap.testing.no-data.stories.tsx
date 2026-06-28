@@ -24,7 +24,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<any>;
+type Story = StoryObj<typeof meta>;
 
 export const NoData: Story = {
   name: NO_DATA_TEST_CASES.noData.name,
