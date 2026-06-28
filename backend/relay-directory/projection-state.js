@@ -1,0 +1,311 @@
+// SPDX-License-Identifier: MIT
+
+import { FieldValue } from "@google-cloud/firestore";
+import { nip19 } from "nostr-tools";
+import {
+  DEFAULT_COLLECTIONS,
+  stripUndefined,
+} from "./runtime.js";
+import { firestoreSafeId } from "./utils.js";
+
+export const DEFAULT_MAX_PENDING_CLAIMS = 20;
+export const DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS = 10;
+export const DEFAULT_MAX_REJECTION_TOMBSTONES = 100;
+
+export function pendingClaimsForHandle(handleData) {
+  return (handleData?.claims || [])
+    .filter((claim) => claim?.claimId && claim.status === "pending")
+    .sort(compareClaimsNewestFirst);
+}
+
+export function projectionHandleIsDue(handleData, nowMs = Date.now()) {
+  if (!handleData || Number(handleData.pendingClaimCount || 0) <= 0) {
+    return false;
+  }
+  const nextAttemptAt = timestampToMs(handleData.nextAttemptAt);
+  return !nextAttemptAt || nextAttemptAt <= nowMs;
+}
+
+export function applyProjectionResults(handleData, results, options = {}) {
+  const now = options.now || new Date();
+  const nowIso = now.toISOString();
+  const retryDelayMs = options.retryDelayMs ?? 15 * 60 * 1000;
+  const maxPendingClaims =
+    options.maxPendingClaims ?? DEFAULT_MAX_PENDING_CLAIMS;
+  const maxInactiveVerifiedClaims =
+    options.maxInactiveVerifiedClaims ?? DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS;
+  const maxRejectionTombstones =
+    options.maxRejectionTombstones ?? DEFAULT_MAX_REJECTION_TOMBSTONES;
+  const claimsById = new Map(
+    (handleData?.claims || [])
+      .filter((claim) => claim?.claimId && claim.status !== "rejected")
+      .map((claim) => [claim.claimId, claim]),
+  );
+  const tombstonesById = new Map(
+    (handleData?.rejectedClaimTombstones || [])
+      .filter((item) => item?.claimId)
+      .map((item) => [item.claimId, item]),
+  );
+  const stats = { verified: 0, rejected: 0, retryLater: 0 };
+
+  for (const result of results || []) {
+    const claimId = result.claimId || result.claim?.claimId;
+    if (!claimId) continue;
+    const current = claimsById.get(claimId) || result.claim;
+    if (!current) continue;
+
+    if (result.identityStatus === "verified") {
+      claimsById.set(claimId, verifiedClaim(current, result, nowIso));
+      tombstonesById.delete(claimId);
+      stats.verified += 1;
+    } else if (result.identityStatus === "rejected") {
+      claimsById.delete(claimId);
+      tombstonesById.set(claimId, {
+        claimId,
+        rejectedAt: nowIso,
+        reason: result.rejectionReason || "identity_verification_failed",
+      });
+      stats.rejected += 1;
+    } else if (result.identityStatus === "retry_later") {
+      claimsById.set(claimId, {
+        ...current,
+        status: "pending",
+        lastAttemptAt: nowIso,
+        retryReason: result.retryReason || "temporary_verification_failure",
+        retrySource: result.retrySource || "projection",
+        retryAt: new Date(now.getTime() + retryDelayMs).toISOString(),
+      });
+      stats.retryLater += 1;
+    }
+  }
+
+  const existingActive = normalizeActiveIdentity(
+    handleData?.activeIdentity,
+    claimsById,
+  );
+  const activeIdentity = selectActiveIdentity(
+    existingActive,
+    [...claimsById.values()].filter((claim) => claim.status === "verified"),
+  );
+  if (activeIdentity) claimsById.set(activeIdentity.claimId, activeIdentity);
+
+  const pending = [...claimsById.values()]
+    .filter((claim) => claim.status === "pending")
+    .sort(compareClaimsNewestFirst)
+    .slice(0, maxPendingClaims);
+  const inactiveVerified = [...claimsById.values()]
+    .filter(
+      (claim) =>
+        claim.status === "verified" &&
+        claim.claimId !== activeIdentity?.claimId,
+    )
+    .sort(compareClaimsNewestFirst)
+    .slice(0, maxInactiveVerifiedClaims);
+  const claims = [activeIdentity, ...pending, ...inactiveVerified]
+    .filter(Boolean)
+    .sort(compareClaimsNewestFirst);
+  const rejectedClaimTombstones = [...tombstonesById.values()]
+    .sort((a, b) =>
+      String(b.rejectedAt || "").localeCompare(String(a.rejectedAt || "")),
+    )
+    .slice(0, maxRejectionTombstones);
+  const scheduling = projectionSchedule(pending, now);
+  const activeChanged = !sameValue(
+    handleData?.activeIdentity || null,
+    activeIdentity || null,
+  );
+  const state = {
+    activeIdentity: activeIdentity || null,
+    claims,
+    rejectedClaimTombstones,
+    pendingClaimCount: pending.length,
+    projectionStatus: scheduling.status,
+    nextAttemptAt: scheduling.nextAttemptAt,
+  };
+  const changed =
+    (results || []).length > 0 &&
+    !sameValue(projectableState(handleData), projectableState(state));
+
+  return { changed, activeChanged, state, stats };
+}
+
+export function buildHandleProjectionWrites(
+  { id, data },
+  transition,
+  options = {},
+) {
+  if (!transition?.changed) return [];
+  const handlesCollection =
+    options.firestoreHandlesCollection || DEFAULT_COLLECTIONS.handles;
+  const entriesCollection =
+    options.firestoreEntriesCollection || DEFAULT_COLLECTIONS.entries;
+  const writes = [
+    {
+      collection: handlesCollection,
+      id,
+      data: stripUndefined({
+        ...transition.state,
+        projectedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+    },
+  ];
+
+  if (transition.activeChanged && transition.state.activeIdentity) {
+    const active = transition.state.activeIdentity;
+    writes.push({
+      collection: entriesCollection,
+      id: directoryEntryId(data?.handle || active.handle, active.pubkey),
+      data: stripUndefined({
+        platform: "twitter",
+        handle: data?.handle || active.handle,
+        pubkey: active.pubkey,
+        npub: active.npub || nip19.npubEncode(active.pubkey),
+        claimId: active.claimId,
+        sourceEventId: active.sourceEventId,
+        sourceKind: active.sourceKind,
+        sourceCreatedAt: active.sourceCreatedAt,
+        sourceRelay: active.sourceRelay,
+        identityStatus: "verified",
+        directoryStatus:
+          active.zappable === true
+            ? "verified_zappable"
+            : "verified_not_zappable",
+        verificationMethods: active.verificationMethods || [],
+        metadata: active.metadata || null,
+        proofTweetId: active.proofTweetId,
+        proofSource: active.proofSource,
+        nostrIdentifier: active.nostrIdentifier,
+        xUserId: active.xUserId,
+        verifiedAt: active.verifiedAt,
+        zappable: active.zappable === true,
+        autoZapAllowed: active.zappable === true,
+        lud16: active.lud16,
+        lnurlp: active.lnurlp,
+        zapReason: active.zapReason,
+        lastSeenAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+    });
+  }
+
+  return writes;
+}
+
+export function directoryEntryId(handle, pubkey) {
+  return firestoreSafeId(
+    `twitter:${String(handle || "").toLowerCase()}:${pubkey}`,
+  );
+}
+
+function verifiedClaim(current, result, nowIso) {
+  const methods = [
+    ...(current.verificationMethods || []),
+    ...(result.verificationMethods || []),
+    result.verificationMethod,
+  ].filter(Boolean);
+  const clean = { ...current };
+  delete clean.lastAttemptAt;
+  delete clean.retryAt;
+  delete clean.retryReason;
+  delete clean.retrySource;
+
+  return stripUndefined({
+    ...clean,
+    status: "verified",
+    verifiedAt: result.verifiedAt || nowIso,
+    proofPublishedAt: result.proofPublishedAt,
+    verificationMethods: [...new Set(methods)],
+    proofAuthor: result.proofAuthor,
+    proofSource: result.proofSource,
+    nostrIdentifier: result.nostrIdentifier,
+    xUserId: result.xUserId,
+    zappable: result.zappable,
+    zapReason: result.zapReason,
+    lud16: result.lud16,
+    lnurlp: result.lnurlp,
+    lnurlAllowsNostr: result.lnurlAllowsNostr,
+    lnurlNostrPubkey: result.lnurlNostrPubkey,
+  });
+}
+
+function normalizeActiveIdentity(activeIdentity, claimsById) {
+  if (!activeIdentity?.claimId) return null;
+  return (
+    claimsById.get(activeIdentity.claimId) || {
+      ...activeIdentity,
+      status: "verified",
+    }
+  );
+}
+
+function selectActiveIdentity(existingActive, verifiedClaims) {
+  let active = existingActive;
+  for (const candidate of [...verifiedClaims].sort(compareClaimsNewestFirst)) {
+    if (!active) {
+      active = candidate;
+      continue;
+    }
+    if (candidate.claimId === active.claimId) {
+      active = candidate;
+      continue;
+    }
+    if (claimRecency(candidate) > claimRecency(active)) active = candidate;
+  }
+  return active || null;
+}
+
+function projectionSchedule(pendingClaims, now) {
+  if (!pendingClaims.length) {
+    return { status: "complete", nextAttemptAt: null };
+  }
+  const retryTimes = pendingClaims
+    .map((claim) => Date.parse(claim.retryAt || ""))
+    .filter(Number.isFinite);
+  const hasReadyClaim = pendingClaims.some((claim) => {
+    const retryAt = Date.parse(claim.retryAt || "");
+    return !Number.isFinite(retryAt) || retryAt <= now.getTime();
+  });
+  if (hasReadyClaim) {
+    return { status: "pending", nextAttemptAt: now };
+  }
+  return {
+    status: "retry_later",
+    nextAttemptAt: new Date(Math.min(...retryTimes)),
+  };
+}
+
+function projectableState(value) {
+  return {
+    activeIdentity: value?.activeIdentity || null,
+    claims: value?.claims || [],
+    rejectedClaimTombstones: value?.rejectedClaimTombstones || [],
+    pendingClaimCount: Number(value?.pendingClaimCount || 0),
+    projectionStatus: value?.projectionStatus || null,
+    nextAttemptAt: timestampToMs(value?.nextAttemptAt),
+  };
+}
+
+function compareClaimsNewestFirst(a, b) {
+  return (
+    claimRecency(b) - claimRecency(a) ||
+    String(a.claimId).localeCompare(String(b.claimId))
+  );
+}
+
+function claimRecency(claim) {
+  return Number(claim?.proofPublishedAt || claim?.sourceCreatedAt || 0);
+}
+
+function timestampToMs(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sameValue(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}

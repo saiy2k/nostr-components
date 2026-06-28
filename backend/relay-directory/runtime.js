@@ -98,7 +98,9 @@ export function loadRelaysFromFile(filePath = DEFAULT_RELAYS_FILE) {
 }
 
 export const DEFAULT_COLLECTIONS = {
+  entries: "nostrDirectoryEntries",
   handles: "nostrDirectoryHandles",
+  projectionRuns: "relayProjectionRuns",
   liveRuns: "relayLiveListenerRuns",
   events: "nostrIdentityEvents",
   queue: "nostrProjectionQueue",
@@ -117,8 +119,13 @@ export function firestoreConfigFromEnv(env = process.env) {
       env.GCLOUD_PROJECT ||
       null,
     firestoreDatabase: env.FIRESTORE_DATABASE || "(default)",
+    firestoreEntriesCollection:
+      env.FIRESTORE_ENTRIES_COLLECTION || DEFAULT_COLLECTIONS.entries,
     firestoreHandlesCollection:
       env.FIRESTORE_HANDLES_COLLECTION || DEFAULT_COLLECTIONS.handles,
+    firestoreProjectionRunsCollection:
+      env.FIRESTORE_PROJECTION_RUNS_COLLECTION ||
+      DEFAULT_COLLECTIONS.projectionRuns,
     firestoreLiveRunsCollection:
       env.FIRESTORE_LIVE_RUNS_COLLECTION || DEFAULT_COLLECTIONS.liveRuns,
     firestoreEventsCollection:
@@ -299,6 +306,20 @@ export function serializeFirestoreDataForJson(value) {
     if (child !== undefined) result[key] = serializeFirestoreDataForJson(child);
   }
   return result;
+}
+
+export function firestoreTimestampToMs(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.seconds === "number") {
+    return (
+      value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000)
+    );
+  }
+  if (typeof value === "number") return value;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export async function writeJson(file, data) {
