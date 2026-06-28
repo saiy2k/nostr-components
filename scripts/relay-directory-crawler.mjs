@@ -2059,7 +2059,15 @@ function firestoreTimestampToMs(value) {
 
 async function assertFirestoreCredentialsAvailable() {
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) return;
-  if (process.env.CLOUD_RUN_JOB || process.env.K_SERVICE || process.env.FUNCTION_NAME) return;
+  if (
+    process.env.CLOUD_RUN_JOB
+    || process.env.K_SERVICE
+    || process.env.K_CONFIGURATION
+    || process.env.K_REVISION
+    || process.env.FUNCTION_NAME
+  ) {
+    return;
+  }
 
   const adcPath = getApplicationDefaultCredentialsPath();
 
