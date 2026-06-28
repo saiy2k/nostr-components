@@ -101,6 +101,7 @@
     "build:assets": "node scripts/copy-assets.js",
     "build": "npm run build:esm && npm run build:umd && npm run build:themes && npm run build:assets",
     "crawl:directory:backfill": "node scripts/relay-directory/backfill.mjs --firestore-project gr-prod",
+    "crawl:directory:live": "node scripts/relay-directory/live-monitor.mjs --firestore-project gr-prod",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes",

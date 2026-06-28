@@ -76,6 +76,10 @@ export function buildBackfillEventWrite(event, relay, options = {}) {
   return buildIngestedEventWrite(event, relay, "backfill", options);
 }
 
+export function buildLiveEventWrite(event, relay, options = {}) {
+  return buildIngestedEventWrite(event, relay, "live", options);
+}
+
 export function buildIngestedEventWrite(event, relay, mode, options = {}) {
   return {
     collection: options.firestoreEventsCollection || DEFAULT_COLLECTIONS.events,
@@ -203,4 +207,28 @@ export function buildBackfillGapWrite(
 
 export function backfillStateId(relay, kind, prefix = "backfill") {
   return firestoreSafeId(`${prefix}:${relay}:kind:${kind}`);
+}
+
+export function buildLiveHeartbeatWrite(
+  { relay, status, mode, connected, lastEventAt, attempts },
+  options = {},
+) {
+  return {
+    collection: options.firestoreStateCollection || DEFAULT_COLLECTIONS.state,
+    id: liveStateId(relay),
+    data: stripUndefined({
+      relay,
+      mode: mode || "live",
+      status,
+      connected,
+      lastEventAt,
+      connectAttempts: attempts,
+      heartbeatAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+  };
+}
+
+export function liveStateId(relay) {
+  return firestoreSafeId(`live:${relay}`);
 }
