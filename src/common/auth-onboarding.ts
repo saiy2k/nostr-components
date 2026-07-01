@@ -50,11 +50,39 @@ export interface EnsureSignerForActionResult {
 interface EnsureSignerDependencies {
   ensureInitialized: typeof ensureInitialized;
   getPublicKey: typeof getPublicKey;
+  hasConnectedSigner: typeof hasConnectedSigner;
   showAuthOnboarding: (options: ShowAuthOnboardingOptions) => Promise<ShowAuthOnboardingResult>;
 }
 
 const QUICK_SETUP_URL = 'https://nstart.me/';
 const SIGNER_INSTALL_URL = 'https://getalby.com/';
+
+/** localStorage key window.nostr.js uses to persist its session (nsec or bunker pointer). */
+const WNJ_SESSION_STORAGE_KEY = 'wnj:bunkerPointer';
+
+/**
+ * Passive check for a signer that is usable without opening any connect UI:
+ * a NIP-07 extension, or a window.nostr.js session stored by a previous
+ * connect.
+ *
+ * window.nostr.js marks its shim with `isWnj`, and its `getPublicKey()`
+ * opens the connect widget when no session exists — so calling
+ * `getPublicKey()` is not a safe way to probe for an existing connection.
+ */
+export function hasConnectedSigner(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const nostr = (window as any).nostr;
+  if (nostr && nostr.isWnj !== true) {
+    return true;
+  }
+
+  try {
+    return !!window.localStorage.getItem(WNJ_SESSION_STORAGE_KEY);
+  } catch {
+    return false;
+  }
+}
 
 const ACTION_CONTENT: Record<AuthAction, AuthOnboardingContent> = {
   like: {
@@ -128,32 +156,42 @@ export function createEnsureSignerForAction(
   dependencies: EnsureSignerDependencies = {
     ensureInitialized,
     getPublicKey,
+    hasConnectedSigner,
     showAuthOnboarding,
   }
 ) {
   return async function ensureSignerForAction(
     options: EnsureSignerForActionOptions
   ): Promise<EnsureSignerForActionResult> {
-    try {
-      await dependencies.ensureInitialized();
-    } catch (error) {
-      console.error('[AuthOnboarding] Failed to initialize signer flow:', error);
-      return {
-        status: 'unavailable',
-        publicKey: null,
-        message: getSignerUnavailableMessage(options.action),
-      };
+    const unavailable = (): EnsureSignerForActionResult => ({
+      status: 'unavailable',
+      publicKey: null,
+      message: getSignerUnavailableMessage(options.action),
+    });
+
+    // A signer is already reachable (NIP-07 extension or stored
+    // window.nostr.js session): resolve the public key directly and skip
+    // onboarding. Extensions may show their own permission prompt here.
+    if (dependencies.hasConnectedSigner()) {
+      try {
+        await dependencies.ensureInitialized();
+        const existingPubKey = await dependencies.getPublicKey();
+        if (existingPubKey) {
+          return {
+            status: 'already-connected',
+            publicKey: existingPubKey,
+          };
+        }
+        return unavailable();
+      } catch (error) {
+        console.error('[AuthOnboarding] Failed to reach connected signer:', error);
+        return unavailable();
+      }
     }
 
+    // First-time user: show onboarding before any signer call, so
+    // window.nostr.js cannot open its own widget ahead of our dialog.
     try {
-      const existingPubKey = await dependencies.getPublicKey();
-      if (existingPubKey) {
-        return {
-          status: 'already-connected',
-          publicKey: existingPubKey,
-        };
-      }
-
       const onboardingResult = await dependencies.showAuthOnboarding(options);
       if (onboardingResult.status === 'dismissed') {
         return {
@@ -162,6 +200,9 @@ export function createEnsureSignerForAction(
         };
       }
 
+      // The user chose to connect and the dialog is closed, so the
+      // window.nostr.js widget opens without competing with our dialog.
+      await dependencies.ensureInitialized();
       const connectedPubKey = await dependencies.getPublicKey();
       if (connectedPubKey) {
         return {
@@ -170,18 +211,10 @@ export function createEnsureSignerForAction(
         };
       }
 
-      return {
-        status: 'unavailable',
-        publicKey: null,
-        message: getSignerUnavailableMessage(options.action),
-      };
+      return unavailable();
     } catch (error) {
       console.error('[AuthOnboarding] Failed during signer onboarding:', error);
-      return {
-        status: 'unavailable',
-        publicKey: null,
-        message: getSignerUnavailableMessage(options.action),
-      };
+      return unavailable();
     }
   };
 }
@@ -301,23 +334,13 @@ export async function showAuthOnboarding(
         settle({ status: 'dismissed' });
       });
 
-      connectButton?.addEventListener('click', async () => {
-        connectButton.disabled = true;
-        setStatus('Opening your signer connection...', 'neutral');
-
-        const connectedPubKey = await getPublicKey();
-        if (connectedPubKey) {
-          setStatus('Connected. Continuing...', 'success');
-          settle({ status: 'connect' });
-          dialogComponent.close();
-          return;
-        }
-
-        connectButton.disabled = false;
-        setStatus(
-          'No signer connected yet. Finish setup in the signer widget, then try Connect again.',
-          'error'
-        );
+      connectButton?.addEventListener('click', () => {
+        // Settle as `connect` before closing, since the dialog `close`
+        // event settles as `dismissed`. The signer prompt itself is
+        // triggered by the caller after the dialog is gone, so the
+        // window.nostr.js widget never stacks on top of this dialog.
+        settle({ status: 'connect' });
+        dialogComponent.close();
       });
     });
   })();
