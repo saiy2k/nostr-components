@@ -11,6 +11,11 @@ BACKFILL_MAX_PAGES="${BACKFILL_MAX_PAGES:-200}"
 BACKFILL_PAGE_LIMIT="${BACKFILL_PAGE_LIMIT:-500}"
 BACKFILL_MAX_PAGE_LIMIT="${BACKFILL_MAX_PAGE_LIMIT:-2000}"
 BACKFILL_SINCE="${BACKFILL_SINCE:-0}"
+BACKFILL_WRITE_BUDGET="${BACKFILL_WRITE_BUDGET:-8000}"
+BACKFILL_CHECKPOINT_INTERVAL="${BACKFILL_CHECKPOINT_INTERVAL:-10}"
+MAX_PENDING_CLAIMS="${MAX_PENDING_CLAIMS:-20}"
+MAX_INACTIVE_VERIFIED_CLAIMS="${MAX_INACTIVE_VERIFIED_CLAIMS:-10}"
+MAX_REJECTION_TOMBSTONES="${MAX_REJECTION_TOMBSTONES:-100}"
 
 gcloud config set project "${PROJECT_ID}"
 gcloud services enable run.googleapis.com firestore.googleapis.com cloudbuild.googleapis.com
@@ -34,8 +39,8 @@ gcloud run jobs deploy "${JOB_NAME}" \
   --region "${REGION}" \
   --service-account "${SERVICE_ACCOUNT}" \
   --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},FIRESTORE_PROJECT=${PROJECT_ID}" \
-  --args "scripts/relay-directory/backfill.mjs,--firestore-project,${PROJECT_ID},--backfill-max-pages,${BACKFILL_MAX_PAGES},--backfill-page-limit,${BACKFILL_PAGE_LIMIT},--backfill-max-page-limit,${BACKFILL_MAX_PAGE_LIMIT},--backfill-since,${BACKFILL_SINCE},--no-json" \
-  --max-retries 1 \
+  --args "scripts/relay-directory/backfill.mjs,--firestore-project,${PROJECT_ID},--backfill-max-pages,${BACKFILL_MAX_PAGES},--backfill-page-limit,${BACKFILL_PAGE_LIMIT},--backfill-max-page-limit,${BACKFILL_MAX_PAGE_LIMIT},--backfill-since,${BACKFILL_SINCE},--backfill-write-budget,${BACKFILL_WRITE_BUDGET},--backfill-checkpoint-interval,${BACKFILL_CHECKPOINT_INTERVAL},--max-pending-claims,${MAX_PENDING_CLAIMS},--max-inactive-verified-claims,${MAX_INACTIVE_VERIFIED_CLAIMS},--max-rejection-tombstones,${MAX_REJECTION_TOMBSTONES},--no-json" \
+  --max-retries 0 \
   --task-timeout 3600
 
 if [ "${RUN_AFTER_DEPLOY:-false}" = "true" ]; then

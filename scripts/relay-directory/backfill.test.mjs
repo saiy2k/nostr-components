@@ -3,11 +3,13 @@
 import { describe, expect, it } from "vitest";
 import {
   buildBackfillCheckpointWrite,
-  buildBackfillEventWrite,
   buildBackfillGapWrite,
-  buildProjectionQueueCreateWrite,
 } from "./ingestion.mjs";
-import { decideBackfillCursor, parseBackfillArgs } from "./backfill.mjs";
+import {
+  decideBackfillCursor,
+  isSuccessfulRelayPage,
+  parseBackfillArgs,
+} from "./backfill.mjs";
 import {
   buildRunSummaryWrite,
   createRunMetrics,
@@ -15,10 +17,31 @@ import {
   percentile,
 } from "./runtime.mjs";
 
-const PUBKEY =
-  "7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e";
-
 describe("parseBackfillArgs", () => {
+  it("defaults to the free-tier backfill budget and bounded claim retention", () => {
+    expect(parseBackfillArgs(["--firestore-project", "gr-prod"])).toMatchObject(
+      {
+        firestoreHandlesCollection: "nostrDirectoryHandles",
+        backfillWriteBudget: 8000,
+        backfillCheckpointInterval: 10,
+        maxPendingClaims: 20,
+        maxInactiveVerifiedClaims: 10,
+        maxRejectionTombstones: 100,
+      },
+    );
+  });
+
+  it("rejects invalid claim retention limits", () => {
+    expect(() =>
+      parseBackfillArgs([
+        "--firestore-project",
+        "gr-prod",
+        "--max-pending-claims",
+        "-1",
+      ]),
+    ).toThrow("--max-pending-claims must be an integer >= 0.");
+  });
+
   it("rejects missing values for value-taking flags", () => {
     expect(() => parseBackfillArgs(["--relays"])).toThrow(
       "--relays requires a value.",
@@ -38,61 +61,6 @@ describe("parseBackfillArgs", () => {
 });
 
 describe("backfill Firestore writes", () => {
-  it("stores raw relay events by event id", () => {
-    const write = buildBackfillEventWrite(
-      {
-        id: "event-id",
-        kind: 10011,
-        pubkey: PUBKEY,
-        created_at: 1710000000,
-        content: "",
-        tags: [["i", "twitter:alice", "proof"]],
-        sig: "sig",
-      },
-      "wss://relay.example",
-      { firestoreEventsCollection: "events" },
-    );
-
-    expect(write).toMatchObject({
-      collection: "events",
-      id: "event-id",
-      data: {
-        id: "event-id",
-        kind: 10011,
-        pubkey: PUBKEY,
-        createdAt: 1710000000,
-        ingestion: expect.objectContaining({
-          mode: "backfill",
-          lastRelay: "wss://relay.example",
-        }),
-      },
-    });
-  });
-
-  it("creates a projection queue doc only when missing", () => {
-    const write = buildProjectionQueueCreateWrite(
-      {
-        id: "event-id",
-        kind: 10011,
-        pubkey: PUBKEY,
-        created_at: 1710000000,
-      },
-      "backfill",
-      { firestoreQueueCollection: "queue" },
-    );
-
-    expect(write).toMatchObject({
-      operation: "createIfMissing",
-      collection: "queue",
-      id: "event-id",
-      data: expect.objectContaining({
-        eventId: "event-id",
-        sourceMode: "backfill",
-        status: "pending",
-      }),
-    });
-  });
-
   it("stores resumable relay-kind checkpoints", () => {
     const write = buildBackfillCheckpointWrite(
       {
@@ -166,6 +134,16 @@ describe("backfill Firestore writes", () => {
         seenEventIds: ["a", "b"],
       }),
     });
+  });
+});
+
+describe("relay page completion", () => {
+  it("accepts only EOSE and full-page completion reasons", () => {
+    expect(isSuccessfulRelayPage("eose")).toBe(true);
+    expect(isSuccessfulRelayPage("max")).toBe(true);
+    expect(isSuccessfulRelayPage("timeout")).toBe(false);
+    expect(isSuccessfulRelayPage("ws-error")).toBe(false);
+    expect(isSuccessfulRelayPage("close")).toBe(false);
   });
 });
 
