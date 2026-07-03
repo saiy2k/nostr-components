@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
 
-import { FieldValue } from "@google-cloud/firestore";
 import {
   buildBackfillCheckpointWrite,
   buildBackfillGapWrite,
-  buildRawEventIngestionWrites,
   isValidSignedEvent,
   queryRelay,
 } from "./ingestion.mjs";
 import {
+  DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+  DEFAULT_MAX_PENDING_CLAIMS,
+  DEFAULT_MAX_REJECTION_TOMBSTONES,
+  extractIdentityClaims,
+  planDirectoryHandleWrites,
+} from "./directory-state.mjs";
+import {
   DEFAULT_RELAYS,
   IDENTITY_KINDS,
-  buildRunSummaryWrite,
   commitFirestoreWrites,
   createFirestore,
   createRunMetrics,
@@ -20,10 +24,19 @@ import {
   firestoreConfigFromEnv,
   logRunSummary,
   runCli,
-  stripUndefined,
   takeOptionValue,
   writeJson,
 } from "./runtime.mjs";
+import {
+  canSpendFirestoreWrites,
+  createFirestoreWriteBudget,
+  estimateFirestoreWrites,
+  remainingFirestoreWrites,
+  spendFirestoreWrites,
+} from "./write-budget.mjs";
+
+const DEFAULT_BACKFILL_WRITE_BUDGET = 8000;
+const EMERGENCY_CHECKPOINT_WRITE_RESERVE = 1;
 
 export function parseBackfillArgs(argv) {
   const args = {
@@ -42,6 +55,22 @@ export function parseBackfillArgs(argv) {
       : 0,
     backfillResume: process.env.BACKFILL_RESUME !== "0",
     backfillStatePrefix: process.env.BACKFILL_STATE_PREFIX || "backfill",
+    backfillWriteBudget: Number(
+      process.env.BACKFILL_WRITE_BUDGET || DEFAULT_BACKFILL_WRITE_BUDGET,
+    ),
+    backfillCheckpointInterval: Number(
+      process.env.BACKFILL_CHECKPOINT_INTERVAL || 10,
+    ),
+    maxPendingClaims: Number(
+      process.env.MAX_PENDING_CLAIMS || DEFAULT_MAX_PENDING_CLAIMS,
+    ),
+    maxInactiveVerifiedClaims: Number(
+      process.env.MAX_INACTIVE_VERIFIED_CLAIMS ||
+        DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+    ),
+    maxRejectionTombstones: Number(
+      process.env.MAX_REJECTION_TOMBSTONES || DEFAULT_MAX_REJECTION_TOMBSTONES,
+    ),
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -63,12 +92,8 @@ export function parseBackfillArgs(argv) {
     else if (flag === "--timeout-ms") args.timeoutMs = Number(take());
     else if (flag === "--firestore-project") args.firestoreProject = take();
     else if (flag === "--firestore-database") args.firestoreDatabase = take();
-    else if (flag === "--firestore-backfill-runs-collection")
-      args.firestoreBackfillRunsCollection = take();
-    else if (flag === "--firestore-events-collection")
-      args.firestoreEventsCollection = take();
-    else if (flag === "--firestore-queue-collection")
-      args.firestoreQueueCollection = take();
+    else if (flag === "--firestore-handles-collection")
+      args.firestoreHandlesCollection = take();
     else if (flag === "--firestore-state-collection")
       args.firestoreStateCollection = take();
     else if (flag === "--firestore-gaps-collection")
@@ -84,6 +109,18 @@ export function parseBackfillArgs(argv) {
     else if (flag === "--no-backfill-resume") args.backfillResume = false;
     else if (flag === "--backfill-state-prefix")
       args.backfillStatePrefix = take();
+    else if (flag === "--backfill-write-budget")
+      args.backfillWriteBudget = Number(take());
+    else if (flag === "--no-backfill-write-budget")
+      args.backfillWriteBudget = 0;
+    else if (flag === "--backfill-checkpoint-interval")
+      args.backfillCheckpointInterval = Number(take());
+    else if (flag === "--max-pending-claims")
+      args.maxPendingClaims = Number(take());
+    else if (flag === "--max-inactive-verified-claims")
+      args.maxInactiveVerifiedClaims = Number(take());
+    else if (flag === "--max-rejection-tombstones")
+      args.maxRejectionTombstones = Number(take());
     else if (flag === "--help" || flag === "-h") {
       printBackfillHelp();
       process.exit(0);
@@ -129,17 +166,40 @@ function validateBackfillArgs(args) {
       "--backfill-state-prefix must be non-empty and must not contain /, #, or ?.",
     );
   }
+  if (
+    !Number.isFinite(args.backfillWriteBudget) ||
+    args.backfillWriteBudget < 0
+  ) {
+    throw new Error("--backfill-write-budget must be >= 0.");
+  }
+  if (
+    !Number.isFinite(args.backfillCheckpointInterval) ||
+    args.backfillCheckpointInterval <= 0
+  ) {
+    throw new Error("--backfill-checkpoint-interval must be positive.");
+  }
+  for (const [name, value] of [
+    ["--max-pending-claims", args.maxPendingClaims],
+    ["--max-inactive-verified-claims", args.maxInactiveVerifiedClaims],
+    ["--max-rejection-tombstones", args.maxRejectionTombstones],
+  ]) {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error(`${name} must be an integer >= 0.`);
+    }
+  }
 }
 
 function printBackfillHelp() {
   console.log(`Usage: npm run crawl:directory:backfill -- [options]
 
-Backfill signed Nostr kind:10011 and kind:0 events into Firestore.
+Backfill X-linked Nostr identity claims into Firestore directory handles.
 
 Options:
   --relays <csv>                    Relays to query.
   --firestore-project <id>          GCP project. Defaults to GOOGLE_CLOUD_PROJECT.
   --firestore-database <id>         Firestore database. Default: (default)
+  --firestore-handles-collection <name>
+                                    Directory handle collection.
   --backfill-page-limit <n>         Events per relay/kind page. Default: 500
   --backfill-max-page-limit <n>     Largest retry page. Default: 2000
   --backfill-max-pages <n>          Max pages per relay/kind. Default: 25
@@ -147,6 +207,13 @@ Options:
   --backfill-since <unix>           Stop cursor. Default: 0
   --no-backfill-resume              Ignore stored cursor state.
   --backfill-state-prefix <value>   Checkpoint namespace. Default: backfill
+  --backfill-write-budget <n>       Maximum writes per run. Default: 8000; 0 disables.
+  --backfill-checkpoint-interval <n>
+                                    Write cursor checkpoints every n pages. Default: 10
+  --max-pending-claims <n>          Pending claims retained per handle. Default: 20
+  --max-inactive-verified-claims <n>
+                                    Historical verified claims retained. Default: 10
+  --max-rejection-tombstones <n>    Compact rejected IDs retained. Default: 100
   --out <file>                      Optional JSON run summary.
 `);
 }
@@ -160,29 +227,59 @@ export async function runBackfill(args, FirestoreCtor) {
     pages: 0,
     relayEvents: 0,
     validEvents: 0,
-    uniqueEventsWritten: 0,
+    identityClaimsDiscovered: 0,
+    directoryHandleWrites: 0,
+    claimsSkippedExisting: 0,
+    claimsSkippedRejected: 0,
+    duplicateEventsSkipped: 0,
     completedCursors: 0,
     gapsWritten: 0,
+    estimatedFirestoreWrites: 0,
   };
   const cursorSummaries = [];
+  const runContext = {
+    eventIdsSeenThisRun: new Set(),
+    handleStateCache: new Map(),
+    writeBudget: createFirestoreWriteBudget(args.backfillWriteBudget),
+    quotaPaused: false,
+  };
 
   console.log(
     `Backfilling ${IDENTITY_KINDS.join(",")} from ${args.relays.length} relays into ${args.firestoreProject}/${args.firestoreDatabase}...`,
   );
+  if (args.backfillWriteBudget > 0) {
+    console.log(
+      `  Firestore write budget: ${args.backfillWriteBudget} per run`,
+    );
+  }
 
-  for (const relay of args.relays) {
+  relayLoop: for (const relay of args.relays) {
     for (const kind of IDENTITY_KINDS) {
       totals.relayKindCursors += 1;
-      const summary = await runBackfillCursor(db, relay, kind, args);
+      const summary = await runBackfillCursor(
+        db,
+        relay,
+        kind,
+        args,
+        runContext,
+      );
       totals.pages += summary.pages;
       totals.relayEvents += summary.relayEvents;
       totals.validEvents += summary.validEvents;
-      totals.uniqueEventsWritten += summary.uniqueEventsWritten;
+      totals.identityClaimsDiscovered += summary.identityClaimsDiscovered;
+      totals.directoryHandleWrites += summary.directoryHandleWrites;
+      totals.claimsSkippedExisting += summary.claimsSkippedExisting;
+      totals.claimsSkippedRejected += summary.claimsSkippedRejected;
+      totals.duplicateEventsSkipped += summary.duplicateEventsSkipped;
       totals.gapsWritten += summary.gapsWritten;
+      totals.estimatedFirestoreWrites = runContext.writeBudget.used;
       if (summary.completed) totals.completedCursors += 1;
       cursorSummaries.push(summary);
+      if (runContext.quotaPaused) break relayLoop;
     }
   }
+
+  totals.estimatedFirestoreWrites = runContext.writeBudget.used;
 
   const output = {
     mode: "backfill",
@@ -196,20 +293,20 @@ export async function runBackfill(args, FirestoreCtor) {
     firestore: {
       project: args.firestoreProject,
       database: args.firestoreDatabase,
-      eventsCollection: args.firestoreEventsCollection,
-      queueCollection: args.firestoreQueueCollection,
+      handlesCollection: args.firestoreHandlesCollection,
       stateCollection: args.firestoreStateCollection,
       gapsCollection: args.firestoreGapsCollection,
     },
+    controls: {
+      writeBudget: args.backfillWriteBudget,
+      checkpointInterval: args.backfillCheckpointInterval,
+      maxPendingClaims: args.maxPendingClaims,
+      maxInactiveVerifiedClaims: args.maxInactiveVerifiedClaims,
+      maxRejectionTombstones: args.maxRejectionTombstones,
+      quotaPaused: runContext.quotaPaused,
+    },
   };
 
-  await commitFirestoreWrites(db, [
-    buildRunSummaryWrite(
-      output.run,
-      output,
-      args.firestoreBackfillRunsCollection,
-    ),
-  ]);
   logRunSummary(output.run);
 
   if (args.out) await writeJson(args.out, output);
@@ -217,7 +314,7 @@ export async function runBackfill(args, FirestoreCtor) {
   return output;
 }
 
-async function runBackfillCursor(db, relay, kind, args) {
+async function runBackfillCursor(db, relay, kind, args, context) {
   const stateRef = db
     .collection(args.firestoreStateCollection)
     .doc(backfillStateId(relay, kind, args.backfillStatePrefix));
@@ -235,7 +332,11 @@ async function runBackfillCursor(db, relay, kind, args) {
       pages: 0,
       relayEvents: 0,
       validEvents: 0,
-      uniqueEventsWritten: 0,
+      identityClaimsDiscovered: 0,
+      directoryHandleWrites: 0,
+      claimsSkippedExisting: 0,
+      claimsSkippedRejected: 0,
+      duplicateEventsSkipped: 0,
       gapsWritten: 0,
       cursorUntil: previousState.cursorUntil,
       oldestSeenAt: previousState.oldestSeenAt,
@@ -255,57 +356,127 @@ async function runBackfillCursor(db, relay, kind, args) {
   let pages = 0;
   let relayEvents = 0;
   let validEvents = 0;
-  let uniqueEventsWritten = 0;
+  let identityClaimsDiscovered = 0;
+  let directoryHandleWrites = 0;
+  let claimsSkippedExisting = 0;
+  let claimsSkippedRejected = 0;
+  let duplicateEventsSkipped = 0;
   let gapsWritten = 0;
+  let retryPaused = false;
+  const pendingCheckpoint = createPendingCheckpoint();
 
   console.log(`  ${relay} kind:${kind} starting until=${until}`);
 
   while (pages < args.backfillMaxPages && until > args.backfillSince) {
+    const stateBeforePage = {
+      cursorUntil: until,
+      oldestSeenAt,
+      pageLimit,
+      boundaryTimestamp,
+      boundarySeenIds: [...boundarySeenIds],
+      stuckCount,
+    };
     const page = await queryRelay(
       relay,
-      { kinds: [kind], until },
+      { kinds: [kind], since: args.backfillSince, until },
       { timeoutMs: args.timeoutMs, max: pageLimit },
     );
     pages += 1;
     lastReason = page.reason;
     relayEvents += page.events.length;
 
+    if (!isSuccessfulRelayPage(page.reason)) {
+      retryPaused = true;
+      console.warn(
+        `    ${relay} kind:${kind} ${page.reason}; keeping cursor=${until} for retry.`,
+      );
+      await flushCursorCheckpoint({
+        db,
+        relay,
+        kind,
+        args,
+        context,
+        state: stateBeforePage,
+        pendingCheckpoint,
+        completed: false,
+        status: "retry_later",
+        lastReason: page.reason,
+      });
+      break;
+    }
+
     const valid = dedupeEvents(page.events).filter(isValidSignedEvent);
     validEvents += valid.length;
-    uniqueEventsWritten += valid.length;
+    const fresh = filterEventsNotSeenThisRun(
+      valid,
+      context.eventIdsSeenThisRun,
+    );
+    const claims = extractIdentityClaims(fresh.events, relay);
+    identityClaimsDiscovered += claims.length;
+    const planned = await planDirectoryHandleWrites(db, claims, {
+      ...args,
+      handleStateCache: context.handleStateCache,
+    });
+    claimsSkippedExisting += planned.stats.claimsSkippedExisting;
+    claimsSkippedRejected += planned.stats.claimsSkippedRejected;
 
     const pageOldest = oldestCreatedAt(page.events);
-    if (
-      !page.events.length ||
-      !pageOldest ||
-      pageOldest <= args.backfillSince
-    ) {
-      await commitFirestoreWrites(db, [
-        ...valid.flatMap((event) =>
-          buildRawEventIngestionWrites(event, relay, "backfill", args),
-        ),
+    if (page.reason === "eose" || pageOldest <= args.backfillSince) {
+      const terminalState = {
+        cursorUntil: pageOldest
+          ? Math.max(pageOldest - 1, args.backfillSince)
+          : until,
+        oldestSeenAt: pageOldest
+          ? Math.min(oldestSeenAt || pageOldest, pageOldest)
+          : oldestSeenAt,
+        pageLimit,
+        boundaryTimestamp,
+        boundarySeenIds: [...boundarySeenIds],
+        stuckCount,
+      };
+      const currentPageCounters = createPageCheckpointCounters(
+        page.events.length,
+        valid.length,
+      );
+      const checkpointWrites = [
         buildBackfillCheckpointWrite(
           {
             relay,
             kind,
-            cursorUntil: pageOldest
-              ? Math.max(pageOldest - 1, args.backfillSince)
-              : until,
-            oldestSeenAt: pageOldest
-              ? Math.min(oldestSeenAt || pageOldest, pageOldest)
-              : oldestSeenAt,
-            pageEvents: page.events.length,
-            validPageEvents: valid.length,
+            ...terminalState,
+            ...combineCheckpointCounters(
+              pendingCheckpoint,
+              currentPageCounters,
+            ),
             lastReason,
             completed: true,
-            pageLimit,
-            boundaryTimestamp,
-            boundarySeenIds: [...boundarySeenIds],
-            stuckCount,
+            status: "complete",
           },
           args,
         ),
-      ]);
+      ];
+      const committed = await commitCursorPageWritesOrPause({
+        db,
+        candidateWrites: planned.writes,
+        cursorWrites: checkpointWrites,
+        relay,
+        kind,
+        args,
+        context,
+        safeState: stateBeforePage,
+        pendingCheckpoint,
+        lastReason: "write-budget-exhausted",
+      });
+      if (!committed) {
+        lastReason = "write-budget-exhausted";
+        break;
+      }
+      markEventsSeenThisRun(fresh.events, context.eventIdsSeenThisRun);
+      duplicateEventsSkipped += fresh.duplicateCount;
+      directoryHandleWrites += planned.writes.length;
+      resetPendingCheckpoint(pendingCheckpoint);
+      until = terminalState.cursorUntil;
+      oldestSeenAt = terminalState.oldestSeenAt;
       completed = true;
       break;
     }
@@ -321,74 +492,136 @@ async function runBackfillCursor(db, relay, kind, args) {
       defaultPageLimit: args.backfillPageLimit,
       maxPageLimit: args.backfillMaxPageLimit,
     });
-    until = decision.cursorUntil;
-    pageLimit = decision.pageLimit;
-    boundaryTimestamp = decision.boundaryTimestamp;
-    boundarySeenIds = new Set(decision.boundarySeenIds);
-    stuckCount = decision.stuckCount;
-    oldestSeenAt = Math.min(oldestSeenAt || pageOldest, pageOldest);
-
-    const writes = [
-      ...valid.flatMap((event) =>
-        buildRawEventIngestionWrites(event, relay, "backfill", args),
-      ),
-      buildBackfillCheckpointWrite(
-        {
-          relay,
-          kind,
-          cursorUntil: until,
-          oldestSeenAt,
-          pageEvents: page.events.length,
-          validPageEvents: valid.length,
-          lastReason: decision.reason || lastReason,
-          completed: false,
-          pageLimit,
-          boundaryTimestamp,
-          boundarySeenIds: [...boundarySeenIds],
-          stuckCount,
-        },
-        args,
-      ),
-    ];
+    const nextState = {
+      cursorUntil: decision.cursorUntil,
+      oldestSeenAt: Math.min(oldestSeenAt || pageOldest, pageOldest),
+      pageLimit: decision.pageLimit,
+      boundaryTimestamp: decision.boundaryTimestamp,
+      boundarySeenIds: decision.boundarySeenIds,
+      stuckCount: decision.stuckCount,
+    };
+    const currentPageCounters = createPageCheckpointCounters(
+      page.events.length,
+      valid.length,
+    );
+    const shouldCheckpoint =
+      pendingCheckpoint.pagesProcessed + currentPageCounters.pagesProcessed >=
+        args.backfillCheckpointInterval || Boolean(decision.gap);
+    const cursorWrites = [];
 
     if (decision.gap) {
-      writes.push(
+      cursorWrites.push(
         buildBackfillGapWrite({ ...decision.gap, relay, kind }, args),
       );
-      gapsWritten += 1;
     }
 
-    await commitFirestoreWrites(db, writes);
-  }
+    if (shouldCheckpoint) {
+      cursorWrites.push(
+        buildBackfillCheckpointWrite(
+          {
+            relay,
+            kind,
+            ...nextState,
+            ...combineCheckpointCounters(
+              pendingCheckpoint,
+              currentPageCounters,
+            ),
+            lastReason: decision.reason || lastReason,
+            completed: false,
+            status: "running",
+          },
+          args,
+        ),
+      );
+    }
 
-  if (pages >= args.backfillMaxPages && until > args.backfillSince) {
-    console.log(`    paused after ${pages} page(s), resume cursor=${until}`);
-  } else {
-    completed = true;
-  }
-
-  await stateRef.set(
-    stripUndefined({
+    const committed = await commitCursorPageWritesOrPause({
+      db,
+      candidateWrites: planned.writes,
+      cursorWrites,
       relay,
       kind,
-      mode: "backfill",
-      statePrefix: args.backfillStatePrefix,
-      cursorUntil: until,
-      oldestSeenAt,
-      pageLimit,
-      boundaryTimestamp,
-      boundarySeenIds: [...boundarySeenIds],
-      stuckCount,
-      completed,
-      status: completed ? "complete" : "paused",
-      lastReason,
-      updatedAt: FieldValue.serverTimestamp(),
-    }),
-    { merge: true },
-  );
+      args,
+      context,
+      safeState: stateBeforePage,
+      pendingCheckpoint,
+      lastReason: "write-budget-exhausted",
+    });
+    if (!committed) {
+      lastReason = "write-budget-exhausted";
+      break;
+    }
+
+    markEventsSeenThisRun(fresh.events, context.eventIdsSeenThisRun);
+    duplicateEventsSkipped += fresh.duplicateCount;
+    directoryHandleWrites += planned.writes.length;
+    if (decision.gap) gapsWritten += 1;
+    until = nextState.cursorUntil;
+    pageLimit = nextState.pageLimit;
+    boundaryTimestamp = nextState.boundaryTimestamp;
+    boundarySeenIds = new Set(nextState.boundarySeenIds);
+    stuckCount = nextState.stuckCount;
+    oldestSeenAt = nextState.oldestSeenAt;
+
+    if (shouldCheckpoint) {
+      resetPendingCheckpoint(pendingCheckpoint);
+    } else {
+      addPendingCheckpoint(pendingCheckpoint, currentPageCounters);
+    }
+  }
+
+  if (!completed && !context.quotaPaused && until <= args.backfillSince) {
+    await flushCursorCheckpoint({
+      db,
+      relay,
+      kind,
+      args,
+      context,
+      state: {
+        cursorUntil: until,
+        oldestSeenAt,
+        pageLimit,
+        boundaryTimestamp,
+        boundarySeenIds: [...boundarySeenIds],
+        stuckCount,
+      },
+      pendingCheckpoint,
+      completed: true,
+      status: "complete",
+      lastReason: lastReason || "reached-since",
+    });
+    completed = true;
+  } else if (
+    !completed &&
+    !context.quotaPaused &&
+    !retryPaused &&
+    pages >= args.backfillMaxPages &&
+    until > args.backfillSince
+  ) {
+    await flushCursorCheckpoint({
+      db,
+      relay,
+      kind,
+      args,
+      context,
+      state: {
+        cursorUntil: until,
+        oldestSeenAt,
+        pageLimit,
+        boundaryTimestamp,
+        boundarySeenIds: [...boundarySeenIds],
+        stuckCount,
+      },
+      pendingCheckpoint,
+      completed: false,
+      status: "paused",
+      lastReason: lastReason || "max-pages",
+    });
+    console.log(`    paused after ${pages} page(s), resume cursor=${until}`);
+  }
 
   console.log(
-    `    pages=${pages} relayEvents=${relayEvents} validEvents=${validEvents} status=${completed ? "complete" : "paused"}`,
+    `    pages=${pages} relayEvents=${relayEvents} validEvents=${validEvents} claims=${identityClaimsDiscovered} handleWrites=${directoryHandleWrites} status=${completed ? "complete" : retryPaused ? "retry_later" : "paused"}`,
   );
 
   return {
@@ -397,13 +630,158 @@ async function runBackfillCursor(db, relay, kind, args) {
     pages,
     relayEvents,
     validEvents,
-    uniqueEventsWritten,
+    identityClaimsDiscovered,
+    directoryHandleWrites,
+    claimsSkippedExisting,
+    claimsSkippedRejected,
+    duplicateEventsSkipped,
     gapsWritten,
     cursorUntil: until,
     oldestSeenAt,
     completed,
     lastReason,
   };
+}
+
+async function commitCursorPageWritesOrPause({
+  db,
+  candidateWrites,
+  cursorWrites,
+  relay,
+  kind,
+  args,
+  context,
+  safeState,
+  pendingCheckpoint,
+  lastReason,
+}) {
+  const estimatedWrites =
+    estimateFirestoreWrites(candidateWrites) +
+    estimateFirestoreWrites(cursorWrites);
+  if (
+    canSpendFirestoreWrites(context.writeBudget, estimatedWrites, {
+      reserve: EMERGENCY_CHECKPOINT_WRITE_RESERVE,
+    })
+  ) {
+    await commitBudgetedFirestoreWrites(db, candidateWrites, context);
+    await commitBudgetedFirestoreWrites(db, cursorWrites, context);
+    return true;
+  }
+
+  context.quotaPaused = true;
+  console.log(
+    `    pausing before ${estimatedWrites} Firestore write(s); ${remainingFirestoreWrites(context.writeBudget, { reserve: EMERGENCY_CHECKPOINT_WRITE_RESERVE })} write(s) remain before the emergency-checkpoint reserve.`,
+  );
+
+  await flushCursorCheckpoint({
+    db,
+    relay,
+    kind,
+    args,
+    context,
+    state: safeState,
+    pendingCheckpoint,
+    completed: false,
+    status: "paused",
+    lastReason,
+  });
+  return false;
+}
+
+async function flushCursorCheckpoint({
+  db,
+  relay,
+  kind,
+  args,
+  context,
+  state,
+  pendingCheckpoint,
+  completed,
+  status,
+  lastReason,
+}) {
+  const writes = [
+    buildBackfillCheckpointWrite(
+      {
+        relay,
+        kind,
+        ...state,
+        ...pendingCheckpoint,
+        lastReason,
+        completed,
+        status,
+      },
+      args,
+    ),
+  ];
+
+  if (!canSpendFirestoreWrites(context.writeBudget, writes)) {
+    context.quotaPaused = true;
+    return false;
+  }
+
+  await commitBudgetedFirestoreWrites(db, writes, context);
+  resetPendingCheckpoint(pendingCheckpoint);
+  return true;
+}
+
+async function commitBudgetedFirestoreWrites(db, writes, context) {
+  if (!writes.length) return 0;
+  await commitFirestoreWrites(db, writes);
+  return spendFirestoreWrites(context.writeBudget, writes);
+}
+
+function filterEventsNotSeenThisRun(events, seenEventIds) {
+  const freshEvents = [];
+  let duplicateCount = 0;
+  for (const event of events) {
+    if (seenEventIds.has(event.id)) {
+      duplicateCount += 1;
+    } else {
+      freshEvents.push(event);
+    }
+  }
+  return { events: freshEvents, duplicateCount };
+}
+
+function markEventsSeenThisRun(events, seenEventIds) {
+  for (const event of events) seenEventIds.add(event.id);
+}
+
+function createPendingCheckpoint() {
+  return {
+    pagesProcessed: 0,
+    pageEvents: 0,
+    validPageEvents: 0,
+  };
+}
+
+function createPageCheckpointCounters(pageEvents, validPageEvents) {
+  return {
+    pagesProcessed: 1,
+    pageEvents,
+    validPageEvents,
+  };
+}
+
+function combineCheckpointCounters(left, right) {
+  return {
+    pagesProcessed: left.pagesProcessed + right.pagesProcessed,
+    pageEvents: left.pageEvents + right.pageEvents,
+    validPageEvents: left.validPageEvents + right.validPageEvents,
+  };
+}
+
+function addPendingCheckpoint(pendingCheckpoint, counters) {
+  pendingCheckpoint.pagesProcessed += counters.pagesProcessed;
+  pendingCheckpoint.pageEvents += counters.pageEvents;
+  pendingCheckpoint.validPageEvents += counters.validPageEvents;
+}
+
+function resetPendingCheckpoint(pendingCheckpoint) {
+  pendingCheckpoint.pagesProcessed = 0;
+  pendingCheckpoint.pageEvents = 0;
+  pendingCheckpoint.validPageEvents = 0;
 }
 
 async function readBackfillState(stateRef) {
@@ -427,6 +805,10 @@ function oldestCreatedAt(events) {
       oldest === null ? event.created_at : Math.min(oldest, event.created_at);
   }
   return oldest;
+}
+
+export function isSuccessfulRelayPage(reason) {
+  return reason === "eose" || reason === "max";
 }
 
 export function decideBackfillCursor({
@@ -528,11 +910,23 @@ function printBackfillSummary(output, args) {
   console.log(`  pages:                ${output.stats.pages}`);
   console.log(`  relay events:         ${output.stats.relayEvents}`);
   console.log(`  valid events:         ${output.stats.validEvents}`);
-  console.log(`  event docs written:   ${output.stats.uniqueEventsWritten}`);
+  console.log(
+    `  identity claims:      ${output.stats.identityClaimsDiscovered}`,
+  );
+  console.log(`  handle docs written:  ${output.stats.directoryHandleWrites}`);
+  console.log(`  duplicate skips:      ${output.stats.duplicateEventsSkipped}`);
+  console.log(`  existing skips:       ${output.stats.claimsSkippedExisting}`);
+  console.log(`  rejected skips:       ${output.stats.claimsSkippedRejected}`);
   console.log(`  gaps written:         ${output.stats.gapsWritten}`);
   console.log(`  completed cursors:    ${output.stats.completedCursors}`);
+  console.log(
+    `  estimated writes:     ${output.stats.estimatedFirestoreWrites}`,
+  );
+  console.log(
+    `  write budget:         ${output.controls.writeBudget || "unlimited"}`,
+  );
   console.log(`  firestore project:    ${args.firestoreProject}`);
-  console.log(`  firestore events:     ${args.firestoreEventsCollection}`);
+  console.log(`  firestore handles:    ${args.firestoreHandlesCollection}`);
   console.log(`  firestore state:      ${args.firestoreStateCollection}`);
   if (args.out) console.log(`  output:               ${args.out}`);
 }

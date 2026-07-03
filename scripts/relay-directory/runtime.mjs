@@ -21,13 +21,9 @@ export const DEFAULT_COLLECTIONS = {
   backfillRuns: "relayBackfillRuns",
   projectionRuns: "relayProjectionRuns",
   liveRuns: "relayLiveListenerRuns",
-  events: "nostrIdentityEvents",
-  queue: "nostrProjectionQueue",
   state: "relayCrawlerState",
   gaps: "relayCrawlerGaps",
 };
-
-const CREATE_IF_MISSING_CONCURRENCY = 20;
 
 export function firestoreConfigFromEnv() {
   return {
@@ -50,10 +46,6 @@ export function firestoreConfigFromEnv() {
     firestoreLiveRunsCollection:
       process.env.FIRESTORE_LIVE_RUNS_COLLECTION ||
       DEFAULT_COLLECTIONS.liveRuns,
-    firestoreEventsCollection:
-      process.env.FIRESTORE_EVENTS_COLLECTION || DEFAULT_COLLECTIONS.events,
-    firestoreQueueCollection:
-      process.env.FIRESTORE_QUEUE_COLLECTION || DEFAULT_COLLECTIONS.queue,
     firestoreStateCollection:
       process.env.FIRESTORE_STATE_COLLECTION || DEFAULT_COLLECTIONS.state,
     firestoreGapsCollection:
@@ -78,50 +70,14 @@ export async function createFirestore(args, FirestoreCtor = Firestore) {
 }
 
 export async function commitFirestoreWrites(db, writes) {
-  const normalWrites = [];
-  const createIfMissingWrites = [];
-
-  for (const write of writes) {
-    if (write.operation === "createIfMissing") {
-      createIfMissingWrites.push(write);
-    } else {
-      normalWrites.push(write);
-    }
-  }
-
-  for (
-    let i = 0;
-    i < createIfMissingWrites.length;
-    i += CREATE_IF_MISSING_CONCURRENCY
-  ) {
-    await Promise.all(
-      createIfMissingWrites
-        .slice(i, i + CREATE_IF_MISSING_CONCURRENCY)
-        .map((write) => createFirestoreDocIfMissing(db, write)),
-    );
-  }
-
-  for (let i = 0; i < normalWrites.length; i += 450) {
+  for (let i = 0; i < writes.length; i += 450) {
     const batch = db.batch();
-    for (const write of normalWrites.slice(i, i + 450)) {
+    for (const write of writes.slice(i, i + 450)) {
       batch.set(db.collection(write.collection).doc(write.id), write.data, {
         merge: true,
       });
     }
     await batch.commit();
-  }
-}
-
-async function createFirestoreDocIfMissing(db, write) {
-  try {
-    await db.collection(write.collection).doc(write.id).create(write.data);
-  } catch (error) {
-    if (
-      error?.code === 6 ||
-      /already exists/i.test(String(error?.message || ""))
-    )
-      return;
-    throw error;
   }
 }
 

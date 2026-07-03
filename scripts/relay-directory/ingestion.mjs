@@ -72,74 +72,6 @@ export function isValidSignedEvent(event) {
   }
 }
 
-export function buildBackfillEventWrite(event, relay, options = {}) {
-  return buildIngestedEventWrite(event, relay, "backfill", options);
-}
-
-export function buildIngestedEventWrite(event, relay, mode, options = {}) {
-  return {
-    collection: options.firestoreEventsCollection || DEFAULT_COLLECTIONS.events,
-    id: firestoreSafeId(event.id),
-    data: stripUndefined({
-      id: event.id,
-      kind: event.kind,
-      pubkey: event.pubkey,
-      createdAt: event.created_at,
-      sourceRelays: FieldValue.arrayUnion(relay),
-      event: normalizeEventForFirestore(event),
-      eventJson: JSON.stringify(event),
-      ingestion: {
-        mode,
-        lastRelay: relay,
-        lastSeenAt: FieldValue.serverTimestamp(),
-      },
-      updatedAt: FieldValue.serverTimestamp(),
-    }),
-  };
-}
-
-export function buildRawEventIngestionWrites(event, relay, mode, options = {}) {
-  return [
-    buildIngestedEventWrite(event, relay, mode, options),
-    buildProjectionQueueCreateWrite(event, mode, options),
-  ];
-}
-
-export function buildProjectionQueueCreateWrite(event, mode, options = {}) {
-  return {
-    operation: "createIfMissing",
-    collection: options.firestoreQueueCollection || DEFAULT_COLLECTIONS.queue,
-    id: firestoreSafeId(event.id),
-    data: stripUndefined({
-      eventId: event.id,
-      kind: event.kind,
-      pubkey: event.pubkey,
-      eventCreatedAt: event.created_at,
-      sourceMode: mode,
-      status: "pending",
-      reason: "awaiting_projection",
-      attempts: 0,
-      nextAttemptAt: FieldValue.serverTimestamp(),
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }),
-  };
-}
-
-function normalizeEventForFirestore(event) {
-  return {
-    id: event.id,
-    kind: event.kind,
-    pubkey: event.pubkey,
-    created_at: event.created_at,
-    content: event.content || "",
-    tags: (event.tags || []).map((tag) => ({
-      values: tag.map((value) => String(value)),
-    })),
-    sig: event.sig,
-  };
-}
-
 export function buildBackfillCheckpointWrite(
   {
     relay,
@@ -148,8 +80,10 @@ export function buildBackfillCheckpointWrite(
     oldestSeenAt,
     pageEvents,
     validPageEvents,
+    pagesProcessed,
     lastReason,
     completed,
+    status,
     pageLimit,
     boundaryTimestamp,
     boundarySeenIds,
@@ -171,11 +105,11 @@ export function buildBackfillCheckpointWrite(
       boundaryTimestamp,
       boundarySeenIds,
       stuckCount,
-      pagesProcessed: FieldValue.increment(1),
+      pagesProcessed: FieldValue.increment(pagesProcessed ?? 1),
       relayEventsSeen: FieldValue.increment(pageEvents),
       validEventsSeen: FieldValue.increment(validPageEvents),
       completed,
-      status: completed ? "complete" : "running",
+      status: status || (completed ? "complete" : "running"),
       lastReason,
       updatedAt: FieldValue.serverTimestamp(),
     }),
