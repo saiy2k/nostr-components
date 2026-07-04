@@ -9,9 +9,7 @@ COPY --chown=node:node scripts/relay-directory-crawler.mjs ./scripts/relay-direc
 COPY --chown=node:node scripts/relay-directory ./scripts/relay-directory
 
 ENV NODE_ENV=production
-ENV GOOGLE_CLOUD_PROJECT=gr-prod
-ENV FIRESTORE_PROJECT=gr-prod
 
 USER node
 ENTRYPOINT ["node"]
-CMD ["scripts/relay-directory/backfill.mjs", "--firestore-project", "gr-prod", "--no-json"]
+CMD ["scripts/relay-directory/backfill.mjs", "--no-json"]
