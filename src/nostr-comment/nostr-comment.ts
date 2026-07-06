@@ -373,7 +373,7 @@ export default class NostrComment extends HTMLElement {
                     this.currentUserProfile = {
                         name: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                         displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
-                        image: '../../assets/default_dp.png'
+                        image: this.getDefaultAvatarUrl()
                     };
                     console.log('Set fallback currentUserProfile to:', this.currentUserProfile);
                 }
@@ -382,7 +382,7 @@ export default class NostrComment extends HTMLElement {
                 this.currentUserProfile = {
                     name: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
                     displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${this.userPublicKey.slice(0, 8)}`,
-                    image: '../../assets/default_dp.png'
+                    image: this.getDefaultAvatarUrl()
                 };
                 console.log('Set error fallback currentUserProfile to:', this.currentUserProfile);
             }
@@ -491,7 +491,7 @@ export default class NostrComment extends HTMLElement {
                     newComment.userProfile = {
                         name: this.commentAs === 'anon' ? 'Anonymous' : `User ${signedEvent.pubkey.slice(0, 8)}`,
                         displayName: this.commentAs === 'anon' ? 'Anonymous' : `User ${signedEvent.pubkey.slice(0, 8)}`,
-                        image: '../../assets/default_dp.png'
+                        image: this.getDefaultAvatarUrl()
                     };
                 }
             }
@@ -842,17 +842,8 @@ export default class NostrComment extends HTMLElement {
     }
 
     private getDefaultAvatarUrl(): string {
-        try {
-            // Try to use import.meta.url for proper bundler compatibility
-            // Components are in dist/components/, so assets are at ../../assets/ from component location
-            // Or at dist/assets/ from package root
-            return new URL('../../assets/default_dp.png', import.meta.url).toString();
-        } catch (error) {
-            // Fallback to relative path if import.meta.url is not available
-            // From dist/components/ to dist/assets/ is ../../assets/
-            console.warn('Failed to resolve default avatar URL with import.meta.url, using relative path:', error);
-            return '../../assets/default_dp.png';
-        }
+        // Use inline SVG data URI to avoid asset resolution issues in bundlers
+        return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ccc' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
     }
 
     private async ensureAnonKey(): Promise<string> {

@@ -6,9 +6,9 @@ import './nostr-post/nostr-post.ts';
 import './nostr-profile/nostr-profile.ts';
 import './nostr-follow-button/nostr-follow-button.ts';
 import './nostr-zap-button/nostr-zap.ts';
-// import './nostr-comment/nostr-comment.ts'; // Temporarily disabled due to asset resolution issues
-// import './nostr-dm/nostr-dm.ts'; // Temporarily disabled due to asset resolution issues
-// import './nostr-live-chat/nostr-live-chat.ts'; // Temporarily disabled due to asset resolution issues
+import './nostr-comment/nostr-comment.ts';
+import './nostr-dm/nostr-dm.ts';
+import './nostr-live-chat/nostr-live-chat.ts';
 import './nostr-like-button/nostr-like.ts';
 import './nostr-livestream/nostr-livestream.ts';
 
@@ -18,9 +18,9 @@ import NostrPost from './nostr-post/nostr-post.ts';
 import NostrProfile from './nostr-profile/nostr-profile.ts';
 import NostrFollowButton from './nostr-follow-button/nostr-follow-button.ts';
 import NostrZap from './nostr-zap-button/nostr-zap.ts';
-// import NostrComment from './nostr-comment/nostr-comment.ts'; // Temporarily disabled due to asset resolution issues
-// import NostrDm from './nostr-dm/nostr-dm.ts'; // Temporarily disabled due to asset resolution issues
-// import NostrLiveChat from './nostr-live-chat/nostr-live-chat.ts'; // Temporarily disabled due to asset resolution issues
+import NostrComment from './nostr-comment/nostr-comment.ts';
+import NostrDm from './nostr-dm/nostr-dm.ts';
+import NostrLiveChat from './nostr-live-chat/nostr-live-chat.ts';
 import NostrLike from './nostr-like-button/nostr-like.ts';
 import NostrLivestream from './nostr-livestream/nostr-livestream.ts';
 
@@ -30,9 +30,9 @@ export { default as NostrPost } from './nostr-post/nostr-post.ts';
 export { default as NostrProfile } from './nostr-profile/nostr-profile.ts';
 export { default as NostrFollowButton } from './nostr-follow-button/nostr-follow-button.ts';
 export { default as NostrZap } from './nostr-zap-button/nostr-zap.ts';
-// export { default as NostrComment } from './nostr-comment/nostr-comment.ts'; // Temporarily disabled due to asset resolution issues
-// export { default as NostrDm } from './nostr-dm/nostr-dm.ts'; // Temporarily disabled due to asset resolution issues
-// export { default as NostrLiveChat } from './nostr-live-chat/nostr-live-chat.ts'; // Temporarily disabled due to asset resolution issues
+export { default as NostrComment } from './nostr-comment/nostr-comment.ts';
+export { default as NostrDm } from './nostr-dm/nostr-dm.ts';
+export { default as NostrLiveChat } from './nostr-live-chat/nostr-live-chat.ts';
 export { default as NostrLike } from './nostr-like-button/nostr-like.ts';
 export { default as NostrLivestream } from './nostr-livestream/nostr-livestream.ts';
 
@@ -53,9 +53,9 @@ export default {
   NostrProfile,
   NostrFollowButton,
   NostrZap,
-  // NostrComment, // Temporarily disabled due to asset resolution issues
-  // NostrDm, // Temporarily disabled due to asset resolution issues
-  // NostrLiveChat, // Temporarily disabled due to asset resolution issues
+  NostrComment,
+  NostrDm,
+  NostrLiveChat,
   NostrLike,
   NostrLivestream,
 };
