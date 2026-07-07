@@ -1,0 +1,12 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile
+      - -t
+      - ${_IMAGE}
+      - .
+timeout: 1200s
+images:
+  - ${_IMAGE}
