@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ID="${PROJECT_ID:-gr-prod}"
+BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -z "${PROJECT_ID:-}" ]; then
+  echo "PROJECT_ID is required." >&2
+  echo "Example: PROJECT_ID=gr-prod ./deploy-relay-directory-projection.sh" >&2
+  exit 1
+fi
+
 REGION="${REGION:-us-central1}"
 JOB_NAME="${JOB_NAME:-relay-directory-projector}"
 IMAGE_JOB_NAME="${IMAGE_JOB_NAME:-relay-directory-crawler}"
-IMAGE="gcr.io/${PROJECT_ID}/${IMAGE_JOB_NAME}:latest"
+IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
+IMAGE="gcr.io/${PROJECT_ID}/${IMAGE_JOB_NAME}:${IMAGE_TAG}"
 SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-relay-directory-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
 PROJECTION_LIMIT="${PROJECTION_LIMIT:-1000}"
 PROJECTION_WRITE_BUDGET="${PROJECTION_WRITE_BUDGET:-10000}"
@@ -25,14 +33,20 @@ if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" >/dev/null 2>&1; 
     --display-name="Relay Directory Crawler"
 fi
 
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/datastore.user" \
-  --condition=None >/dev/null
+if [ "${GRANT_DATASTORE_IAM:-false}" = "true" ]; then
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/datastore.user" \
+    --condition=None >/dev/null
+else
+  echo "Skipping IAM bind. Ensure ${SERVICE_ACCOUNT} can read/write the crawler Firestore database."
+  echo "For an isolated bootstrap project only: GRANT_DATASTORE_IAM=true"
+fi
 
 gcloud builds submit \
-  --config backend/cloudbuild.yaml \
-  --substitutions "_IMAGE=${IMAGE}" backend
+  --config "${BACKEND_DIR}/cloudbuild.yaml" \
+  --substitutions "_IMAGE=${IMAGE}" \
+  "${BACKEND_DIR}"
 
 DEPLOY_ARGS=(
   "${JOB_NAME}"

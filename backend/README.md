@@ -1,7 +1,8 @@
 # Relay directory backend
 
-The relay-directory crawler is isolated from the frontend package and reads its
-runtime configuration from environment variables.
+The relay-directory backfill, live-monitoring, and projection jobs are isolated
+from the frontend package. They own their dependencies and read runtime
+configuration from environment variables.
 
 Relay URLs default to the ranked list in `relays.json`. Set `RELAYS` (comma-
 separated) or `RELAYS_FILE` to override.
@@ -11,13 +12,18 @@ cd backend
 npm install --package-lock=false
 cp .env.example .env
 # Set FIRESTORE_PROJECT and local Google credentials in your environment.
+npm test
 npm run backfill
+npm run live
+npm run project
 ```
 
-Cloud Run deployment (PROJECT_ID is required):
+Cloud Run deployment scripts (PROJECT_ID is required):
 
 ```sh
 PROJECT_ID=your-gcp-project backend/deploy-relay-directory-backfill.sh
+PROJECT_ID=your-gcp-project backend/deploy-relay-directory-live-listener.sh
+PROJECT_ID=your-gcp-project backend/deploy-relay-directory-projection.sh
 ```
 
 By default the deploy script also creates a Cloud Scheduler job
@@ -54,5 +60,5 @@ Prefer a dedicated GCP project or Firestore database for this job, and grant the
 only. The scheduler uses a separate `relay-directory-scheduler` service account
 with `roles/run.invoker` on the Cloud Run Job.
 
-The backfill uses NDK subscriptions for relay transport while retaining the
-explicit Firestore cursor and same-timestamp pagination algorithm.
+Relay connections and subscriptions use NDK. The jobs retain explicit event
+validation, pagination, deduplication, Firestore writes, and checkpoint logic.
