@@ -8,6 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+/backend/package-lock.json
+/backend/.env
 lib
 dist-ssr
 *.local

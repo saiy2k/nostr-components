@@ -1,0 +1,18 @@
+{
+  "name": "nostr-components-relay-directory-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "backfill": "node --env-file-if-exists=.env relay-directory/backfill.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "8.6.0",
+    "@nostr-dev-kit/ndk": "2.13.1",
+    "nostr-tools": "2.12.0"
+  },
+  "devDependencies": {
+    "vitest": "4.1.9"
+  }
+}

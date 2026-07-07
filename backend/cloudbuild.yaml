@@ -3,9 +3,10 @@ steps:
     args:
       - build
       - -f
-      - Dockerfile.relay-directory-crawler
+      - Dockerfile
       - -t
       - ${_IMAGE}
       - .
+timeout: 1200s
 images:
   - ${_IMAGE}

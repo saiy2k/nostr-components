@@ -2,11 +2,8 @@
 
 import { FieldValue } from "@google-cloud/firestore";
 import { nip19 } from "nostr-tools";
-import {
-  DEFAULT_COLLECTIONS,
-  firestoreSafeId,
-  stripUndefined,
-} from "./runtime.mjs";
+import { DEFAULT_COLLECTIONS, stripUndefined } from "./runtime.js";
+import { firestoreSafeId } from "./utils.js";
 
 export const DEFAULT_MAX_PENDING_CLAIMS = 20;
 export const DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS = 10;
@@ -16,6 +13,7 @@ const HANDLE_READ_CONCURRENCY = 50;
 const TWITTER_TAG = /^(?:twitter|x|com\.twitter):(.+)$/i;
 const X_PROFILE_LINK =
   /(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/(@?[A-Za-z0-9_]{1,15})\b/gi;
+const X_MENTION = /(?:^|[\s([{"'])@([A-Za-z0-9_]{1,15})\b/g;
 const TWEET_ID = /(\d{10,25})/;
 const RESERVED_X_PATHS = new Set([
   "compose",
@@ -47,9 +45,15 @@ export function extractTweetId(value) {
   return match ? match[1] : null;
 }
 
-export function extractIdentityClaims(events, relay, now = new Date()) {
+export async function extractIdentityClaims(
+  events,
+  relay,
+  now = new Date(),
+  options = {},
+) {
   const claims = new Map();
   const discoveredAt = now.toISOString();
+  const mentionValidationCache = options.mentionValidationCache || new Map();
 
   for (const event of events) {
     const byHandle = new Map();
@@ -66,17 +70,31 @@ export function extractIdentityClaims(events, relay, now = new Date()) {
         handle,
         proofTweetId,
         sources: ["event.i_tag"],
+        evidence: [
+          {
+            source: "event.i_tag",
+            value: tag.map((value) => String(value)),
+          },
+        ],
       });
     }
 
     if (metadata) {
-      for (const { handle, source } of extractMetadataXHandles(metadata)) {
+      const metadataCandidates = extractMetadataXHandles(metadata);
+      const acceptedCandidates = await filterExistingMentionHandles(
+        metadataCandidates,
+        mentionValidationCache,
+        options,
+      );
+      for (const { handle, source, evidence } of acceptedCandidates) {
         const current = byHandle.get(handle) || {
           handle,
           proofTweetId: null,
           sources: [],
+          evidence: [],
         };
         current.sources = [...new Set([...current.sources, source])];
+        current.evidence = mergeEvidence(current.evidence, evidence);
         byHandle.set(handle, current);
       }
     }
@@ -90,6 +108,7 @@ export function extractIdentityClaims(events, relay, now = new Date()) {
         npub: nip19.npubEncode(event.pubkey),
         proofTweetId: candidate.proofTweetId,
         sources: candidate.sources.sort(),
+        evidence: candidate.evidence,
         status: "pending",
         sourceEventId: event.id,
         sourceKind: event.kind,
@@ -100,6 +119,8 @@ export function extractIdentityClaims(events, relay, now = new Date()) {
         metadata: metadata
           ? profileMetadata(event.pubkey, metadata)
           : undefined,
+        sourceEvent:
+          event.kind === 10011 ? boundedSourceEvent(event) : undefined,
       });
       claims.set(`${candidate.handle}:${event.id}`, claim);
     }
@@ -290,7 +311,7 @@ function groupClaimsByHandle(claims) {
   return grouped;
 }
 
-function extractMetadataXHandles(metadata) {
+export function extractMetadataXHandles(metadata) {
   const results = new Map();
   for (const field of ["twitter", "x"]) {
     const handle = normalizeTwitterHandle(metadata[field]);
@@ -298,6 +319,11 @@ function extractMetadataXHandles(metadata) {
       results.set(`${handle}:${field}`, {
         handle,
         source: `kind0.${field}`,
+        evidence: {
+          source: `kind0.${field}`,
+          value: String(metadata[field]),
+        },
+        requiresExistenceCheck: false,
       });
     }
   }
@@ -310,9 +336,27 @@ function extractMetadataXHandles(metadata) {
         results.set(`${handle}:${field}`, {
           handle,
           source: `kind0.${field}`,
+          evidence: {
+            source: `kind0.${field}`,
+            value: match[0],
+          },
+          requiresExistenceCheck: false,
         });
       }
     }
+  }
+  for (const match of String(metadata.about || "").matchAll(X_MENTION)) {
+    const handle = normalizeTwitterHandle(match[1]);
+    if (!handle || results.has(`${handle}:about`)) continue;
+    results.set(`${handle}:about-mention`, {
+      handle,
+      source: "kind0.about_mention",
+      evidence: {
+        source: "kind0.about_mention",
+        value: `@${match[1]}`,
+      },
+      requiresExistenceCheck: true,
+    });
   }
   return [...results.values()];
 }
@@ -325,8 +369,63 @@ function profileMetadata(pubkey, metadata) {
     lud16: boundedString(metadata.lud16, 255),
     lud06: boundedString(metadata.lud06, 2000),
     website: boundedString(metadata.website, 2000),
-    about: boundedString(metadata.about, 1000),
+    about: boundedString(metadata.about, 4000),
   });
+}
+
+async function filterExistingMentionHandles(candidates, cache, options) {
+  return Promise.all(
+    candidates.map(async (candidate) => {
+      if (!candidate.requiresExistenceCheck) return candidate;
+      if (!cache.has(candidate.handle)) {
+        cache.set(
+          candidate.handle,
+          checkXHandleExists(candidate.handle, options),
+        );
+      }
+      return (await cache.get(candidate.handle)) ? candidate : null;
+    }),
+  ).then((values) => values.filter(Boolean));
+}
+
+export async function checkXHandleExists(handle, options = {}) {
+  const fetchImpl = options.fetchImpl || fetch;
+  const timeoutMs = options.xMentionCheckTimeoutMs || 5000;
+  try {
+    const response = await fetchImpl(
+      `https://x.com/${encodeURIComponent(handle)}`,
+      {
+        method: "HEAD",
+        redirect: "manual",
+        signal: AbortSignal.timeout(timeoutMs),
+      },
+    );
+    return response.status !== 404;
+  } catch {
+    return false;
+  }
+}
+
+function mergeEvidence(current, evidence) {
+  const values = [...(current || []), evidence].filter(Boolean);
+  const unique = new Map(values.map((item) => [JSON.stringify(item), item]));
+  return [...unique.values()];
+}
+
+function boundedSourceEvent(event) {
+  return {
+    id: event.id,
+    kind: event.kind,
+    pubkey: event.pubkey,
+    created_at: event.created_at,
+    content: boundedString(event.content, 4000) || "",
+    tags: (event.tags || [])
+      .slice(0, 100)
+      .map((tag) =>
+        (tag || []).slice(0, 10).map((value) => String(value).slice(0, 2000)),
+      ),
+    sig: boundedString(event.sig, 128),
+  };
 }
 
 function boundedString(value, maxLength) {
