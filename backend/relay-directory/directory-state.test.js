@@ -7,7 +7,7 @@ import {
   mergeHandleClaims,
   normalizeTwitterHandle,
   planDirectoryHandleWrites,
-} from "./directory-state.mjs";
+} from "./directory-state.js";
 
 const PUBKEY_A =
   "7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e";
@@ -15,15 +15,15 @@ const PUBKEY_B =
   "8e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4f";
 
 describe("identity claim extraction", () => {
-  it("extracts a pending NIP-39 Twitter proof without storing the raw event", () => {
-    const claims = extractIdentityClaims(
+  it("extracts a pending NIP-39 proof with bounded source-event evidence", async () => {
+    const claims = await extractIdentityClaims(
       [
         {
           id: "event-a",
           kind: 10011,
           pubkey: PUBKEY_A,
           created_at: 200,
-          content: "",
+          content: "proof metadata",
           tags: [
             ["i", "twitter:Alice", "https://x.com/alice/status/1234567890123"],
           ],
@@ -47,10 +47,19 @@ describe("identity claim extraction", () => {
     ]);
     expect(claims[0]).not.toHaveProperty("event");
     expect(claims[0]).not.toHaveProperty("eventJson");
+    expect(claims[0].sourceEvent).toMatchObject({
+      id: "event-a",
+      kind: 10011,
+      pubkey: PUBKEY_A,
+      content: "proof metadata",
+      tags: [
+        ["i", "twitter:Alice", "https://x.com/alice/status/1234567890123"],
+      ],
+    });
   });
 
-  it("extracts X handles from kind-0 metadata", () => {
-    const claims = extractIdentityClaims(
+  it("extracts X handles and exact evidence from kind-0 metadata", async () => {
+    const claims = await extractIdentityClaims(
       [
         {
           id: "event-profile",
@@ -73,10 +82,66 @@ describe("identity claim extraction", () => {
       claimId: "event-profile",
       handle: "alice",
       sources: ["kind0.about"],
+      evidence: [
+        {
+          source: "kind0.about",
+          value: "https://x.com/Alice",
+        },
+      ],
       metadata: {
         name: "Alice",
         nip05: "alice@example.com",
       },
+    });
+  });
+
+  it("stores enough about text to explain handles found after 1000 characters", async () => {
+    const about = `${"x".repeat(1200)} https://x.com/_wir_de`;
+    const claims = await extractIdentityClaims(
+      [
+        {
+          id: "event-long-about",
+          kind: 0,
+          pubkey: PUBKEY_A,
+          created_at: 100,
+          content: JSON.stringify({ about }),
+          tags: [],
+        },
+      ],
+      "wss://relay.example",
+    );
+
+    expect(claims[0]).toMatchObject({
+      handle: "_wir_de",
+      evidence: [{ source: "kind0.about", value: "https://x.com/_wir_de" }],
+    });
+    expect(claims[0].metadata.about).toContain("_wir_de");
+  });
+
+  it("accepts plain @handles only when the X profile does not return 404", async () => {
+    const event = {
+      id: "event-mention",
+      kind: 0,
+      pubkey: PUBKEY_A,
+      created_at: 100,
+      content: JSON.stringify({ about: "Thanks @saiy2k and @missing_user" }),
+      tags: [],
+    };
+    const claims = await extractIdentityClaims(
+      [event],
+      "wss://relay.example",
+      new Date("2026-07-07T00:00:00.000Z"),
+      {
+        fetchImpl: async (url) => ({
+          status: String(url).endsWith("/saiy2k") ? 200 : 404,
+        }),
+      },
+    );
+
+    expect(claims.map((claim) => claim.handle)).toEqual(["saiy2k"]);
+    expect(claims[0]).toMatchObject({
+      sources: ["kind0.about_mention"],
+      evidence: [{ source: "kind0.about_mention", value: "@saiy2k" }],
     });
   });
 

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { FieldValue, Firestore } from "@google-cloud/firestore";
+import { firestoreSafeId } from "./utils.js";
 
 export const DEFAULT_RELAYS = [
   "wss://purplepag.es",
@@ -25,40 +26,31 @@ export const DEFAULT_COLLECTIONS = {
   gaps: "relayCrawlerGaps",
 };
 
-export function firestoreConfigFromEnv() {
+export function firestoreConfigFromEnv(env = process.env) {
   return {
     firestoreProject:
-      process.env.FIRESTORE_PROJECT ||
-      process.env.GOOGLE_CLOUD_PROJECT ||
-      process.env.GCLOUD_PROJECT ||
+      env.FIRESTORE_PROJECT ||
+      env.GOOGLE_CLOUD_PROJECT ||
+      env.GCLOUD_PROJECT ||
       null,
-    firestoreDatabase: process.env.FIRESTORE_DATABASE || "(default)",
+    firestoreDatabase: env.FIRESTORE_DATABASE || "(default)",
     firestoreEntriesCollection:
-      process.env.FIRESTORE_ENTRIES_COLLECTION || DEFAULT_COLLECTIONS.entries,
+      env.FIRESTORE_ENTRIES_COLLECTION || DEFAULT_COLLECTIONS.entries,
     firestoreHandlesCollection:
-      process.env.FIRESTORE_HANDLES_COLLECTION || DEFAULT_COLLECTIONS.handles,
+      env.FIRESTORE_HANDLES_COLLECTION || DEFAULT_COLLECTIONS.handles,
     firestoreBackfillRunsCollection:
-      process.env.FIRESTORE_BACKFILL_RUNS_COLLECTION ||
+      env.FIRESTORE_BACKFILL_RUNS_COLLECTION ||
       DEFAULT_COLLECTIONS.backfillRuns,
     firestoreProjectionRunsCollection:
-      process.env.FIRESTORE_PROJECTION_RUNS_COLLECTION ||
+      env.FIRESTORE_PROJECTION_RUNS_COLLECTION ||
       DEFAULT_COLLECTIONS.projectionRuns,
     firestoreLiveRunsCollection:
-      process.env.FIRESTORE_LIVE_RUNS_COLLECTION ||
-      DEFAULT_COLLECTIONS.liveRuns,
+      env.FIRESTORE_LIVE_RUNS_COLLECTION || DEFAULT_COLLECTIONS.liveRuns,
     firestoreStateCollection:
-      process.env.FIRESTORE_STATE_COLLECTION || DEFAULT_COLLECTIONS.state,
+      env.FIRESTORE_STATE_COLLECTION || DEFAULT_COLLECTIONS.state,
     firestoreGapsCollection:
-      process.env.FIRESTORE_GAPS_COLLECTION || DEFAULT_COLLECTIONS.gaps,
+      env.FIRESTORE_GAPS_COLLECTION || DEFAULT_COLLECTIONS.gaps,
   };
-}
-
-export function takeOptionValue(argv, index, flagName) {
-  const value = argv[index + 1];
-  if (value === undefined || value.startsWith("--")) {
-    throw new Error(`${flagName} requires a value.`);
-  }
-  return { value, nextIndex: index + 1 };
 }
 
 export async function createFirestore(args, FirestoreCtor = Firestore) {
@@ -82,7 +74,16 @@ export async function commitFirestoreWrites(db, writes) {
 }
 
 export async function assertFirestoreCredentialsAvailable() {
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) return;
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    try {
+      await access(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+      return;
+    } catch {
+      throw new Error(
+        `GOOGLE_APPLICATION_CREDENTIALS points to a missing file: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`,
+      );
+    }
+  }
   if (
     process.env.CLOUD_RUN_JOB ||
     process.env.CLOUD_RUN_WORKER_POOL ||
@@ -123,10 +124,6 @@ function getApplicationDefaultCredentialsPath() {
     "gcloud",
     "application_default_credentials.json",
   );
-}
-
-export function firestoreSafeId(value) {
-  return String(value).replace(/[/.#[\]]/g, "_");
 }
 
 export function firestoreTimestampToMs(value) {
@@ -187,22 +184,6 @@ export function finishRunMetrics(runMetrics, counters = {}, now = new Date()) {
   });
 }
 
-export function buildRunSummaryWrite(run, output, collection) {
-  return {
-    collection,
-    id: run.runId,
-    data: stripUndefined({
-      ...run,
-      mode: output.mode || output.source || run.module,
-      source: output.source || null,
-      stats: output.stats || null,
-      firestore: output.firestore || null,
-      relays: output.relays || null,
-      updatedAt: FieldValue.serverTimestamp(),
-    }),
-  };
-}
-
 export function logRunSummary(run) {
   console.log(
     JSON.stringify({
@@ -242,10 +223,12 @@ export function isMainModule(moduleUrl) {
   );
 }
 
-export function runCli(moduleUrl, parseArgs, runner) {
+export function runMain(moduleUrl, main) {
   if (!isMainModule(moduleUrl)) return;
-  runner(parseArgs(process.argv.slice(2))).catch((error) => {
-    console.error(error.stack || error.message || error);
-    process.exitCode = 1;
-  });
+  Promise.resolve()
+    .then(main)
+    .catch((error) => {
+      console.error(error.stack || error.message || error);
+      process.exitCode = 1;
+    });
 }
