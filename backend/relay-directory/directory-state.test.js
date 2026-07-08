@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  checkXHandleExists,
   directoryHandleId,
   extractIdentityClaims,
   mergeHandleClaims,
@@ -132,9 +133,15 @@ describe("identity claim extraction", () => {
       "wss://relay.example",
       new Date("2026-07-07T00:00:00.000Z"),
       {
-        fetchImpl: async (url) => ({
-          status: String(url).endsWith("/saiy2k") ? 200 : 404,
-        }),
+        fetchImpl: async (url) => {
+          const exists = String(url).endsWith("/saiy2k");
+          return {
+            status: exists ? 200 : 404,
+            url,
+            text: async () =>
+              exists ? '<meta property="og:title" content="@saiy2k">' : "",
+          };
+        },
       },
     );
 
@@ -143,6 +150,44 @@ describe("identity claim extraction", () => {
       sources: ["kind0.about_mention"],
       evidence: [{ source: "kind0.about_mention", value: "@saiy2k" }],
     });
+  });
+
+  it("does not accept generic X shells or challenge redirects", async () => {
+    await expect(
+      checkXHandleExists("alice", {
+        fetchImpl: async () => ({
+          status: 200,
+          url: "https://x.com/alice",
+          text: async () => "<html><title>X</title></html>",
+        }),
+      }),
+    ).resolves.toBeNull();
+
+    await expect(
+      checkXHandleExists("alice", {
+        fetchImpl: async () => ({
+          status: 200,
+          url: "https://x.com/i/flow/login",
+          text: async () => '<meta content="@alice">',
+        }),
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it("reports indeterminate X lookup failures separately from missing users", async () => {
+    const failures = [];
+    const result = await checkXHandleExists("alice", {
+      fetchImpl: async () => {
+        throw new Error("network unavailable");
+      },
+      onXLookupError: (error, handle) =>
+        failures.push({ message: error.message, handle }),
+    });
+
+    expect(result).toBeNull();
+    expect(failures).toEqual([
+      { message: "network unavailable", handle: "alice" },
+    ]);
   });
 
   it("normalizes handles and rejects reserved X paths", () => {

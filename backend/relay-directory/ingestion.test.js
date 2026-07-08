@@ -77,4 +77,26 @@ describe("NDK relay query adapter", () => {
     );
     expect(result.reason).toBe("closed:auth-required");
   });
+
+  it("contains subscription and client teardown failures", async () => {
+    const result = await queryRelay(
+      "wss://relay.example",
+      { kinds: [0] },
+      { timeoutMs: 1000, max: 10 },
+      () => ({
+        connect: async () => {},
+        subscribe(_filter, handlers) {
+          queueMicrotask(handlers.onEose);
+          return () => {
+            throw new Error("stop failed");
+          };
+        },
+        close() {
+          throw new Error("close failed");
+        },
+      }),
+    );
+
+    expect(result).toMatchObject({ reason: "eose", events: [] });
+  });
 });

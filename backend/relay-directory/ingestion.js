@@ -38,12 +38,13 @@ export function createNdkRelayClient(url) {
 export function queryRelay(
   url,
   filter,
-  { timeoutMs, max },
+  { timeoutMs, max, client: existingClient },
   clientFactory = createNdkRelayClient,
 ) {
   return new Promise((resolve) => {
     const events = [];
-    const client = clientFactory(url);
+    const client = existingClient || clientFactory(url);
+    const ownsClient = !existingClient;
     let stopSubscription = null;
     let done = false;
 
@@ -51,13 +52,19 @@ export function queryRelay(
       if (done) return;
       done = true;
       clearTimeout(timer);
-      stopSubscription?.();
-      client.close?.();
+      try {
+        stopSubscription?.();
+      } catch {}
+      if (ownsClient) {
+        try {
+          client.close?.();
+        } catch {}
+      }
       resolve({ relay: url, events, reason });
     };
 
     const timer = setTimeout(() => finish("timeout"), timeoutMs);
-    Promise.resolve(client.connect(timeoutMs))
+    Promise.resolve(ownsClient ? client.connect(timeoutMs) : undefined)
       .then(() => {
         if (done) return;
         stopSubscription = client.subscribe(filter, {
