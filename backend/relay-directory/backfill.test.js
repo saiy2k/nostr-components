@@ -3,9 +3,11 @@
 import { describe, expect, it } from "vitest";
 import { finalizeEvent } from "nostr-tools";
 import {
+  createBoundedCache,
   decideBackfillCursor,
   isSuccessfulRelayPage,
   loadBackfillConfig,
+  runBackfillCursors,
   runBackfillCursor,
 } from "./backfill.js";
 import {
@@ -26,6 +28,7 @@ describe("backfill environment configuration", () => {
       backfillPageLimit: 250,
       backfillMaxPageLimit: 1000,
       backfillMaxPages: 20,
+      backfillCacheLimit: 5000,
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,
       maxRejectionTombstones: 100,
@@ -58,6 +61,19 @@ describe("backfill environment configuration", () => {
     expect(() => loadBackfillConfig({}, 1000)).toThrow(
       "FIRESTORE_PROJECT or GOOGLE_CLOUD_PROJECT is required.",
     );
+  });
+
+  it("rejects inverted backfill windows", () => {
+    expect(() =>
+      loadBackfillConfig(
+        {
+          FIRESTORE_PROJECT: "gr-test",
+          BACKFILL_SINCE: "1001",
+          BACKFILL_UNTIL: "1000",
+        },
+        2000,
+      ),
+    ).toThrow("BACKFILL_SINCE must be <= BACKFILL_UNTIL.");
   });
 });
 
@@ -136,6 +152,16 @@ describe("stateful cursor orchestration", () => {
       "handles",
       "state",
     ]);
+    expect(db.writes[0].data.claims[0]).toMatchObject({
+      claimId: event.id,
+      pubkey: event.pubkey,
+      sourceEvent: {
+        id: event.id,
+        kind: 10011,
+        pubkey: event.pubkey,
+        sig: event.sig,
+      },
+    });
     expect(db.writes[1]).toMatchObject({
       id: "backfill:wss:__relay_example:kind:10011",
       data: { status: "complete" },
@@ -192,6 +218,156 @@ describe("stateful cursor orchestration", () => {
       retryPaused: true,
       lastReason: "page-contained-no-valid-events",
     });
+  });
+
+  it("resumes from an existing checkpoint", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__relay_example:kind:10011", {
+      status: "running",
+      cursorUntil: 321,
+      oldestSeenAt: 400,
+      pageLimit: 20,
+      boundaryTimestamp: 321,
+      boundarySeenIds: ["seen"],
+      stuckCount: 1,
+    });
+    let requestedFilter;
+
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig(),
+      {
+        queryRelay: async (_relay, filter) => {
+          requestedFilter = filter;
+          return { events: [], reason: "eose" };
+        },
+      },
+    );
+
+    expect(requestedFilter.until).toBe(321);
+    expect(summary).toMatchObject({
+      cursorUntil: 321,
+      oldestSeenAt: 400,
+      completed: true,
+    });
+  });
+
+  it("writes a gap when a resumed boundary is stuck at the maximum limit", async () => {
+    const db = fakeFirestore();
+    const event = identityEvent(100);
+    db.seed("state", "backfill:wss:__relay_example:kind:10011", {
+      status: "running",
+      cursorUntil: 100,
+      pageLimit: 10,
+      boundaryTimestamp: 100,
+      boundarySeenIds: [event.id],
+      stuckCount: 1,
+    });
+
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig({
+        backfillPageLimit: 10,
+        backfillMaxPageLimit: 10,
+        backfillMaxPages: 1,
+      }),
+      {
+        queryRelay: async () => ({ events: [event], reason: "max" }),
+      },
+    );
+
+    expect(summary).toMatchObject({ gapsWritten: 1, cursorUntil: 99 });
+    expect(db.writes).toContainEqual(
+      expect.objectContaining({
+        collection: "gaps",
+        data: expect.objectContaining({
+          timestamp: 100,
+          reason: "stuck_same_timestamp",
+        }),
+      }),
+    );
+  });
+});
+
+describe("top-level cursor coordination", () => {
+  it("continues after one relay-kind cursor fails", async () => {
+    const db = fakeFirestore();
+    const config = testConfig({
+      relays: ["wss://one.example", "wss://two.example"],
+    });
+    const result = await runBackfillCursors(db, config, {
+      queryRelay: async (relay, filter) => {
+        if (relay === "wss://one.example" && filter.kinds[0] === 10011) {
+          throw new Error("relay unavailable");
+        }
+        return { events: [], reason: "eose" };
+      },
+    });
+
+    expect(result.cursorSummaries).toHaveLength(4);
+    expect(result.totals).toMatchObject({
+      relayKindCursors: 4,
+      completedCursors: 3,
+      failedCursors: 1,
+    });
+    expect(result.cursorSummaries[0]).toMatchObject({
+      failed: true,
+      error: "relay unavailable",
+    });
+  });
+
+  it("reuses one connected NDK client for both kinds on a relay", async () => {
+    const db = fakeFirestore();
+    let connects = 0;
+    let closes = 0;
+    let subscriptions = 0;
+    const client = {
+      async connect() {
+        connects += 1;
+      },
+      subscribe(_filter, handlers) {
+        subscriptions += 1;
+        queueMicrotask(handlers.onEose);
+        return () => {};
+      },
+      close() {
+        closes += 1;
+      },
+    };
+
+    const result = await runBackfillCursors(
+      db,
+      testConfig({ relays: ["wss://relay.example"] }),
+      { createRelayClient: () => client },
+    );
+
+    expect(result.totals.completedCursors).toBe(2);
+    expect(connects).toBe(1);
+    expect(subscriptions).toBe(2);
+    expect(closes).toBe(1);
+  });
+
+  it("shares the bounded handle cache across relay-kind cursors", async () => {
+    const db = fakeFirestore();
+    const event = identityEvent(100);
+    await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://one.example", "wss://two.example"],
+      }),
+      {
+        queryRelay: async (_relay, filter) => ({
+          events: filter.kinds[0] === 10011 ? [event] : [],
+          reason: "eose",
+        }),
+      },
+    );
+
+    expect(db.readCount("handles")).toBe(1);
   });
 });
 
@@ -271,6 +447,37 @@ describe("decideBackfillCursor", () => {
       gap: null,
     });
   });
+
+  it("records a gap after reaching the maximum page limit", () => {
+    expect(
+      decideBackfillCursor({
+        ...base,
+        cursorUntil: 498,
+        pageOldest: 498,
+        pageLimit: 400,
+        boundaryTimestamp: 498,
+        boundarySeenIds: ["a"],
+        pageEvents: [{ id: "a", created_at: 498 }],
+      }),
+    ).toMatchObject({
+      action: "skip-gap",
+      cursorUntil: 497,
+      gap: {
+        timestamp: 498,
+        reason: "stuck_same_timestamp",
+      },
+    });
+  });
+});
+
+describe("bounded shared caches", () => {
+  it("evicts oldest entries instead of growing for the whole run", () => {
+    const cache = createBoundedCache(2);
+    cache.set("a", 1);
+    cache.set("b", 2);
+    cache.set("c", 3);
+    expect([...cache.keys()]).toEqual(["b", "c"]);
+  });
 });
 
 describe("run metrics", () => {
@@ -328,6 +535,7 @@ function testConfig(overrides = {}) {
     backfillPageLimit: 10,
     backfillMaxPageLimit: 40,
     backfillMaxPages: 10,
+    backfillCacheLimit: 50,
     timeoutMs: 1000,
     maxPendingClaims: 20,
     maxInactiveVerifiedClaims: 10,
@@ -339,15 +547,30 @@ function testConfig(overrides = {}) {
 
 function fakeFirestore() {
   const writes = [];
+  const documents = new Map();
+  const reads = new Map();
   return {
     writes,
+    readCount(collection) {
+      return reads.get(collection) || 0;
+    },
+    seed(collection, id, data) {
+      documents.set(`${collection}/${id}`, data);
+    },
     collection(collection) {
       return {
         doc(id) {
           return {
             collection,
             id,
-            get: async () => ({ exists: false, data: () => null }),
+            get: async () => {
+              reads.set(collection, (reads.get(collection) || 0) + 1);
+              const data = documents.get(`${collection}/${id}`);
+              return {
+                exists: data !== undefined,
+                data: () => data || null,
+              };
+            },
           };
         },
       };

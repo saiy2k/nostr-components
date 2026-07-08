@@ -4,6 +4,7 @@
 import {
   buildBackfillCheckpointWrite,
   buildBackfillGapWrite,
+  createNdkRelayClient,
   isValidSignedEvent,
   queryRelay,
 } from "./ingestion.js";
@@ -44,6 +45,7 @@ export function loadBackfillConfig(
     backfillSince: numberFromEnv(env, "BACKFILL_SINCE", 0),
     backfillResume: env.BACKFILL_RESUME !== "0",
     backfillStatePrefix: env.BACKFILL_STATE_PREFIX || "backfill",
+    backfillCacheLimit: numberFromEnv(env, "BACKFILL_CACHE_LIMIT", 5000),
     maxPendingClaims: numberFromEnv(
       env,
       "MAX_PENDING_CLAIMS",
@@ -83,6 +85,10 @@ function validateBackfillConfig(config) {
   positiveInteger(config.backfillMaxPages, "BACKFILL_MAX_PAGES");
   positiveInteger(config.backfillUntil, "BACKFILL_UNTIL");
   nonNegativeInteger(config.backfillSince, "BACKFILL_SINCE");
+  if (config.backfillSince > config.backfillUntil) {
+    throw new Error("BACKFILL_SINCE must be <= BACKFILL_UNTIL.");
+  }
+  positiveInteger(config.backfillCacheLimit, "BACKFILL_CACHE_LIMIT");
   positiveInteger(config.xMentionCheckTimeoutMs, "X_MENTION_CHECK_TIMEOUT_MS");
   if (
     !config.backfillStatePrefix ||
@@ -105,27 +111,16 @@ export async function runBackfill(config, FirestoreCtor, dependencies = {}) {
   const runMetrics = createRunMetrics("backfill");
   const db = await createFirestore(config, FirestoreCtor);
   const startedAt = new Date().toISOString();
-  const totals = createBackfillTotals();
-  const cursorSummaries = [];
 
   console.log(
     `Backfilling ${IDENTITY_KINDS.join(",")} from ${config.relays.length} relays into ${config.firestoreProject}/${config.firestoreDatabase}...`,
   );
 
-  for (const relay of config.relays) {
-    for (const kind of IDENTITY_KINDS) {
-      totals.relayKindCursors += 1;
-      const summary = await runBackfillCursor(
-        db,
-        relay,
-        kind,
-        config,
-        dependencies,
-      );
-      addCursorSummary(totals, summary);
-      cursorSummaries.push(summary);
-    }
-  }
+  const { totals, cursorSummaries } = await runBackfillCursors(
+    db,
+    config,
+    dependencies,
+  );
 
   const output = {
     mode: "backfill",
@@ -147,6 +142,7 @@ export async function runBackfill(config, FirestoreCtor, dependencies = {}) {
       pageLimit: config.backfillPageLimit,
       maxPageLimit: config.backfillMaxPageLimit,
       maxPages: config.backfillMaxPages,
+      cacheLimit: config.backfillCacheLimit,
       maxPendingClaims: config.maxPendingClaims,
       maxInactiveVerifiedClaims: config.maxInactiveVerifiedClaims,
       maxRejectionTombstones: config.maxRejectionTombstones,
@@ -159,12 +155,112 @@ export async function runBackfill(config, FirestoreCtor, dependencies = {}) {
   return output;
 }
 
+export async function runBackfillCursors(db, config, dependencies = {}) {
+  const totals = createBackfillTotals();
+  const cursorSummaries = [];
+  const sharedContext = {
+    handleStateCache:
+      dependencies.sharedContext?.handleStateCache ||
+      createBoundedCache(config.backfillCacheLimit),
+    mentionValidationCache:
+      dependencies.sharedContext?.mentionValidationCache ||
+      createBoundedCache(config.backfillCacheLimit),
+  };
+
+  for (const relay of config.relays) {
+    let relayClient = null;
+    const ownsRelayClient = !dependencies.queryRelay;
+
+    if (ownsRelayClient) {
+      try {
+        relayClient = (dependencies.createRelayClient || createNdkRelayClient)(
+          relay,
+        );
+        await relayClient.connect(config.timeoutMs);
+      } catch (error) {
+        safeCloseRelayClient(relayClient);
+        for (const kind of IDENTITY_KINDS) {
+          totals.relayKindCursors += 1;
+          const summary = failedCursorSummary(relay, kind, error);
+          addCursorSummary(totals, summary);
+          cursorSummaries.push(summary);
+        }
+        continue;
+      }
+    }
+
+    try {
+      for (const kind of IDENTITY_KINDS) {
+        totals.relayKindCursors += 1;
+        let summary;
+        try {
+          summary = await runBackfillCursor(
+            db,
+            relay,
+            kind,
+            config,
+            { ...dependencies, relayClient },
+            sharedContext,
+          );
+        } catch (error) {
+          summary = failedCursorSummary(relay, kind, error);
+        }
+        addCursorSummary(totals, summary);
+        cursorSummaries.push(summary);
+      }
+    } finally {
+      if (ownsRelayClient) safeCloseRelayClient(relayClient);
+    }
+  }
+
+  return { totals, cursorSummaries };
+}
+
 export async function runBackfillCursor(
   db,
   relay,
   kind,
   config,
   dependencies = {},
+  sharedContext = {},
+) {
+  let relayClient = dependencies.relayClient || null;
+  const ownsRelayClient = !dependencies.queryRelay && !relayClient;
+  if (ownsRelayClient) {
+    relayClient = (dependencies.createRelayClient || createNdkRelayClient)(
+      relay,
+    );
+    await relayClient.connect(config.timeoutMs);
+  }
+  const cursorDependencies = dependencies.queryRelay
+    ? dependencies
+    : {
+        ...dependencies,
+        queryRelay: (url, filter, options) =>
+          queryRelay(url, filter, { ...options, client: relayClient }),
+      };
+
+  try {
+    return await executeBackfillCursor(
+      db,
+      relay,
+      kind,
+      config,
+      cursorDependencies,
+      sharedContext,
+    );
+  } finally {
+    if (ownsRelayClient) safeCloseRelayClient(relayClient);
+  }
+}
+
+async function executeBackfillCursor(
+  db,
+  relay,
+  kind,
+  config,
+  dependencies,
+  sharedContext,
 ) {
   const stateRef = db
     .collection(config.firestoreStateCollection)
@@ -180,8 +276,12 @@ export async function runBackfillCursor(
   const stats = createCursorStats(relay, kind);
   const context = {
     eventIdsSeen: new Set(),
-    handleStateCache: new Map(),
-    mentionValidationCache: new Map(),
+    handleStateCache:
+      sharedContext.handleStateCache ||
+      createBoundedCache(config.backfillCacheLimit),
+    mentionValidationCache:
+      sharedContext.mentionValidationCache ||
+      createBoundedCache(config.backfillCacheLimit),
   };
   const queryRelayFn = dependencies.queryRelay || queryRelay;
 
@@ -484,6 +584,7 @@ function createBackfillTotals() {
     claimsSkippedRejected: 0,
     duplicateEventsSkipped: 0,
     completedCursors: 0,
+    failedCursors: 0,
     gapsWritten: 0,
   };
 }
@@ -503,6 +604,44 @@ function addCursorSummary(totals, summary) {
     totals[key] += summary[key];
   }
   if (summary.completed) totals.completedCursors += 1;
+  if (summary.failed) totals.failedCursors += 1;
+}
+
+function failedCursorSummary(relay, kind, error) {
+  return {
+    ...createCursorStats(relay, kind),
+    failed: true,
+    lastReason: "cursor-error",
+    error: error?.message || String(error),
+    cursorUntil: null,
+    oldestSeenAt: null,
+  };
+}
+
+export function createBoundedCache(limit) {
+  return new BoundedMap(limit);
+}
+
+class BoundedMap extends Map {
+  constructor(limit) {
+    super();
+    this.limit = limit;
+  }
+
+  set(key, value) {
+    if (this.has(key)) this.delete(key);
+    super.set(key, value);
+    while (this.size > this.limit) {
+      this.delete(this.keys().next().value);
+    }
+    return this;
+  }
+}
+
+function safeCloseRelayClient(client) {
+  try {
+    client?.close?.();
+  } catch {}
 }
 
 async function readBackfillState(stateRef) {
@@ -677,6 +816,7 @@ function printBackfillSummary(output, config) {
   console.log(`  rejected skips:       ${output.stats.claimsSkippedRejected}`);
   console.log(`  gaps written:         ${output.stats.gapsWritten}`);
   console.log(`  completed cursors:    ${output.stats.completedCursors}`);
+  console.log(`  failed cursors:       ${output.stats.failedCursors}`);
   console.log(`  firestore project:    ${config.firestoreProject}`);
   console.log(`  firestore handles:    ${config.firestoreHandlesCollection}`);
   console.log(`  firestore state:      ${config.firestoreStateCollection}`);
