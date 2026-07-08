@@ -395,15 +395,44 @@ export async function checkXHandleExists(handle, options = {}) {
     const response = await fetchImpl(
       `https://x.com/${encodeURIComponent(handle)}`,
       {
-        method: "HEAD",
-        redirect: "manual",
+        method: "GET",
+        redirect: "follow",
         signal: AbortSignal.timeout(timeoutMs),
       },
     );
-    return response.status !== 404;
+    if (response.status === 404) return false;
+    if (response.status !== 200) return null;
+    if (response.url && !responseUrlMatchesHandle(response.url, handle)) {
+      return null;
+    }
+    const body = await response.text();
+    return responseBodyConfirmsHandle(body, handle) ? true : null;
+  } catch (error) {
+    options.onXLookupError?.(error, handle);
+    return null;
+  }
+}
+
+function responseUrlMatchesHandle(url, handle) {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.pathname.split("/").filter(Boolean)[0]?.toLowerCase() === handle
+    );
   } catch {
     return false;
   }
+}
+
+function responseBodyConfirmsHandle(body, handle) {
+  const normalizedBody = String(body || "").toLowerCase();
+  const normalizedHandle = String(handle).toLowerCase();
+  return [
+    `"screen_name":"${normalizedHandle}"`,
+    `content="@${normalizedHandle}"`,
+    `(@${normalizedHandle})`,
+    `>@${normalizedHandle}<`,
+  ].some((marker) => normalizedBody.includes(marker));
 }
 
 function mergeEvidence(current, evidence) {
