@@ -301,22 +301,6 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
   return { writes, stats };
 }
 
-export function applyHandleCacheUpdates(handleStateCache, writes) {
-  if (!handleStateCache) return;
-  for (const write of writes) {
-    if (write?.handle && write.nextCacheState !== undefined) {
-      handleStateCache.set(write.handle, write.nextCacheState);
-    }
-  }
-}
-
-export function invalidateHandleCacheEntries(handleStateCache, writes) {
-  if (!handleStateCache) return;
-  for (const write of writes) {
-    if (write?.handle) handleStateCache.delete(write.handle);
-  }
-}
-
 export function directoryHandleId(handle) {
   return firestoreSafeId(`twitter:${normalizeTwitterHandle(handle)}`);
 }

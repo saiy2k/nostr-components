@@ -5,7 +5,6 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 
-COPY --chown=node:node relay-directory-crawler.js ./relay-directory-crawler.js
 COPY --chown=node:node relay-directory ./relay-directory
 
 ENV NODE_ENV=production
