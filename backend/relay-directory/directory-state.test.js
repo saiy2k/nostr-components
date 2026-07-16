@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  applyHandleCacheUpdates,
   checkXHandleExists,
   directoryHandleId,
   extractIdentityClaims,
@@ -57,6 +58,40 @@ describe("identity claim extraction", () => {
         ["i", "twitter:Alice", "https://x.com/alice/status/1234567890123"],
       ],
     });
+    expect(claims[0].evidence[0].value).toEqual([
+      "i",
+      "twitter:Alice",
+      "https://x.com/alice/status/1234567890123",
+    ]);
+  });
+
+  it("bounds oversized i-tag evidence before planning writes", async () => {
+    const huge = "x".repeat(5000);
+    const claims = await extractIdentityClaims(
+      [
+        {
+          id: "event-huge-tag",
+          kind: 10011,
+          pubkey: PUBKEY_A,
+          created_at: 200,
+          content: "",
+          tags: [
+            [
+              "i",
+              "twitter:Alice",
+              `https://x.com/alice/status/1234567890123${huge}`,
+              ...Array.from({ length: 20 }, () => huge),
+            ],
+          ],
+        },
+      ],
+      "wss://relay.example",
+    );
+
+    expect(claims[0].evidence[0].value).toHaveLength(10);
+    expect(claims[0].evidence[0].value.every((part) => part.length <= 2000)).toBe(
+      true,
+    );
   });
 
   it("extracts X handles and exact evidence from kind-0 metadata", async () => {
@@ -309,12 +344,17 @@ describe("directory handle write planning", () => {
     expect(first.writes[0]).toMatchObject({
       collection: "handles",
       id: directoryHandleId("alice"),
+      handle: "alice",
       data: {
         handle: "alice",
         pendingClaimCount: 1,
         projectionStatus: "pending",
       },
     });
+    // Planning alone must not treat the write as committed.
+    expect(handleStateCache.get("alice")).toBeNull();
+
+    applyHandleCacheUpdates(handleStateCache, first.writes);
 
     const repeated = await planDirectoryHandleWrites(db, [claim], {
       handleStateCache,
@@ -322,5 +362,31 @@ describe("directory handle write planning", () => {
     expect(repeated.writes).toEqual([]);
     expect(repeated.stats.handlesRead).toBe(0);
     expect(repeated.stats.claimsSkippedExisting).toBe(1);
+  });
+
+  it("does not poison the shared cache before a successful commit", async () => {
+    const db = {
+      collection: () => ({
+        doc: () => ({
+          get: async () => ({ exists: false, data: () => null }),
+        }),
+      }),
+    };
+    const handleStateCache = new Map();
+    const planned = await planDirectoryHandleWrites(
+      db,
+      [
+        {
+          claimId: "event-a",
+          handle: "alice",
+          status: "pending",
+          sourceCreatedAt: 100,
+        },
+      ],
+      { firestoreHandlesCollection: "handles", handleStateCache },
+    );
+
+    expect(planned.writes[0].nextCacheState.claims).toHaveLength(1);
+    expect(handleStateCache.get("alice")).toBeNull();
   });
 });

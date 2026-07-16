@@ -11,11 +11,23 @@ cp .env.example .env
 npm run backfill
 ```
 
-Cloud Run deployment:
+Cloud Run deployment (PROJECT_ID is required):
 
 ```sh
-backend/deploy-relay-directory-backfill.sh
+PROJECT_ID=your-gcp-project backend/deploy-relay-directory-backfill.sh
 ```
+
+Grant project-wide `roles/datastore.user` only when bootstrapping an isolated
+crawler project (not a shared production project):
+
+```sh
+GRANT_DATASTORE_IAM=true PROJECT_ID=your-isolated-project \
+  backend/deploy-relay-directory-backfill.sh
+```
+
+Prefer a dedicated GCP project or Firestore database for this job, and grant the
+`relay-directory-crawler` service account least-privilege access to that database
+only.
 
 The backfill uses NDK subscriptions for relay transport while retaining the
 explicit Firestore cursor and same-timestamp pagination algorithm.

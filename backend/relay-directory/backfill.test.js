@@ -369,7 +369,135 @@ describe("top-level cursor coordination", () => {
 
     expect(db.readCount("handles")).toBe(1);
   });
+
+  it("advances past a poison-pill handle while committing sibling writes", async () => {
+    const db = fakeFirestore();
+    const good = identityEvent(100);
+    const bad = finalizeEvent(
+      {
+        kind: 10011,
+        created_at: 100,
+        content: "",
+        tags: [
+          ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
+        ],
+      },
+      new Uint8Array(32).fill(2),
+    );
+    db.failWritesForIds.add(directoryHandleIdFor("bob"));
+
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig({ backfillUntil: 500 }),
+      {
+        queryRelay: async () => ({
+          events: [good, bad],
+          reason: "eose",
+        }),
+      },
+    );
+
+    expect(summary).toMatchObject({
+      completed: true,
+      directoryHandleWrites: 1,
+      handleWriteFailures: 1,
+      retryPaused: false,
+    });
+    expect(db.writes).toContainEqual(
+      expect.objectContaining({
+        collection: "handles",
+        data: expect.objectContaining({ handle: "alice" }),
+      }),
+    );
+    expect(db.writes).toContainEqual(
+      expect.objectContaining({
+        collection: "state",
+        data: expect.objectContaining({ status: "complete" }),
+      }),
+    );
+  });
+
+  it("keeps the cursor unmoved when every handle write fails", async () => {
+    const db = fakeFirestore();
+    db.failAllHandleWrites = true;
+    const event = identityEvent(100);
+
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig({ backfillUntil: 500 }),
+      {
+        queryRelay: async () => ({
+          events: [event],
+          reason: "eose",
+        }),
+      },
+    );
+
+    expect(summary).toMatchObject({
+      completed: false,
+      retryPaused: true,
+      cursorUntil: 500,
+      lastReason: "handle-writes-failed",
+      directoryHandleWrites: 0,
+      handleWriteFailures: 1,
+    });
+    expect(db.writes.at(-1)).toMatchObject({
+      collection: "state",
+      data: { cursorUntil: 500, status: "retry_later" },
+    });
+  });
+
+  it("does not let a failed handle commit poison later cursors", async () => {
+    const db = fakeFirestore();
+    const event = identityEvent(100);
+    let handleCommits = 0;
+    const originalBatch = db.batch.bind(db);
+    db.batch = () => {
+      const batch = originalBatch();
+      const originalCommit = batch.commit;
+      batch.commit = async () => {
+        const pendingHandles = batch.pending.filter(
+          (write) => write.collection === "handles",
+        );
+        if (pendingHandles.length) {
+          handleCommits += 1;
+          if (handleCommits === 1) {
+            throw new Error("firestore unavailable");
+          }
+        }
+        return originalCommit();
+      };
+      return batch;
+    };
+
+    const result = await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://one.example", "wss://two.example"],
+      }),
+      {
+        queryRelay: async (_relay, filter) => ({
+          events: filter.kinds[0] === 10011 ? [event] : [],
+          reason: "eose",
+        }),
+      },
+    );
+
+    expect(result.totals.handleWriteFailures).toBe(1);
+    expect(result.totals.directoryHandleWrites).toBe(1);
+    expect(
+      db.writes.filter((write) => write.collection === "handles"),
+    ).toHaveLength(1);
+  });
 });
+
+function directoryHandleIdFor(handle) {
+  return `twitter:${handle}`;
+}
 
 describe("relay page completion", () => {
   it("accepts only EOSE and full-page completion reasons", () => {
@@ -549,8 +677,10 @@ function fakeFirestore() {
   const writes = [];
   const documents = new Map();
   const reads = new Map();
-  return {
+  const db = {
     writes,
+    failWritesForIds: new Set(),
+    failAllHandleWrites: false,
     readCount(collection) {
       return reads.get(collection) || 0;
     },
@@ -576,12 +706,29 @@ function fakeFirestore() {
       };
     },
     batch() {
+      const pending = [];
       return {
+        pending,
         set(ref, data) {
-          writes.push({ collection: ref.collection, id: ref.id, data });
+          pending.push({ collection: ref.collection, id: ref.id, data });
         },
-        commit: async () => {},
+        commit: async () => {
+          for (const write of pending) {
+            if (
+              write.collection === "handles" &&
+              (db.failAllHandleWrites || db.failWritesForIds.has(write.id))
+            ) {
+              throw new Error(`write failed for ${write.id}`);
+            }
+            writes.push(write);
+            documents.set(`${write.collection}/${write.id}`, {
+              ...(documents.get(`${write.collection}/${write.id}`) || {}),
+              ...write.data,
+            });
+          }
+        },
       };
     },
   };
+  return db;
 }

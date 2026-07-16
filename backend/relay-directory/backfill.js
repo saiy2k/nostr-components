@@ -342,7 +342,7 @@ async function executeBackfillCursor(
       cursorEvents: processed.validEvents,
     });
 
-    await commitProcessedPage(
+    const commitResult = await commitProcessedPage(
       db,
       processed,
       pageResult,
@@ -350,9 +350,17 @@ async function executeBackfillCursor(
       kind,
       page,
       config,
+      context,
+      safeState,
     );
+    stats.directoryHandleWrites += commitResult.handlesWritten;
+    stats.handleWriteFailures += commitResult.handlesFailed;
+    if (commitResult.retryPaused) {
+      stats.retryPaused = true;
+      stats.lastReason = commitResult.lastReason;
+      break;
+    }
     markEventsSeen(processed.freshEvents, context.eventIdsSeen);
-    stats.directoryHandleWrites += processed.writes.length;
     if (pageResult.gap) stats.gapsWritten += 1;
     Object.assign(cursor, pageResult.nextState);
 
@@ -468,8 +476,36 @@ async function commitProcessedPage(
   kind,
   page,
   config,
+  context,
+  safeState,
 ) {
-  await commitFirestoreWrites(db, processed.writes);
+  const handleResult = await commitHandleWritesBestEffort(
+    db,
+    processed.writes,
+    context.handleStateCache,
+  );
+
+  // Total write failure (e.g. outage): keep cursor unmoved for retry.
+  // Partial failure (poison-pill handle): advance so one bad doc cannot stall
+  // the relay/kind cursor forever.
+  if (
+    processed.writes.length > 0 &&
+    handleResult.succeeded === 0 &&
+    handleResult.failed > 0
+  ) {
+    await writeCursorCheckpoint(db, relay, kind, safeState, config, {
+      status: "retry_later",
+      completed: false,
+      lastReason: "handle-writes-failed",
+    });
+    return {
+      retryPaused: true,
+      lastReason: "handle-writes-failed",
+      handlesWritten: 0,
+      handlesFailed: handleResult.failed,
+    };
+  }
+
   if (pageResult.gap) {
     await commitFirestoreWrites(db, [
       buildBackfillGapWrite(pageResult.gap, config),
@@ -483,6 +519,41 @@ async function commitProcessedPage(
     pageEvents: page.events.length,
     validPageEvents: processed.validEvents.length,
   });
+  return {
+    retryPaused: false,
+    lastReason: pageResult.reason,
+    handlesWritten: handleResult.succeeded,
+    handlesFailed: handleResult.failed,
+  };
+}
+
+async function commitHandleWritesBestEffort(db, writes, handleStateCache) {
+  let succeeded = 0;
+  let failed = 0;
+  for (const write of writes) {
+    try {
+      await commitFirestoreWrites(db, [
+        {
+          collection: write.collection,
+          id: write.id,
+          data: write.data,
+        },
+      ]);
+      if (handleStateCache && write.handle) {
+        handleStateCache.set(write.handle, write.nextCacheState);
+      }
+      succeeded += 1;
+    } catch (error) {
+      if (handleStateCache && write.handle) {
+        handleStateCache.delete(write.handle);
+      }
+      failed += 1;
+      console.warn(
+        `Handle write failed for ${write.id}: ${error?.message || error}`,
+      );
+    }
+  }
+  return { succeeded, failed };
 }
 
 async function writeCursorCheckpoint(db, relay, kind, state, config, details) {
@@ -544,6 +615,7 @@ function createCursorStats(relay, kind) {
     validEvents: 0,
     identityClaimsDiscovered: 0,
     directoryHandleWrites: 0,
+    handleWriteFailures: 0,
     claimsSkippedExisting: 0,
     claimsSkippedRejected: 0,
     duplicateEventsSkipped: 0,
@@ -580,6 +652,7 @@ function createBackfillTotals() {
     validEvents: 0,
     identityClaimsDiscovered: 0,
     directoryHandleWrites: 0,
+    handleWriteFailures: 0,
     claimsSkippedExisting: 0,
     claimsSkippedRejected: 0,
     duplicateEventsSkipped: 0,
@@ -596,12 +669,13 @@ function addCursorSummary(totals, summary) {
     "validEvents",
     "identityClaimsDiscovered",
     "directoryHandleWrites",
+    "handleWriteFailures",
     "claimsSkippedExisting",
     "claimsSkippedRejected",
     "duplicateEventsSkipped",
     "gapsWritten",
   ]) {
-    totals[key] += summary[key];
+    totals[key] += summary[key] || 0;
   }
   if (summary.completed) totals.completedCursors += 1;
   if (summary.failed) totals.failedCursors += 1;
@@ -811,6 +885,7 @@ function printBackfillSummary(output, config) {
     `  identity claims:      ${output.stats.identityClaimsDiscovered}`,
   );
   console.log(`  handle docs written:  ${output.stats.directoryHandleWrites}`);
+  console.log(`  handle write failures:${output.stats.handleWriteFailures}`);
   console.log(`  duplicate skips:      ${output.stats.duplicateEventsSkipped}`);
   console.log(`  existing skips:       ${output.stats.claimsSkippedExisting}`);
   console.log(`  rejected skips:       ${output.stats.claimsSkippedRejected}`);
