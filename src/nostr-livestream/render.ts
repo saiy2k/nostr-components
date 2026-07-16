@@ -3,7 +3,7 @@
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { ParsedLivestreamEvent } from './livestream-utils';
-import { escapeHtml, hexToNpub, isValidUrl } from '../common/utils';
+import { escapeHtml, hexToNpub, sanitizeUrl } from '../common/utils';
 import { formatEventDate } from '../common/date-utils';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 
@@ -58,6 +58,7 @@ function renderLivestreamHeader(
 ): string {
 
   const authorImage = author?.picture || author?.image || '';
+  const safeAuthorImage = authorImage ? sanitizeUrl(authorImage) : '';
   const authorName = author?.displayName || author?.name || 'Unknown';
   const authorNip05 = author?.nip05 || '';
   const title = parsedLivestream.title || 'Untitled Livestream';
@@ -75,7 +76,7 @@ function renderLivestreamHeader(
       </div>
       <div class="livestream-author-row">
         <div class="author-picture">
-          ${authorImage ? `<img src="${escapeHtml(authorImage)}" alt="${escapeHtml(authorName)}" />` : ''}
+          ${safeAuthorImage ? `<img src="${safeAuthorImage}" alt="${escapeHtml(authorName)}" />` : ''}
         </div>
         <div class="livestream-author-info">
           ${authorName ? `<span class="author-name">${escapeHtml(authorName)}</span>` : ''}
@@ -123,8 +124,8 @@ function renderLivestreamMedia(
 }
 
 function renderVideoPlayer(url: string, autoPlay: boolean): string {
-  // Validate URL scheme for defense in depth
-  if (!isValidUrl(url)) {
+  const safeUrl = sanitizeUrl(url);
+  if (!safeUrl) {
     return `
       <div class="livestream-video-placeholder">
         <p>Invalid streaming URL</p>
@@ -137,7 +138,7 @@ function renderVideoPlayer(url: string, autoPlay: boolean): string {
   return `
     <hls-video
       class="livestream-video"
-      src="${escapeHtml(url)}"
+      src="${safeUrl}"
       controls
       ${autoplayAttr}
       preload="metadata"
@@ -146,10 +147,11 @@ function renderVideoPlayer(url: string, autoPlay: boolean): string {
 }
 
 function renderPreviewImage(imageUrl?: string): string {
-  if (imageUrl) {
+  const safeImageUrl = imageUrl ? sanitizeUrl(imageUrl) : '';
+  if (safeImageUrl) {
     return `
       <div class="livestream-preview-image">
-        <img src="${escapeHtml(imageUrl)}" alt="Livestream preview" loading="lazy" />
+        <img src="${safeImageUrl}" alt="Livestream preview" loading="lazy" />
       </div>
     `;
   }
@@ -164,8 +166,8 @@ function renderPreviewImage(imageUrl?: string): string {
 }
 
 function renderRecordingLink(url: string): string {
-  // Validate URL scheme to prevent XSS (only allow http: and https:)
-  if (!isValidUrl(url)) {
+  const safeUrl = sanitizeUrl(url);
+  if (!safeUrl) {
     // Render safe fallback: non-clickable div with escaped URL text
     return `
       <div class="livestream-recording-link">
@@ -180,7 +182,7 @@ function renderRecordingLink(url: string): string {
   // Safe URL: render as clickable link
   return `
     <div class="livestream-recording-link">
-      <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
+      <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
         <span class="recording-icon">▶</span>
         <span>Watch Recording</span>
       </a>
@@ -227,6 +229,7 @@ function renderParticipantItem(participant: { pubkey: string; role?: string; pro
   const profile = participantProfiles.get(participant.pubkey);
   const displayName = getParticipantDisplayName(participant, profile);
   const image = profile?.picture || profile?.image || '';
+  const safeImage = image ? sanitizeUrl(image) : '';
   const role = participant.role || 'Participant';
   const safeRole = sanitizeRoleForClass(participant.role);
   const roleClass = `participant-role participant-role-${safeRole}`;
@@ -234,8 +237,8 @@ function renderParticipantItem(participant: { pubkey: string; role?: string; pro
   return `
     <div class="participant-item">
       <div class="participant-avatar">
-        ${image
-          ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(displayName)}" loading="lazy" />`
+        ${safeImage
+          ? `<img src="${safeImage}" alt="${escapeHtml(displayName)}" loading="lazy" />`
           : '<div class="participant-avatar-placeholder"></div>'
         }
       </div>

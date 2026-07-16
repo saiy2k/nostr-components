@@ -7,6 +7,7 @@ import { renderNip05 } from '../base/text-row/render-nip05';
 import { renderStats } from './render-stats';
 import { renderName } from '../base/text-row/render-name';
 import { renderTextRow } from '../base/text-row/render-text-row';
+import { escapeHtml, isValidUrl, sanitizeUrl } from '../common/utils';
 
 export interface Stats {
   notes: number;
@@ -55,6 +56,9 @@ export function renderProfile(options: RenderProfileOptions): string {
   const image = userProfile?.picture || '';
   const about = userProfile?.about || '';
   const website = userProfile?.website || '';
+  const sanitizedBanner = userProfile?.banner ? sanitizeUrl(userProfile.banner) : '';
+  const sanitizedImage = image ? sanitizeUrl(image) : '';
+  const sanitizedWebsite = website && isValidUrl(website) ? sanitizeUrl(website) : '';
 
   const renderFollowButton = () => {
     if (!showFollow || npub === '') return '';
@@ -70,18 +74,18 @@ export function renderProfile(options: RenderProfileOptions): string {
       <div class="profile-banner">
         ${isLoading
           ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
-          : userProfile?.banner
-            ? `<img src="${userProfile.banner}" width="524px"/>`
+          : sanitizedBanner
+            ? `<img src="${sanitizedBanner}" width="524px"/>`
             : '<div class="banner-placeholder"></div>'
         }
 
         <div class="dp-container">
-          <div class="avatar" role="img" aria-label="${displayName}">
+          <div class="avatar" role="img" aria-label="${escapeHtml(displayName)}">
             ${isLoading
               ? '<div style="width: 100%; height: 100%; border-radius: 50%" class="skeleton"></div>'
               : `<img
-                  src="${image}"
-                  alt="${displayName}"
+                  src="${sanitizedImage}"
+                  alt="${escapeHtml(displayName)}"
                   width="142" height="142"
                   loading="lazy" decoding="async"
                   onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 142 142%22%3E%3Crect width=%22142%22 height=%22142%22 fill=%22%23ccc%22/%3E%3C/svg%3E'"
@@ -128,9 +132,9 @@ export function renderProfile(options: RenderProfileOptions): string {
         
         ${isLoading
           ? '<div style="width: 150px" class="skeleton"></div>'
-          : website
+          : sanitizedWebsite
             ? `<div class="website">
-              <a target="_blank" href="${website}">${website}</a>
+              <a target="_blank" href="${sanitizedWebsite}">${escapeHtml(website)}</a>
               </div>`
             : ''
         }
@@ -160,7 +164,7 @@ function renderError(errorMessage: string): string {
         <div class="error-icon">&#9888;</div>
       </div>
       <div class='nostr-profile-bottom-container'>
-        ${errorMessage}
+        ${escapeHtml(errorMessage)}
       </div>
     </div>
   `;

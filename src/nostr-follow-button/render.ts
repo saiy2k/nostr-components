@@ -6,7 +6,7 @@ import {
   getSuccessAnimation,
 } from '../common/theme';
 import { Theme } from '../common/types';
-import { escapeHtml } from '../common/utils';
+import { escapeHtml, sanitizeUrl } from '../common/utils';
 import { IRenderOptions } from '../base/render-options';
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 
@@ -45,10 +45,11 @@ export function renderFollowButton({
     return renderError(errorMessage || '');
   }
 
+  const avatarUrl = profile?.image ? sanitizeUrl(profile.image) : '';
   const iconContent = isFollowed
     ? getSuccessAnimation(theme)
-    : showAvatar && user && profile?.image
-      ? `<img src="${escapeHtml(profile.image)}" alt="${escapeHtml(profile.name || user.npub)}" class="user-avatar" />`
+    : showAvatar && user && avatarUrl
+      ? `<img src="${avatarUrl}" alt="${escapeHtml(profile?.name || user.npub)}" class="user-avatar" />`
       : getNostrLogo();
   const textContent = isFollowed
     ? 'Followed'
