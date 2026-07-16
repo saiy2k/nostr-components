@@ -73,7 +73,9 @@ export async function extractIdentityClaims(
         evidence: [
           {
             source: "event.i_tag",
-            value: tag.map((value) => String(value)),
+            value: (tag || [])
+              .slice(0, 10)
+              .map((value) => String(value).slice(0, 2000)),
           },
         ],
       });
@@ -262,7 +264,7 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
       merged.pendingClaimCount > 0
         ? "pending"
         : existing.projectionStatus || "complete";
-    handleStateCache.set(handle, {
+    const nextCacheState = {
       ...existing,
       platform: "twitter",
       handle,
@@ -270,10 +272,14 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
       rejectedClaimTombstones: merged.rejectedClaimTombstones,
       pendingClaimCount: merged.pendingClaimCount,
       projectionStatus,
-    });
+    };
+    // Cache is updated only after a successful Firestore commit so a failed
+    // write cannot poison later cursors that share this map.
     writes.push({
       collection,
       id,
+      handle,
+      nextCacheState,
       data: stripUndefined({
         platform: "twitter",
         handle,
@@ -293,6 +299,22 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
   }
 
   return { writes, stats };
+}
+
+export function applyHandleCacheUpdates(handleStateCache, writes) {
+  if (!handleStateCache) return;
+  for (const write of writes) {
+    if (write?.handle && write.nextCacheState !== undefined) {
+      handleStateCache.set(write.handle, write.nextCacheState);
+    }
+  }
+}
+
+export function invalidateHandleCacheEntries(handleStateCache, writes) {
+  if (!handleStateCache) return;
+  for (const write of writes) {
+    if (write?.handle) handleStateCache.delete(write.handle);
+  }
 }
 
 export function directoryHandleId(handle) {
@@ -321,7 +343,7 @@ export function extractMetadataXHandles(metadata) {
         source: `kind0.${field}`,
         evidence: {
           source: `kind0.${field}`,
-          value: String(metadata[field]),
+          value: boundedString(metadata[field], 2000) || "",
         },
         requiresExistenceCheck: false,
       });

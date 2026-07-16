@@ -2,7 +2,13 @@
 set -euo pipefail
 
 BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ID="${PROJECT_ID:-gr-prod}"
+
+if [ -z "${PROJECT_ID:-}" ]; then
+  echo "PROJECT_ID is required." >&2
+  echo "Example: PROJECT_ID=gr-prod ./deploy-relay-directory-backfill.sh" >&2
+  exit 1
+fi
+
 REGION="${REGION:-us-central1}"
 JOB_NAME="${JOB_NAME:-relay-directory-backfill}"
 IMAGE_JOB_NAME="${IMAGE_JOB_NAME:-relay-directory-crawler}"
@@ -30,10 +36,19 @@ if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" >/dev/null 2>&1; 
     --display-name="Relay Directory Crawler"
 fi
 
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/datastore.user" \
-  --condition=None >/dev/null
+# Do not silently grant project-wide Datastore access on every deploy.
+# Prefer a dedicated GCP project/Firestore database for this crawler.
+# Opt in only for bootstrap of an isolated project:
+#   GRANT_DATASTORE_IAM=true PROJECT_ID=... ./deploy-relay-directory-backfill.sh
+if [ "${GRANT_DATASTORE_IAM:-false}" = "true" ]; then
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/datastore.user" \
+    --condition=None >/dev/null
+else
+  echo "Skipping IAM bind. Ensure ${SERVICE_ACCOUNT} can read/write the crawler Firestore database."
+  echo "For an isolated bootstrap project only: GRANT_DATASTORE_IAM=true"
+fi
 
 gcloud builds submit \
   --config "${BACKEND_DIR}/cloudbuild.yaml" \
