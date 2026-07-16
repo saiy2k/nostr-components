@@ -61,6 +61,27 @@ export async function createFirestore(args, FirestoreCtor = Firestore) {
   });
 }
 
+/** Release gRPC/keepalive handles so batch jobs can exit naturally. */
+export async function terminateFirestore(db, { timeoutMs = 5000 } = {}) {
+  if (!db?.terminate) return;
+  let timer;
+  try {
+    await Promise.race([
+      db.terminate(),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("firestore-terminate-timeout")),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } catch {
+    // Best-effort: never mask the caller's success/failure.
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function commitFirestoreWrites(db, writes) {
   for (let i = 0; i < writes.length; i += 450) {
     const batch = db.batch();
@@ -230,5 +251,9 @@ export function runMain(moduleUrl, main) {
     .catch((error) => {
       console.error(error.stack || error.message || error);
       process.exitCode = 1;
+    })
+    .finally(() => {
+      // NDK/Firestore can leave open handles; Cloud Run batch jobs must exit.
+      process.exit(process.exitCode ?? 0);
     });
 }

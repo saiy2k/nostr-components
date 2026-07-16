@@ -25,6 +25,7 @@ import {
   firestoreConfigFromEnv,
   logRunSummary,
   runMain,
+  terminateFirestore,
   writeJson,
 } from "./runtime.js";
 import { backfillStateId } from "./utils.js";
@@ -109,50 +110,55 @@ function validateBackfillConfig(config) {
 
 export async function runBackfill(config, FirestoreCtor, dependencies = {}) {
   const runMetrics = createRunMetrics("backfill");
-  const db = await createFirestore(config, FirestoreCtor);
+  const db =
+    dependencies.db ?? (await createFirestore(config, FirestoreCtor));
   const startedAt = new Date().toISOString();
 
-  console.log(
-    `Backfilling ${IDENTITY_KINDS.join(",")} from ${config.relays.length} relays into ${config.firestoreProject}/${config.firestoreDatabase}...`,
-  );
+  try {
+    console.log(
+      `Backfilling ${IDENTITY_KINDS.join(",")} from ${config.relays.length} relays into ${config.firestoreProject}/${config.firestoreDatabase}...`,
+    );
 
-  const { totals, cursorSummaries } = await runBackfillCursors(
-    db,
-    config,
-    dependencies,
-  );
+    const { totals, cursorSummaries } = await runBackfillCursors(
+      db,
+      config,
+      dependencies,
+    );
 
-  const output = {
-    mode: "backfill",
-    run: finishRunMetrics(runMetrics, totals),
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    relays: config.relays,
-    kinds: IDENTITY_KINDS,
-    stats: totals,
-    cursors: cursorSummaries,
-    firestore: {
-      project: config.firestoreProject,
-      database: config.firestoreDatabase,
-      handlesCollection: config.firestoreHandlesCollection,
-      stateCollection: config.firestoreStateCollection,
-      gapsCollection: config.firestoreGapsCollection,
-    },
-    controls: {
-      pageLimit: config.backfillPageLimit,
-      maxPageLimit: config.backfillMaxPageLimit,
-      maxPages: config.backfillMaxPages,
-      cacheLimit: config.backfillCacheLimit,
-      maxPendingClaims: config.maxPendingClaims,
-      maxInactiveVerifiedClaims: config.maxInactiveVerifiedClaims,
-      maxRejectionTombstones: config.maxRejectionTombstones,
-    },
-  };
+    const output = {
+      mode: "backfill",
+      run: finishRunMetrics(runMetrics, totals),
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      relays: config.relays,
+      kinds: IDENTITY_KINDS,
+      stats: totals,
+      cursors: cursorSummaries,
+      firestore: {
+        project: config.firestoreProject,
+        database: config.firestoreDatabase,
+        handlesCollection: config.firestoreHandlesCollection,
+        stateCollection: config.firestoreStateCollection,
+        gapsCollection: config.firestoreGapsCollection,
+      },
+      controls: {
+        pageLimit: config.backfillPageLimit,
+        maxPageLimit: config.backfillMaxPageLimit,
+        maxPages: config.backfillMaxPages,
+        cacheLimit: config.backfillCacheLimit,
+        maxPendingClaims: config.maxPendingClaims,
+        maxInactiveVerifiedClaims: config.maxInactiveVerifiedClaims,
+        maxRejectionTombstones: config.maxRejectionTombstones,
+      },
+    };
 
-  logRunSummary(output.run);
-  if (config.out) await writeJson(config.out, output);
-  printBackfillSummary(output, config);
-  return output;
+    logRunSummary(output.run);
+    if (config.out) await writeJson(config.out, output);
+    printBackfillSummary(output, config);
+    return output;
+  } finally {
+    await terminateFirestore(db);
+  }
 }
 
 export async function runBackfillCursors(db, config, dependencies = {}) {
