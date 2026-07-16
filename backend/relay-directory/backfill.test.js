@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+import { mkdtemp, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { finalizeEvent } from "nostr-tools";
 import {
@@ -7,6 +10,7 @@ import {
   decideBackfillCursor,
   isSuccessfulRelayPage,
   loadBackfillConfig,
+  runBackfill,
   runBackfillCursors,
   runBackfillCursor,
 } from "./backfill.js";
@@ -14,7 +18,12 @@ import {
   buildBackfillCheckpointWrite,
   buildBackfillGapWrite,
 } from "./ingestion.js";
-import { createRunMetrics, finishRunMetrics, percentile } from "./runtime.js";
+import {
+  createRunMetrics,
+  finishRunMetrics,
+  percentile,
+  terminateFirestore,
+} from "./runtime.js";
 
 const SECRET_KEY = new Uint8Array(32).fill(1);
 
@@ -290,6 +299,71 @@ describe("stateful cursor orchestration", () => {
         }),
       }),
     );
+  });
+});
+
+describe("backfill process lifecycle", () => {
+  it("terminates Firestore after a successful run", async () => {
+    const db = fakeFirestore();
+    let terminates = 0;
+    db.terminate = async () => {
+      terminates += 1;
+    };
+
+    await runBackfill(testConfig({ relays: ["wss://relay.example"] }), null, {
+      db,
+      queryRelay: async () => ({ events: [], reason: "eose" }),
+    });
+
+    expect(terminates).toBe(1);
+  });
+
+  it("terminates Firestore even when the run throws", async () => {
+    const db = fakeFirestore();
+    let terminates = 0;
+    db.terminate = async () => {
+      terminates += 1;
+    };
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "backfill-"));
+    const blocker = path.join(tempDir, "not-a-directory");
+    await writeFile(blocker, "x");
+
+    await expect(
+      runBackfill(
+        testConfig({
+          relays: ["wss://relay.example"],
+          out: path.join(blocker, "out.json"),
+        }),
+        null,
+        {
+          db,
+          queryRelay: async () => ({ events: [], reason: "eose" }),
+        },
+      ),
+    ).rejects.toThrow();
+
+    expect(terminates).toBe(1);
+  });
+
+  it("swallows terminate errors so the run result is preserved", async () => {
+    await expect(
+      terminateFirestore({
+        terminate: async () => {
+          throw new Error("already closed");
+        },
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("does not hang forever when Firestore terminate never resolves", async () => {
+    await expect(
+      terminateFirestore(
+        {
+          terminate: () => new Promise(() => {}),
+        },
+        { timeoutMs: 20 },
+      ),
+    ).resolves.toBeUndefined();
   });
 });
 

@@ -28,8 +28,15 @@ export function createNdkRelayClient(url) {
       return () => subscription.stop();
     },
     close() {
+      for (const relay of [...ndk.pool.relays.values()]) {
+        try {
+          relay.disconnect();
+        } catch {}
+      }
       for (const relayUrl of [...ndk.pool.relays.keys()]) {
-        ndk.pool.removeRelay(relayUrl);
+        try {
+          ndk.pool.removeRelay(relayUrl);
+        } catch {}
       }
     },
   };
