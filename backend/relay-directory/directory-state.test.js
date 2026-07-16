@@ -55,9 +55,18 @@ describe("identity claim extraction", () => {
       pubkey: PUBKEY_A,
       content: "proof metadata",
       tags: [
-        ["i", "twitter:Alice", "https://x.com/alice/status/1234567890123"],
+        {
+          values: [
+            "i",
+            "twitter:Alice",
+            "https://x.com/alice/status/1234567890123",
+          ],
+        },
       ],
     });
+    expect(claims[0].sourceEvent.tags.every((tag) => !Array.isArray(tag))).toBe(
+      true,
+    );
     expect(claims[0].evidence[0].value).toEqual([
       "i",
       "twitter:Alice",
