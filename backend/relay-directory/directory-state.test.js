@@ -2,7 +2,6 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  applyHandleCacheUpdates,
   checkXHandleExists,
   directoryHandleId,
   extractIdentityClaims,
@@ -363,7 +362,10 @@ describe("directory handle write planning", () => {
     // Planning alone must not treat the write as committed.
     expect(handleStateCache.get("alice")).toBeNull();
 
-    applyHandleCacheUpdates(handleStateCache, first.writes);
+    // Simulate a successful commit updating the shared cache.
+    for (const write of first.writes) {
+      handleStateCache.set(write.handle, write.nextCacheState);
+    }
 
     const repeated = await planDirectoryHandleWrites(db, [claim], {
       handleStateCache,

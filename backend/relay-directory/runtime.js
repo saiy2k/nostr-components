@@ -17,11 +17,7 @@ export const DEFAULT_RELAYS = [
 export const IDENTITY_KINDS = [10011, 0];
 
 export const DEFAULT_COLLECTIONS = {
-  entries: "nostrDirectoryEntries",
   handles: "nostrDirectoryHandles",
-  backfillRuns: "relayBackfillRuns",
-  projectionRuns: "relayProjectionRuns",
-  liveRuns: "relayLiveListenerRuns",
   state: "relayCrawlerState",
   gaps: "relayCrawlerGaps",
 };
@@ -34,18 +30,8 @@ export function firestoreConfigFromEnv(env = process.env) {
       env.GCLOUD_PROJECT ||
       null,
     firestoreDatabase: env.FIRESTORE_DATABASE || "(default)",
-    firestoreEntriesCollection:
-      env.FIRESTORE_ENTRIES_COLLECTION || DEFAULT_COLLECTIONS.entries,
     firestoreHandlesCollection:
       env.FIRESTORE_HANDLES_COLLECTION || DEFAULT_COLLECTIONS.handles,
-    firestoreBackfillRunsCollection:
-      env.FIRESTORE_BACKFILL_RUNS_COLLECTION ||
-      DEFAULT_COLLECTIONS.backfillRuns,
-    firestoreProjectionRunsCollection:
-      env.FIRESTORE_PROJECTION_RUNS_COLLECTION ||
-      DEFAULT_COLLECTIONS.projectionRuns,
-    firestoreLiveRunsCollection:
-      env.FIRESTORE_LIVE_RUNS_COLLECTION || DEFAULT_COLLECTIONS.liveRuns,
     firestoreStateCollection:
       env.FIRESTORE_STATE_COLLECTION || DEFAULT_COLLECTIONS.state,
     firestoreGapsCollection:
@@ -145,20 +131,6 @@ function getApplicationDefaultCredentialsPath() {
     "gcloud",
     "application_default_credentials.json",
   );
-}
-
-export function firestoreTimestampToMs(value) {
-  if (!value) return null;
-  if (value instanceof Date) return value.getTime();
-  if (typeof value.toMillis === "function") return value.toMillis();
-  if (typeof value.seconds === "number") {
-    return (
-      value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000)
-    );
-  }
-  if (typeof value === "number") return value;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function stripUndefined(value) {
