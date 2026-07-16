@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { FieldValue } from "@google-cloud/firestore";
 import NDK from "@nostr-dev-kit/ndk";
 import { validateEvent, verifyEvent } from "nostr-tools";
@@ -10,6 +10,9 @@ import {
   stripUndefined,
 } from "./runtime.js";
 import { backfillStateId, firestoreSafeId } from "./utils.js";
+
+/** Leave headroom under Firestore's 1 MiB document limit for metadata fields. */
+export const MAX_DEAD_LETTER_PAYLOAD_BYTES = 700_000;
 
 export function createNdkRelayClient(url) {
   const ndk = new NDK({ explicitRelayUrls: [url] });
@@ -168,6 +171,7 @@ export function buildBackfillGapWrite(
 /**
  * Dead-letter a failed handle write. payloadJson is stringified so nested
  * arrays / other Firestore-illegal shapes cannot break the failure doc itself.
+ * Document IDs are deterministic so cursor retries upsert the same failure doc.
  */
 export function buildHandleWriteFailureWrite(
   { write, error, relay, kind, cursorUntil, failedAt = new Date().toISOString() },
@@ -182,17 +186,18 @@ export function buildHandleWriteFailureWrite(
         .filter(Boolean),
     ),
   ];
-  const payloadJson = JSON.stringify(
-    serializeFirestoreDataForJson(write?.data || {}),
-  );
-  const suffix = randomBytes(4).toString("hex");
+  const payload = buildSizeSafeDeadLetterPayload(write?.data || {});
   return {
     collection:
       options.firestoreHandleWriteFailuresCollection ||
       DEFAULT_COLLECTIONS.handleWriteFailures,
-    id: firestoreSafeId(
-      `${write?.id || "unknown"}:${failedAt}:${claimIds[0] || "none"}:${suffix}`,
-    ),
+    id: handleWriteFailureId({
+      targetDocumentId: write?.id,
+      relay,
+      kind,
+      cursorUntil,
+      claimIds,
+    }),
     data: stripUndefined({
       status: "pending_review",
       handle: write?.handle || write?.data?.handle || null,
@@ -205,10 +210,72 @@ export function buildHandleWriteFailureWrite(
       sourceEventIds,
       errorMessage: String(error?.message || error || "unknown"),
       errorCode: error?.code || null,
-      payloadJson,
-      payloadByteLength: Buffer.byteLength(payloadJson, "utf8"),
+      payloadJson: payload.payloadJson,
+      payloadByteLength: payload.payloadByteLength,
+      payloadTruncated: payload.payloadTruncated,
+      payloadSha256: payload.payloadSha256,
       failedAt,
       createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     }),
+  };
+}
+
+export function handleWriteFailureId({
+  targetDocumentId,
+  relay,
+  kind,
+  cursorUntil,
+  claimIds = [],
+}) {
+  const claimKey = claimIds.length
+    ? createHash("sha256")
+        .update([...claimIds].map(String).sort().join(","))
+        .digest("hex")
+        .slice(0, 16)
+    : "none";
+  return firestoreSafeId(
+    `${targetDocumentId || "unknown"}:${relay || ""}:kind:${kind ?? ""}:until:${cursorUntil ?? ""}:claims:${claimKey}`,
+  );
+}
+
+export function buildSizeSafeDeadLetterPayload(
+  data,
+  maxBytes = MAX_DEAD_LETTER_PAYLOAD_BYTES,
+) {
+  const serialized = serializeFirestoreDataForJson(data || {});
+  const fullJson = JSON.stringify(serialized);
+  const fullLength = Buffer.byteLength(fullJson, "utf8");
+  if (fullLength <= maxBytes) {
+    return {
+      payloadJson: fullJson,
+      payloadByteLength: fullLength,
+      payloadTruncated: false,
+      payloadSha256: null,
+    };
+  }
+
+  const payloadSha256 = createHash("sha256").update(fullJson).digest("hex");
+  const claims = Array.isArray(serialized.claims) ? serialized.claims : [];
+  const summary = {
+    truncated: true,
+    handle: serialized.handle ?? null,
+    platform: serialized.platform ?? null,
+    pendingClaimCount: serialized.pendingClaimCount ?? null,
+    projectionStatus: serialized.projectionStatus ?? null,
+    claimCount: claims.length,
+    claimIds: claims
+      .map((claim) => claim?.claimId)
+      .filter(Boolean)
+      .slice(0, 50),
+    originalByteLength: fullLength,
+    payloadSha256,
+  };
+  const payloadJson = JSON.stringify(summary);
+  return {
+    payloadJson,
+    payloadByteLength: fullLength,
+    payloadTruncated: true,
+    payloadSha256,
   };
 }

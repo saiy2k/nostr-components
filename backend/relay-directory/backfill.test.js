@@ -18,6 +18,9 @@ import {
   buildBackfillCheckpointWrite,
   buildBackfillGapWrite,
   buildHandleWriteFailureWrite,
+  buildSizeSafeDeadLetterPayload,
+  handleWriteFailureId,
+  MAX_DEAD_LETTER_PAYLOAD_BYTES,
 } from "./ingestion.js";
 import {
   createRunMetrics,
@@ -151,7 +154,15 @@ describe("backfill Firestore writes", () => {
                 claimId: "event-b",
                 sourceEventId: "event-b",
                 sourceEvent: {
-                  tags: [["i", "twitter:bob", "https://x.com/bob/status/1"]],
+                  tags: [
+                    {
+                      values: [
+                        "i",
+                        "twitter:bob",
+                        "https://x.com/bob/status/1",
+                      ],
+                    },
+                  ],
                 },
               },
             ],
@@ -171,6 +182,15 @@ describe("backfill Firestore writes", () => {
     );
 
     expect(write.collection).toBe("failures");
+    expect(write.id).toBe(
+      handleWriteFailureId({
+        targetDocumentId: "twitter:bob",
+        relay: "wss://relay.example",
+        kind: 10011,
+        cursorUntil: 500,
+        claimIds: ["event-b"],
+      }),
+    );
     expect(write.data).toMatchObject({
       status: "pending_review",
       handle: "bob",
@@ -184,14 +204,63 @@ describe("backfill Firestore writes", () => {
       errorMessage: "Property array contains an invalid nested entity.",
       errorCode: 3,
       failedAt: "2026-07-16T12:00:00.000Z",
+      payloadTruncated: false,
     });
     const payload = JSON.parse(write.data.payloadJson);
     expect(payload.handle).toBe("bob");
     expect(payload.claims[0].sourceEvent.tags).toEqual([
-      ["i", "twitter:bob", "https://x.com/bob/status/1"],
+      {
+        values: ["i", "twitter:bob", "https://x.com/bob/status/1"],
+      },
     ]);
     expect(payload.updatedAt).toBe("<FieldValue>");
     expect(write.data.payloadByteLength).toBeGreaterThan(0);
+  });
+
+  it("uses deterministic dead-letter ids across retries", () => {
+    const args = {
+      write: {
+        id: "twitter:bob",
+        handle: "bob",
+        data: { handle: "bob", claims: [{ claimId: "event-b" }] },
+      },
+      error: new Error("fail"),
+      relay: "wss://relay.example",
+      kind: 10011,
+      cursorUntil: 500,
+    };
+    const first = buildHandleWriteFailureWrite(
+      { ...args, failedAt: "2026-07-16T12:00:00.000Z" },
+      { firestoreHandleWriteFailuresCollection: "failures" },
+    );
+    const second = buildHandleWriteFailureWrite(
+      { ...args, failedAt: "2026-07-16T12:05:00.000Z" },
+      { firestoreHandleWriteFailuresCollection: "failures" },
+    );
+    expect(first.id).toBe(second.id);
+  });
+
+  it("truncates oversized dead-letter payloads under the Firestore size budget", () => {
+    const huge = "x".repeat(MAX_DEAD_LETTER_PAYLOAD_BYTES);
+    const payload = buildSizeSafeDeadLetterPayload({
+      handle: "bob",
+      claims: [{ claimId: "event-huge", blob: huge }],
+    });
+    expect(payload.payloadTruncated).toBe(true);
+    expect(payload.payloadSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.payloadByteLength).toBeGreaterThan(
+      MAX_DEAD_LETTER_PAYLOAD_BYTES,
+    );
+    expect(Buffer.byteLength(payload.payloadJson, "utf8")).toBeLessThan(
+      MAX_DEAD_LETTER_PAYLOAD_BYTES,
+    );
+    const summary = JSON.parse(payload.payloadJson);
+    expect(summary).toMatchObject({
+      truncated: true,
+      handle: "bob",
+      claimIds: ["event-huge"],
+      payloadSha256: payload.payloadSha256,
+    });
   });
 
   it("serializes FieldValue markers for JSON payloads", () => {
@@ -655,7 +724,7 @@ describe("top-level cursor coordination", () => {
   it("does not let a failed handle commit poison later cursors", async () => {
     const db = fakeFirestore();
     const event = identityEvent(100);
-    let handleCommits = 0;
+    let handleCommitAttempts = 0;
     const originalBatch = db.batch.bind(db);
     db.batch = () => {
       const batch = originalBatch();
@@ -665,8 +734,10 @@ describe("top-level cursor coordination", () => {
           (write) => write.collection === "handles",
         );
         if (pendingHandles.length) {
-          handleCommits += 1;
-          if (handleCommits === 1) {
+          handleCommitAttempts += 1;
+          // Fail the first cursor's batch attempt and singleton fallback so the
+          // write is dead-lettered; later cursors may commit successfully.
+          if (handleCommitAttempts <= 2) {
             throw new Error("firestore unavailable");
           }
         }
@@ -697,6 +768,54 @@ describe("top-level cursor coordination", () => {
     expect(
       db.writes.filter((write) => write.collection === "failures"),
     ).toHaveLength(1);
+  });
+
+  it("commits a clean handle page in one Firestore batch", async () => {
+    const db = fakeFirestore();
+    const alice = identityEvent(100);
+    const bob = finalizeEvent(
+      {
+        kind: 10011,
+        created_at: 100,
+        content: "",
+        tags: [
+          ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
+        ],
+      },
+      new Uint8Array(32).fill(2),
+    );
+    let handleBatchCommits = 0;
+    const originalBatch = db.batch.bind(db);
+    db.batch = () => {
+      const batch = originalBatch();
+      const originalCommit = batch.commit;
+      batch.commit = async () => {
+        const pendingHandles = batch.pending.filter(
+          (write) => write.collection === "handles",
+        );
+        if (pendingHandles.length) handleBatchCommits += 1;
+        return originalCommit();
+      };
+      return batch;
+    };
+
+    await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig({ backfillUntil: 500 }),
+      {
+        queryRelay: async () => ({
+          events: [alice, bob],
+          reason: "eose",
+        }),
+      },
+    );
+
+    expect(handleBatchCommits).toBe(1);
+    expect(
+      db.writes.filter((write) => write.collection === "handles"),
+    ).toHaveLength(2);
   });
 });
 
@@ -920,6 +1039,7 @@ function fakeFirestore() {
           pending.push({ collection: ref.collection, id: ref.id, data });
         },
         commit: async () => {
+          // Atomic like Firestore batches: validate all ops before applying any.
           for (const write of pending) {
             if (db.failCollections.has(write.collection)) {
               throw new Error(`write failed for collection ${write.collection}`);
@@ -930,6 +1050,8 @@ function fakeFirestore() {
             ) {
               throw new Error(`write failed for ${write.id}`);
             }
+          }
+          for (const write of pending) {
             writes.push(write);
             documents.set(`${write.collection}/${write.id}`, {
               ...(documents.get(`${write.collection}/${write.id}`) || {}),

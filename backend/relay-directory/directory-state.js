@@ -453,12 +453,13 @@ function boundedSourceEvent(event) {
     kind: event.kind,
     pubkey: event.pubkey,
     created_at: event.created_at,
-    content: boundedString(event.content, 4000) || "",
+    content: boundedString(event.content, 2000) || "",
     // Firestore rejects nested arrays (string[][]); store tags as maps.
-    tags: (event.tags || []).slice(0, 100).map((tag) => ({
+    // Keep well under the 1 MiB doc limit even with many claims per handle.
+    tags: (event.tags || []).slice(0, 40).map((tag) => ({
       values: (tag || [])
-        .slice(0, 10)
-        .map((value) => String(value).slice(0, 2000)),
+        .slice(0, 8)
+        .map((value) => String(value).slice(0, 256)),
     })),
     sig: boundedString(event.sig, 128),
   };
