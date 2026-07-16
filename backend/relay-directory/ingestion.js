@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 
+import { randomBytes } from "node:crypto";
 import { FieldValue } from "@google-cloud/firestore";
 import NDK from "@nostr-dev-kit/ndk";
 import { validateEvent, verifyEvent } from "nostr-tools";
-import { DEFAULT_COLLECTIONS, stripUndefined } from "./runtime.js";
+import {
+  DEFAULT_COLLECTIONS,
+  serializeFirestoreDataForJson,
+  stripUndefined,
+} from "./runtime.js";
 import { backfillStateId, firestoreSafeId } from "./utils.js";
 
 export function createNdkRelayClient(url) {
@@ -156,6 +161,54 @@ export function buildBackfillGapWrite(
       pageLimit,
       seenEventIds,
       updatedAt: FieldValue.serverTimestamp(),
+    }),
+  };
+}
+
+/**
+ * Dead-letter a failed handle write. payloadJson is stringified so nested
+ * arrays / other Firestore-illegal shapes cannot break the failure doc itself.
+ */
+export function buildHandleWriteFailureWrite(
+  { write, error, relay, kind, cursorUntil, failedAt = new Date().toISOString() },
+  options = {},
+) {
+  const claims = Array.isArray(write?.data?.claims) ? write.data.claims : [];
+  const claimIds = claims.map((claim) => claim?.claimId).filter(Boolean);
+  const sourceEventIds = [
+    ...new Set(
+      claims
+        .map((claim) => claim?.sourceEventId || claim?.claimId)
+        .filter(Boolean),
+    ),
+  ];
+  const payloadJson = JSON.stringify(
+    serializeFirestoreDataForJson(write?.data || {}),
+  );
+  const suffix = randomBytes(4).toString("hex");
+  return {
+    collection:
+      options.firestoreHandleWriteFailuresCollection ||
+      DEFAULT_COLLECTIONS.handleWriteFailures,
+    id: firestoreSafeId(
+      `${write?.id || "unknown"}:${failedAt}:${claimIds[0] || "none"}:${suffix}`,
+    ),
+    data: stripUndefined({
+      status: "pending_review",
+      handle: write?.handle || write?.data?.handle || null,
+      targetCollection: write?.collection || null,
+      targetDocumentId: write?.id || null,
+      relay,
+      kind,
+      cursorUntil,
+      claimIds,
+      sourceEventIds,
+      errorMessage: String(error?.message || error || "unknown"),
+      errorCode: error?.code || null,
+      payloadJson,
+      payloadByteLength: Buffer.byteLength(payloadJson, "utf8"),
+      failedAt,
+      createdAt: FieldValue.serverTimestamp(),
     }),
   };
 }
