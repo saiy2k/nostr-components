@@ -219,7 +219,11 @@ export function parseBooleanAttribute(attr: string | null): boolean {
   return false;
 }
 
-export function escapeHtml(text: string): string {
+export function escapeHtml(text: string | null | undefined): string {
+  if (text === null || text === undefined) {
+    return '';
+  }
+
   return String(text).replace(/[&<>"']/g, char => {
     switch (char) {
       case '&':
@@ -236,6 +240,25 @@ export function escapeHtml(text: string): string {
         return char;
     }
   });
+}
+
+/**
+ * Validates http/https URLs, serializes via URL(), and returns an attribute-safe string.
+ */
+export function sanitizeUrl(input: string | null | undefined): string {
+  const trimmed = (input ?? '').trim();
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return escapeHtml(url.toString());
+    }
+  } catch {
+    // Not a valid absolute URL
+  }
+
+  return '';
 }
 
 export function isValidUrl(url: string): boolean {
