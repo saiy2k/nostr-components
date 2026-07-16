@@ -538,6 +538,8 @@ async function commitProcessedPage(
   };
 }
 
+const HANDLE_WRITE_BATCH_SIZE = 50;
+
 async function commitHandleWritesBestEffort(
   db,
   writes,
@@ -548,50 +550,132 @@ async function commitHandleWritesBestEffort(
   let failed = 0;
   let deadLettered = 0;
   let deadLetterFailed = 0;
-  for (const write of writes) {
-    try {
-      await commitFirestoreWrites(db, [
-        {
-          collection: write.collection,
-          id: write.id,
-          data: write.data,
-        },
-      ]);
+
+  for (let i = 0; i < writes.length; i += HANDLE_WRITE_BATCH_SIZE) {
+    const chunk = writes.slice(i, i + HANDLE_WRITE_BATCH_SIZE);
+    const chunkResult = await commitHandleWriteChunk(
+      db,
+      chunk,
+      handleStateCache,
+      failureContext,
+    );
+    succeeded += chunkResult.succeeded;
+    failed += chunkResult.failed;
+    deadLettered += chunkResult.deadLettered;
+    deadLetterFailed += chunkResult.deadLetterFailed;
+  }
+
+  return { succeeded, failed, deadLettered, deadLetterFailed };
+}
+
+async function commitHandleWriteChunk(
+  db,
+  writes,
+  handleStateCache,
+  failureContext,
+) {
+  if (!writes.length) {
+    return { succeeded: 0, failed: 0, deadLettered: 0, deadLetterFailed: 0 };
+  }
+
+  try {
+    await commitFirestoreWrites(
+      db,
+      writes.map((write) => ({
+        collection: write.collection,
+        id: write.id,
+        data: write.data,
+      })),
+    );
+    for (const write of writes) {
       if (handleStateCache && write.handle) {
         handleStateCache.set(write.handle, write.nextCacheState);
       }
-      succeeded += 1;
-    } catch (error) {
-      if (handleStateCache && write.handle) {
-        handleStateCache.delete(write.handle);
-      }
-      failed += 1;
-      console.warn(
-        `Handle write failed for ${write.id}: ${error?.message || error}`,
+    }
+    return {
+      succeeded: writes.length,
+      failed: 0,
+      deadLettered: 0,
+      deadLetterFailed: 0,
+    };
+  } catch {
+    // Batch failed — isolate poison docs by splitting / falling back.
+    if (writes.length === 1) {
+      return commitSingleHandleWrite(
+        db,
+        writes[0],
+        handleStateCache,
+        failureContext,
       );
-      try {
-        await commitFirestoreWrites(db, [
-          buildHandleWriteFailureWrite(
-            {
-              write,
-              error,
-              relay: failureContext.relay,
-              kind: failureContext.kind,
-              cursorUntil: failureContext.cursorUntil,
-            },
-            failureContext.config || {},
-          ),
-        ]);
-        deadLettered += 1;
-      } catch (deadLetterError) {
-        deadLetterFailed += 1;
-        console.warn(
-          `Dead-letter write failed for ${write.id}: ${deadLetterError?.message || deadLetterError}`,
-        );
-      }
+    }
+    const mid = Math.ceil(writes.length / 2);
+    const left = await commitHandleWriteChunk(
+      db,
+      writes.slice(0, mid),
+      handleStateCache,
+      failureContext,
+    );
+    const right = await commitHandleWriteChunk(
+      db,
+      writes.slice(mid),
+      handleStateCache,
+      failureContext,
+    );
+    return {
+      succeeded: left.succeeded + right.succeeded,
+      failed: left.failed + right.failed,
+      deadLettered: left.deadLettered + right.deadLettered,
+      deadLetterFailed: left.deadLetterFailed + right.deadLetterFailed,
+    };
+  }
+}
+
+async function commitSingleHandleWrite(
+  db,
+  write,
+  handleStateCache,
+  failureContext,
+) {
+  try {
+    await commitFirestoreWrites(db, [
+      {
+        collection: write.collection,
+        id: write.id,
+        data: write.data,
+      },
+    ]);
+    if (handleStateCache && write.handle) {
+      handleStateCache.set(write.handle, write.nextCacheState);
+    }
+    return { succeeded: 1, failed: 0, deadLettered: 0, deadLetterFailed: 0 };
+  } catch (error) {
+    if (handleStateCache && write.handle) {
+      handleStateCache.delete(write.handle);
+    }
+    console.warn(
+      `Handle write failed for ${write.id}: ${error?.message || error}`,
+    );
+    try {
+      await commitFirestoreWrites(db, [
+        buildHandleWriteFailureWrite(
+          {
+            write,
+            error,
+            relay: failureContext.relay,
+            kind: failureContext.kind,
+            cursorUntil: failureContext.cursorUntil,
+          },
+          failureContext.config || {},
+        ),
+      ]);
+      return { succeeded: 0, failed: 1, deadLettered: 1, deadLetterFailed: 0 };
+    } catch (deadLetterError) {
+      console.warn(
+        `Dead-letter write failed for ${write.id}: ${deadLetterError?.message || deadLetterError}`,
+      );
+      return { succeeded: 0, failed: 1, deadLettered: 0, deadLetterFailed: 1 };
     }
   }
-  return { succeeded, failed, deadLettered, deadLetterFailed };
 }
 
 async function writeCursorCheckpoint(db, relay, kind, state, config, details) {
