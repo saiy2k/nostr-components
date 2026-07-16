@@ -4,6 +4,7 @@
 import {
   buildBackfillCheckpointWrite,
   buildBackfillGapWrite,
+  buildHandleWriteFailureWrite,
   createNdkRelayClient,
   isValidSignedEvent,
   queryRelay,
@@ -140,6 +141,8 @@ export async function runBackfill(config, FirestoreCtor, dependencies = {}) {
         handlesCollection: config.firestoreHandlesCollection,
         stateCollection: config.firestoreStateCollection,
         gapsCollection: config.firestoreGapsCollection,
+        handleWriteFailuresCollection:
+          config.firestoreHandleWriteFailuresCollection,
       },
       controls: {
         pageLimit: config.backfillPageLimit,
@@ -358,9 +361,11 @@ async function executeBackfillCursor(
       config,
       context,
       safeState,
+      cursor,
     );
     stats.directoryHandleWrites += commitResult.handlesWritten;
     stats.handleWriteFailures += commitResult.handlesFailed;
+    stats.handleWriteDeadLetters += commitResult.handlesDeadLettered;
     if (commitResult.retryPaused) {
       stats.retryPaused = true;
       stats.lastReason = commitResult.lastReason;
@@ -484,31 +489,30 @@ async function commitProcessedPage(
   config,
   context,
   safeState,
+  cursor,
 ) {
   const handleResult = await commitHandleWritesBestEffort(
     db,
     processed.writes,
     context.handleStateCache,
+    { relay, kind, config, cursorUntil: cursor.cursorUntil },
   );
 
-  // Total write failure (e.g. outage): keep cursor unmoved for retry.
-  // Partial failure (poison-pill handle): advance so one bad doc cannot stall
-  // the relay/kind cursor forever.
-  if (
-    processed.writes.length > 0 &&
-    handleResult.succeeded === 0 &&
-    handleResult.failed > 0
-  ) {
+  // Pause only when a failed handle could not be dead-lettered (e.g. outage).
+  // Poison-pill / schema failures are preserved as stringified payloadJson and
+  // the cursor advances so one bad doc cannot stall the relay/kind forever.
+  if (handleResult.deadLetterFailed > 0) {
     await writeCursorCheckpoint(db, relay, kind, safeState, config, {
       status: "retry_later",
       completed: false,
-      lastReason: "handle-writes-failed",
+      lastReason: "handle-write-dead-letter-failed",
     });
     return {
       retryPaused: true,
-      lastReason: "handle-writes-failed",
-      handlesWritten: 0,
+      lastReason: "handle-write-dead-letter-failed",
+      handlesWritten: handleResult.succeeded,
       handlesFailed: handleResult.failed,
+      handlesDeadLettered: handleResult.deadLettered,
     };
   }
 
@@ -530,12 +534,20 @@ async function commitProcessedPage(
     lastReason: pageResult.reason,
     handlesWritten: handleResult.succeeded,
     handlesFailed: handleResult.failed,
+    handlesDeadLettered: handleResult.deadLettered,
   };
 }
 
-async function commitHandleWritesBestEffort(db, writes, handleStateCache) {
+async function commitHandleWritesBestEffort(
+  db,
+  writes,
+  handleStateCache,
+  failureContext = {},
+) {
   let succeeded = 0;
   let failed = 0;
+  let deadLettered = 0;
+  let deadLetterFailed = 0;
   for (const write of writes) {
     try {
       await commitFirestoreWrites(db, [
@@ -557,9 +569,29 @@ async function commitHandleWritesBestEffort(db, writes, handleStateCache) {
       console.warn(
         `Handle write failed for ${write.id}: ${error?.message || error}`,
       );
+      try {
+        await commitFirestoreWrites(db, [
+          buildHandleWriteFailureWrite(
+            {
+              write,
+              error,
+              relay: failureContext.relay,
+              kind: failureContext.kind,
+              cursorUntil: failureContext.cursorUntil,
+            },
+            failureContext.config || {},
+          ),
+        ]);
+        deadLettered += 1;
+      } catch (deadLetterError) {
+        deadLetterFailed += 1;
+        console.warn(
+          `Dead-letter write failed for ${write.id}: ${deadLetterError?.message || deadLetterError}`,
+        );
+      }
     }
   }
-  return { succeeded, failed };
+  return { succeeded, failed, deadLettered, deadLetterFailed };
 }
 
 async function writeCursorCheckpoint(db, relay, kind, state, config, details) {
@@ -622,6 +654,7 @@ function createCursorStats(relay, kind) {
     identityClaimsDiscovered: 0,
     directoryHandleWrites: 0,
     handleWriteFailures: 0,
+    handleWriteDeadLetters: 0,
     claimsSkippedExisting: 0,
     claimsSkippedRejected: 0,
     duplicateEventsSkipped: 0,
@@ -659,6 +692,7 @@ function createBackfillTotals() {
     identityClaimsDiscovered: 0,
     directoryHandleWrites: 0,
     handleWriteFailures: 0,
+    handleWriteDeadLetters: 0,
     claimsSkippedExisting: 0,
     claimsSkippedRejected: 0,
     duplicateEventsSkipped: 0,
@@ -676,6 +710,7 @@ function addCursorSummary(totals, summary) {
     "identityClaimsDiscovered",
     "directoryHandleWrites",
     "handleWriteFailures",
+    "handleWriteDeadLetters",
     "claimsSkippedExisting",
     "claimsSkippedRejected",
     "duplicateEventsSkipped",
@@ -892,6 +927,7 @@ function printBackfillSummary(output, config) {
   );
   console.log(`  handle docs written:  ${output.stats.directoryHandleWrites}`);
   console.log(`  handle write failures:${output.stats.handleWriteFailures}`);
+  console.log(`  handle dead letters:  ${output.stats.handleWriteDeadLetters}`);
   console.log(`  duplicate skips:      ${output.stats.duplicateEventsSkipped}`);
   console.log(`  existing skips:       ${output.stats.claimsSkippedExisting}`);
   console.log(`  rejected skips:       ${output.stats.claimsSkippedRejected}`);

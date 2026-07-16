@@ -20,6 +20,7 @@ export const DEFAULT_COLLECTIONS = {
   handles: "nostrDirectoryHandles",
   state: "relayCrawlerState",
   gaps: "relayCrawlerGaps",
+  handleWriteFailures: "nostrDirectoryHandleWriteFailures",
 };
 
 export function firestoreConfigFromEnv(env = process.env) {
@@ -36,6 +37,9 @@ export function firestoreConfigFromEnv(env = process.env) {
       env.FIRESTORE_STATE_COLLECTION || DEFAULT_COLLECTIONS.state,
     firestoreGapsCollection:
       env.FIRESTORE_GAPS_COLLECTION || DEFAULT_COLLECTIONS.gaps,
+    firestoreHandleWriteFailuresCollection:
+      env.FIRESTORE_HANDLE_WRITE_FAILURES_COLLECTION ||
+      DEFAULT_COLLECTIONS.handleWriteFailures,
   };
 }
 
@@ -142,6 +146,20 @@ export function stripUndefined(value) {
   const result = {};
   for (const [key, child] of Object.entries(value)) {
     if (child !== undefined) result[key] = stripUndefined(child);
+  }
+  return result;
+}
+
+/** JSON-safe clone of Firestore write data (FieldValue → sentinel string). */
+export function serializeFirestoreDataForJson(value) {
+  if (value === undefined) return undefined;
+  if (value === null || typeof value !== "object") return value;
+  if (value instanceof FieldValue) return "<FieldValue>";
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(serializeFirestoreDataForJson);
+  const result = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (child !== undefined) result[key] = serializeFirestoreDataForJson(child);
   }
   return result;
 }

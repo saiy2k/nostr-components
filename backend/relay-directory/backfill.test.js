@@ -17,13 +17,16 @@ import {
 import {
   buildBackfillCheckpointWrite,
   buildBackfillGapWrite,
+  buildHandleWriteFailureWrite,
 } from "./ingestion.js";
 import {
   createRunMetrics,
   finishRunMetrics,
   percentile,
+  serializeFirestoreDataForJson,
   terminateFirestore,
 } from "./runtime.js";
+import { FieldValue } from "@google-cloud/firestore";
 
 const SECRET_KEY = new Uint8Array(32).fill(1);
 
@@ -34,6 +37,8 @@ describe("backfill environment configuration", () => {
     ).toMatchObject({
       firestoreProject: "gr-test",
       firestoreHandlesCollection: "nostrDirectoryHandles",
+      firestoreHandleWriteFailuresCollection:
+        "nostrDirectoryHandleWriteFailures",
       backfillPageLimit: 250,
       backfillMaxPageLimit: 1000,
       backfillMaxPages: 20,
@@ -129,6 +134,75 @@ describe("backfill Firestore writes", () => {
     expect(write).toMatchObject({
       collection: "gaps",
       id: "wss:__relay_example:kind:10011:timestamp:498",
+    });
+  });
+
+  it("dead-letters failed handle writes as stringified payload plus metadata", () => {
+    const write = buildHandleWriteFailureWrite(
+      {
+        write: {
+          collection: "handles",
+          id: "twitter:bob",
+          handle: "bob",
+          data: {
+            handle: "bob",
+            claims: [
+              {
+                claimId: "event-b",
+                sourceEventId: "event-b",
+                sourceEvent: {
+                  tags: [["i", "twitter:bob", "https://x.com/bob/status/1"]],
+                },
+              },
+            ],
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+        },
+        error: Object.assign(
+          new Error("Property array contains an invalid nested entity."),
+          { code: 3 },
+        ),
+        relay: "wss://relay.example",
+        kind: 10011,
+        cursorUntil: 500,
+        failedAt: "2026-07-16T12:00:00.000Z",
+      },
+      { firestoreHandleWriteFailuresCollection: "failures" },
+    );
+
+    expect(write.collection).toBe("failures");
+    expect(write.data).toMatchObject({
+      status: "pending_review",
+      handle: "bob",
+      targetCollection: "handles",
+      targetDocumentId: "twitter:bob",
+      relay: "wss://relay.example",
+      kind: 10011,
+      cursorUntil: 500,
+      claimIds: ["event-b"],
+      sourceEventIds: ["event-b"],
+      errorMessage: "Property array contains an invalid nested entity.",
+      errorCode: 3,
+      failedAt: "2026-07-16T12:00:00.000Z",
+    });
+    const payload = JSON.parse(write.data.payloadJson);
+    expect(payload.handle).toBe("bob");
+    expect(payload.claims[0].sourceEvent.tags).toEqual([
+      ["i", "twitter:bob", "https://x.com/bob/status/1"],
+    ]);
+    expect(payload.updatedAt).toBe("<FieldValue>");
+    expect(write.data.payloadByteLength).toBeGreaterThan(0);
+  });
+
+  it("serializes FieldValue markers for JSON payloads", () => {
+    expect(
+      serializeFirestoreDataForJson({
+        updatedAt: FieldValue.serverTimestamp(),
+        nested: [{ values: ["ok"] }],
+      }),
+    ).toEqual({
+      updatedAt: "<FieldValue>",
+      nested: [{ values: ["ok"] }],
     });
   });
 });
@@ -444,7 +518,7 @@ describe("top-level cursor coordination", () => {
     expect(db.readCount("handles")).toBe(1);
   });
 
-  it("advances past a poison-pill handle while committing sibling writes", async () => {
+  it("advances past a poison-pill handle while dead-lettering the failure", async () => {
     const db = fakeFirestore();
     const good = identityEvent(100);
     const bad = finalizeEvent(
@@ -477,6 +551,7 @@ describe("top-level cursor coordination", () => {
       completed: true,
       directoryHandleWrites: 1,
       handleWriteFailures: 1,
+      handleWriteDeadLetters: 1,
       retryPaused: false,
     });
     expect(db.writes).toContainEqual(
@@ -487,15 +562,66 @@ describe("top-level cursor coordination", () => {
     );
     expect(db.writes).toContainEqual(
       expect.objectContaining({
+        collection: "failures",
+        data: expect.objectContaining({
+          handle: "bob",
+          status: "pending_review",
+          payloadJson: expect.stringContaining('"handle":"bob"'),
+        }),
+      }),
+    );
+    expect(db.writes).toContainEqual(
+      expect.objectContaining({
         collection: "state",
         data: expect.objectContaining({ status: "complete" }),
       }),
     );
   });
 
-  it("keeps the cursor unmoved when every handle write fails", async () => {
+  it("advances when every handle write fails but each is dead-lettered", async () => {
     const db = fakeFirestore();
     db.failAllHandleWrites = true;
+    const event = identityEvent(100);
+
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig({ backfillUntil: 500 }),
+      {
+        queryRelay: async () => ({
+          events: [event],
+          reason: "eose",
+        }),
+      },
+    );
+
+    expect(summary).toMatchObject({
+      completed: true,
+      retryPaused: false,
+      directoryHandleWrites: 0,
+      handleWriteFailures: 1,
+      handleWriteDeadLetters: 1,
+    });
+    expect(db.writes).toContainEqual(
+      expect.objectContaining({
+        collection: "failures",
+        data: expect.objectContaining({
+          handle: "alice",
+          status: "pending_review",
+        }),
+      }),
+    );
+    expect(db.writes.at(-1)).toMatchObject({
+      collection: "state",
+      data: { status: "complete" },
+    });
+  });
+
+  it("keeps the cursor unmoved when dead-lettering a failed handle also fails", async () => {
+    const db = fakeFirestore();
+    db.failAllHandleWrites = true;
+    db.failCollections.add("failures");
     const event = identityEvent(100);
 
     const summary = await runBackfillCursor(
@@ -515,9 +641,10 @@ describe("top-level cursor coordination", () => {
       completed: false,
       retryPaused: true,
       cursorUntil: 500,
-      lastReason: "handle-writes-failed",
+      lastReason: "handle-write-dead-letter-failed",
       directoryHandleWrites: 0,
       handleWriteFailures: 1,
+      handleWriteDeadLetters: 0,
     });
     expect(db.writes.at(-1)).toMatchObject({
       collection: "state",
@@ -562,9 +689,13 @@ describe("top-level cursor coordination", () => {
     );
 
     expect(result.totals.handleWriteFailures).toBe(1);
+    expect(result.totals.handleWriteDeadLetters).toBe(1);
     expect(result.totals.directoryHandleWrites).toBe(1);
     expect(
       db.writes.filter((write) => write.collection === "handles"),
+    ).toHaveLength(1);
+    expect(
+      db.writes.filter((write) => write.collection === "failures"),
     ).toHaveLength(1);
   });
 });
@@ -730,6 +861,7 @@ function testConfig(overrides = {}) {
     firestoreHandlesCollection: "handles",
     firestoreStateCollection: "state",
     firestoreGapsCollection: "gaps",
+    firestoreHandleWriteFailuresCollection: "failures",
     backfillStatePrefix: "backfill",
     backfillResume: true,
     backfillUntil: 1000,
@@ -754,6 +886,7 @@ function fakeFirestore() {
   const db = {
     writes,
     failWritesForIds: new Set(),
+    failCollections: new Set(),
     failAllHandleWrites: false,
     readCount(collection) {
       return reads.get(collection) || 0;
@@ -788,6 +921,9 @@ function fakeFirestore() {
         },
         commit: async () => {
           for (const write of pending) {
+            if (db.failCollections.has(write.collection)) {
+              throw new Error(`write failed for collection ${write.collection}`);
+            }
             if (
               write.collection === "handles" &&
               (db.failAllHandleWrites || db.failWritesForIds.has(write.id))
