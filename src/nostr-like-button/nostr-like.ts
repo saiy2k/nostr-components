@@ -145,6 +145,7 @@ export default class NostrLike extends NostrBaseComponent {
     const seq = ++this.loadSeq;
     try {
       await this.ensureNostrConnected();
+      if (seq !== this.loadSeq) return;
       this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
       this.likeListStatus.set(NCStatus.Loading);
       this.render();
@@ -155,10 +156,13 @@ export default class NostrLike extends NostrBaseComponent {
       this.cachedLikeDetails = result;
       this.likeListStatus.set(NCStatus.Ready);
     } catch (error) {
+      if (seq !== this.loadSeq) return;
       console.error('[NostrLike] Failed to fetch like count:', error);
       this.likeListStatus.set(NCStatus.Error, 'Failed to load likes');
     } finally {
-      this.render();
+      if (seq === this.loadSeq) {
+        this.render();
+      }
     }
   }
 
@@ -204,6 +208,8 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   private async handleLikeClick() {
+    if (this.likeActionStatus.get() === NCStatus.Loading) return;
+
     // Ensure currentUrl is set before proceeding
     this.ensureCurrentUrl();
     
@@ -415,6 +421,13 @@ export default class NostrLike extends NostrBaseComponent {
     this.delegateEvent('click', '.like-count', (e) => {
       e.preventDefault?.();
       e.stopPropagation?.();
+      void this.handleCountClick();
+    });
+
+    this.delegateEvent('keydown', '.like-count.clickable', (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      e.stopPropagation();
       void this.handleCountClick();
     });
 

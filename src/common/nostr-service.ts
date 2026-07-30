@@ -10,6 +10,8 @@ import NDK, {
 import { DEFAULT_RELAYS } from './constants';
 import { DEFAULT_PROFILE_IMAGE } from './constants';
 import { normalizeURL } from 'nostr-tools/utils';
+import { getZapProviderInfo } from '../nostr-zap-button/zap-utils';
+import { validateZapReceipt } from '../nostr-zap-button/zap-receipt';
 
 /** How long to keep polling the relay pool for a first connection. */
 const CONNECT_GRACE_MS = 5000;
@@ -295,17 +297,31 @@ export class NostrService {
 
   public async fetchZaps(user: NDKUser): Promise<number> {
     try {
-      // console.log('Fetching zaps for user:', user.npub);
+      const profileEvent = await this.ndk.fetchEvent({
+        kinds: [0],
+        authors: [user.pubkey],
+      });
+      if (!profileEvent) return 0;
+
+      const provider = await getZapProviderInfo(profileEvent.rawEvent());
+      if (!provider) return 0;
+
       const events = await this.ndk.fetchEvents({
         kinds: [9735], // Zap receipt
         '#p': [user.pubkey],
         limit: 1000,
       });
-      const count = events.size;
-      // console.log('Zaps count:', count);
+
+      let count = 0;
+      for (const event of events) {
+        const validated = validateZapReceipt(event.rawEvent(), {
+          recipientPubkey: user.pubkey,
+          provider,
+        });
+        if (validated.ok) count++;
+      }
       return count;
     } catch (error) {
-      // console.warn('Error fetching zaps:', error);
       return 0;
     }
   }
@@ -316,21 +332,14 @@ export class NostrService {
   }
 
   /**
-   * Check if a Nostr signer is available
+   * Check if a Nostr signer is available (NIP-07 / NDK signer only — never localStorage keys).
    * @returns boolean indicating if a signer is available
    */
   public hasSigner(): boolean {
-    // Check for NIP-07 browser extension
     if (typeof window !== 'undefined' && (window as any).nostr) {
       return true;
     }
-    
-    // Check for stored private key
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage.getItem("nostr_nsec")) {
-      return true;
-    }
-    
-    // Check if NDK already has a signer
+
     return !!this.ndk.signer;
   }
 }

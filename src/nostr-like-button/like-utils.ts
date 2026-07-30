@@ -3,25 +3,10 @@
 import { SimplePool } from 'nostr-tools';
 import { normalizeURL } from 'nostr-tools/utils';
 import { ensureInitialized, getPublicKey, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
+import { netLikesByPubkey } from './like-netting';
+import type { LikeCountResult, LikeDetails } from './like-netting';
 
-/**
- * Helper utilities for Nostr like operations using NIP-25 External Content Reactions.
- * These are deliberately kept self-contained so `nostr-like` Web Component can import
- * everything from a single module without polluting the rest of the codebase.
- */
-
-export interface LikeDetails {
-  authorPubkey: string;
-  date: Date;
-  content: string;
-}
-
-export interface LikeCountResult {
-  totalCount: number;
-  likeDetails: LikeDetails[];
-  likedCount: number;
-  dislikedCount: number;
-}
+export type { LikeCountResult, LikeDetails };
 
 /**
  * Fetch all likes for a URL using NIP-25 kind 17 events
@@ -44,34 +29,7 @@ export async function fetchLikesForUrl(
       limit: 1000
     });
     
-    const likes: LikeDetails[] = [];
-    let likedCount = 0;
-    let dislikedCount = 0;
-    
-    for (const event of events) {
-      likes.push({
-        authorPubkey: event.pubkey,
-        date: new Date(event.created_at * 1000),
-        content: event.content
-      });
-      
-      if (event.content === '-') {
-        dislikedCount++;
-      } else {
-        likedCount++;
-      }
-    }
-    
-    likes.sort((a, b) => b.date.getTime() - a.date.getTime());
-    
-    const totalCount = likedCount - dislikedCount;
-    
-    return {
-      totalCount: totalCount,
-      likeDetails: likes,
-      likedCount: likedCount,
-      dislikedCount: dislikedCount
-    };
+    return netLikesByPubkey(events);
   } catch (error) {
     // Rethrow error so callers can handle relay/network failures appropriately
     throw error instanceof Error ? error : new Error(String(error));

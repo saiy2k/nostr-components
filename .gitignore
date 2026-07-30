@@ -9,10 +9,22 @@ lerna-debug.log*
 
 node_modules
 /backend/package-lock.json
-/backend/.env
 lib
 dist-ssr
 *.local
+
+# Secrets / credentials
+.env
+.env.*
+!.env.example
+!backend/.env.example
+/backend/.env
+*.pem
+*.p12
+*.key
+*credentials*.json
+*service-account*.json
+**/application_default_credentials.json
 
 # Editor directories and files
 .vscode/*

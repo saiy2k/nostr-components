@@ -38,7 +38,7 @@ export function renderZapButton({
     ? `<span>Zapped</span>`
     : `<span>${escapeHtml(buttonText)}</span>`;
 
-  return renderContainer(iconContent, textContent, totalZapAmount, isAmountLoading, hasZaps);
+  return renderContainer(iconContent, textContent, totalZapAmount, isAmountLoading, hasZaps, false);
 }
 
 function renderLoading(isAmountLoading: boolean): string {
@@ -46,7 +46,9 @@ function renderLoading(isAmountLoading: boolean): string {
     getLightningIcon(),
     '<span class="button-text-skeleton"></span>',
     null,
-    isAmountLoading
+    isAmountLoading,
+    false,
+    true
   );
 }
 
@@ -70,16 +72,24 @@ function renderErrorContainer(leftContent: string, rightContent: string): string
   `;
 }
 
-function renderContainer(iconContent: string, textContent: string, totalZapAmount: number | null, isAmountLoading: boolean, hasZaps: boolean = false): string {
+function renderContainer(
+  iconContent: string,
+  textContent: string,
+  totalZapAmount: number | null,
+  isAmountLoading: boolean,
+  hasZaps: boolean = false,
+  isButtonLoading: boolean = false
+): string {
   const zapAmountHtml = isAmountLoading 
     ? `<span class="total-zap-amount skeleton"></span>` 
-    : (totalZapAmount !== null ? `<span class="total-zap-amount${hasZaps ? ' clickable' : ''}">${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '');
+    : (totalZapAmount !== null ? `<span class="total-zap-amount${hasZaps ? ' clickable' : ''}"${hasZaps ? ' role="button" tabindex="0" aria-label="View zappers"' : ''}>${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '');
   
-  const helpIconHtml = `<button class="help-icon" title="What is a zap?">?</button>`;
+  const disabledAttrs = isButtonLoading ? ' disabled aria-busy="true"' : '';
+  const helpIconHtml = `<button type="button" class="help-icon" aria-label="What is a zap?" title="What is a zap?">?</button>`;
   
   return `
     <div class="nostr-zap-button-container">
-      <button class="nostr-zap-button">
+      <button type="button" class="nostr-zap-button"${disabledAttrs}>
         ${iconContent}
         ${textContent}
       </button>

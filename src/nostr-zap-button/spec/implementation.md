@@ -24,6 +24,7 @@ This document contains the technical implementation details for the `nostr-zap-b
 - Delegated Events: Uses `delegateEvent()` for efficient Shadow DOM event handling
 - Click Handler: Delegated to `.nostr-zap-button` class
 - Event Delegation: Prevents memory leaks and improves performance
+- Double-click guard: `handleZapClick` early-returns while `zapActionStatus` is Loading; render treats action Loading as `isLoading` and disables the button with `aria-busy="true"`
 
 ### Rendering Architecture
 - Separation of Concerns: 
@@ -119,7 +120,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Function: `listenForZapReceipt()` in `zap-utils.ts`
 - Purpose: Listen for zap receipt events (kind 9735) matching the invoice
 - Status: ACTIVELY USED in dialog implementation
-- Behavior: Shows success overlay when payment is detected
+- Behavior: Shows success overlay only after NIP-57 Appendix F validation succeeds
 
 ### Close Behavior
 - ESC Key: Closes dialog
@@ -163,13 +164,22 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - The `a` tag value is a valid NIP-01 addressable event coordinate (kind 39735 is in the 30000–39999 addressable range); per NIP-57 Appendix E, relays copy the `a` tag from the zap request to the receipt, making relay-side `#a` filtering reliable
 
 ### Amount Calculation
-- Extracts amounts from zap request description tags
-- Aggregates and converts msats to sats
-- Real-time data (no caching)
+- Resolves recipient LNURL-pay metadata (`allowsNostr` + `nostrPubkey`)
+- Validates each kind-9735 receipt per NIP-57 Appendix F before counting:
+  - Receipt `pubkey` must equal LNURL `nostrPubkey`
+  - Embedded zap request must pass `nip57.validateZapRequest` + signature verify
+  - Receipt/`zap request` `p` tags must match the recipient
+  - `bolt11` invoice amount must equal the zap-request `amount` tag when present
+  - Optional zap-request `lnurl` tag must match the recipient LNURL when present
+- Aggregates validated bolt11 amounts and converts msats to sats
+- Fail closed: if LNURL provider metadata cannot be resolved, totals are `0`
+- Provider metadata cached for component lifetime
 
 ### Interactivity
 - Clickable total opens zappers dialog
 - Delegated click handler on `.total-zap-amount` class
+- `handleZapClick` early-returns while `zapActionStatus` is Loading
+- Primary zap button is `disabled` + `aria-busy` during the action
 
 ## Individual Zaps
 
@@ -184,9 +194,9 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Each entry updates independently as profile data loads
 
 ### Zap Details
-- Amount from zap request description tags
+- Amount from validated bolt11 invoice (msats → sats)
 - Date from event `created_at` timestamp
-- Author from zap request `pubkey` field
+- Author from validated zap request `pubkey` field
 - Sorted chronologically (newest first)
 
 ### Profile Display

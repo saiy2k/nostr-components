@@ -87,7 +87,7 @@ export function renderContent(content: ContentItem[]): string {
         }
         carouselHtml.push(`<li class="glide__slide">${item}</li>`);
         bullets.push(
-          `<button class="glide__bullet" data-glide-dir="=${slideIndex}"></button>`,
+          `<button type="button" class="glide__bullet" data-glide-dir="=${slideIndex}"></button>`,
         );
         slideIndex++;
       }

@@ -10,6 +10,11 @@ import type { Filter, Event } from 'nostr-tools';
 import { normalizeURL } from '../common/utils';
 import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 import { DEFAULT_RELAYS } from '../common/constants';
+import {
+  resolveZapProviderInfo,
+  validateZapReceipt,
+  type ZapProviderInfo,
+} from './zap-receipt';
 
 /**
  * Helper utilities for Nostr zap operations (adapted from the original `nostr-zap` repo).
@@ -19,6 +24,7 @@ import { DEFAULT_RELAYS } from '../common/constants';
 
 // Basic in-memory cache – sufficient for component lifetime.
 const profileCache: Record<string, any> = {};
+const zapProviderCache: Record<string, ZapProviderInfo | null> = {};
 
 export const getProfileMetadata = async (authorId: string, relays?: string[]) => {
   if (profileCache[authorId]) return profileCache[authorId];
@@ -83,9 +89,24 @@ export const extractProfileMetadataContent = (profileMetadata: any) => {
 };
 
 export const getZapEndpoint = async (profileMetadata: any) => {
-  const endpoint = await nip57.getZapEndpoint(profileMetadata);
-  if (!endpoint) throw new Error('Failed to retrieve zap LNURL');
-  return endpoint;
+  const provider = await getZapProviderInfo(profileMetadata);
+  if (!provider) throw new Error('Failed to retrieve zap LNURL');
+  return provider.callback;
+};
+
+export const getZapProviderInfo = async (
+  profileMetadata: Event,
+): Promise<ZapProviderInfo | null> => {
+  const cacheKey = profileMetadata.pubkey || profileMetadata.id || '';
+  if (cacheKey && cacheKey in zapProviderCache) {
+    return zapProviderCache[cacheKey];
+  }
+
+  const provider = await resolveZapProviderInfo(profileMetadata);
+  if (cacheKey) {
+    zapProviderCache[cacheKey] = provider;
+  }
+  return provider;
 };
 
 /**
@@ -217,14 +238,11 @@ export const fetchInvoice = async ({
 };
 
 const generateRandomPrivKey = (): Uint8Array => {
-  const bytes = new Uint8Array(32);
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    crypto.getRandomValues(bytes);
-  } else {
-    // Node.js fallback during build – use Math.random (not cryptographically strong but acceptable for anon zaps)
-    console.warn('crypto.getRandomValues not available, using Math.random as fallback');
-    for (let i = 0; i < 32; i++) bytes[i] = Math.floor(Math.random() * 256);
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Secure random unavailable: crypto.getRandomValues is required for anonymous zaps');
   }
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
   return bytes;
 };
 
@@ -299,6 +317,17 @@ export const fetchTotalZapAmount = async ({
   const zapDetails: ZapDetails[] = [];
 
   try {
+    const profileMetadata = await getProfileMetadata(pubkey, relays);
+    if (!profileMetadata) {
+      return { totalAmount: 0, zapDetails: [] };
+    }
+
+    const provider = await getZapProviderInfo(profileMetadata);
+    if (!provider) {
+      // Fail closed: without LNURL nostrPubkey we cannot authenticate receipts.
+      return { totalAmount: 0, zapDetails: [] };
+    }
+
     const filter: any = {
       kinds: [9735],
       '#p': [pubkey],
@@ -316,26 +345,19 @@ export const fetchTotalZapAmount = async ({
     const events = await pool.querySync(relays, filter);
 
     for (const event of events) {
-      const descriptionTag = event.tags?.find((tag: string[]) => tag[0] === 'description');
-      if (!descriptionTag?.[1]) continue;
-      try {
-        const zapRequest = JSON.parse(descriptionTag[1]);
-        const amountTag = zapRequest?.tags?.find((tag: string[]) => tag[0] === 'amount');
-        if (amountTag?.[1]) {
-          const amount = parseInt(amountTag[1], 10);
-          if (amount > 0) {
-            totalAmount += amount;
-            zapDetails.push({
-              amount: amount / 1000, // convert from msats to sats
-              date: new Date(event.created_at * 1000),
-              authorPubkey: zapRequest.pubkey,
-              comment: zapRequest.content,
-            });
-          }
-        }
-      } catch (e) {
-        console.error("Nostr-Components: Zap button: Could not parse zap request from description tag", e);
-      }
+      const validated = validateZapReceipt(event, {
+        recipientPubkey: pubkey,
+        provider,
+      });
+      if (!validated.ok) continue;
+
+      totalAmount += validated.amountMsats;
+      zapDetails.push({
+        amount: validated.amountMsats / 1000, // convert from msats to sats
+        date: new Date(event.created_at * 1000),
+        authorPubkey: validated.zapRequest.pubkey,
+        comment: validated.zapRequest.content,
+      });
     }
   } catch (error) {
     console.error("Nostr-Components: Zap button: Error fetching zap receipts", error);
@@ -356,11 +378,13 @@ export const listenForZapReceipt = ({
   relays,
   receiversPubKey,
   invoice,
+  provider,
   onSuccess,
 }: {
   relays: string[];
-  receiversPubKey: string,
+  receiversPubKey: string;
   invoice: string;
+  provider: ZapProviderInfo;
   onSuccess: () => void;
 }) => {
   const pool = new SimplePool();
@@ -377,10 +401,18 @@ export const listenForZapReceipt = ({
     {
       onevent(event: Event) {
         const tags = event.tags as [string, string][];
-        if (tags.some(t => t[0] === 'bolt11' && t[1] === invoice)) {
-          onSuccess();
-          cleanup();
+        if (!tags.some(t => t[0] === 'bolt11' && t[1] === invoice)) {
+          return;
         }
+
+        const validated = validateZapReceipt(event, {
+          recipientPubkey: receiversPubKey,
+          provider,
+        });
+        if (!validated.ok) return;
+
+        onSuccess();
+        cleanup();
       }
     }
   );
