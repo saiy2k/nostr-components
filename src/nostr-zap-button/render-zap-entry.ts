@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ZapDetails } from './zap-utils';
-import { escapeHtml, formatRelativeTime } from '../common/utils';
-import { isValidPublicKey } from '../nostr-comment/utils';
+import { escapeHtml, formatRelativeTime, validateNpub } from '../common/utils';
 import { sanitizeHttpUrl, sanitizeMultilineText } from '../common/sanitize';
 
 export interface EnhancedZapDetails extends ZapDetails {
@@ -13,7 +12,7 @@ export interface EnhancedZapDetails extends ZapDetails {
 
 export function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
   const authorNameSafe = escapeHtml(zap.authorName || 'Unknown zapper');
-  const npubSafe = isValidPublicKey(zap.authorNpub || '') ? zap.authorNpub : '';
+  const npubSafe = validateNpub(zap.authorNpub || '') ? zap.authorNpub : '';
   const njumpUrl = npubSafe
     ? sanitizeHttpUrl(`https://njump.me/${npubSafe}`)
     : '';

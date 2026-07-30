@@ -6,7 +6,8 @@ import {
   finalizeEvent,
   SimplePool,
 } from 'nostr-tools';
-import { decodeNip19Entity } from '../common/utils';
+import type { Filter, Event } from 'nostr-tools';
+import { normalizeURL } from '../common/utils';
 import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 import { DEFAULT_RELAYS } from '../common/constants';
 
@@ -252,10 +253,6 @@ export async function resolveNip05(nip05Identifier: string): Promise<string | nu
     return null;
   }
 }
-
-// Import necessary types from nostr-tools
-import type { Filter, Event } from 'nostr-tools';
-import { normalizeURL } from '../nostr-comment/utils';
 
 // Augment the SimplePool type to include our usage
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions

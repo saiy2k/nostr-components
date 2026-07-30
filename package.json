@@ -71,18 +71,6 @@
       "import": "./dist/components/nostr-follow-button.es.js",
       "types": "./dist/components/nostr-follow-button.d.ts"
     },
-    "./components/nostr-comment": {
-      "import": "./dist/components/nostr-comment.es.js",
-      "types": "./dist/components/nostr-comment.d.ts"
-    },
-    "./components/nostr-dm": {
-      "import": "./dist/components/nostr-dm.es.js",
-      "types": "./dist/components/nostr-dm.d.ts"
-    },
-    "./components/nostr-live-chat": {
-      "import": "./dist/components/nostr-live-chat.es.js",
-      "types": "./dist/components/nostr-live-chat.d.ts"
-    },
     "./components/nostr-livestream": {
       "import": "./dist/components/nostr-livestream.es.js",
       "types": "./dist/components/nostr-livestream.d.ts"
@@ -91,7 +79,8 @@
   "files": [
     "LICENSE",
     "README.md",
-    "dist"
+    "dist",
+    "!dist/**/*.map"
   ],
   "scripts": {
     "dev": "vite",

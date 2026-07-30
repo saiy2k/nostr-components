@@ -271,6 +271,32 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
+/**
+ * Normalize URL for consistent identification (zaps, comments, likes).
+ * Strips mobile subdomains, forces https, drops default ports, and cleans path slashes.
+ */
+export function normalizeURL(raw: string): string {
+  try {
+    const url = new URL(raw);
+    return (
+      url.origin
+        .replace('://m.', '://')
+        .replace('://mobile.', '://')
+        .replace('http://', 'https://')
+        .replace(
+          /:\d+/,
+          (port) => (port === ':443' || port === ':80' ? '' : port)
+        ) +
+      url.pathname
+        .replace(/\/+/g, '/')
+        .replace(/\/*$/, '')
+    );
+  } catch (error) {
+    console.error('Invalid URL:', raw, error);
+    return raw;
+  }
+}
+
 export function isValidRelayUrl(url: string): boolean {
   try {
     const u = new URL(url);

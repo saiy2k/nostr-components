@@ -2,11 +2,18 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 
+const DISABLED_COMPONENT_GLOBS = [
+  'src/nostr-comment/**',
+  'src/nostr-dm/**',
+  'src/nostr-live-chat/**',
+];
+
 export default defineConfig({
   plugins: [
     dts({
       insertTypesEntry: true, // Creates a single index.d.ts entry file
       outDir: 'dist',
+      exclude: DISABLED_COMPONENT_GLOBS,
     })
   ],
   build: {
@@ -45,6 +52,7 @@ export default defineConfig({
           format: 'es',
           inlineDynamicImports: false,
           exports: 'auto',
+          sourcemapExcludeSources: true,
         },
       ],
     },
