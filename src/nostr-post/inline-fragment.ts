@@ -14,15 +14,19 @@ const USERNAME_MENTION_TOKEN_PREFIX = '__NOSTRC_USERNAME_MENTION__(';
 const USERNAME_MENTION_TOKEN_REGEX =
   /__NOSTRC_USERNAME_MENTION__\(([^)]*)\)__/g;
 
+function encodeTokenPart(value: string): string {
+  return encodeURIComponent(value).replace(/\(/g, '%28').replace(/\)/g, '%29');
+}
+
 export function createProfileMentionToken(
   href: string,
   displayName: string,
 ): string {
-  return `${PROFILE_MENTION_TOKEN_PREFIX}${encodeURIComponent(href)})(${encodeURIComponent(displayName)})__`;
+  return `${PROFILE_MENTION_TOKEN_PREFIX}${encodeTokenPart(href)})(${encodeTokenPart(displayName)})__`;
 }
 
 export function createUsernameMentionToken(username: string): string {
-  return `${USERNAME_MENTION_TOKEN_PREFIX}${encodeURIComponent(username)})__`;
+  return `${USERNAME_MENTION_TOKEN_PREFIX}${encodeTokenPart(username)})__`;
 }
 
 function replaceProfileMentionTokens(fragment: string): string {

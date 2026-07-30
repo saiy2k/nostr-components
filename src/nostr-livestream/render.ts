@@ -57,14 +57,13 @@ function renderLivestreamHeader(
   parsedLivestream: ParsedLivestreamEvent,
 ): string {
   const authorImage = author?.picture || author?.image || '';
-  const safeAuthorImage = authorImage ? sanitizeUrl(authorImage) : '';
+  const safeAuthorImage = sanitizeUrl(authorImage);
   const authorName = author?.displayName || author?.name || 'Unknown';
   const authorNip05 = author?.nip05 || '';
   const title = parsedLivestream.title || 'Untitled Livestream';
   const status = parsedLivestream.status || 'planned';
   const statusBadgeClass = `livestream-status-badge livestream-status-${status}`;
   const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
-  const safeAuthorImage = sanitizeHttpUrl(authorImage);
 
   return `
     <div class="livestream-header">
@@ -168,12 +167,11 @@ function renderPreviewImage(imageUrl?: string): string {
 function renderRecordingLink(url: string): string {
   const safeUrl = sanitizeUrl(url);
   if (!safeUrl) {
-    // Render safe fallback: non-clickable div with escaped URL text
     return `
       <div class="livestream-recording-link">
         <div>
           <span class="recording-icon">▶</span>
-          <span>Watch Recording: ${escapeHtml(url)}</span>
+          <span>Recording unavailable</span>
         </div>
       </div>
     `;

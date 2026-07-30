@@ -101,4 +101,38 @@ describe('renderProfile', () => {
     expect(html).not.toContain('src="javascript:alert(1)"');
     expect(html).not.toContain('src="data:text/html,boom"');
   });
+
+  it('renders valid https website links', () => {
+    const html = renderProfile({
+      isLoading: false,
+      isError: false,
+      errorMessage: '',
+      npub: 'npub1test',
+      userProfile: {
+        displayName: 'Alice',
+        name: 'Alice',
+        nip05: 'alice@example.com',
+        picture: 'https://example.com/avatar.png',
+        about: 'Hello',
+        website: 'https://example.com',
+        banner: 'https://example.com/banner.png',
+      },
+      isStatsLoading: false,
+      isStatsFollowersLoading: false,
+      isStatsFollowsLoading: false,
+      isZapsLoading: false,
+      stats: {
+        notes: 0,
+        replies: 0,
+        follows: 0,
+        followers: 0,
+        zaps: 0,
+        relays: 0,
+      },
+      showFollow: false,
+      showNpub: false,
+    });
+
+    expect(html).toContain('href="https://example.com/"');
+  });
 });

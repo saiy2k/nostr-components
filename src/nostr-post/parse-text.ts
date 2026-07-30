@@ -14,6 +14,14 @@ export type ContentItem = {
   noteId?: string;
 };
 
+function replaceAllLiteral(haystack: string, search: string, replacement: string): string {
+  if (!search) {
+    return haystack;
+  }
+
+  return haystack.split(search).join(replacement);
+}
+
 export async function parseText(
   text: string,
   post: NDKEvent | null,
@@ -52,7 +60,7 @@ export async function parseText(
     }
 
     // Remove the note reference from the text to prevent @ symbols being added
-    textContent = textContent.replace(fullMatch, ' ');
+    textContent = replaceAllLiteral(textContent, fullMatch, ' ');
   }
 
   // Handle Nostr URI schema for mentions - batch process to avoid multiple async operations
@@ -97,7 +105,8 @@ export async function parseText(
 
   // Apply all replacements at once
   for (const replacement of uriReplacements) {
-    textContent = textContent.replace(
+    textContent = replaceAllLiteral(
+      textContent,
       replacement.original,
       replacement.replacement,
     );
@@ -120,7 +129,8 @@ export async function parseText(
 
   // Apply all mention replacements at once
   for (const replacement of mentionReplacements) {
-    textContent = textContent.replace(
+    textContent = replaceAllLiteral(
+      textContent,
       replacement.original,
       replacement.replacement,
     );

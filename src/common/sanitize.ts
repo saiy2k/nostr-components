@@ -28,6 +28,11 @@ function getPostInlinePurifier() {
   return postInlinePurifier;
 }
 
+/**
+ * Validates http/https URLs and returns an HTML attribute-safe string
+ * (HTML-escaped via `sanitizeUrl`). Use only when interpolating into
+ * `href`/`src`/similar attributes — not for fetch, navigation, or comparisons.
+ */
 export function sanitizeHttpUrl(url: string | null | undefined): string {
   return sanitizeUrl(url);
 }
@@ -40,7 +45,11 @@ export function sanitizePostInlineFragment(html: string): string {
   const purifier = getPostInlinePurifier();
 
   if (!purifier) {
-    return sanitizeMultilineText(html);
+    // No DOMPurify available (SSR / tests). The pipeline in
+    // renderPostInlineText has already escaped all dynamic text and only
+    // injected mention markup from a small, trusted allowlist, so return
+    // the fragment as-is rather than re-escaping our own <a>/<span>/<br>.
+    return html;
   }
 
   return purifier.sanitize(html, {

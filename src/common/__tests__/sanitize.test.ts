@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { sanitizeHttpUrl, sanitizeMultilineText } from '../sanitize';
+import {
+  sanitizeHttpUrl,
+  sanitizeMultilineText,
+  sanitizePostInlineFragment,
+} from '../sanitize';
+import {
+  createProfileMentionToken,
+  renderPostInlineText,
+} from '../../nostr-post/inline-fragment';
 
 describe('sanitizeHttpUrl', () => {
   it('accepts valid https and http URLs', () => {
@@ -38,5 +46,39 @@ describe('sanitizeMultilineText', () => {
     ).toBe(
       '&lt;img src=x onerror=&quot;alert(&#39;xss&#39;)&quot;&gt;<br />next',
     );
+  });
+});
+
+describe('sanitizePostInlineFragment', () => {
+  it('preserves trusted mention markup in non-browser environments', () => {
+    const trusted =
+      '<a href="https://njump.me/npub1test" target="_blank" rel="noopener noreferrer">@Alice</a> ' +
+      '<span class="nostr-mention" data-username="bob">@bob</span>';
+
+    expect(sanitizePostInlineFragment(trusted)).toBe(trusted);
+  });
+});
+
+describe('renderPostInlineText', () => {
+  it('escapes script payloads and preserves line breaks', () => {
+    const html = renderPostInlineText(
+      `<script>alert(1)</script>\nhello`,
+    );
+
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;<br />hello');
+    expect(html).not.toContain('<script>alert(1)</script>');
+  });
+
+  it('renders profile mentions when display names contain parentheses', () => {
+    const token = createProfileMentionToken(
+      'https://njump.me/npub1test',
+      'Alice (work)',
+    );
+    const html = renderPostInlineText(`${token} hi`);
+
+    expect(html).toContain(
+      '<a href="https://njump.me/npub1test" target="_blank" rel="noopener noreferrer">@Alice (work)</a>',
+    );
+    expect(html).not.toContain('__NOSTRC_PROFILE_MENTION__');
   });
 });

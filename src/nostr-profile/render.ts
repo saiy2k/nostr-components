@@ -59,12 +59,13 @@ export function renderProfile(options: RenderProfileOptions): string {
   const sanitizedImage = sanitizeUrl(userProfile?.picture || '');
   const sanitizedWebsite = sanitizeUrl(website);
   const safeDisplayName = escapeHtml(displayName);
+  const safeNpub = escapeHtml(npub);
 
   const renderFollowButton = () => {
     if (!showFollow || npub === '') return '';
     return `
       <nostr-follow-button
-        npub="${npub}">
+        npub="${safeNpub}">
       </nostr-follow-button>
     `;
   };
@@ -151,7 +152,7 @@ export function renderProfile(options: RenderProfileOptions): string {
       
         <div class="stats">
 
-          ${renderStats('Following', stats.follows, isStatsFollowersLoading)}
+          ${renderStats('Following', stats.follows, isStatsFollowsLoading)}
           
           ${renderStats('Followers', stats.followers, isStatsFollowersLoading)}
 

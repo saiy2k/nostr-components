@@ -110,6 +110,7 @@ function renderPostHeader(
   const authorImage = sanitizeUrl(author?.image || '');
   const authorDisplayName = escapeHtml(author?.displayName || '');
   const authorNip05 = escapeHtml(author?.nip05 || '');
+  const safeDate = escapeHtml(date);
 
   return `
     <div class="post-header">
@@ -123,7 +124,7 @@ function renderPostHeader(
         ${authorNip05 ? `<span class="author-username">${authorNip05}</span>` : ''}
       </div>
       <div class="post-header-right">
-        <span class="post-date">${date}</span>
+        <span class="post-date">${safeDate}</span>
       </div>
     </div>
   `;
@@ -303,6 +304,7 @@ export function renderEmbeddedPost(
   const authorNip05 = escapeHtml(authorProfile?.nip05 || '');
   const authorImage = sanitizeUrl(authorProfile?.image || '');
   const safeNoteId = escapeHtml(noteId);
+  const safeDate = escapeHtml(date);
 
   // Process media items from content
   const mediaItems: { type: 'image' | 'video'; url: string }[] = [];
@@ -395,7 +397,7 @@ export function renderEmbeddedPost(
           <span class="embedded-author-name">${authorDisplayName}</span>
           ${authorNip05 ? `<span class="embedded-author-username">${authorNip05}</span>` : ''}
         </div>
-        <div class="embedded-post-date">${date}</div>
+        <div class="embedded-post-date">${safeDate}</div>
       </div>
       <div class="embedded-post-content">
         ${processedContent}

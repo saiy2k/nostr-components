@@ -44,7 +44,8 @@ export function renderFollowButton({
     return renderError(errorMessage || '');
   }
 
-  const avatarUrl = sanitizeUrl(profile?.image || profile?.picture || '');
+  const avatarUrl =
+    sanitizeUrl(profile?.image || '') || sanitizeUrl(profile?.picture || '');
   const iconContent = isFollowed
     ? getSuccessAnimation(theme)
     : showAvatar && user && avatarUrl
