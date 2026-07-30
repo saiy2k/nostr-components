@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes } from "./utils";
+import { generateCode, getArgTypes, getTestingParameters } from "./utils";
 import { NO_DATA_TEST_CASES } from './test-cases-no-data';
 
 const meta: Meta = {
@@ -8,19 +8,7 @@ const meta: Meta = {
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
-  parameters: {
-    test: {
-      enabled: true,
-      a11y: {
-        element: 'nostr-profile',
-        config: {
-          rules: {
-            'color-contrast': { enabled: true },
-          },
-        },
-      },
-    },
-  },
+  parameters: getTestingParameters(),
 };
 
 export default meta;
@@ -28,6 +16,6 @@ type Story = StoryObj<typeof meta>;
 
 // Individual story exports for better organization
 export const SaiNpubNoDataRelay: Story = {
-  name: NO_DATA_TEST_CASES.saiNpubNoDataRelay.name,
-  args: NO_DATA_TEST_CASES.saiNpubNoDataRelay.args,
+  name: NO_DATA_TEST_CASES.noDataRelay.name,
+  args: NO_DATA_TEST_CASES.noDataRelay.args,
 };

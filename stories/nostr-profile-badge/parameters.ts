@@ -17,13 +17,13 @@ export const PROFILE_BADGE_PARAMETERS: ParameterDefinition[] = [
   ...USER_PARAMETERS,
   {
     variable: 'show-npub',
-    description: `Whether to show the npub in the profile badge`,
+    description: 'Show the npub in the profile badge',
     defaultValue: 'false',
     control: 'boolean',
   },
   {
     variable: 'show-follow',
-    description: `Whether to show the follow button in the profile badge`,
+    description: 'Show the follow button in the profile badge',
     defaultValue: 'false',
     control: 'boolean',
   },

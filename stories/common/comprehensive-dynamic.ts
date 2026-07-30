@@ -16,9 +16,11 @@ import { registerStoryCleanup } from './play-cleanup';
  * - Multiple attribute cycling (inputs, data-theme, widths, boolean attributes)
  * - Cleanup on abort or re-run to prevent timer leaks
  * - Configurable update intervals
- * - Presence-based boolean attribute toggling
+ * - Mode-aware boolean attribute toggling (presence / explicit-false)
  * - Streamlined, easy-to-read implementation
  */
+
+import { BooleanAttributeMode } from './parameters';
 
 export interface ComprehensiveDynamicConfig {
   componentName: string;
@@ -26,6 +28,7 @@ export interface ComprehensiveDynamicConfig {
   testInputs: Array<{ type: string; value: string; name: string }>;
   widths?: number[];
   booleanAttributes?: string[];
+  booleanAttributeModes?: Record<string, BooleanAttributeMode>;
   updateInterval?: number;
 }
 
@@ -42,6 +45,7 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
     testInputs,
     widths = [600, 500, 400, 700],
     booleanAttributes = [],
+    booleanAttributeModes = {},
     updateInterval = 5000
   } = config;
 
@@ -146,7 +150,18 @@ export function createComprehensiveDynamicPlay(config: ComprehensiveDynamicConfi
       // Update boolean attributes
       booleanAttributes.forEach((attr, index) => {
         booleanStates[index] = !booleanStates[index];
-        component.toggleAttribute(attr, booleanStates[index]);
+        const mode = booleanAttributeModes[attr] ?? 'presence';
+
+        if (mode === 'explicit-false') {
+          component.setAttribute(attr, booleanStates[index] ? 'true' : 'false');
+          return;
+        }
+
+        if (booleanStates[index]) {
+          component.setAttribute(attr, 'true');
+        } else {
+          component.removeAttribute(attr);
+        }
       });
 
       // Log and update display

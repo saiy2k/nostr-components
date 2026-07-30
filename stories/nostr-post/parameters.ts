@@ -17,13 +17,13 @@ export const POST_PARAMETERS: ParameterDefinition[] = [
   ...EVENT_PARAMETERS,
   {
     variable: 'show-stats',
-    description: `Whether to show post stats`,
+    description: 'Show the post stats',
     defaultValue: 'false',
     control: 'boolean',
   },
   {
     variable: 'show-replies',
-    description: `Whether replies should start expanded below the post`,
+    description: 'Whether replies should start expanded below the post',
     defaultValue: 'false',
     control: 'boolean',
   }

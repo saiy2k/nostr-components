@@ -44,7 +44,7 @@ export const RawPubkey: Story = {
   args: TEST_CASES.rawPubkey.args,
 };
 
-export const FollowButton: Story = {
+export const ShowFollow: Story = {
   name: TEST_CASES.showFollow.name,
   args: TEST_CASES.showFollow.args,
 };

@@ -10,12 +10,33 @@
 
 import { DEFAULT_RELAYS } from '../../src/common/constants';
 
+export type BooleanAttributeMode = 'presence' | 'explicit-false';
+
 export interface ParameterDefinition {
   variable: string;
   description: string;
   defaultValue: string;
   control: 'text' | 'boolean' | 'number' | 'color' | 'select';
+  booleanMode?: BooleanAttributeMode;
 }
+
+export const getBooleanAttributeMode = (
+  parameters: ParameterDefinition[],
+  variable: string
+): BooleanAttributeMode => {
+  const parameter = parameters.find((candidate) => candidate.variable === variable);
+  return parameter?.booleanMode ?? 'presence';
+};
+
+export const getBooleanAttributeModes = (
+  parameters: ParameterDefinition[]
+): Record<string, BooleanAttributeMode> => {
+  return Object.fromEntries(
+    parameters
+      .filter((parameter) => parameter.control === 'boolean')
+      .map((parameter) => [parameter.variable, getBooleanAttributeMode(parameters, parameter.variable)])
+  );
+};
 
 /**
  * Common parameters shared across all Nostr components

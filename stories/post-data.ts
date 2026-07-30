@@ -75,8 +75,8 @@ export const POST_DATA: Record<string, Post> = {
 };
 
 export const getRandomProfile = (): Post => {
-  const profiles = Object.values(POST_DATA);
-  return profiles[Math.floor(Math.random() * profiles.length)];
+  const posts = Object.values(POST_DATA);
+  return posts[Math.floor(Math.random() * posts.length)];
 };
 
 export const getProfilesByType = (type: 'hex' | 'noteid' | 'eventid'): InputType[] => {
@@ -90,10 +90,10 @@ export const getProfilesByType = (type: 'hex' | 'noteid' | 'eventid'): InputType
 };
 
 export const getAllInputTypes = (): InputType[] => {
-  const profiles = Object.values(POST_DATA);
+  const posts = Object.values(POST_DATA);
   const inputs: InputType[] = [];
   
-  profiles.forEach(post => {
+  posts.forEach(post => {
     if (post.hex) {
       inputs.push({ type: 'hex', value: post.hex, name: post.name });
     }

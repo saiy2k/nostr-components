@@ -11,6 +11,23 @@
 import type { ArgTypes } from '@storybook/web-components-vite';
 import { ParameterDefinition } from './parameters';
 
+const getTypeName = (control: ParameterDefinition['control']) => {
+  switch (control) {
+    case 'boolean':
+      return 'boolean';
+    case 'number':
+      return 'number';
+    default:
+      return 'string';
+  }
+};
+
+const getControlType = (control: ParameterDefinition['control']) => {
+  return {
+    type: control,
+  };
+};
+
 /**
  * Generates Storybook argTypes from parameter and CSS variable definitions
  * 
@@ -28,13 +45,15 @@ export const generateArgTypes = (
   parameters.forEach(parameter => {
     argTypes[parameter.variable] = {
       description: parameter.description,
-      type: parameter.control as any,
+      type: {
+        name: getTypeName(parameter.control),
+      },
       table: {
         defaultValue: {
           summary: parameter.defaultValue,
         },
       },
-      control: parameter.control as any,
+      control: getControlType(parameter.control),
     };
   });
 
@@ -49,9 +68,7 @@ export const generateArgTypes = (
           summary: cssVariable.defaultValue,
         },
       },
-      control: {
-        type: cssVariable.control as any,
-      },
+      control: getControlType(cssVariable.control),
     };
   });
 

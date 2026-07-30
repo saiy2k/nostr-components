@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { DEFAULT_WIDTH, generateCode, getArgTypes } from "./utils";
+import { BOOLEAN_ATTRIBUTE_MODES, DEFAULT_WIDTH, DYNAMIC_TEST_TAGS, generateCode, getArgTypes, getTestingParameters } from "./utils";
 import { LIVESTREAM_DATA } from '../livestream-data';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 import { createPrimaryAttributeChangesPlay } from '../common/primary-attribute-changes';
@@ -8,23 +8,11 @@ import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta: Meta = {
   title: 'Livestream/Testing/Dynamic',
-  tags: ['test', 'dynamic'],
+  tags: [...DYNAMIC_TEST_TAGS],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
-  parameters: {
-    test: {
-      enabled: true,
-      a11y: {
-        element: 'nostr-livestream',
-        config: {
-          rules: {
-            'color-contrast': { enabled: true },
-          },
-        },
-      },
-    },
-  },
+  parameters: getTestingParameters({ disableSnapshot: true }),
 };
 
 export default meta;
@@ -74,6 +62,7 @@ export const AllAttributes: Story = {
     ],
     widths: [800, 600, 500, 900],
     booleanAttributes: ['show-participants', 'show-participant-count', 'auto-play'],
+    booleanAttributeModes: BOOLEAN_ATTRIBUTE_MODES,
     updateInterval: 8000
   }),
 };
