@@ -6,11 +6,11 @@ import * as DomUtils from 'domutils';
 import { replyIcon, heartIcon } from '../common/icons';
 import { IRenderOptions } from '../base/render-options';
 import { NDKUserProfile } from '@nostr-dev-kit/ndk';
-import { escapeHtml } from '../common/utils';
+import { escapeHtml, sanitizeUrl } from '../common/utils';
 import { ReplyItem } from './reply-utils';
 
 export interface RenderPostOptions extends IRenderOptions {
-  author: NDKUserProfile | null| undefined;
+  author: NDKUserProfile | null | undefined;
   date: string;
   shouldShowStats: boolean;
   stats: {
@@ -86,7 +86,7 @@ function renderPostHeader(
       }
     | null
     | undefined,
-  date: string
+  date: string,
 ): string {
   if (isLoading) {
     return `
@@ -107,28 +107,30 @@ function renderPostHeader(
     `;
   }
 
+  const authorImage = sanitizeUrl(author?.image || '');
+  const authorDisplayName = escapeHtml(author?.displayName || '');
+  const authorNip05 = escapeHtml(author?.nip05 || '');
+  const safeDate = escapeHtml(date);
+
   return `
     <div class="post-header">
       <div class="post-header-left">
         <div class="author-picture">
-          ${author?.image ? `<img src="${author.image}" alt="Author" />` : ''}
+          ${authorImage ? `<img src="${authorImage}" alt="${authorDisplayName || 'Author'}" />` : ''}
         </div>
       </div>
       <div class="post-header-middle">
-        ${author?.displayName ? `<span class="author-name">${author.displayName}</span>` : ''}
-        ${author?.nip05 ? `<span class="author-username">${author.nip05}</span>` : ''}
+        ${authorDisplayName ? `<span class="author-name">${authorDisplayName}</span>` : ''}
+        ${authorNip05 ? `<span class="author-username">${authorNip05}</span>` : ''}
       </div>
       <div class="post-header-right">
-        <span class="post-date">${date}</span>
+        <span class="post-date">${safeDate}</span>
       </div>
     </div>
   `;
 }
 
-function renderPostBody(
-  isLoading: boolean,
-  htmlToRender: string
-): string {
+function renderPostBody(isLoading: boolean, htmlToRender: string): string {
   if (isLoading) {
     return `
       <div class="post-body">
@@ -296,9 +298,13 @@ export function renderEmbeddedPost(
       }
     | undefined,
   date: string,
-  content: string
+  content: string,
 ): string {
-  const authorDisplayName = authorProfile?.displayName || '';
+  const authorDisplayName = escapeHtml(authorProfile?.displayName || '');
+  const authorNip05 = escapeHtml(authorProfile?.nip05 || '');
+  const authorImage = sanitizeUrl(authorProfile?.image || '');
+  const safeNoteId = escapeHtml(noteId);
+  const safeDate = escapeHtml(date);
 
   // Process media items from content
   const mediaItems: { type: 'image' | 'video'; url: string }[] = [];
@@ -318,7 +324,7 @@ export function renderEmbeddedPost(
         normalizeWhitespace: false,
         withEndIndices: false,
         withStartIndices: false,
-      }
+      },
     );
 
     const parser = new Parser(handler);
@@ -337,7 +343,7 @@ export function renderEmbeddedPost(
     }, dom) as any[];
 
     // Extract media items and remove them from the DOM
-    mediaElements.forEach(elem => {
+    mediaElements.forEach((elem) => {
       if (elem.attribs?.src) {
         const type = elem.name === 'img' ? 'image' : 'video';
         mediaItems.push({ type, url: elem.attribs.src });
@@ -346,7 +352,7 @@ export function renderEmbeddedPost(
         const parent = elem.parent;
         if (parent?.children) {
           parent.children = parent.children.filter(
-            (child: any) => child !== elem
+            (child: any) => child !== elem,
           );
         }
       }
@@ -367,26 +373,31 @@ export function renderEmbeddedPost(
   if (mediaItems.length > 0) {
     mediaHtml = '<div class="embedded-media-list">';
     for (const item of mediaItems) {
+      const safeMediaUrl = sanitizeUrl(item.url);
+      if (!safeMediaUrl) {
+        continue;
+      }
+
       if (item.type === 'image') {
-        mediaHtml += `<div class="embedded-media-item"><img src="${item.url}" alt="Embedded image" loading="lazy" /></div>`;
+        mediaHtml += `<div class="embedded-media-item"><img src="${safeMediaUrl}" alt="Embedded image" loading="lazy" /></div>`;
       } else if (item.type === 'video') {
-        mediaHtml += `<div class="embedded-media-item"><video src="${item.url}" controls preload="none"></video></div>`;
+        mediaHtml += `<div class="embedded-media-item"><video src="${safeMediaUrl}" controls preload="none"></video></div>`;
       }
     }
     mediaHtml += '</div>';
   }
 
   return `
-    <div class="embedded-post" data-note-id="${noteId}">
+    <div class="embedded-post" data-note-id="${safeNoteId}">
       <div class="embedded-post-header">
         <div class="embedded-author-avatar" style="cursor: pointer;">
-          ${authorProfile?.image ? `<img src="${authorProfile.image}" alt="Profile">` : ''}
+          ${authorImage ? `<img src="${authorImage}" alt="${authorDisplayName || 'Profile'}">` : ''}
         </div>
         <div class="embedded-author-info" style="cursor: pointer;">
           <span class="embedded-author-name">${authorDisplayName}</span>
-          ${authorProfile?.nip05 ? `<span class="embedded-author-username">${authorProfile.nip05}</span>` : ''}
+          ${authorNip05 ? `<span class="embedded-author-username">${authorNip05}</span>` : ''}
         </div>
-        <div class="embedded-post-date">${date}</div>
+        <div class="embedded-post-date">${safeDate}</div>
       </div>
       <div class="embedded-post-content">
         ${processedContent}

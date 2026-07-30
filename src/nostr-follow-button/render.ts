@@ -32,7 +32,6 @@ export function renderFollowButton({
   profile,
   customText = 'Follow me on nostr',
 }: RenderFollowButtonOptions): string {
-
   if (isFollowing) {
     return renderFollowing();
   }
@@ -45,11 +44,12 @@ export function renderFollowButton({
     return renderError(errorMessage || '');
   }
 
-  const avatarUrl = profile?.image ? sanitizeUrl(profile.image) : '';
+  const avatarUrl =
+    sanitizeUrl(profile?.image || '') || sanitizeUrl(profile?.picture || '');
   const iconContent = isFollowed
     ? getSuccessAnimation(theme)
     : showAvatar && user && avatarUrl
-      ? `<img src="${avatarUrl}" alt="${escapeHtml(profile?.name || user.npub)}" class="user-avatar" />`
+      ? `<img src="${avatarUrl}" alt="${escapeHtml(profile?.displayName || profile?.name || user.npub)}" class="user-avatar" />`
       : getNostrLogo();
   const textContent = isFollowed
     ? 'Followed'
@@ -61,21 +61,21 @@ export function renderFollowButton({
 function renderLoading(): string {
   return renderContainer(
     getLoadingNostrich(), // Use default values
-    '<span>Loading...</span>'
+    '<span>Loading...</span>',
   );
 }
 
 function renderFollowing(): string {
   return renderContainer(
     getLoadingNostrich(), // Use default values
-    '<span>Following...</span>'
+    '<span>Following...</span>',
   );
 }
 
 function renderError(errorMessage: string): string {
   return renderContainer(
     '<div class="error-icon">&#9888;</div>',
-    escapeHtml(errorMessage)
+    escapeHtml(errorMessage),
   );
 }
 
