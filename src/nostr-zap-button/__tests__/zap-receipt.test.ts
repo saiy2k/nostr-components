@@ -67,6 +67,13 @@ describe('lnurlFromProfileContent', () => {
     ).toBe('https://ln.example/.well-known/lnurlp/alice');
   });
 
+  it('rejects non-https lud06 URLs', async () => {
+    const { bech32 } = await import('@scure/base');
+    const words = bech32.toWords(new TextEncoder().encode('http://ln.example/lnurlp'));
+    const lud06 = bech32.encode('lnurl', words, 1000);
+    expect(lnurlFromProfileContent(JSON.stringify({ lud06 }))).toBeNull();
+  });
+
   it('returns null without lud06/lud16', () => {
     expect(lnurlFromProfileContent('{}')).toBeNull();
   });
@@ -125,5 +132,129 @@ describe('validateZapReceipt', () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('amount-mismatch');
+  });
+
+  it('rejects missing description', () => {
+    const receipt = makeValidReceipt();
+    receipt.tags = receipt.tags.filter(([t]) => t !== 'description');
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('missing-description');
+  });
+
+  it('rejects invalid description JSON', () => {
+    const receipt = makeValidReceipt();
+    receipt.tags = receipt.tags.map((tag) =>
+      tag[0] === 'description' ? ['description', '{not-json'] : tag,
+    );
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.reason === 'description-json' ||
+          result.reason.startsWith('invalid-zap-request:'),
+      ).toBe(true);
+    }
+  });
+
+  it('rejects zap-request p mismatch', () => {
+    const wrongP = finalizeEvent(
+      {
+        kind: 9734,
+        created_at: Math.floor(Date.now() / 1000),
+        content: 'thanks',
+        tags: [
+          ['p', getPublicKey(generateSecretKey())],
+          ['amount', String(BOLT11_AMOUNT_MSATS)],
+          ['relays', 'wss://relay.example'],
+        ],
+      },
+      SENDER_SK,
+    );
+    const receipt = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: Math.floor(Date.now() / 1000),
+        content: '',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['bolt11', BOLT11_20U],
+          ['description', JSON.stringify(wrongP)],
+        ],
+      },
+      PROVIDER_SK,
+    );
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('zap-request-p-mismatch');
+  });
+
+  it('rejects missing bolt11', () => {
+    const receipt = makeValidReceipt();
+    receipt.tags = receipt.tags.filter(([t]) => t !== 'bolt11');
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('missing-bolt11');
+  });
+
+  it('rejects invalid bolt11 amount', () => {
+    const receipt = makeValidReceipt();
+    receipt.tags = receipt.tags.map((tag) =>
+      tag[0] === 'bolt11' ? ['bolt11', 'not-a-bolt11'] : tag,
+    );
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('invalid-bolt11-amount');
+  });
+
+  it('rejects lnurl mismatch when present', () => {
+    const zapRequest = finalizeEvent(
+      {
+        kind: 9734,
+        created_at: Math.floor(Date.now() / 1000),
+        content: 'thanks',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['amount', String(BOLT11_AMOUNT_MSATS)],
+          ['relays', 'wss://relay.example'],
+          ['lnurl', 'https://other.example/.well-known/lnurlp/bob'],
+        ],
+      },
+      SENDER_SK,
+    );
+    const receipt = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: Math.floor(Date.now() / 1000),
+        content: '',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['bolt11', BOLT11_20U],
+          ['description', JSON.stringify(zapRequest)],
+        ],
+      },
+      PROVIDER_SK,
+    );
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('lnurl-mismatch');
   });
 });

@@ -24,7 +24,12 @@ import {
 
 // Basic in-memory cache – sufficient for component lifetime.
 const profileCache: Record<string, any> = {};
-const zapProviderCache: Record<string, ZapProviderInfo | null> = {};
+const ZAP_PROVIDER_CACHE_TTL_MS = 5 * 60 * 1000;
+const ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1000;
+const zapProviderCache: Record<
+  string,
+  { value: ZapProviderInfo | null; expiresAt: number }
+> = {};
 
 export const getProfileMetadata = async (authorId: string, relays?: string[]) => {
   if (profileCache[authorId]) return profileCache[authorId];
@@ -98,13 +103,18 @@ export const getZapProviderInfo = async (
   profileMetadata: Event,
 ): Promise<ZapProviderInfo | null> => {
   const cacheKey = profileMetadata.pubkey || profileMetadata.id || '';
-  if (cacheKey && cacheKey in zapProviderCache) {
-    return zapProviderCache[cacheKey];
+  const cached = cacheKey ? zapProviderCache[cacheKey] : undefined;
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
   }
 
   const provider = await resolveZapProviderInfo(profileMetadata);
   if (cacheKey) {
-    zapProviderCache[cacheKey] = provider;
+    const ttl = provider ? ZAP_PROVIDER_CACHE_TTL_MS : ZAP_PROVIDER_NEGATIVE_TTL_MS;
+    zapProviderCache[cacheKey] = {
+      value: provider,
+      expiresAt: Date.now() + ttl,
+    };
   }
   return provider;
 };

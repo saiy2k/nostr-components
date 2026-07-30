@@ -118,11 +118,6 @@ export class DialogComponent extends HTMLElement {
       this.close();
     });
 
-    // Native cancel (ESC) already closes the dialog; ensure cleanup via 'close'.
-    this.dialog.addEventListener('cancel', () => {
-      // allow default close; cleanup runs on 'close'
-    });
-
     this._focusTrapHandler = (e: KeyboardEvent) => {
       if (!this.dialog || e.key !== 'Tab') return;
       const focusable = this.getFocusableElements();
@@ -169,7 +164,10 @@ export class DialogComponent extends HTMLElement {
     // Defer so the opening gesture does not immediately close the dialog.
     this._outsidePointerHandler = (e: PointerEvent) => {
       if (!this.dialog?.open) return;
-      if (e.target instanceof Node && this.dialog.contains(e.target)) return;
+      // Backdrop clicks target the <dialog> itself; only treat panel descendants as inside.
+      if (e.target !== this.dialog && e.target instanceof Node && this.dialog.contains(e.target)) {
+        return;
+      }
       this.close();
     };
     requestAnimationFrame(() => {

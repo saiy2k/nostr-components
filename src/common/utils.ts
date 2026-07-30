@@ -274,6 +274,7 @@ export function isValidUrl(url: string): boolean {
 /**
  * Normalize URL for consistent identification (zaps, comments, likes).
  * Strips mobile subdomains, forces https, drops default ports, and cleans path slashes.
+ * Preserves search so distinct query strings remain distinct identity keys.
  */
 export function normalizeURL(raw: string): string {
   try {
@@ -289,7 +290,8 @@ export function normalizeURL(raw: string): string {
         ) +
       url.pathname
         .replace(/\/+/g, '/')
-        .replace(/\/*$/, '')
+        .replace(/\/*$/, '') +
+      url.search
     );
   } catch (error) {
     console.error('Invalid URL:', raw, error);

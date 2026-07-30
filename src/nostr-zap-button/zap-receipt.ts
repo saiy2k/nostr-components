@@ -29,6 +29,7 @@ function getTagValue(tags: string[][] | undefined, name: string): string | undef
 
 /**
  * Resolve LNURL-pay URL from kind-0 lud06 / lud16 (same rules as nostr-tools nip57).
+ * Only HTTPS LNURLs are accepted so nostrPubkey cannot be MITM'd over cleartext.
  */
 export function lnurlFromProfileContent(content: string): string | null {
   try {
@@ -41,7 +42,9 @@ export function lnurlFromProfileContent(content: string): string | null {
     if (lud06 && typeof lud06 === 'string') {
       const { words } = bech32.decode(lud06, 1000);
       const data = bech32.fromWords(words);
-      return new TextDecoder().decode(Uint8Array.from(data));
+      const decodedUrl = new TextDecoder().decode(Uint8Array.from(data));
+      const parsed = new URL(decodedUrl);
+      return parsed.protocol === 'https:' ? parsed.toString() : null;
     }
   } catch {
     return null;
@@ -60,7 +63,7 @@ export async function resolveZapProviderInfo(
     const lnurl = lnurlFromProfileContent(profileMetadata.content || '');
     if (!lnurl) return null;
 
-    const res = await fetchImpl(lnurl);
+    const res = await fetchImpl(lnurl, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
     const body = await res.json();
 
@@ -72,9 +75,14 @@ export async function resolveZapProviderInfo(
       return null;
     }
 
+    const callback = String(body.callback);
+    if (!callback.startsWith('https://')) {
+      return null;
+    }
+
     return {
       lnurl,
-      callback: String(body.callback),
+      callback,
       nostrPubkey: String(body.nostrPubkey).toLowerCase(),
     };
   } catch {

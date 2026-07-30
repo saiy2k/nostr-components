@@ -311,10 +311,10 @@ export default class NostrLike extends NostrBaseComponent {
       // Create NDKEvent and publish
       const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
       await ndkEvent.publish();
-      this.likeActionStatus.set(NCStatus.Ready);
-      
-      // Refresh like count to get accurate data
+
+      // Keep action locked until authoritative refresh finishes
       await this.updateLikeCount();
+      this.likeActionStatus.set(NCStatus.Ready);
     } catch (error) {
       console.error('[NostrLike] Failed to like:', error);
 
@@ -367,10 +367,10 @@ export default class NostrLike extends NostrBaseComponent {
       // Create NDKEvent and publish
       const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
       await ndkEvent.publish();
-      this.likeActionStatus.set(NCStatus.Ready);
-      
-      // Refresh like count to get accurate data
+
+      // Keep action locked until authoritative refresh finishes
       await this.updateLikeCount();
+      this.likeActionStatus.set(NCStatus.Ready);
     } catch (error) {
       console.error('[NostrLike] Failed to unlike:', error);
 
