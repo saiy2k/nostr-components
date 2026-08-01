@@ -44,7 +44,7 @@ export function loadBackfillConfig(
     timeoutMs: numberFromEnv(env, "BACKFILL_TIMEOUT_MS", 12000),
     backfillPageLimit: numberFromEnv(env, "BACKFILL_PAGE_LIMIT", 250),
     backfillMaxPageLimit: numberFromEnv(env, "BACKFILL_MAX_PAGE_LIMIT", 1000),
-    backfillMaxPages: numberFromEnv(env, "BACKFILL_MAX_PAGES", 5),
+    backfillMaxPages: numberFromEnv(env, "BACKFILL_MAX_PAGES", 4),
     backfillUntil: numberFromEnv(env, "BACKFILL_UNTIL", nowSeconds),
     backfillSince: numberFromEnv(env, "BACKFILL_SINCE", 0),
     backfillResume: env.BACKFILL_RESUME !== "0",
