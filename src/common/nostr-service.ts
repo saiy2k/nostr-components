@@ -70,10 +70,14 @@ export class NostrService {
    * same relay under a different spelling.
    */
   private addNewRelays(relays: string[]): void {
-    const knownRelays = this.getRelays().map(r => normalizeURL(r));
-    relays
-      .filter(r => !knownRelays.includes(normalizeURL(r)))
-      .forEach(url => this.ndk.addExplicitRelay(url));
+    const knownRelays = new Set(this.getRelays().map(r => normalizeURL(r)));
+    for (const url of relays) {
+      const normalized = normalizeURL(url);
+      if (!knownRelays.has(normalized)) {
+        this.ndk.addExplicitRelay(url);
+        knownRelays.add(normalized);
+      }
+    }
   }
 
   private async establishConnection(relays: string[]): Promise<void> {

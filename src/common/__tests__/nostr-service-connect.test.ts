@@ -136,6 +136,28 @@ describe('NostrService.connectToNostr concurrency', () => {
     expect(ndk.addExplicitRelayCalls).toEqual([]);
   });
 
+  it('lets a piggybacking caller add only genuinely new relays after the shared attempt', async () => {
+    const { service, ndk } = await freshService();
+
+    // Second caller starts while the first attempt is still in flight, with
+    // trailing-slash variants of the known relays plus one new relay. It must
+    // not restart the pool, and must add only the new relay exactly once
+    // (listed twice here under different spellings).
+    const first = service.connectToNostr([...RELAYS]);
+    const second = service.connectToNostr([
+      ...RELAYS.map(r => `${r}/`),
+      'wss://relay.four',
+      'wss://relay.four/',
+    ]);
+
+    await vi.runAllTimersAsync();
+    await Promise.all([first, second]);
+
+    expect(ndk.explicitRelayUrlAssignments).toBe(1);
+    expect(ndk.addExplicitRelayCalls).toEqual(['wss://relay.four']);
+    expect(ndk.pool.relays.size).toBe(RELAYS.length + 1);
+  });
+
   it('adds genuinely new relays without restarting the pool', async () => {
     const { service, ndk } = await freshService();
 
