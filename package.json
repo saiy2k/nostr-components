@@ -79,8 +79,7 @@
   "files": [
     "LICENSE",
     "README.md",
-    "dist",
-    "!dist/**/*.map"
+    "dist"
   ],
   "scripts": {
     "dev": "vite",

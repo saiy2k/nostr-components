@@ -216,6 +216,41 @@ describe('validateZapReceipt', () => {
     if (!result.ok) expect(result.reason).toBe('zap-request-p-mismatch');
   });
 
+  it('rejects an embedded request that is not kind 9734', () => {
+    const notAZapRequest = finalizeEvent(
+      {
+        kind: 1,
+        created_at: Math.floor(Date.now() / 1000),
+        content: 'thanks',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['amount', String(BOLT11_AMOUNT_MSATS)],
+          ['relays', 'wss://relay.example'],
+        ],
+      },
+      SENDER_SK,
+    );
+    const receipt = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: Math.floor(Date.now() / 1000),
+        content: '',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['bolt11', BOLT11_20U],
+          ['description', JSON.stringify(notAZapRequest)],
+        ],
+      },
+      PROVIDER_SK,
+    );
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('zap-request-kind');
+  });
+
   it('rejects missing bolt11', () => {
     const receipt = makeValidReceipt(BOLT11_AMOUNT_MSATS, (tags) =>
       tags.filter(([t]) => t !== 'bolt11'),

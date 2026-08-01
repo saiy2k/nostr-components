@@ -289,8 +289,9 @@ export function normalizeURL(raw: string): string {
     const port = url.port ? `:${url.port}` : '';
     const pathname = url.pathname.replace(/\/+/g, '/').replace(/\/*$/, '');
     return `https://${host}${port}${pathname}${url.search}`;
-  } catch (error) {
-    console.error('Invalid URL:', raw, error);
+  } catch {
+    // Deliberately not logging `raw`: it can carry query params / identifiers.
+    console.error('normalizeURL: unparseable URL, returning input unchanged');
     return raw;
   }
 }

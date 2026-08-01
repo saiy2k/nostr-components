@@ -46,6 +46,7 @@ export default class NostrLike extends NostrBaseComponent {
   private likeCount: number   = 0;
   private cachedLikeDetails: LikeCountResult | null = null;
   private loadSeq = 0;
+  private actionSeq = 0;
   private isResyncingLikeCount = false;
   private needsResyncLikeCount = false;
 
@@ -79,6 +80,10 @@ export default class NostrLike extends NostrBaseComponent {
     super.attributeChangedCallback(name, oldValue, newValue);
     
     if (name === 'url' || name === 'text') {
+      if (name === 'url') {
+        // Invalidate any in-flight like/unlike action for the previous URL.
+        this.actionSeq++;
+      }
       this.likeActionStatus.set(NCStatus.Ready);
       this.likeListStatus.set(NCStatus.Loading);
       this.isLiked = false;
@@ -214,11 +219,12 @@ export default class NostrLike extends NostrBaseComponent {
     this.ensureCurrentUrl();
 
     // Capture the click target and a sequence token up front: the url attribute
-    // can change mid-flight (attributeChangedCallback bumps loadSeq), and a stale
-    // action must not sign or publish against the mutated currentUrl.
+    // can change mid-flight (attributeChangedCallback bumps actionSeq), and a stale
+    // action must not sign or publish against the mutated currentUrl. actionSeq is
+    // separate from loadSeq so routine count refreshes don't strand this action.
     const targetUrl = this.currentUrl;
-    const actionSeq = this.loadSeq;
-    const isStale = () => actionSeq !== this.loadSeq || targetUrl !== this.currentUrl;
+    const actionSeq = this.actionSeq;
+    const isStale = () => actionSeq !== this.actionSeq || targetUrl !== this.currentUrl;
 
     if (!targetUrl) {
       this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');

@@ -4,8 +4,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { NostrService } from '../nostr-service';
 
 describe('NostrService.hasSigner', () => {
+  const originalLocalStorage = (globalThis as any).localStorage;
+
   afterEach(() => {
-    delete (globalThis as any).localStorage;
+    if (originalLocalStorage === undefined) {
+      delete (globalThis as any).localStorage;
+    } else {
+      (globalThis as any).localStorage = originalLocalStorage;
+    }
   });
 
   it('does not treat localStorage nostr_nsec as a signer', () => {

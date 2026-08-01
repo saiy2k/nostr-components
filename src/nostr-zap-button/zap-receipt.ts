@@ -168,6 +168,11 @@ export function validateZapReceipt(
     return { ok: false, reason: 'description-json' };
   }
 
+  // nip57.validateZapRequest does not check the kind; NIP-57 zap requests are 9734.
+  if (zapRequest.kind !== 9734) {
+    return { ok: false, reason: 'zap-request-kind' };
+  }
+
   if (!verifyEvent(zapRequest)) {
     return { ok: false, reason: 'zap-request-sig' };
   }

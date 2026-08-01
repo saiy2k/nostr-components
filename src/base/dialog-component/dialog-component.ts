@@ -162,15 +162,21 @@ export class DialogComponent extends HTMLElement {
     const contentFocusable = focusable.find((el) => el.closest('.dialog-content'));
     (contentFocusable ?? focusable[0] ?? this.dialog!).focus();
 
-    // Light-dismiss: pointer outside the dialog panel (top-layer backdrop clicks).
+    // Light-dismiss: pointer outside the dialog box (top-layer backdrop clicks).
     // Defer so the opening gesture does not immediately close the dialog.
+    // Backdrop clicks target the <dialog> itself, so hit-test coordinates against
+    // the border box — clicks on the dialog's own padding must not close it.
     this._outsidePointerHandler = (e: PointerEvent) => {
       if (!this.dialog?.open) return;
-      // Backdrop clicks target the <dialog> itself; only treat panel descendants as inside.
-      if (e.target !== this.dialog && e.target instanceof Node && this.dialog.contains(e.target)) {
-        return;
+      const rect = this.dialog.getBoundingClientRect();
+      const inside =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+      if (!inside) {
+        this.close();
       }
-      this.close();
     };
     requestAnimationFrame(() => {
       document.addEventListener('pointerdown', this._outsidePointerHandler!, true);
