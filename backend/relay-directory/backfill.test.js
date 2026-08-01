@@ -54,7 +54,7 @@ describe("backfill environment configuration", () => {
       relays: ["wss://relay.example"],
       backfillPageLimit: 250,
       backfillMaxPageLimit: 1000,
-      backfillMaxPages: 20,
+      backfillMaxPages: 5,
       backfillCacheLimit: 5000,
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,

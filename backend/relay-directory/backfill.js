@@ -44,7 +44,7 @@ export function loadBackfillConfig(
     timeoutMs: numberFromEnv(env, "BACKFILL_TIMEOUT_MS", 12000),
     backfillPageLimit: numberFromEnv(env, "BACKFILL_PAGE_LIMIT", 250),
     backfillMaxPageLimit: numberFromEnv(env, "BACKFILL_MAX_PAGE_LIMIT", 1000),
-    backfillMaxPages: numberFromEnv(env, "BACKFILL_MAX_PAGES", 20),
+    backfillMaxPages: numberFromEnv(env, "BACKFILL_MAX_PAGES", 5),
     backfillUntil: numberFromEnv(env, "BACKFILL_UNTIL", nowSeconds),
     backfillSince: numberFromEnv(env, "BACKFILL_SINCE", 0),
     backfillResume: env.BACKFILL_RESUME !== "0",
@@ -315,6 +315,14 @@ async function executeBackfillCursor(
     stats.lastReason = page.reason;
 
     if (!isSuccessfulRelayPage(page.reason)) {
+      printPageProgress({
+        page: stats.pages,
+        maxPages: config.backfillMaxPages,
+        events: page.events.length,
+        reason: page.reason,
+        cursorUntil: safeState.cursorUntil,
+        pageLimit: safeState.pageLimit,
+      });
       await writeCursorCheckpoint(db, relay, kind, safeState, config, {
         status: "retry_later",
         completed: false,
@@ -333,6 +341,15 @@ async function executeBackfillCursor(
     );
     addProcessedPageStats(stats, processed);
     if (page.reason === "max" && processed.validEvents.length === 0) {
+      printPageProgress({
+        page: stats.pages,
+        maxPages: config.backfillMaxPages,
+        events: page.events.length,
+        valid: 0,
+        reason: "page-contained-no-valid-events",
+        cursorUntil: safeState.cursorUntil,
+        pageLimit: safeState.pageLimit,
+      });
       await writeCursorCheckpoint(db, relay, kind, safeState, config, {
         status: "retry_later",
         completed: false,
@@ -368,6 +385,20 @@ async function executeBackfillCursor(
     stats.directoryHandleWrites += commitResult.handlesWritten;
     stats.handleWriteFailures += commitResult.handlesFailed;
     stats.handleWriteDeadLetters += commitResult.handlesDeadLettered;
+    printPageProgress({
+      page: stats.pages,
+      maxPages: config.backfillMaxPages,
+      events: page.events.length,
+      valid: processed.validEvents.length,
+      oldest: pageOldest,
+      claims: processed.claims.length,
+      writes: commitResult.handlesWritten,
+      reason: commitResult.retryPaused
+        ? commitResult.lastReason
+        : pageResult.reason || page.reason,
+      cursorUntil: pageResult.nextState.cursorUntil,
+      pageLimit: pageResult.nextState.pageLimit,
+    });
     if (commitResult.retryPaused) {
       stats.retryPaused = true;
       stats.lastReason = commitResult.lastReason;
@@ -1008,6 +1039,32 @@ function nonNegativeInteger(value, name) {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`${name} must be an integer >= 0.`);
   }
+}
+
+function printPageProgress({
+  page,
+  maxPages,
+  events,
+  valid,
+  oldest,
+  claims,
+  writes,
+  reason,
+  cursorUntil,
+  pageLimit,
+}) {
+  const parts = [
+    `page=${page}/${maxPages}`,
+    `events=${events}`,
+    `limit=${pageLimit}`,
+  ];
+  if (valid !== undefined) parts.push(`valid=${valid}`);
+  if (oldest != null) parts.push(`oldest=${oldest}`);
+  if (claims !== undefined) parts.push(`claims=${claims}`);
+  if (writes !== undefined) parts.push(`writes=${writes}`);
+  if (cursorUntil != null) parts.push(`until=${cursorUntil}`);
+  parts.push(`reason=${reason}`);
+  console.log(`    ${parts.join(" ")}`);
 }
 
 function printCursorSummary(stats) {
