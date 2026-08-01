@@ -10,6 +10,7 @@ import {
   decideBackfillCursor,
   isSuccessfulRelayPage,
   loadBackfillConfig,
+  resolveRelays,
   runBackfill,
   runBackfillCursors,
   runBackfillCursor,
@@ -25,6 +26,8 @@ import {
 import {
   createRunMetrics,
   finishRunMetrics,
+  loadRelaysFromFile,
+  parseRelaysJson,
   percentile,
   serializeFirestoreDataForJson,
   terminateFirestore,
@@ -36,12 +39,19 @@ const SECRET_KEY = new Uint8Array(32).fill(1);
 describe("backfill environment configuration", () => {
   it("uses lower daily-run limits and bounded claim retention", () => {
     expect(
-      loadBackfillConfig({ FIRESTORE_PROJECT: "gr-test" }, 1000),
+      loadBackfillConfig(
+        { FIRESTORE_PROJECT: "gr-test" },
+        1000,
+        {
+          loadRelaysFromFile: () => ["wss://relay.example"],
+        },
+      ),
     ).toMatchObject({
       firestoreProject: "gr-test",
       firestoreHandlesCollection: "nostrDirectoryHandles",
       firestoreHandleWriteFailuresCollection:
         "nostrDirectoryHandleWriteFailures",
+      relays: ["wss://relay.example"],
       backfillPageLimit: 250,
       backfillMaxPageLimit: 1000,
       backfillMaxPages: 20,
@@ -74,10 +84,27 @@ describe("backfill environment configuration", () => {
     });
   });
 
+  it("loads relays from relays.json when RELAYS is unset", () => {
+    expect(
+      loadBackfillConfig(
+        { FIRESTORE_PROJECT: "gr-test" },
+        1000,
+        {
+          loadRelaysFromFile: (filePath) => {
+            expect(filePath).toContain("relays.json");
+            return ["wss://from-file.example"];
+          },
+        },
+      ).relays,
+    ).toEqual(["wss://from-file.example"]);
+  });
+
   it("fails fast when required configuration is missing", () => {
-    expect(() => loadBackfillConfig({}, 1000)).toThrow(
-      "FIRESTORE_PROJECT or GOOGLE_CLOUD_PROJECT is required.",
-    );
+    expect(() =>
+      loadBackfillConfig({}, 1000, {
+        loadRelaysFromFile: () => ["wss://relay.example"],
+      }),
+    ).toThrow("FIRESTORE_PROJECT or GOOGLE_CLOUD_PROJECT is required.");
   });
 
   it("rejects inverted backfill windows", () => {
@@ -85,12 +112,62 @@ describe("backfill environment configuration", () => {
       loadBackfillConfig(
         {
           FIRESTORE_PROJECT: "gr-test",
+          RELAYS: "wss://relay.example",
           BACKFILL_SINCE: "1001",
           BACKFILL_UNTIL: "1000",
         },
         2000,
       ),
     ).toThrow("BACKFILL_SINCE must be <= BACKFILL_UNTIL.");
+  });
+});
+
+describe("relays.json loading", () => {
+  it("parses ranked relay objects into URL order", () => {
+    expect(
+      parseRelaysJson([
+        { rank: 2, url: "wss://two.example", count: 1 },
+        { rank: 1, url: "wss://one.example", count: 9 },
+        { rank: 3, url: "wss://one.example", count: 1 },
+      ]),
+    ).toEqual(["wss://one.example", "wss://two.example"]);
+  });
+
+  it("accepts a plain URL string array", () => {
+    expect(parseRelaysJson(["wss://a.example", "wss://b.example"])).toEqual([
+      "wss://a.example",
+      "wss://b.example",
+    ]);
+  });
+
+  it("loads the checked-in relays.json file", () => {
+    const relays = loadRelaysFromFile();
+    expect(relays.length).toBeGreaterThan(0);
+    expect(relays[0]).toMatch(/^wss:\/\//);
+    expect(new Set(relays).size).toBe(relays.length);
+  });
+
+  it("lets RELAYS_FILE override the default path", () => {
+    expect(
+      resolveRelays(
+        { RELAYS_FILE: "/tmp/custom-relays.json" },
+        {
+          loadRelaysFromFile: (filePath) => {
+            expect(filePath).toBe("/tmp/custom-relays.json");
+            return ["wss://custom.example"];
+          },
+        },
+      ),
+    ).toEqual(["wss://custom.example"]);
+  });
+
+  it("prefers RELAYS env over the relays file", () => {
+    expect(
+      resolveRelays(
+        { RELAYS: "wss://env.example", RELAYS_FILE: "/ignored.json" },
+        { loadRelaysFromFile: () => ["wss://file.example"] },
+      ),
+    ).toEqual(["wss://env.example"]);
   });
 });
 

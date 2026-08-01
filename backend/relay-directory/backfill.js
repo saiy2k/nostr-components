@@ -17,13 +17,14 @@ import {
   planDirectoryHandleWrites,
 } from "./directory-state.js";
 import {
-  DEFAULT_RELAYS,
+  DEFAULT_RELAYS_FILE,
   IDENTITY_KINDS,
   commitFirestoreWrites,
   createFirestore,
   createRunMetrics,
   finishRunMetrics,
   firestoreConfigFromEnv,
+  loadRelaysFromFile,
   logRunSummary,
   runMain,
   terminateFirestore,
@@ -34,10 +35,11 @@ import { backfillStateId } from "./utils.js";
 export function loadBackfillConfig(
   env = process.env,
   nowSeconds = Math.floor(Date.now() / 1000),
+  options = {},
 ) {
   const config = {
     ...firestoreConfigFromEnv(env),
-    relays: csv(env.RELAYS, DEFAULT_RELAYS),
+    relays: resolveRelays(env, options),
     out: env.BACKFILL_OUT || null,
     timeoutMs: numberFromEnv(env, "BACKFILL_TIMEOUT_MS", 12000),
     backfillPageLimit: numberFromEnv(env, "BACKFILL_PAGE_LIMIT", 250),
@@ -974,12 +976,26 @@ function numberFromEnv(env, name, fallback) {
   return Number(env[name]);
 }
 
-function csv(value, fallback) {
-  if (!value) return [...fallback];
-  return String(value)
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+/**
+ * Resolve relay URLs: explicit RELAYS env wins; otherwise load from
+ * RELAYS_FILE / relays.json (injectable via options for tests).
+ */
+export function resolveRelays(env = process.env, options = {}) {
+  if (env.RELAYS) {
+    const relays = String(env.RELAYS)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (!relays.length) {
+      throw new Error("RELAYS must not be empty when set.");
+    }
+    return relays;
+  }
+
+  const filePath =
+    options.relaysFile || env.RELAYS_FILE || DEFAULT_RELAYS_FILE;
+  const load = options.loadRelaysFromFile || loadRelaysFromFile;
+  return load(filePath);
 }
 
 function positiveInteger(value, name) {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import { readFileSync } from "node:fs";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -7,14 +8,74 @@ import { fileURLToPath } from "node:url";
 import { FieldValue, Firestore } from "@google-cloud/firestore";
 import { firestoreSafeId } from "./utils.js";
 
-export const DEFAULT_RELAYS = [
-  "wss://purplepag.es",
-  "wss://relay.damus.io",
-  "wss://relay.primal.net",
-  "wss://relay.nostr.band",
-];
+const BACKEND_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
+
+/** Default path to the ranked relay list used by the backfill crawler. */
+export const DEFAULT_RELAYS_FILE = path.join(BACKEND_ROOT, "relays.json");
 
 export const IDENTITY_KINDS = [10011, 0];
+
+/**
+ * Parse relays.json contents into a de-duplicated URL list ordered by rank.
+ * Accepts `[{ rank, url, ... }, ...]` or a plain string array.
+ */
+export function parseRelaysJson(data) {
+  if (!Array.isArray(data)) {
+    throw new Error("relays.json must be a JSON array.");
+  }
+
+  const entries = data.map((item, index) => {
+    if (typeof item === "string") {
+      return { rank: index + 1, url: item.trim() };
+    }
+    if (item && typeof item === "object" && typeof item.url === "string") {
+      const rank = Number.isFinite(item.rank) ? item.rank : index + 1;
+      return { rank, url: item.url.trim() };
+    }
+    throw new Error(
+      `relays.json entry at index ${index} must be a URL string or { url, rank? }.`,
+    );
+  });
+
+  const seen = new Set();
+  const relays = [];
+  for (const entry of entries.sort((a, b) => a.rank - b.rank)) {
+    if (!entry.url || seen.has(entry.url)) continue;
+    seen.add(entry.url);
+    relays.push(entry.url);
+  }
+  return relays;
+}
+
+/** Synchronously load relay URLs from a relays.json file. */
+export function loadRelaysFromFile(filePath = DEFAULT_RELAYS_FILE) {
+  let raw;
+  try {
+    raw = readFileSync(filePath, "utf8");
+  } catch (error) {
+    throw new Error(
+      `Failed to read relays file at ${filePath}: ${error?.message || error}`,
+    );
+  }
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(
+      `Failed to parse relays file at ${filePath}: ${error?.message || error}`,
+    );
+  }
+
+  const relays = parseRelaysJson(data);
+  if (!relays.length) {
+    throw new Error(`Relays file at ${filePath} did not contain any URLs.`);
+  }
+  return relays;
+}
 
 export const DEFAULT_COLLECTIONS = {
   handles: "nostrDirectoryHandles",
