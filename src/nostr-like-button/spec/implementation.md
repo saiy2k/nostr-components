@@ -63,6 +63,7 @@ This document contains the technical implementation details for the `nostr-like-
 ### Like/Unlike Action Flow
 ```typescript
 handleLikeClick():
+  - Early-return if likeActionStatus is already Loading (prevents double-click races)
   - Ensure window.nostr.js is initialized → error if no signer is available
   - Get user's pubkey via the connected signer
   - Check if user has already liked this URL
@@ -86,6 +87,7 @@ handleUnlike():
   - Rollback on error
 ```
 
+While `likeActionStatus` is Loading, the like button renders a skeleton and is `disabled` with `aria-busy="true"`.
 ## Utility Functions
 
 ### Like-Specific Utilities (`src/nostr-like-button/like-utils.ts`)
@@ -94,9 +96,15 @@ handleUnlike():
 fetchLikesForUrl(url, relays):
   - Normalize URL
   - Query kind 17 events with #k=web and #i=url (limit 1000)
-  - Count likes (content = '+' or '') and unlikes (content = '-')
+  - Net by pubkey: keep only the newest reaction per author
+  - Count likes (content = '+' or '') and unlikes (content = '-') from that netted set
+  - totalCount = likedCount (distinct current likers — prevents spam inflation)
   - Sort by date (newest first)
-  - Return: { totalCount: likes - unlikes, likedCount, dislikedCount, likeDetails }
+  - Return: { totalCount, likedCount, dislikedCount, likeDetails }
+
+handleLikeClick():
+  - Early-return if likeActionStatus is already Loading (prevents double-click races)
+  - Button is disabled + aria-busy while Loading
 
 createLikeEvent(url):
   - kind: 17, content: '+'
@@ -110,7 +118,6 @@ hasUserLiked(url, userPubkey, relays):
   - Query user's kind 17 events for this URL (limit 1)
   - Return true if latest content is '+' or ''
 ```
-
 ### Reused Utilities
 - `formatRelativeTime()` from `src/common/utils.ts`
 - `getBatchedProfileMetadata()` from `src/nostr-zap-button/zap-utils.ts`

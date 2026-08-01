@@ -70,15 +70,16 @@ function renderContainer(
     countHtml = '<span class="like-count skeleton"></span>';
   } else if (likeCount > 0) {
     const label = likeCount === 1 ? 'like' : 'likes';
-    countHtml = `<span class="like-count${hasLikes ? ' clickable' : ''}">${likeCount} ${label}</span>`;
+    countHtml = `<span class="like-count${hasLikes ? ' clickable' : ''}"${hasLikes ? ' role="button" tabindex="0" aria-label="View likers"' : ''}>${likeCount} ${label}</span>`;
   }
   
   const buttonClass = isLiked ? 'nostr-like-button liked' : 'nostr-like-button';
-  const helpIconHtml = `<button class="help-icon" title="What is a like?">?</button>`;
+  const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : '';
+  const helpIconHtml = `<button type="button" class="help-icon" aria-label="What is a like?" title="What is a like?">?</button>`;
   
   return `
     <div class="nostr-like-button-container">
-      <button class="${buttonClass}">
+      <button type="button" class="${buttonClass}"${disabledAttrs}${isLiked ? ' aria-pressed="true"' : ' aria-pressed="false"'}>
         ${iconContent}
         ${isLoading ? '<span class="button-text-skeleton"></span>' : textContent}
       </button>

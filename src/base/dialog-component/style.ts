@@ -6,14 +6,6 @@
  */
 export const getDialogComponentStyles = (): string => {
   return `
-    /* Base Dialog Styles */
-    .nostr-dialog-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 8998;
-    }
-
     .nostr-base-dialog {
       width: 400px;
       max-width: 90vw;
@@ -24,15 +16,10 @@ export const getDialogComponentStyles = (): string => {
       color: var(--nostrc-theme-text-primary, #000000);
       margin: auto;
       font-family: var(--nostrc-font-family-primary, ui-sans-serif, system-ui, sans-serif);
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 8999;
     }
 
-    .nostr-base-dialog[open] {
-      display: block;
+    .nostr-base-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.5);
     }
 
     .dialog-header {
@@ -41,6 +28,7 @@ export const getDialogComponentStyles = (): string => {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: var(--nostrc-spacing-sm, 8px);
     }
 
     .dialog-header h2 {
@@ -57,15 +45,17 @@ export const getDialogComponentStyles = (): string => {
       border: none;
       background: var(--nostrc-theme-hover-bg, #f7fafc);
       border-radius: var(--nostrc-border-radius-full, 50%);
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
       font-size: var(--nostrc-font-size-base, 16px);
       cursor: pointer;
       color: var(--nostrc-theme-text-secondary, #666666);
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     .dialog-close-btn:hover {
@@ -73,10 +63,21 @@ export const getDialogComponentStyles = (): string => {
       color: var(--nostrc-theme-text-primary, #000000);
     }
 
+    .dialog-close-btn:focus-visible {
+      outline: 2px solid var(--nostrc-color-primary, #007bff);
+      outline-offset: 2px;
+    }
+
     .dialog-content {
       line-height: 1.6;
       color: var(--nostrc-theme-text-primary, #000000);
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nostr-base-dialog,
+      .dialog-close-btn {
+        transition: none;
+      }
+    }
   `;
 };
-

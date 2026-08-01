@@ -1,9 +1,9 @@
 import { NDKEvent, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { Theme } from '../common/types';
+import { normalizeURL } from '../common/utils';
 import { renderCommentWidget, getCommentStyles } from './render';
 import { NostrService } from '../common/nostr-service';
-import { normalizeURL } from './utils';
 import DOMPurify from 'dompurify';
 
 interface Comment {

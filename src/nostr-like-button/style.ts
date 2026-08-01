@@ -43,7 +43,9 @@ export function getLikeButtonStyles(): string {
     }
 
     /* Focus state for accessibility */
-    :host(:focus-visible) {
+    .nostr-like-button:focus-visible,
+    .help-icon:focus-visible,
+    .like-count.clickable:focus-visible {
       outline: 2px solid var(--nostrc-color-primary, #007bff);
       outline-offset: 2px;
     }
@@ -147,14 +149,18 @@ export function getLikeButtonStyles(): string {
       text-decoration-color: var(--nostrc-color-primary, #7f00ff);
     }
 
-    /* Help icon */
+    /* Help icon — visual 20px glyph inside a ≥44px hit target */
     .help-icon {
       background: none;
       border: 1px solid var(--nostrc-color-border, #e0e0e0);
       border-radius: var(--nostrc-border-radius-full, 50%);
-      width: var(--nostrc-help-icon-size, 16px);
-      height: var(--nostrc-help-icon-size, 16px);
-      font-size: calc(var(--nostrc-help-icon-size, 16px) * 0.7);
+      box-sizing: border-box;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      font-size: 14px;
       font-weight: bold;
       color: var(--nostrc-theme-text-secondary, #666666);
       cursor: pointer;
@@ -162,7 +168,7 @@ export function getLikeButtonStyles(): string {
       align-items: center;
       justify-content: center;
       margin-left: var(--nostrc-spacing-xs, 4px);
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
 
     .help-icon:hover {
@@ -207,6 +213,18 @@ export function getLikeButtonStyles(): string {
       }
       100% {
         background-position: -200% 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nostr-like-button,
+      .help-icon,
+      .like-count {
+        transition: none;
+      }
+      .like-count.skeleton,
+      .button-text-skeleton {
+        animation: none;
       }
     }
 

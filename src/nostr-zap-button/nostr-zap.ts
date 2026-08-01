@@ -32,6 +32,7 @@ export default class NostrZap extends NostrUserComponent {
   private totalZapAmount: number | null = null;
   private cachedZapDetails: ZapDetails[] = [];
   private cachedAmountDialog: DialogComponent | null = null;
+  private zapCountLoadSeq = 0;
 
   constructor() {
     super();
@@ -134,6 +135,7 @@ export default class NostrZap extends NostrUserComponent {
   /** Private functions */
   private async handleZapClick() {
     if (this.userStatus.get() !== NCStatus.Ready) return;
+    if (this.zapActionStatus.get() === NCStatus.Loading) return;
 
     this.zapActionStatus.set(NCStatus.Loading);
     this.render();
@@ -246,42 +248,58 @@ export default class NostrZap extends NostrUserComponent {
       e.stopPropagation?.();
       void this.handleZappersClick();
     });
+
+    this.delegateEvent('keydown', '.total-zap-amount.clickable', (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      e.stopPropagation();
+      void this.handleZappersClick();
+    });
   }
 
   private async updateZapCount() {
     if (!this.user) return;
+    const seq = ++this.zapCountLoadSeq;
 
     try {
       this.zapListStatus.set(NCStatus.Loading);
       this.render();
       
       await this.ensureNostrConnected();
+      if (seq !== this.zapCountLoadSeq) return;
+
       const result = await fetchTotalZapAmount({ 
         pubkey: this.user.pubkey, 
         relays: this.getRelays(),
         url: this.getAttribute("url") || undefined
       });
+      if (seq !== this.zapCountLoadSeq) return;
+
       this.totalZapAmount = result.totalAmount;
       this.cachedZapDetails = result.zapDetails;
       this.zapListStatus.set(NCStatus.Ready);
     } catch (e) {
+      if (seq !== this.zapCountLoadSeq) return;
       console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
       this.totalZapAmount = null;
       this.zapListStatus.set(NCStatus.Error);
     } finally {
-      this.render();
+      if (seq === this.zapCountLoadSeq) {
+        this.render();
+      }
     }
   }
 
   protected renderContent() {
     const isUserLoading = this.userStatus.get() == NCStatus.Loading;
+    const isActionLoading = this.zapActionStatus.get() == NCStatus.Loading;
     const isAmountLoading = this.zapListStatus.get() == NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
     const errorMessage = this.errorMessage;
     const buttonText = this.getAttribute('text') || 'Zap';
 
     const renderOptions: RenderZapButtonOptions = {
-      isLoading: isUserLoading,
+      isLoading: isUserLoading || isActionLoading,
       isAmountLoading: isAmountLoading,
       isError: isError,
       isSuccess: false, // TODO: Add success state handling

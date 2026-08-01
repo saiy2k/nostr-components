@@ -39,9 +39,6 @@ function ensureUMDDefaultExport(): Plugin {
         NostrProfile: nc.NostrProfile,
         NostrFollowButton: nc.NostrFollowButton,
         NostrZap: nc.NostrZap,
-        NostrComment: nc.NostrComment,
-        NostrDm: nc.NostrDm,
-        NostrLiveChat: nc.NostrLiveChat,
         NostrLike: nc.NostrLike,
         NostrLivestream: nc.NostrLivestream,
       };
@@ -73,6 +70,7 @@ export default defineConfig({
       // Use 'auto' to include both named and default exports
       output: {
         exports: 'auto',
+        sourcemapExcludeSources: true,
       },
     },
     outDir: 'dist',

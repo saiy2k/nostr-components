@@ -71,18 +71,6 @@
       "import": "./dist/components/nostr-follow-button.es.js",
       "types": "./dist/components/nostr-follow-button.d.ts"
     },
-    "./components/nostr-comment": {
-      "import": "./dist/components/nostr-comment.es.js",
-      "types": "./dist/components/nostr-comment.d.ts"
-    },
-    "./components/nostr-dm": {
-      "import": "./dist/components/nostr-dm.es.js",
-      "types": "./dist/components/nostr-dm.d.ts"
-    },
-    "./components/nostr-live-chat": {
-      "import": "./dist/components/nostr-live-chat.es.js",
-      "types": "./dist/components/nostr-live-chat.d.ts"
-    },
     "./components/nostr-livestream": {
       "import": "./dist/components/nostr-livestream.es.js",
       "types": "./dist/components/nostr-livestream.d.ts"
@@ -119,6 +107,7 @@
     "@types/glidejs__glide": "^3.6.6",
     "@types/htmlparser2": "^3.10.7",
     "@types/node": "^22.15.21",
+    "@vitest/coverage-v8": "^4.0.17",
     "cross-env": "^7.0.3",
     "esbuild": "0.23.1",
     "htmlparser2": "^10.0.0",
@@ -128,12 +117,12 @@
     "typescript": "^5.8.3",
     "vite": "^5.4.1",
     "vite-plugin-dts": "^4.5.4",
-    "vitest": "^4.0.17",
-    "@vitest/coverage-v8": "^4.0.17"
+    "vitest": "^4.0.17"
   },
   "dependencies": {
     "@glidejs/glide": "^3.7.1",
     "@nostr-dev-kit/ndk": "^2.10.0",
+    "@scure/base": "^1.1.1",
     "@types/dompurify": "^3.0.5",
     "@types/qrcode": "^1.5.5",
     "dompurify": "^3.2.6",

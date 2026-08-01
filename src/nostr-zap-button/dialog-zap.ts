@@ -21,7 +21,7 @@ import { decodeNpub } from '../common/utils';
 import { 
   fetchInvoice, 
   getProfileMetadata, 
-  getZapEndpoint, 
+  getZapProviderInfo, 
   listenForZapReceipt 
 } from './zap-utils';
 import * as QRCode from 'qrcode';
@@ -130,13 +130,13 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       throw new Error('Profile not found. The user may not have a profile set up on the relays.');
     }
     
-    const endpoint = await getZapEndpoint(meta);
-    if (!endpoint) {
+    const provider = await getZapProviderInfo(meta);
+    if (!provider) {
       throw new Error('Zap endpoint not found. The user may not have a Lightning address configured.');
     }
     
     const invoice = await fetchInvoice({
-      zapEndpoint: endpoint,
+      zapEndpoint: provider.callback,
       amount: amountSats * 1000, // -> msats
       comment,
       authorId,
@@ -153,6 +153,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       relays: relaysArray,
       receiversPubKey: npubHex,
       invoice,
+      provider,
       onSuccess: markSuccess
     });
   }
