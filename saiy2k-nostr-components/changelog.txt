@@ -1,3 +1,12 @@
+= 0.7.0 - 2026-08-01 =
+
+* Added show-replies support on nostr-post for loading and displaying direct replies
+* Added shared signer onboarding dialog for like, zap, and follow actions
+* Fixed concurrent component mounts racing multiple relay connection attempts
+* Fixed like count drift when a like or unlike request fails
+* Hardened XSS protections across rendered surfaces, including profile and DM URL escaping
+* Cleaned up Storybook testing helpers and boolean attribute handling
+
 = 0.6.1 - 2026-02-20 =
 
 * Changed URL-based zaps to use ["a", "39735:<pubkey>:<url>"] tag instead of ["k", "web"] + ["i", url] tags, enabling relay-side #a filtering without client-side description tag parsing
