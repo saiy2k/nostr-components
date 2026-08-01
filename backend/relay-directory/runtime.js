@@ -28,16 +28,19 @@ export function parseRelaysJson(data) {
   }
 
   const entries = data.map((item, index) => {
+    let entry;
     if (typeof item === "string") {
-      return { rank: index + 1, url: item.trim() };
-    }
-    if (item && typeof item === "object" && typeof item.url === "string") {
+      entry = { rank: index + 1, url: item.trim() };
+    } else if (item && typeof item === "object" && typeof item.url === "string") {
       const rank = Number.isFinite(item.rank) ? item.rank : index + 1;
-      return { rank, url: item.url.trim() };
+      entry = { rank, url: item.url.trim() };
+    } else {
+      throw new Error(
+        `relays.json entry at index ${index} must be a URL string or { url, rank? }.`,
+      );
     }
-    throw new Error(
-      `relays.json entry at index ${index} must be a URL string or { url, rank? }.`,
-    );
+    assertValidRelayUrl(entry.url, index);
+    return entry;
   });
 
   const seen = new Set();
@@ -48,6 +51,23 @@ export function parseRelaysJson(data) {
     relays.push(entry.url);
   }
   return relays;
+}
+
+function assertValidRelayUrl(url, index) {
+  if (!url) return;
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(
+      `relays.json entry at index ${index} is not a valid URL: ${url}`,
+    );
+  }
+  if (parsed.protocol !== "ws:" && parsed.protocol !== "wss:") {
+    throw new Error(
+      `relays.json entry at index ${index} must use ws:// or wss://: ${url}`,
+    );
+  }
 }
 
 /** Synchronously load relay URLs from a relays.json file. */

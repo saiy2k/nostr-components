@@ -169,6 +169,33 @@ describe("relays.json loading", () => {
       ),
     ).toEqual(["wss://env.example"]);
   });
+
+  it("rejects an explicitly empty RELAYS value", () => {
+    expect(() =>
+      resolveRelays(
+        { RELAYS: "" },
+        { loadRelaysFromFile: () => ["wss://file.example"] },
+      ),
+    ).toThrow("RELAYS must not be empty when set.");
+  });
+
+  it("rejects malformed relay URLs", () => {
+    expect(() => parseRelaysJson(["not-a-url"])).toThrow(
+      "is not a valid URL",
+    );
+    expect(() => parseRelaysJson([{ rank: 1, url: "wss;//bad.example" }])).toThrow(
+      "is not a valid URL",
+    );
+  });
+
+  it("rejects non-WebSocket relay URLs", () => {
+    expect(() => parseRelaysJson(["https://relay.example"])).toThrow(
+      "must use ws:// or wss://",
+    );
+    expect(() =>
+      parseRelaysJson([{ rank: 1, url: "http://relay.example" }]),
+    ).toThrow("must use ws:// or wss://");
+  });
 });
 
 describe("backfill Firestore writes", () => {

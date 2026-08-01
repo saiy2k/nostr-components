@@ -1012,7 +1012,7 @@ function numberFromEnv(env, name, fallback) {
  * RELAYS_FILE / relays.json (injectable via options for tests).
  */
 export function resolveRelays(env = process.env, options = {}) {
-  if (env.RELAYS) {
+  if (env.RELAYS !== undefined) {
     const relays = String(env.RELAYS)
       .split(",")
       .map((item) => item.trim())
