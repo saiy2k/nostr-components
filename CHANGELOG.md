@@ -11,6 +11,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [0.7.0] - 2026-08-01
+
+### Added
+- `show-replies` support on `nostr-post` for loading and displaying direct replies
+- Shared signer onboarding dialog for like, zap, and follow actions
+
+### Fixed
+- Concurrent component mounts no longer race multiple relay connection attempts; they share one in-flight connect (#105)
+- Like count drift when a like or unlike request fails
+- XSS hardening across rendered surfaces, including URL escaping in profile and DM UI
+- Storybook testing helpers and boolean attribute handling cleanup (#83)
+
+---
+
 ## [0.6.1] - 2026-02-20
 
 ### Changed
