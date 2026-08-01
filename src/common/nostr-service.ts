@@ -11,12 +11,17 @@ import { DEFAULT_RELAYS } from './constants';
 import { DEFAULT_PROFILE_IMAGE } from './constants';
 import { normalizeURL } from 'nostr-tools/utils';
 
+/** How long to keep polling the relay pool for a first connection. */
+const CONNECT_GRACE_MS = 5000;
+const CONNECT_POLL_INTERVAL_MS = 250;
+
 // TODO: Is this class doing too much work? Time to split into smaller services?
 export class NostrService {
 
   private static instance: NostrService;
   private ndk: NDK;
   private isConnected: boolean = false;
+  private connectPromise: Promise<void> | null = null;
 
   private constructor() {
     this.ndk = new NDK();
@@ -32,27 +37,70 @@ export class NostrService {
   public async connectToNostr(
     relays: string[] = [...DEFAULT_RELAYS]
   ): Promise<void> {
-    const newRelays = relays.filter(r => !this.getRelays().includes(r));
-
-    if (this.isConnected && newRelays.length) {
-      newRelays.forEach(url => this.ndk.addExplicitRelay(url));
+    if (this.isConnected) {
+      // addNewRelays appends to the pool without touching existing
+      // connections. Never reassign ndk.explicitRelayUrls here: its setter
+      // clears the whole pool and drops every open socket.
+      this.addNewRelays(relays);
       return;
     }
 
+    if (this.connectPromise) {
+      // A connection attempt is already in flight (multiple components mount
+      // concurrently on page load). Piggyback on it instead of restarting the
+      // pool, then register any relays the first caller didn't know about.
+      await this.connectPromise;
+      this.addNewRelays(relays);
+      return;
+    }
+
+    this.connectPromise = this.establishConnection(relays);
+    try {
+      await this.connectPromise;
+      this.isConnected = true;
+    } finally {
+      // On failure, clear so a later attempt (e.g. component retry) can run.
+      this.connectPromise = null;
+    }
+  }
+
+  /**
+   * Adds relays that aren't already in the pool. NDK normalizes relay URLs
+   * (trailing slash), so compare normalized forms to avoid re-adding the
+   * same relay under a different spelling.
+   */
+  private addNewRelays(relays: string[]): void {
+    const knownRelays = new Set(this.getRelays().map(r => normalizeURL(r)));
+    for (const url of relays) {
+      const normalized = normalizeURL(url);
+      if (!knownRelays.has(normalized)) {
+        this.ndk.addExplicitRelay(url);
+        knownRelays.add(normalized);
+      }
+    }
+  }
+
+  private async establishConnection(relays: string[]): Promise<void> {
     this.ndk.explicitRelayUrls = relays;
-    
+
     try {
       await this.ndk.connect(3000);
     } catch (error) {
       console.warn('[NostrService] ndk.connect() threw an error (unexpected):', error);
     }
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
+    // ndk.connect() can resolve before any socket is actually open, so poll
+    // the pool until at least one relay is connected or the grace period ends.
+    const deadline = Date.now() + CONNECT_GRACE_MS;
+    let connectedRelays = this.getConnectedRelays();
+    while (connectedRelays.length === 0 && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, CONNECT_POLL_INTERVAL_MS));
+      connectedRelays = this.getConnectedRelays();
+    }
+
     const normalizedInputRelays = relays.map(r => normalizeURL(r));
-    const connectedRelays = this.getConnectedRelays();
     const failedRelays = normalizedInputRelays.filter(r => !connectedRelays.includes(r));
-    
+
     if (connectedRelays.length === 0) {
       const error = new Error(`Failed to connect to any of ${relays.length} relay(s): ${relays.join(', ')}`);
       console.error('[NostrService]', error.message);
@@ -64,8 +112,6 @@ export class NostrService {
         `Failed: ${failedRelays.join(', ')}`
       );
     }
-    
-    this.isConnected = true;
   }
 
   /**
