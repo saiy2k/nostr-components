@@ -9,6 +9,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Removed
+- **BREAKING:** The `./components/nostr-comment`, `./components/nostr-dm`, and `./components/nostr-live-chat` subpath exports are no longer published, and the UMD default export no longer includes `NostrComment`, `NostrDm`, or `NostrLiveChat`. These components were already disabled; their source remains in the repo but is excluded from builds. **Migration:** remove any `nostr-components/components/nostr-comment` (or `-dm` / `-live-chat`) imports — there is no replacement in this package yet.
+
+### Security
+- Zap totals and the zap-success overlay now only count kind-9735 receipts that pass NIP-57 Appendix F validation (receipt signed by the LNURL `nostrPubkey`, embedded zap request signature-verified, `p` tags matching the recipient, bolt11 amount matching the zap request, `lnurl` tag matching the recipient LNURL). If the recipient's LNURL provider metadata cannot be resolved over HTTPS, totals fail closed to `0`.
+- Like counts are netted per pubkey (only the newest reaction counts), so one author can no longer inflate social proof with repeated kind-17 events.
+- `hasSigner()` no longer treats a `localStorage` nsec as an available signer; only NIP-07 / NDK signers count.
+- Anonymous zap keys are generated with `crypto.getRandomValues` and the insecure `Math.random` fallback now throws instead.
+- `.gitignore` now covers env files, keys, and credential globs.
+
+### Fixed
+- Double-clicking the like or zap button no longer fires duplicate actions; buttons are `disabled` + `aria-busy` while an action is in flight, and stale async results are discarded via load-sequence guards.
+- `normalizeURL` (shared by zaps, likes, and comments) preserves query strings in the identity key and handles ports/IPv6 literals via the URL parser instead of regexing the origin.
+
+### Accessibility
+- Dialogs use native `showModal()` with `::backdrop`, `aria-labelledby`, focus trap + restore, and 44px close targets.
+- Like/zap counts are keyboard-operable (`role="button"`, `tabindex="0"`, Enter/Space), help icons have `aria-label`s and 44px targets, carousel bullets are labelled, and `prefers-reduced-motion` disables skeleton animations.
+
 ---
 
 ## [0.7.0] - 2026-08-01

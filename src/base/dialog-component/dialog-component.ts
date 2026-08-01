@@ -157,8 +157,10 @@ export class DialogComponent extends HTMLElement {
     this.render();
     this.dialog!.showModal();
 
+    // Prefer dialog content over the header close button for initial focus.
     const focusable = this.getFocusableElements();
-    (focusable[0] ?? this.dialog!).focus();
+    const contentFocusable = focusable.find((el) => el.closest('.dialog-content'));
+    (contentFocusable ?? focusable[0] ?? this.dialog!).focus();
 
     // Light-dismiss: pointer outside the dialog panel (top-layer backdrop clicks).
     // Defer so the opening gesture does not immediately close the dialog.

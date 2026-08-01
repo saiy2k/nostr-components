@@ -273,26 +273,22 @@ export function isValidUrl(url: string): boolean {
 
 /**
  * Normalize URL for consistent identification (zaps, comments, likes).
- * Strips mobile subdomains, forces https, drops default ports, and cleans path slashes.
+ * Strips mobile subdomains, forces https, and cleans path slashes.
  * Preserves search so distinct query strings remain distinct identity keys.
+ *
+ * Port handling relies on the URL parser: `url.port` is already empty when the
+ * port matches the *original* scheme's default (http:80, https:443), so default-port
+ * URLs collapse onto the forced-https origin while non-default ports survive.
+ * Building from `hostname`/`port` (instead of regexing `origin`) keeps IPv6
+ * literals intact.
  */
 export function normalizeURL(raw: string): string {
   try {
     const url = new URL(raw);
-    return (
-      url.origin
-        .replace('://m.', '://')
-        .replace('://mobile.', '://')
-        .replace('http://', 'https://')
-        .replace(
-          /:\d+/,
-          (port) => (port === ':443' || port === ':80' ? '' : port)
-        ) +
-      url.pathname
-        .replace(/\/+/g, '/')
-        .replace(/\/*$/, '') +
-      url.search
-    );
+    const host = url.hostname.replace(/^(m|mobile)\./, '');
+    const port = url.port ? `:${url.port}` : '';
+    const pathname = url.pathname.replace(/\/+/g, '/').replace(/\/*$/, '');
+    return `https://${host}${port}${pathname}${url.search}`;
   } catch (error) {
     console.error('Invalid URL:', raw, error);
     return raw;

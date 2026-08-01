@@ -166,6 +166,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 ### Amount Calculation
 - Resolves recipient LNURL-pay metadata (`allowsNostr` + `nostrPubkey`)
 - Validates each kind-9735 receipt per NIP-57 Appendix F before counting:
+  - Receipt event signature is verified explicitly (`verifyEvent`), independent of pool/NDK defaults
   - Receipt `pubkey` must equal LNURL `nostrPubkey`
   - Embedded zap request must pass `nip57.validateZapRequest` + signature verify
   - Receipt/`zap request` `p` tags must match the recipient

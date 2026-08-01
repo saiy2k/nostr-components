@@ -9,7 +9,12 @@ import type { LikeCountResult, LikeDetails } from './like-netting';
 export type { LikeCountResult, LikeDetails };
 
 /**
- * Fetch all likes for a URL using NIP-25 kind 17 events
+ * Fetch likes for a URL using NIP-25 kind 17 events.
+ *
+ * Bounded sample: relays return at most `limit` events, so netting runs over the
+ * most recent ~1000 reactions. If a pubkey's newer reaction falls outside that
+ * window, its netted state can be stale — acceptable for a social-proof counter,
+ * but do not treat the result as a complete reaction history.
  */
 export async function fetchLikesForUrl(
   url: string, 

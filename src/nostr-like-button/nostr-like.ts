@@ -212,8 +212,15 @@ export default class NostrLike extends NostrBaseComponent {
 
     // Ensure currentUrl is set before proceeding
     this.ensureCurrentUrl();
-    
-    if (!this.currentUrl) {
+
+    // Capture the click target and a sequence token up front: the url attribute
+    // can change mid-flight (attributeChangedCallback bumps loadSeq), and a stale
+    // action must not sign or publish against the mutated currentUrl.
+    const targetUrl = this.currentUrl;
+    const actionSeq = this.loadSeq;
+    const isStale = () => actionSeq !== this.loadSeq || targetUrl !== this.currentUrl;
+
+    if (!targetUrl) {
       this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
       this.render();
       return;
@@ -227,6 +234,8 @@ export default class NostrLike extends NostrBaseComponent {
         action: 'like',
         theme: this.theme,
       });
+
+      if (isStale()) return;
 
       if (signerResult.status === 'dismissed') {
         this.likeActionStatus.set(NCStatus.Ready);
@@ -245,10 +254,12 @@ export default class NostrLike extends NostrBaseComponent {
 
       // Check user like status
       this.isLiked = await hasUserLiked(
-        this.currentUrl,
+        targetUrl,
         signerResult.publicKey,
         this.getRelays()
       );
+
+      if (isStale()) return;
 
       // If already liked, show confirmation dialog
       if (this.isLiked) {
@@ -258,12 +269,12 @@ export default class NostrLike extends NostrBaseComponent {
           this.render();
           return;
         }
-        
+
         // Proceed with unlike
-        await this.handleUnlike();
+        await this.handleUnlike(targetUrl);
       } else {
         // Proceed with like
-        await this.handleLike();
+        await this.handleLike(targetUrl);
       }
     } catch (error) {
       console.error('[NostrLike] Failed to check user like status:', error);
@@ -273,11 +284,12 @@ export default class NostrLike extends NostrBaseComponent {
     }
   }
 
-  private async handleLike() {
+  private async handleLike(targetUrl?: string) {
     // Ensure currentUrl is set before proceeding
     this.ensureCurrentUrl();
-    
-    if (!this.currentUrl) {
+    const likeUrl = targetUrl ?? this.currentUrl;
+
+    if (!likeUrl) {
       this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
       this.render();
       return;
@@ -294,7 +306,7 @@ export default class NostrLike extends NostrBaseComponent {
 
     try {
       // Create like event
-      const event = createLikeEvent(this.currentUrl);
+      const event = createLikeEvent(likeUrl);
       
       // Sign with NIP-07
       const signedEvent = await signEvent(event);
@@ -329,11 +341,12 @@ export default class NostrLike extends NostrBaseComponent {
     }
   }
 
-  private async handleUnlike() {
+  private async handleUnlike(targetUrl?: string) {
     // Ensure currentUrl is set before proceeding
     this.ensureCurrentUrl();
-    
-    if (!this.currentUrl) {
+    const unlikeUrl = targetUrl ?? this.currentUrl;
+
+    if (!unlikeUrl) {
       this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
       this.render();
       return;
@@ -347,10 +360,10 @@ export default class NostrLike extends NostrBaseComponent {
       likeCount: this.likeCount,
     };
     let didApplyOptimisticUpdate = false;
-    
+
     try {
       // Create unlike event
-      const event = createUnlikeEvent(this.currentUrl);
+      const event = createUnlikeEvent(unlikeUrl);
       
       // Sign with NIP-07
       const signedEvent = await signEvent(event);

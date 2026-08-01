@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+import { finalizeEvent, generateSecretKey, getPublicKey, verifiedSymbol } from 'nostr-tools';
 import {
   getBolt11AmountMsats,
   lnurlFromProfileContent,
@@ -42,19 +42,23 @@ function makeZapRequest(amountMsats = BOLT11_AMOUNT_MSATS) {
   );
 }
 
-function makeValidReceipt(amountMsats = BOLT11_AMOUNT_MSATS) {
+function makeValidReceipt(
+  amountMsats = BOLT11_AMOUNT_MSATS,
+  mutateTags?: (tags: string[][]) => string[][],
+) {
   const zapRequest = makeZapRequest(amountMsats);
+  const baseTags: string[][] = [
+    ['p', RECIPIENT_PK],
+    ['P', zapRequest.pubkey],
+    ['bolt11', BOLT11_20U],
+    ['description', JSON.stringify(zapRequest)],
+  ];
   return finalizeEvent(
     {
       kind: 9735,
       created_at: Math.floor(Date.now() / 1000),
       content: '',
-      tags: [
-        ['p', RECIPIENT_PK],
-        ['P', zapRequest.pubkey],
-        ['bolt11', BOLT11_20U],
-        ['description', JSON.stringify(zapRequest)],
-      ],
+      tags: mutateTags ? mutateTags(baseTags) : baseTags,
     },
     PROVIDER_SK,
   );
@@ -134,9 +138,24 @@ describe('validateZapReceipt', () => {
     if (!result.ok) expect(result.reason).toBe('amount-mismatch');
   });
 
-  it('rejects missing description', () => {
+  it('rejects a receipt whose tags were tampered with after signing', () => {
     const receipt = makeValidReceipt();
     receipt.tags = receipt.tags.filter(([t]) => t !== 'description');
+    // finalizeEvent marks events with verifiedSymbol; strip it so verifyEvent
+    // actually recomputes the hash, as it would for an event read from a relay.
+    delete (receipt as any)[verifiedSymbol];
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('receipt-sig');
+  });
+
+  it('rejects missing description', () => {
+    const receipt = makeValidReceipt(BOLT11_AMOUNT_MSATS, (tags) =>
+      tags.filter(([t]) => t !== 'description'),
+    );
     const result = validateZapReceipt(receipt, {
       recipientPubkey: RECIPIENT_PK,
       provider: PROVIDER,
@@ -146,9 +165,8 @@ describe('validateZapReceipt', () => {
   });
 
   it('rejects invalid description JSON', () => {
-    const receipt = makeValidReceipt();
-    receipt.tags = receipt.tags.map((tag) =>
-      tag[0] === 'description' ? ['description', '{not-json'] : tag,
+    const receipt = makeValidReceipt(BOLT11_AMOUNT_MSATS, (tags) =>
+      tags.map((tag) => (tag[0] === 'description' ? ['description', '{not-json'] : tag)),
     );
     const result = validateZapReceipt(receipt, {
       recipientPubkey: RECIPIENT_PK,
@@ -199,8 +217,9 @@ describe('validateZapReceipt', () => {
   });
 
   it('rejects missing bolt11', () => {
-    const receipt = makeValidReceipt();
-    receipt.tags = receipt.tags.filter(([t]) => t !== 'bolt11');
+    const receipt = makeValidReceipt(BOLT11_AMOUNT_MSATS, (tags) =>
+      tags.filter(([t]) => t !== 'bolt11'),
+    );
     const result = validateZapReceipt(receipt, {
       recipientPubkey: RECIPIENT_PK,
       provider: PROVIDER,
@@ -210,9 +229,8 @@ describe('validateZapReceipt', () => {
   });
 
   it('rejects invalid bolt11 amount', () => {
-    const receipt = makeValidReceipt();
-    receipt.tags = receipt.tags.map((tag) =>
-      tag[0] === 'bolt11' ? ['bolt11', 'not-a-bolt11'] : tag,
+    const receipt = makeValidReceipt(BOLT11_AMOUNT_MSATS, (tags) =>
+      tags.map((tag) => (tag[0] === 'bolt11' ? ['bolt11', 'not-a-bolt11'] : tag)),
     );
     const result = validateZapReceipt(receipt, {
       recipientPubkey: RECIPIENT_PK,
@@ -256,5 +274,44 @@ describe('validateZapReceipt', () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('lnurl-mismatch');
+  });
+
+  it('accepts a bech32-encoded lnurl tag that decodes to the provider LNURL', async () => {
+    const { bech32 } = await import('@scure/base');
+    const words = bech32.toWords(new TextEncoder().encode(PROVIDER.lnurl));
+    const lnurlTag = bech32.encode('lnurl', words, 1000);
+
+    const zapRequest = finalizeEvent(
+      {
+        kind: 9734,
+        created_at: Math.floor(Date.now() / 1000),
+        content: 'thanks',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['amount', String(BOLT11_AMOUNT_MSATS)],
+          ['relays', 'wss://relay.example'],
+          ['lnurl', lnurlTag],
+        ],
+      },
+      SENDER_SK,
+    );
+    const receipt = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: Math.floor(Date.now() / 1000),
+        content: '',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['bolt11', BOLT11_20U],
+          ['description', JSON.stringify(zapRequest)],
+        ],
+      },
+      PROVIDER_SK,
+    );
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(true);
   });
 });

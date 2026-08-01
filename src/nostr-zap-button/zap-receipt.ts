@@ -90,6 +90,24 @@ export async function resolveZapProviderInfo(
   }
 }
 
+/**
+ * Normalize a zap-request `lnurl` tag for comparison against the provider LNURL.
+ * NIP-57 clients write the bech32-encoded LNURL (lud06 style), but some write the
+ * plain https URL; accept both by decoding bech32 and URL-normalizing.
+ */
+function normalizeLnurlTag(value: string): string | null {
+  try {
+    let urlString = value;
+    if (/^lnurl1/i.test(value)) {
+      const { words } = bech32.decode(value.toLowerCase() as `${string}1${string}`, 1000);
+      urlString = new TextDecoder().decode(Uint8Array.from(bech32.fromWords(words)));
+    }
+    return new URL(urlString).toString();
+  } catch {
+    return null;
+  }
+}
+
 export function getBolt11AmountMsats(bolt11: string): number | null {
   try {
     const decoded = decodeBolt11(bolt11);
@@ -116,6 +134,12 @@ export function validateZapReceipt(
 ): ZapReceiptValidationResult {
   if (receipt.kind !== 9735) {
     return { ok: false, reason: 'not-kind-9735' };
+  }
+
+  // Verify the receipt's own signature here rather than relying on the pool/NDK
+  // caller's verification config — this function is the fail-closed gate.
+  if (!verifyEvent(receipt)) {
+    return { ok: false, reason: 'receipt-sig' };
   }
 
   if (receipt.pubkey.toLowerCase() !== opts.provider.nostrPubkey.toLowerCase()) {
@@ -172,8 +196,11 @@ export function validateZapReceipt(
   }
 
   const requestLnurl = getTagValue(zapRequest.tags, 'lnurl');
-  if (requestLnurl && requestLnurl !== opts.provider.lnurl) {
-    return { ok: false, reason: 'lnurl-mismatch' };
+  if (requestLnurl) {
+    const normalized = normalizeLnurlTag(requestLnurl);
+    if (!normalized || normalized !== opts.provider.lnurl) {
+      return { ok: false, reason: 'lnurl-mismatch' };
+    }
   }
 
   return {
