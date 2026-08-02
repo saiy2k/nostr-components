@@ -16,7 +16,6 @@ IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d
 IMAGE="gcr.io/${PROJECT_ID}/${IMAGE_JOB_NAME}:${IMAGE_TAG}"
 SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-relay-directory-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
 PROJECTION_LIMIT="${PROJECTION_LIMIT:-1000}"
-PROJECTION_WRITE_BUDGET="${PROJECTION_WRITE_BUDGET:-10000}"
 PROJECTION_RUN_DEADLINE_MS="${PROJECTION_RUN_DEADLINE_MS:-3300000}"
 MAX_PROOFS="${MAX_PROOFS:-250}"
 SCAN_X_PROFILES="${SCAN_X_PROFILES:-0}"
@@ -81,7 +80,7 @@ DEPLOY_ARGS=(
   --region "${REGION}"
   --service-account "${SERVICE_ACCOUNT}"
   --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},FIRESTORE_PROJECT=${PROJECT_ID},SCAN_X_PROFILES=${SCAN_X_PROFILES},X_PROFILE_MAX=${X_PROFILE_MAX}"
-  --args "relay-directory/projection.js,--firestore-project,${PROJECT_ID},--projection-limit,${PROJECTION_LIMIT},--projection-write-budget,${PROJECTION_WRITE_BUDGET},--run-deadline-ms,${PROJECTION_RUN_DEADLINE_MS},--max-proofs,${MAX_PROOFS},--max-pending-claims,${MAX_PENDING_CLAIMS},--max-inactive-verified-claims,${MAX_INACTIVE_VERIFIED_CLAIMS},--max-rejection-tombstones,${MAX_REJECTION_TOMBSTONES},--max-retry-attempts,${MAX_RETRY_ATTEMPTS},--no-json"
+  --args "relay-directory/projection.js,--firestore-project,${PROJECT_ID},--projection-limit,${PROJECTION_LIMIT},--run-deadline-ms,${PROJECTION_RUN_DEADLINE_MS},--max-proofs,${MAX_PROOFS},--max-pending-claims,${MAX_PENDING_CLAIMS},--max-inactive-verified-claims,${MAX_INACTIVE_VERIFIED_CLAIMS},--max-rejection-tombstones,${MAX_REJECTION_TOMBSTONES},--max-retry-attempts,${MAX_RETRY_ATTEMPTS},--no-json"
   --max-retries 0
   --task-timeout 3600
 )

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { buildRawEventIngestionWrites, queryRelay } from "./ingestion.js";
+import { queryRelay } from "./ingestion.js";
 
 describe("NDK relay query adapter", () => {
   it("returns every subscription event without replaceable-event collapsing", async () => {
@@ -98,30 +98,5 @@ describe("NDK relay query adapter", () => {
     );
 
     expect(result).toMatchObject({ reason: "eose", events: [] });
-  });
-});
-
-describe("raw event ingestion writes", () => {
-  it("does not enqueue work for the retired projection queue", () => {
-    const writes = buildRawEventIngestionWrites(
-      {
-        id: "event-id",
-        kind: 10011,
-        pubkey: "pubkey",
-        created_at: 100,
-        tags: [],
-        content: "",
-        sig: "sig",
-      },
-      "wss://relay.example",
-      "live",
-      {
-        firestoreEventsCollection: "events",
-        firestoreQueueCollection: "queue",
-      },
-    );
-
-    expect(writes).toHaveLength(1);
-    expect(writes[0]).toMatchObject({ collection: "events", id: "event-id" });
   });
 });

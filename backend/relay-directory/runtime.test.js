@@ -2,7 +2,7 @@
 
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { commitFirestoreWrites, runCli } from "./runtime.js";
+import { runCli } from "./runtime.js";
 
 const ORIGINAL_ARGV = [...process.argv];
 
@@ -28,36 +28,5 @@ describe("CLI lifecycle", () => {
     expect(parseArgs).toHaveBeenCalledWith(["--flag"]);
     expect(runner).toHaveBeenCalledWith({ parsed: true });
     expect(exit).toHaveBeenCalledWith(0);
-  });
-});
-
-describe("Firestore write ordering", () => {
-  it("commits normal writes before dependent create-if-missing writes", async () => {
-    const timeline = [];
-    const db = {
-      batch: () => ({
-        set: () => {},
-        commit: async () => timeline.push("normal-commit"),
-      }),
-      collection: (collection) => ({
-        doc: (id) => ({
-          collection,
-          id,
-          create: async () => timeline.push("create-if-missing"),
-        }),
-      }),
-    };
-
-    await commitFirestoreWrites(db, [
-      {
-        operation: "createIfMissing",
-        collection: "queue",
-        id: "event",
-        data: {},
-      },
-      { collection: "events", id: "event", data: {} },
-    ]);
-
-    expect(timeline).toEqual(["normal-commit", "create-if-missing"]);
   });
 });

@@ -34,26 +34,6 @@ export function createNdkRelayClient(url) {
       subscription.start();
       return () => subscription.stop();
     },
-    onStatus({ onConnecting, onConnect, onDisconnect }) {
-      const matchesRelay = (relay) => relay?.url === url;
-      const handleConnecting = (relay) => {
-        if (matchesRelay(relay)) onConnecting?.();
-      };
-      const handleConnect = (relay) => {
-        if (matchesRelay(relay)) onConnect?.();
-      };
-      const handleDisconnect = (relay) => {
-        if (matchesRelay(relay)) onDisconnect?.();
-      };
-      ndk.pool.on("relay:connecting", handleConnecting);
-      ndk.pool.on("relay:connect", handleConnect);
-      ndk.pool.on("relay:disconnect", handleDisconnect);
-      return () => {
-        ndk.pool.off("relay:connecting", handleConnecting);
-        ndk.pool.off("relay:connect", handleConnect);
-        ndk.pool.off("relay:disconnect", handleDisconnect);
-      };
-    },
     close() {
       for (const relay of [...ndk.pool.relays.values()]) {
         try {
@@ -124,74 +104,6 @@ export function isValidSignedEvent(event) {
   }
 }
 
-export function buildBackfillEventWrite(event, relay, options = {}) {
-  return buildIngestedEventWrite(event, relay, "backfill", options);
-}
-
-export function buildLiveEventWrite(event, relay, options = {}) {
-  return buildIngestedEventWrite(event, relay, "live", options);
-}
-
-export function buildIngestedEventWrite(event, relay, mode, options = {}) {
-  return {
-    collection: options.firestoreEventsCollection || DEFAULT_COLLECTIONS.events,
-    id: firestoreSafeId(event.id),
-    data: stripUndefined({
-      id: event.id,
-      kind: event.kind,
-      pubkey: event.pubkey,
-      createdAt: event.created_at,
-      sourceRelays: FieldValue.arrayUnion(relay),
-      event: normalizeEventForFirestore(event),
-      ingestion: {
-        mode,
-        lastRelay: relay,
-        lastSeenAt: FieldValue.serverTimestamp(),
-      },
-      updatedAt: FieldValue.serverTimestamp(),
-    }),
-  };
-}
-
-export function buildRawEventIngestionWrites(event, relay, mode, options = {}) {
-  return [buildIngestedEventWrite(event, relay, mode, options)];
-}
-
-export function buildProjectionQueueCreateWrite(event, mode, options = {}) {
-  return {
-    operation: "createIfMissing",
-    collection: options.firestoreQueueCollection || DEFAULT_COLLECTIONS.queue,
-    id: firestoreSafeId(event.id),
-    data: stripUndefined({
-      eventId: event.id,
-      kind: event.kind,
-      pubkey: event.pubkey,
-      eventCreatedAt: event.created_at,
-      sourceMode: mode,
-      status: "pending",
-      reason: "awaiting_projection",
-      attempts: 0,
-      nextAttemptAt: FieldValue.serverTimestamp(),
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }),
-  };
-}
-
-function normalizeEventForFirestore(event) {
-  return {
-    id: event.id,
-    kind: event.kind,
-    pubkey: event.pubkey,
-    created_at: event.created_at,
-    content: event.content || "",
-    tags: (event.tags || []).map((tag) => ({
-      values: tag.map((value) => String(value)),
-    })),
-    sig: event.sig,
-  };
-}
-
 export function buildBackfillCheckpointWrite(
   {
     relay,
@@ -253,30 +165,6 @@ export function buildBackfillGapWrite(
       updatedAt: FieldValue.serverTimestamp(),
     }),
   };
-}
-
-export function buildLiveHeartbeatWrite(
-  { relay, status, mode, connected, lastEventAt, attempts },
-  options = {},
-) {
-  return {
-    collection: options.firestoreStateCollection || DEFAULT_COLLECTIONS.state,
-    id: liveStateId(relay),
-    data: stripUndefined({
-      relay,
-      mode: mode || "live",
-      status,
-      connected,
-      lastEventAt,
-      connectAttempts: attempts,
-      heartbeatAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }),
-  };
-}
-
-export function liveStateId(relay) {
-  return firestoreSafeId(`live:${relay}`);
 }
 
 /**

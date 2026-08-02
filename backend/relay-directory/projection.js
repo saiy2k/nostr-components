@@ -29,9 +29,6 @@ import {
 } from "./x-identity.js";
 import { isHexPubkey, isPublicHostname } from "./utils.js";
 
-const DEFAULT_PROJECTION_WRITE_BUDGET = 10000;
-const MAX_WRITES_PER_HANDLE = 2;
-
 export function parseProjectionArgs(argv) {
   const args = {
     ...firestoreConfigFromEnv(),
@@ -41,9 +38,6 @@ export function parseProjectionArgs(argv) {
     verifyTweets: process.env.VERIFY_TWEETS !== "0",
     checkZaps: process.env.CHECK_ZAPS !== "0",
     projectionLimit: Number(process.env.PROJECTION_LIMIT || 1000),
-    projectionWriteBudget: Number(
-      process.env.PROJECTION_WRITE_BUDGET || DEFAULT_PROJECTION_WRITE_BUDGET,
-    ),
     projectionExternalRetryMs: Number(
       process.env.PROJECTION_EXTERNAL_RETRY_MS || 15 * 60 * 1000,
     ),
@@ -95,10 +89,6 @@ export function parseProjectionArgs(argv) {
       args.firestoreHandlesCollection = take();
     } else if (flag === "--projection-limit") {
       args.projectionLimit = Number(take());
-    } else if (flag === "--projection-write-budget") {
-      args.projectionWriteBudget = Number(take());
-    } else if (flag === "--no-projection-write-budget") {
-      args.projectionWriteBudget = 0;
     } else if (flag === "--projection-external-retry-ms") {
       args.projectionExternalRetryMs = Number(take());
     } else if (flag === "--run-deadline-ms") {
@@ -135,12 +125,6 @@ function validateProjectionArgs(args) {
   }
   if (!Number.isInteger(args.projectionLimit) || args.projectionLimit <= 0) {
     throw new Error("--projection-limit must be a positive integer.");
-  }
-  if (
-    !Number.isInteger(args.projectionWriteBudget) ||
-    args.projectionWriteBudget < 0
-  ) {
-    throw new Error("--projection-write-budget must be an integer >= 0.");
   }
   if (
     !Number.isFinite(args.projectionExternalRetryMs) ||
@@ -181,8 +165,6 @@ Verify pending X/Nostr identity claims and project verified directory users.
 Options:
   --firestore-project <id>               GCP project.
   --projection-limit <n>                 Maximum handle docs. Default: 1000
-  --projection-write-budget <n>          Maximum writes per run. Default: 10000
-  --no-projection-write-budget           Disable the per-run write limit.
   --projection-external-retry-ms <n>     External retry delay. Default: 900000
   --run-deadline-ms <n>                   Graceful run deadline; 0 disables it.
   --max-proofs <n>                       Proof tweets per run; 0 means all.
@@ -223,7 +205,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     retryLater: 0,
     pendingDropped: 0,
     firestoreWrites: 0,
-    writeBudgetExhausted: false,
     stoppedReason: null,
   };
   let proofsRemaining = args.maxProofs === 0 ? Infinity : args.maxProofs;
@@ -241,15 +222,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       break;
     }
     if (!projectionHandleIsDue(handleDoc.data)) continue;
-    if (
-      args.projectionWriteBudget > 0 &&
-      stats.firestoreWrites + MAX_WRITES_PER_HANDLE >
-        args.projectionWriteBudget
-    ) {
-      stats.writeBudgetExhausted = true;
-      stats.stoppedReason = "write_budget_exhausted";
-      break;
-    }
     stats.handlesDue += 1;
 
     const verification = await verifyClaims(handleDoc.data, args, {
@@ -280,14 +252,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       },
     );
     const writes = buildHandleProjectionWrites(handleDoc, transition, args);
-    if (
-      args.projectionWriteBudget > 0 &&
-      stats.firestoreWrites + writes.length > args.projectionWriteBudget
-    ) {
-      stats.writeBudgetExhausted = true;
-      stats.stoppedReason = "write_budget_exhausted";
-      break;
-    }
     if (writes.length) {
       await commitFirestoreWrites(db, writes);
       stats.firestoreWrites += writes.length;
@@ -315,7 +279,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     },
     controls: {
       projectionLimit: args.projectionLimit,
-      projectionWriteBudget: args.projectionWriteBudget,
       maxProofs: args.maxProofs,
       scanXProfiles: args.scanXProfiles,
       xProfileMax: args.xProfileMax,
@@ -582,9 +545,6 @@ function printProjectionSummary(output, args) {
   console.log(`  retry later:          ${output.stats.retryLater}`);
   console.log(`  pending dropped:      ${output.stats.pendingDropped}`);
   console.log(`  Firestore writes:     ${output.stats.firestoreWrites}`);
-  console.log(
-    `  write budget:         ${args.projectionWriteBudget || "unlimited"}`,
-  );
   console.log(`  firestore project:    ${args.firestoreProject}`);
   if (args.out) console.log(`  output:               ${args.out}`);
 }

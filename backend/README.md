@@ -1,8 +1,8 @@
 # Relay directory backend
 
-The relay-directory backfill, live-monitoring, and projection jobs are isolated
-from the frontend package. They own their dependencies and read runtime
-configuration from environment variables.
+The relay-directory backfill and projection jobs are isolated from the frontend
+package. They own their dependencies and read runtime configuration from
+environment variables.
 
 Relay URLs default to the ranked list in `relays.json`. Set `RELAYS` (comma-
 separated) or `RELAYS_FILE` to override.
@@ -14,7 +14,6 @@ cp .env.example .env
 # Set FIRESTORE_PROJECT and local Google credentials in your environment.
 npm test
 npm run backfill
-npm run live
 npm run project
 ```
 
@@ -23,7 +22,6 @@ Cloud Run deployment scripts (PROJECT_ID is required):
 ```sh
 cd "$(git rev-parse --show-toplevel)"
 PROJECT_ID=your-gcp-project backend/deploy-relay-directory-backfill.sh
-PROJECT_ID=your-gcp-project backend/deploy-relay-directory-live-listener.sh
 PROJECT_ID=your-gcp-project backend/deploy-relay-directory-projection.sh
 ```
 
@@ -78,8 +76,8 @@ gcloud firestore indexes composite create \
   --project=your-gcp-project \
   --database='(default)' \
   --collection-group=nostrDirectoryHandles \
-  --field-config=field-path=nextAttemptAt,order=ascending \
-  --field-config=field-path=pendingClaimCount,order=ascending
+  --field-config=field-path=pendingClaimCount,order=ascending \
+  --field-config=field-path=nextAttemptAt,order=ascending
 ```
 
 Use the configured `FIRESTORE_HANDLES_COLLECTION` and `FIRESTORE_DATABASE`

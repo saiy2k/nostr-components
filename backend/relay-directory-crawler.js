@@ -6,10 +6,6 @@ import {
   runBackfill,
 } from "./relay-directory/backfill.js";
 import {
-  parseLiveArgs,
-  runLiveMonitor,
-} from "./relay-directory/live-monitor.js";
-import {
   parseProjectionArgs,
   runProjection,
 } from "./relay-directory/projection.js";
@@ -23,7 +19,6 @@ if (isMainModule(import.meta.url)) {
         loadBackfillConfig(process.env, undefined, {}, remainingArgv),
       runBackfill,
     ],
-    live: [parseLiveArgs, runLiveMonitor],
     project: [parseProjectionArgs, runProjection],
   };
   const [parseArgs, runner] = modules[mode];
@@ -41,12 +36,11 @@ function parseLegacyMode(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
     if (flag === "--backfill") mode = "backfill";
-    else if (flag === "--live-listen") mode = "live";
     else if (flag === "--project-directory") mode = "project";
     else if (flag === "--mode") {
       const value = argv[index + 1];
-      if (!["backfill", "live", "project"].includes(value)) {
-        throw new Error("--mode must be backfill, live, or project.");
+      if (!["backfill", "project"].includes(value)) {
+        throw new Error("--mode must be backfill or project.");
       }
       mode = value;
       index += 1;
@@ -60,7 +54,6 @@ function parseLegacyMode(argv) {
 
 export * from "./relay-directory/backfill.js";
 export * from "./relay-directory/ingestion.js";
-export * from "./relay-directory/live-monitor.js";
 export * from "./relay-directory/projection.js";
 export * from "./relay-directory/projection-state.js";
 export * from "./relay-directory/runtime.js";

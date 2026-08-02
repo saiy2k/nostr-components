@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 describe("projection configuration", () => {
-  it("reads handle claims directly and keeps a free-tier write budget", () => {
+  it("reads handle claims directly with bounded projection controls", () => {
     for (const name of [
       "FIRESTORE_HANDLES_COLLECTION",
       "FIRESTORE_ENTRIES_COLLECTION",
@@ -39,7 +39,6 @@ describe("projection configuration", () => {
       "VERIFY_TWEETS",
       "CHECK_ZAPS",
       "PROJECTION_LIMIT",
-      "PROJECTION_WRITE_BUDGET",
       "PROJECTION_EXTERNAL_RETRY_MS",
       "PROJECTION_RUN_DEADLINE_MS",
       "MAX_PENDING_CLAIMS",
@@ -59,7 +58,6 @@ describe("projection configuration", () => {
       firestoreHandlesCollection: "nostrDirectoryHandles",
       firestoreEntriesCollection: "nostrDirectoryEntries",
       projectionLimit: 1000,
-      projectionWriteBudget: 10000,
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,
       maxRejectionTombstones: 100,
@@ -77,17 +75,6 @@ describe("projection configuration", () => {
         "queue",
       ]),
     ).toThrow("Unknown projection argument: --projection-source");
-  });
-
-  it("validates write and retention limits", () => {
-    expect(() =>
-      parseProjectionArgs([
-        "--firestore-project",
-        "gr-prod",
-        "--projection-write-budget",
-        "-1",
-      ]),
-    ).toThrow("--projection-write-budget must be an integer >= 0.");
   });
 
   it("parses and validates a graceful run deadline", () => {
@@ -842,71 +829,6 @@ describe("projection execution", () => {
     expect(writes[0].options).toEqual({ merge: true });
   });
 
-  it("stops before external verification when fewer than two writes remain", async () => {
-    const fetchImpl = vi.fn();
-    vi.stubGlobal("fetch", fetchImpl);
-    const handle = {
-      handle: "alice",
-      claims: [pendingClaim("proof", PUBKEY_A, 100)],
-      pendingClaimCount: 1,
-      projectionStatus: "pending",
-      nextAttemptAt: NOW,
-    };
-    const db = {
-      collection: (name) => collectionAdapter(name, handle),
-      batch: vi.fn(),
-    };
-
-    const output = await runProjection(
-      projectionArgs({ projectionWriteBudget: 1 }),
-      null,
-      { db },
-    );
-
-    expect(output.stats).toMatchObject({
-      writeBudgetExhausted: true,
-      stoppedReason: "write_budget_exhausted",
-      proofTweetsAttempted: 0,
-      firestoreWrites: 0,
-    });
-    expect(fetchImpl).not.toHaveBeenCalled();
-    expect(db.batch).not.toHaveBeenCalled();
-  });
-
-  it("stops before a second handle would exceed the write budget", async () => {
-    const handles = [
-      dueHandle("alice", "first", PUBKEY_A),
-      dueHandle("bob", "second", PUBKEY_B),
-    ];
-    const writes = [];
-    const db = fakeFirestore(handles, writes);
-    const verifyClaims = vi.fn(async (handleData) =>
-      verificationOutput({
-        results: [verifiedResult(handleData.claims[0].claimId)],
-        xProfilesFailed: 1,
-        xProfileFailures: { http_401: 1 },
-      }),
-    );
-
-    const output = await runProjection(
-      projectionArgs({ projectionWriteBudget: 2 }),
-      null,
-      { db, verifyHandleClaims: verifyClaims },
-    );
-
-    expect(output.stats).toMatchObject({
-      handleDocsRead: 2,
-      handlesDue: 1,
-      firestoreWrites: 2,
-      writeBudgetExhausted: true,
-      stoppedReason: "write_budget_exhausted",
-      xProfilesFailed: 1,
-      xProfileFailures: { http_401: 1 },
-    });
-    expect(verifyClaims).toHaveBeenCalledTimes(1);
-    expect(writes).toHaveLength(2);
-  });
-
   it("stops iterating when verification requests a run stop", async () => {
     const handles = [
       dueHandle("alice", "first", PUBKEY_A),
@@ -1018,7 +940,6 @@ function projectionArgs(overrides = {}) {
     verifyTweets: true,
     checkZaps: false,
     projectionLimit: 100,
-    projectionWriteBudget: 10000,
     projectionExternalRetryMs: 60000,
     runDeadlineMs: 0,
     maxPendingClaims: 20,
