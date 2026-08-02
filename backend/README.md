@@ -9,7 +9,7 @@ separated) or `RELAYS_FILE` to override.
 
 ```sh
 cd backend
-npm install --package-lock=false
+npm ci
 cp .env.example .env
 # Set FIRESTORE_PROJECT and local Google credentials in your environment.
 npm test
@@ -21,6 +21,7 @@ npm run project
 Cloud Run deployment scripts (PROJECT_ID is required):
 
 ```sh
+cd "$(git rev-parse --show-toplevel)"
 PROJECT_ID=your-gcp-project backend/deploy-relay-directory-backfill.sh
 PROJECT_ID=your-gcp-project backend/deploy-relay-directory-live-listener.sh
 PROJECT_ID=your-gcp-project backend/deploy-relay-directory-projection.sh
@@ -62,3 +63,24 @@ with `roles/run.invoker` on the Cloud Run Job.
 
 Relay connections and subscriptions use NDK. The jobs retain explicit event
 validation, pagination, deduplication, Firestore writes, and checkpoint logic.
+
+Run projection after backfill because it consumes the handle documents created
+by backfill. `deploy-relay-directory-projection.sh` creates an unscheduled job;
+execute it manually, or set `RUN_AFTER_DEPLOY=true` to run it once immediately.
+Setting `SCAN_X_PROFILES=1` also requires `X_BEARER_TOKEN_SECRET`.
+
+The projector orders due work in Firestore before applying its read limit. For
+the default handles collection, create the required composite index once per
+database:
+
+```sh
+gcloud firestore indexes composite create \
+  --project=your-gcp-project \
+  --database='(default)' \
+  --collection-group=nostrDirectoryHandles \
+  --field-config=field-path=nextAttemptAt,order=ascending \
+  --field-config=field-path=pendingClaimCount,order=ascending
+```
+
+Use the configured `FIRESTORE_HANDLES_COLLECTION` and `FIRESTORE_DATABASE`
+values when they differ from the defaults.

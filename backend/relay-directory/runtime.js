@@ -110,6 +110,7 @@ export const DEFAULT_COLLECTIONS = {
 };
 
 const CREATE_IF_MISSING_CONCURRENCY = 20;
+const BATCH_WRITE_LIMIT = 450;
 
 export function firestoreConfigFromEnv(env = process.env) {
   return {
@@ -191,6 +192,16 @@ export async function commitFirestoreWrites(db, writes) {
     }
   }
 
+  for (let i = 0; i < normalWrites.length; i += BATCH_WRITE_LIMIT) {
+    const batch = db.batch();
+    for (const write of normalWrites.slice(i, i + BATCH_WRITE_LIMIT)) {
+      batch.set(db.collection(write.collection).doc(write.id), write.data, {
+        merge: true,
+      });
+    }
+    await batch.commit();
+  }
+
   for (
     let i = 0;
     i < createIfMissingWrites.length;
@@ -201,16 +212,6 @@ export async function commitFirestoreWrites(db, writes) {
         .slice(i, i + CREATE_IF_MISSING_CONCURRENCY)
         .map((write) => createFirestoreDocIfMissing(db, write)),
     );
-  }
-
-  for (let i = 0; i < normalWrites.length; i += 450) {
-    const batch = db.batch();
-    for (const write of normalWrites.slice(i, i + 450)) {
-      batch.set(db.collection(write.collection).doc(write.id), write.data, {
-        merge: true,
-      });
-    }
-    await batch.commit();
   }
 }
 
@@ -410,7 +411,7 @@ export function isMainModule(moduleUrl) {
 
 export function runMain(moduleUrl, main) {
   if (!isMainModule(moduleUrl)) return;
-  Promise.resolve()
+  return Promise.resolve()
     .then(main)
     .catch((error) => {
       console.error(error.stack || error.message || error);
@@ -424,8 +425,5 @@ export function runMain(moduleUrl, main) {
 
 export function runCli(moduleUrl, parseArgs, runner) {
   if (!isMainModule(moduleUrl)) return;
-  runner(parseArgs(process.argv.slice(2))).catch((error) => {
-    console.error(error.stack || error.message || error);
-    process.exitCode = 1;
-  });
+  return runMain(moduleUrl, () => runner(parseArgs(process.argv.slice(2))));
 }

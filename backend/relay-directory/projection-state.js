@@ -6,11 +6,12 @@ import {
   DEFAULT_COLLECTIONS,
   stripUndefined,
 } from "./runtime.js";
-import { firestoreSafeId } from "./utils.js";
+import { firestoreSafeId, isHexPubkey } from "./utils.js";
 
 export const DEFAULT_MAX_PENDING_CLAIMS = 20;
 export const DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS = 10;
 export const DEFAULT_MAX_REJECTION_TOMBSTONES = 100;
+export const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 
 export function pendingClaimsForHandle(handleData) {
   return (handleData?.claims || [])
@@ -36,6 +37,8 @@ export function applyProjectionResults(handleData, results, options = {}) {
     options.maxInactiveVerifiedClaims ?? DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS;
   const maxRejectionTombstones =
     options.maxRejectionTombstones ?? DEFAULT_MAX_REJECTION_TOMBSTONES;
+  const maxRetryAttempts =
+    options.maxRetryAttempts ?? DEFAULT_MAX_RETRY_ATTEMPTS;
   const claimsById = new Map(
     (handleData?.claims || [])
       .filter((claim) => claim?.claimId && claim.status !== "rejected")
@@ -46,7 +49,12 @@ export function applyProjectionResults(handleData, results, options = {}) {
       .filter((item) => item?.claimId)
       .map((item) => [item.claimId, item]),
   );
-  const stats = { verified: 0, rejected: 0, retryLater: 0 };
+  const stats = {
+    verified: 0,
+    rejected: 0,
+    retryLater: 0,
+    pendingDropped: 0,
+  };
 
   for (const result of results || []) {
     const claimId = result.claimId || result.claim?.claimId;
@@ -67,21 +75,42 @@ export function applyProjectionResults(handleData, results, options = {}) {
       });
       stats.rejected += 1;
     } else if (result.identityStatus === "retry_later") {
-      claimsById.set(claimId, {
-        ...current,
-        status: "pending",
-        lastAttemptAt: nowIso,
-        retryReason: result.retryReason || "temporary_verification_failure",
-        retrySource: result.retrySource || "projection",
-        retryAt: new Date(now.getTime() + retryDelayMs).toISOString(),
-      });
-      stats.retryLater += 1;
+      const priorAttemptCount = Number(current.attemptCount || 0);
+      const attemptCount =
+        (Number.isInteger(priorAttemptCount) && priorAttemptCount >= 0
+          ? priorAttemptCount
+          : 0) + 1;
+      const retryReason =
+        result.retryReason || "temporary_verification_failure";
+      if (attemptCount >= maxRetryAttempts) {
+        claimsById.delete(claimId);
+        tombstonesById.set(claimId, {
+          claimId,
+          rejectedAt: nowIso,
+          reason: `retry-attempts-exhausted:${retryReason}`,
+        });
+        stats.rejected += 1;
+      } else {
+        claimsById.set(claimId, {
+          ...current,
+          status: "pending",
+          attemptCount,
+          lastAttemptAt: nowIso,
+          retryReason,
+          retrySource: result.retrySource || "projection",
+          retryAt: new Date(
+            retryAtMs(result, now, retryDelayMs),
+          ).toISOString(),
+        });
+        stats.retryLater += 1;
+      }
     }
   }
 
   const existingActive = normalizeActiveIdentity(
     handleData?.activeIdentity,
     claimsById,
+    tombstonesById,
   );
   const activeIdentity = selectActiveIdentity(
     existingActive,
@@ -89,10 +118,11 @@ export function applyProjectionResults(handleData, results, options = {}) {
   );
   if (activeIdentity) claimsById.set(activeIdentity.claimId, activeIdentity);
 
-  const pending = [...claimsById.values()]
+  const allPending = [...claimsById.values()]
     .filter((claim) => claim.status === "pending")
-    .sort(compareClaimsNewestFirst)
-    .slice(0, maxPendingClaims);
+    .sort(compareClaimsNewestFirst);
+  const pending = allPending.slice(0, maxPendingClaims);
+  stats.pendingDropped = allPending.length - pending.length;
   const inactiveVerified = [...claimsById.values()]
     .filter(
       (claim) =>
@@ -109,7 +139,13 @@ export function applyProjectionResults(handleData, results, options = {}) {
       String(b.rejectedAt || "").localeCompare(String(a.rejectedAt || "")),
     )
     .slice(0, maxRejectionTombstones);
-  const scheduling = projectionSchedule(pending, now);
+  const scheduling =
+    (results || []).length === 0 && pending.length > 0
+      ? {
+          status: "retry_later",
+          nextAttemptAt: new Date(now.getTime() + retryDelayMs),
+        }
+      : projectionSchedule(pending, now);
   const activeChanged = !sameValue(
     handleData?.activeIdentity || null,
     activeIdentity || null,
@@ -122,9 +158,10 @@ export function applyProjectionResults(handleData, results, options = {}) {
     projectionStatus: scheduling.status,
     nextAttemptAt: scheduling.nextAttemptAt,
   };
-  const changed =
-    (results || []).length > 0 &&
-    !sameValue(projectableState(handleData), projectableState(state));
+  const changed = !sameValue(
+    projectableState(handleData),
+    projectableState(state),
+  );
 
   return { changed, activeChanged, state, stats };
 }
@@ -151,7 +188,11 @@ export function buildHandleProjectionWrites(
     },
   ];
 
-  if (transition.activeChanged && transition.state.activeIdentity) {
+  if (
+    transition.activeChanged &&
+    transition.state.activeIdentity &&
+    isHexPubkey(transition.state.activeIdentity.pubkey)
+  ) {
     const active = transition.state.activeIdentity;
     writes.push({
       collection: entriesCollection,
@@ -170,7 +211,9 @@ export function buildHandleProjectionWrites(
         directoryStatus:
           active.zappable === true
             ? "verified_zappable"
-            : "verified_not_zappable",
+            : active.zapReason === "zap-check-skipped"
+              ? "verified_zap_unknown"
+              : "verified_not_zappable",
         verificationMethods: active.verificationMethods || [],
         metadata: active.metadata || null,
         proofTweetId: active.proofTweetId,
@@ -183,6 +226,8 @@ export function buildHandleProjectionWrites(
         lud16: active.lud16,
         lnurlp: active.lnurlp,
         zapReason: active.zapReason,
+        zapCheckedAt: active.zapCheckedAt,
+        zapCheckTransient: active.zapCheckTransient === true,
         lastSeenAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       }),
@@ -209,6 +254,7 @@ function verifiedClaim(current, result, nowIso) {
   delete clean.retryAt;
   delete clean.retryReason;
   delete clean.retrySource;
+  delete clean.attemptCount;
 
   return stripUndefined({
     ...clean,
@@ -226,22 +272,33 @@ function verifiedClaim(current, result, nowIso) {
     lnurlp: result.lnurlp,
     lnurlAllowsNostr: result.lnurlAllowsNostr,
     lnurlNostrPubkey: result.lnurlNostrPubkey,
+    zapCheckedAt: result.zapCheckedAt,
+    zapCheckTransient: result.zapCheckTransient,
   });
 }
 
-function normalizeActiveIdentity(activeIdentity, claimsById) {
+function normalizeActiveIdentity(activeIdentity, claimsById, tombstonesById) {
   if (!activeIdentity?.claimId) return null;
-  return (
-    claimsById.get(activeIdentity.claimId) || {
+  if (
+    activeIdentity.status === "rejected" ||
+    tombstonesById.has(activeIdentity.claimId)
+  ) {
+    return null;
+  }
+  const current = claimsById.get(activeIdentity.claimId);
+  if (current?.status === "rejected") return null;
+  const normalized =
+    current || {
       ...activeIdentity,
       status: "verified",
-    }
-  );
+    };
+  return isHexPubkey(normalized.pubkey) ? normalized : null;
 }
 
 function selectActiveIdentity(existingActive, verifiedClaims) {
   let active = existingActive;
   for (const candidate of [...verifiedClaims].sort(compareClaimsNewestFirst)) {
+    if (!isHexPubkey(candidate.pubkey)) continue;
     if (!active) {
       active = candidate;
       continue;
@@ -306,6 +363,37 @@ function timestampToMs(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function retryAtMs(result, now, retryDelayMs) {
+  const candidates = [now.getTime() + retryDelayMs];
+  const retryAfter = String(result.retryAfter || "").trim();
+  if (/^\d+$/.test(retryAfter)) {
+    const retryAfterSeconds = Number(retryAfter);
+    if (Number.isFinite(retryAfterSeconds)) {
+      candidates.push(now.getTime() + retryAfterSeconds * 1000);
+    }
+  } else {
+    const retryAfterDate = Date.parse(retryAfter);
+    if (Number.isFinite(retryAfterDate)) candidates.push(retryAfterDate);
+  }
+
+  const reset = Number(result.rateLimitResetAt);
+  if (Number.isFinite(reset) && reset > 0) {
+    candidates.push(reset < 1_000_000_000_000 ? reset * 1000 : reset);
+  }
+  return Math.max(...candidates);
+}
+
 function sameValue(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return stableStringify(left) === stableStringify(right);
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    const entries = Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
 }

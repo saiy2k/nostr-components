@@ -8,7 +8,6 @@ import {
   isValidSignedEvent,
 } from "./ingestion.js";
 import {
-  DEFAULT_RELAYS,
   IDENTITY_KINDS,
   buildRunSummaryWrite,
   commitFirestoreWrites,
@@ -16,16 +15,19 @@ import {
   createRunMetrics,
   finishRunMetrics,
   firestoreConfigFromEnv,
+  loadRelaysFromFile,
   logRunSummary,
   runCli,
   takeOptionValue,
   writeJson,
 } from "./runtime.js";
 
+const MAX_BUFFER_MULTIPLIER = 10;
+
 export function parseLiveArgs(argv) {
   const args = {
     ...firestoreConfigFromEnv(),
-    relays: DEFAULT_RELAYS,
+    relays: loadRelaysFromFile(),
     out: null,
     liveDurationMs: Number(process.env.LIVE_DURATION_MS || 0),
     liveFlushLimit: Number(process.env.LIVE_FLUSH_LIMIT || 25),
@@ -127,7 +129,7 @@ function validateLiveArgs(args) {
 }
 
 function printLiveHelp() {
-  console.log(`Usage: npm run crawl:directory:live -- [options]
+  console.log(`Usage: npm run live -- [options]
 
 Continuously ingest signed Nostr kind:10011 and kind:0 events into Firestore.
 
@@ -144,9 +146,15 @@ Options:
 `);
 }
 
-export async function runLiveMonitor(args, FirestoreCtor) {
+export async function runLiveMonitor(args, FirestoreCtor, dependencies = {}) {
   const runMetrics = createRunMetrics("live-monitor");
-  const db = await createFirestore(args, FirestoreCtor);
+  const db =
+    dependencies.db ?? (await createFirestore(args, FirestoreCtor));
+  const listen = dependencies.listenRelayLive || listenRelayLive;
+  const commitWrites =
+    dependencies.commitFirestoreWrites || commitFirestoreWrites;
+  const validateSignedEvent =
+    dependencies.isValidSignedEvent || isValidSignedEvent;
   const startedAt = new Date().toISOString();
   const stopController = new AbortController();
   const totals = {
@@ -161,6 +169,8 @@ export async function runLiveMonitor(args, FirestoreCtor) {
     invalidEventsDropped: 0,
     duplicateEvents: 0,
     flushes: 0,
+    flushFailures: 0,
+    droppedWrites: 0,
     heartbeatWrites: 0,
   };
   const seenEventIds = new Set();
@@ -168,6 +178,7 @@ export async function runLiveMonitor(args, FirestoreCtor) {
   const buffer = [];
   let stopReason = "stopped";
   let flushInFlight = Promise.resolve();
+  let flushQueued = false;
 
   const stop = (reason) => {
     if (stopController.signal.aborted) return;
@@ -187,21 +198,47 @@ export async function runLiveMonitor(args, FirestoreCtor) {
       ? setTimeout(() => stop("duration_elapsed"), args.liveDurationMs)
       : null;
 
-  const flushBuffer = async () => {
+  const flushBuffer = async ({ final = false } = {}) => {
     if (!buffer.length) return;
-    const writes = buffer.slice();
+    const writes = buffer.splice(0, buffer.length);
     const rawEventWrites = writes.filter(
       (write) =>
         write.collection === args.firestoreEventsCollection && !write.operation,
     ).length;
-    await commitFirestoreWrites(db, writes);
-    buffer.splice(0, writes.length);
-    totals.validEventsWritten += rawEventWrites;
-    totals.flushes += 1;
+    try {
+      await commitWrites(db, writes);
+      totals.validEventsWritten += rawEventWrites;
+      totals.flushes += 1;
+    } catch (error) {
+      totals.flushFailures += 1;
+      if (final) {
+        totals.droppedWrites += writes.length;
+      } else {
+        buffer.unshift(...writes);
+        const maxBufferedWrites = args.liveFlushLimit * MAX_BUFFER_MULTIPLIER;
+        const dropCount = Math.max(0, buffer.length - maxBufferedWrites);
+        if (dropCount > 0) {
+          buffer.splice(0, dropCount);
+          totals.droppedWrites += dropCount;
+        }
+      }
+      console.error(
+        `Live event flush failed; retained ${buffer.length} buffered write(s): ${error?.message || error}`,
+      );
+    }
   };
 
-  const scheduleFlush = () => {
-    flushInFlight = flushInFlight.then(flushBuffer, flushBuffer);
+  const scheduleFlush = (options) => {
+    if (!options?.final && flushQueued) return flushInFlight;
+    flushQueued = true;
+    const flush = async () => {
+      try {
+        await flushBuffer(options);
+      } finally {
+        flushQueued = false;
+      }
+    };
+    flushInFlight = flushInFlight.then(flush, flush);
     return flushInFlight;
   };
 
@@ -212,7 +249,7 @@ export async function runLiveMonitor(args, FirestoreCtor) {
   );
 
   const listeners = args.relays.map((relay) =>
-    listenRelayLive(relay, args, {
+    listen(relay, args, {
       signal: stopController.signal,
       onConnectAttempt: () => {
         totals.connectAttempts += 1;
@@ -228,7 +265,7 @@ export async function runLiveMonitor(args, FirestoreCtor) {
       },
       onEvent: (event) => {
         totals.eventsReceived += 1;
-        if (!isValidSignedEvent(event)) {
+        if (!validateSignedEvent(event)) {
           totals.invalidEventsDropped += 1;
           return;
         }
@@ -242,14 +279,24 @@ export async function runLiveMonitor(args, FirestoreCtor) {
           seenEventIdQueue,
           args.liveSeenCacheLimit,
         );
-        buffer.push(
-          ...buildRawEventIngestionWrites(event, relay, "live", args),
+        const eventWrites = buildRawEventIngestionWrites(
+          event,
+          relay,
+          "live",
+          args,
         );
+        buffer.push(...eventWrites);
+        const maxBufferedWrites = args.liveFlushLimit * MAX_BUFFER_MULTIPLIER;
+        if (buffer.length > maxBufferedWrites) {
+          const dropCount = buffer.length - maxBufferedWrites;
+          buffer.splice(0, dropCount);
+          totals.droppedWrites += dropCount;
+        }
         totals.validEventsBuffered += 1;
         if (buffer.length >= args.liveFlushLimit) scheduleFlush();
       },
       onHeartbeat: async (status) => {
-        await commitFirestoreWrites(db, [
+        await commitWrites(db, [
           buildLiveHeartbeatWrite(status, args),
         ]);
         totals.heartbeatWrites += 1;
@@ -260,7 +307,7 @@ export async function runLiveMonitor(args, FirestoreCtor) {
   await Promise.all(listeners);
   clearInterval(flushInterval);
   if (durationTimer) clearTimeout(durationTimer);
-  await scheduleFlush();
+  await scheduleFlush({ final: true });
 
   for (const [signalName, handler] of signalHandlers) {
     process.removeListener(signalName, handler);
@@ -284,7 +331,7 @@ export async function runLiveMonitor(args, FirestoreCtor) {
     },
   };
 
-  await commitFirestoreWrites(db, [
+  await commitWrites(db, [
     buildRunSummaryWrite(output.run, output, args.firestoreLiveRunsCollection),
   ]);
   logRunSummary(output.run);

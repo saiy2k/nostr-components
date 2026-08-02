@@ -18,7 +18,11 @@ import { isMainModule } from "./relay-directory/runtime.js";
 if (isMainModule(import.meta.url)) {
   const { mode, argv } = parseLegacyMode(process.argv.slice(2));
   const modules = {
-    backfill: [() => loadBackfillConfig(), runBackfill],
+    backfill: [
+      (remainingArgv) =>
+        loadBackfillConfig(process.env, undefined, {}, remainingArgv),
+      runBackfill,
+    ],
     live: [parseLiveArgs, runLiveMonitor],
     project: [parseProjectionArgs, runProjection],
   };

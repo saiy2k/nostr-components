@@ -27,7 +27,6 @@ export function createNdkRelayClient(url) {
           groupable: false,
           relayUrls: [url],
         },
-        false,
       );
       subscription.on("event", (event) => onEvent(event.rawEvent()));
       subscription.on("eose", () => onEose?.());
@@ -144,7 +143,6 @@ export function buildIngestedEventWrite(event, relay, mode, options = {}) {
       createdAt: event.created_at,
       sourceRelays: FieldValue.arrayUnion(relay),
       event: normalizeEventForFirestore(event),
-      eventJson: JSON.stringify(event),
       ingestion: {
         mode,
         lastRelay: relay,
@@ -156,10 +154,7 @@ export function buildIngestedEventWrite(event, relay, mode, options = {}) {
 }
 
 export function buildRawEventIngestionWrites(event, relay, mode, options = {}) {
-  return [
-    buildIngestedEventWrite(event, relay, mode, options),
-    buildProjectionQueueCreateWrite(event, mode, options),
-  ];
+  return [buildIngestedEventWrite(event, relay, mode, options)];
 }
 
 export function buildProjectionQueueCreateWrite(event, mode, options = {}) {

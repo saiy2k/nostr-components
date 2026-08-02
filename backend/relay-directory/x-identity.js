@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { nip19 } from "nostr-tools";
+import { isHexPubkey, isPublicHostname } from "./utils.js";
 
 const TWITTER_TAG = /^(?:twitter|x|com\.twitter):(.+)$/i;
 const X_PROFILE_LINK =
@@ -46,6 +47,7 @@ export function extractDirectoryInputs(events) {
   const metadataByPubkey = new Map();
 
   for (const event of events) {
+    if (!isHexPubkey(event?.pubkey)) continue;
     const metadata = event.kind === 0 ? safeJson(event.content) : null;
     if (metadata) {
       metadataByPubkey.set(event.pubkey, {
@@ -126,10 +128,14 @@ function extractMetadataXHandles(metadata) {
 }
 
 function safeJson(content) {
+  if (!content) return null;
   try {
-    return JSON.parse(content || "{}");
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -144,13 +150,34 @@ function sortClaim(a, b) {
 export async function verifyTweetCandidate(
   candidate,
   timeoutMs,
-  fetchImpl = fetch,
+  options = {},
 ) {
+  const normalizedOptions =
+    typeof options === "function" ? { fetchImpl: options } : options;
+  const fetchImpl = normalizedOptions.fetchImpl || fetch;
+  const bearerToken = normalizedOptions.bearerToken || null;
+  if (!candidate?.npub) {
+    return {
+      ...candidate,
+      identityStatus: "rejected",
+      rejectionReason: "claim-missing-npub",
+    };
+  }
+  const proofTweetId = extractTweetId(candidate.proofTweetId);
+  const handleHint = normalizeTwitterHandle(candidate.handle);
+  if (!proofTweetId) {
+    return {
+      ...candidate,
+      identityStatus: "rejected",
+      rejectionReason: "invalid-proof-tweet-id",
+    };
+  }
   const result = await fetchTweet(
-    candidate.proofTweetId,
-    candidate.handle,
+    proofTweetId,
+    handleHint,
     timeoutMs,
     fetchImpl,
+    bearerToken,
   );
   if (!result.ok) {
     if (result.retryable) {
@@ -173,7 +200,7 @@ export async function verifyTweetCandidate(
 
   const tweet = result.tweet;
   const tweetHandle = normalizeTwitterHandle(tweet.handle);
-  if (tweetHandle !== candidate.handle) {
+  if (tweetHandle !== handleHint) {
     return {
       ...candidate,
       identityStatus: "rejected",
@@ -206,9 +233,13 @@ export async function verifyTweetCandidate(
   };
 }
 
-async function fetchTweet(tweetId, handleHint, timeoutMs, fetchImpl) {
-  const bearerToken =
-    process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN;
+async function fetchTweet(
+  tweetId,
+  handleHint,
+  timeoutMs,
+  fetchImpl,
+  bearerToken,
+) {
   const failures = [];
 
   if (bearerToken) {
@@ -416,10 +447,11 @@ export async function resolveNostrIdentifier(
       if (!isHexPubkey(pubkey)) {
         return { ok: false, reason: "invalid_nip19_profile" };
       }
+      const normalizedPubkey = pubkey.toLowerCase();
       return {
         ok: true,
-        pubkey: pubkey.toLowerCase(),
-        npub: nip19.npubEncode(pubkey),
+        pubkey: normalizedPubkey,
+        npub: nip19.npubEncode(normalizedPubkey),
         identifier: identifier.value,
         identifierType: identifier.type,
       };
@@ -432,12 +464,14 @@ export async function resolveNostrIdentifier(
     return { ok: false, reason: "unsupported_identifier" };
   }
 
-  const [name, domain] = identifier.value.split("@");
+  const parts = identifier.value.split("@");
+  const [name, domain] = parts;
   if (
+    parts.length !== 2 ||
     !name ||
     !domain ||
     !/^[a-z0-9._-]+$/i.test(name) ||
-    !/^[a-z0-9.-]+$/i.test(domain)
+    !isPublicHostname(domain)
   ) {
     return { ok: false, reason: "invalid_nip05" };
   }
@@ -462,10 +496,11 @@ export async function resolveNostrIdentifier(
     if (!isHexPubkey(pubkey)) {
       return { ok: false, reason: "nip05_name_not_found" };
     }
+    const normalizedPubkey = pubkey.toLowerCase();
     return {
       ok: true,
-      pubkey: pubkey.toLowerCase(),
-      npub: nip19.npubEncode(pubkey),
+      pubkey: normalizedPubkey,
+      npub: nip19.npubEncode(normalizedPubkey),
       identifier: identifier.value,
       identifierType: "nip05",
     };
@@ -491,6 +526,8 @@ export async function discoverXBioIdentities({
       records: [],
       profilesAttempted: 0,
       profilesChecked: 0,
+      profilesFailed: 0,
+      profileFailures: {},
       checkedHandles: [],
       profilesWithIdentifiers: 0,
       identifiersResolved: 0,
@@ -517,6 +554,8 @@ export async function discoverXBioIdentities({
   const recordsByKey = new Map();
   let profilesAttempted = 0;
   let profilesChecked = 0;
+  let profilesFailed = 0;
+  const profileFailures = {};
   let profilesWithIdentifiers = 0;
   let identifiersResolved = 0;
   let stoppedReason = null;
@@ -535,6 +574,9 @@ export async function discoverXBioIdentities({
         stoppedReason = "x_rate_limited";
         break;
       }
+      profilesFailed += 1;
+      profileFailures[profileResult.reason] =
+        (profileFailures[profileResult.reason] || 0) + 1;
       continue;
     }
     profilesChecked += 1;
@@ -581,6 +623,8 @@ export async function discoverXBioIdentities({
     records: [...recordsByKey.values()],
     profilesAttempted,
     profilesChecked,
+    profilesFailed,
+    profileFailures,
     checkedHandles,
     profilesWithIdentifiers,
     identifiersResolved,
@@ -669,8 +713,4 @@ function fetchErrorReason(error) {
     return "timeout";
   }
   return "network_error";
-}
-
-function isHexPubkey(value) {
-  return /^[0-9a-f]{64}$/i.test(String(value || ""));
 }

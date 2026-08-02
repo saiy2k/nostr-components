@@ -17,19 +17,46 @@ IMAGE="gcr.io/${PROJECT_ID}/${IMAGE_JOB_NAME}:${IMAGE_TAG}"
 SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-relay-directory-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
 PROJECTION_LIMIT="${PROJECTION_LIMIT:-1000}"
 PROJECTION_WRITE_BUDGET="${PROJECTION_WRITE_BUDGET:-10000}"
+PROJECTION_RUN_DEADLINE_MS="${PROJECTION_RUN_DEADLINE_MS:-3300000}"
 MAX_PROOFS="${MAX_PROOFS:-250}"
 SCAN_X_PROFILES="${SCAN_X_PROFILES:-0}"
 X_PROFILE_MAX="${X_PROFILE_MAX:-100}"
 MAX_PENDING_CLAIMS="${MAX_PENDING_CLAIMS:-20}"
 MAX_INACTIVE_VERIFIED_CLAIMS="${MAX_INACTIVE_VERIFIED_CLAIMS:-10}"
 MAX_REJECTION_TOMBSTONES="${MAX_REJECTION_TOMBSTONES:-100}"
+MAX_RETRY_ATTEMPTS="${MAX_RETRY_ATTEMPTS:-5}"
 X_BEARER_TOKEN_SECRET="${X_BEARER_TOKEN_SECRET:-}"
+
+if [ "${SCAN_X_PROFILES}" = "1" ] && [ -z "${X_BEARER_TOKEN_SECRET}" ]; then
+  echo "SCAN_X_PROFILES=1 requires X_BEARER_TOKEN_SECRET." >&2
+  exit 1
+fi
+
+if [ -z "${X_BEARER_TOKEN_SECRET}" ]; then
+  EXISTING_JOB_JSON="$(
+    gcloud run jobs describe "${JOB_NAME}" \
+      --project "${PROJECT_ID}" \
+      --region "${REGION}" \
+      --format json 2>/dev/null || true
+  )"
+  if [[ "${EXISTING_JOB_JSON}" == *X_BEARER_TOKEN* ]]; then
+    echo "Existing ${JOB_NAME} has an X_BEARER_TOKEN binding." >&2
+    echo "Set X_BEARER_TOKEN_SECRET explicitly before redeploying." >&2
+    exit 1
+  fi
+fi
 
 gcloud config set project "${PROJECT_ID}"
 gcloud services enable run.googleapis.com firestore.googleapis.com cloudbuild.googleapis.com
 
 if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" >/dev/null 2>&1; then
-  gcloud iam service-accounts create relay-directory-crawler \
+  SERVICE_ACCOUNT_ID="${SERVICE_ACCOUNT%%@*}"
+  SERVICE_ACCOUNT_DOMAIN="${SERVICE_ACCOUNT#*@}"
+  if [ "${SERVICE_ACCOUNT_DOMAIN}" != "${PROJECT_ID}.iam.gserviceaccount.com" ]; then
+    echo "SERVICE_ACCOUNT ${SERVICE_ACCOUNT} does not exist and is not in ${PROJECT_ID}." >&2
+    exit 1
+  fi
+  gcloud iam service-accounts create "${SERVICE_ACCOUNT_ID}" \
     --display-name="Relay Directory Crawler"
 fi
 
@@ -54,7 +81,7 @@ DEPLOY_ARGS=(
   --region "${REGION}"
   --service-account "${SERVICE_ACCOUNT}"
   --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},FIRESTORE_PROJECT=${PROJECT_ID},SCAN_X_PROFILES=${SCAN_X_PROFILES},X_PROFILE_MAX=${X_PROFILE_MAX}"
-  --args "relay-directory/projection.js,--firestore-project,${PROJECT_ID},--projection-limit,${PROJECTION_LIMIT},--projection-write-budget,${PROJECTION_WRITE_BUDGET},--max-proofs,${MAX_PROOFS},--max-pending-claims,${MAX_PENDING_CLAIMS},--max-inactive-verified-claims,${MAX_INACTIVE_VERIFIED_CLAIMS},--max-rejection-tombstones,${MAX_REJECTION_TOMBSTONES},--no-json"
+  --args "relay-directory/projection.js,--firestore-project,${PROJECT_ID},--projection-limit,${PROJECTION_LIMIT},--projection-write-budget,${PROJECTION_WRITE_BUDGET},--run-deadline-ms,${PROJECTION_RUN_DEADLINE_MS},--max-proofs,${MAX_PROOFS},--max-pending-claims,${MAX_PENDING_CLAIMS},--max-inactive-verified-claims,${MAX_INACTIVE_VERIFIED_CLAIMS},--max-rejection-tombstones,${MAX_REJECTION_TOMBSTONES},--max-retry-attempts,${MAX_RETRY_ATTEMPTS},--no-json"
   --max-retries 0
   --task-timeout 3600
 )

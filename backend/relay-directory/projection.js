@@ -5,6 +5,7 @@ import {
   DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
   DEFAULT_MAX_PENDING_CLAIMS,
   DEFAULT_MAX_REJECTION_TOMBSTONES,
+  DEFAULT_MAX_RETRY_ATTEMPTS,
   applyProjectionResults,
   buildHandleProjectionWrites,
   pendingClaimsForHandle,
@@ -16,16 +17,20 @@ import {
   createRunMetrics,
   finishRunMetrics,
   firestoreConfigFromEnv,
-  firestoreTimestampToMs,
   logRunSummary,
   runCli,
   takeOptionValue,
   writeJson,
 } from "./runtime.js";
-import { discoverXBioIdentities, verifyTweetCandidate } from "./x-identity.js";
+import {
+  discoverXBioIdentities,
+  normalizeTwitterHandle,
+  verifyTweetCandidate,
+} from "./x-identity.js";
+import { isHexPubkey, isPublicHostname } from "./utils.js";
 
 const DEFAULT_PROJECTION_WRITE_BUDGET = 10000;
-const PENDING_READ_MULTIPLIER = 3;
+const MAX_WRITES_PER_HANDLE = 2;
 
 export function parseProjectionArgs(argv) {
   const args = {
@@ -42,6 +47,7 @@ export function parseProjectionArgs(argv) {
     projectionExternalRetryMs: Number(
       process.env.PROJECTION_EXTERNAL_RETRY_MS || 15 * 60 * 1000,
     ),
+    runDeadlineMs: Number(process.env.PROJECTION_RUN_DEADLINE_MS || 0),
     maxPendingClaims: Number(
       process.env.MAX_PENDING_CLAIMS || DEFAULT_MAX_PENDING_CLAIMS,
     ),
@@ -51,6 +57,9 @@ export function parseProjectionArgs(argv) {
     ),
     maxRejectionTombstones: Number(
       process.env.MAX_REJECTION_TOMBSTONES || DEFAULT_MAX_REJECTION_TOMBSTONES,
+    ),
+    maxRetryAttempts: Number(
+      process.env.MAX_RETRY_ATTEMPTS || DEFAULT_MAX_RETRY_ATTEMPTS,
     ),
     scanXProfiles: process.env.SCAN_X_PROFILES === "1",
     xProfileMax: Number(process.env.X_PROFILE_MAX || 100),
@@ -92,12 +101,16 @@ export function parseProjectionArgs(argv) {
       args.projectionWriteBudget = 0;
     } else if (flag === "--projection-external-retry-ms") {
       args.projectionExternalRetryMs = Number(take());
+    } else if (flag === "--run-deadline-ms") {
+      args.runDeadlineMs = Number(take());
     } else if (flag === "--max-pending-claims") {
       args.maxPendingClaims = Number(take());
     } else if (flag === "--max-inactive-verified-claims") {
       args.maxInactiveVerifiedClaims = Number(take());
     } else if (flag === "--max-rejection-tombstones") {
       args.maxRejectionTombstones = Number(take());
+    } else if (flag === "--max-retry-attempts") {
+      args.maxRetryAttempts = Number(take());
     } else if (flag === "--help" || flag === "-h") {
       printProjectionHelp();
       process.exit(0);
@@ -135,8 +148,16 @@ function validateProjectionArgs(args) {
   ) {
     throw new Error("--projection-external-retry-ms must be positive.");
   }
+  if (!Number.isInteger(args.runDeadlineMs) || args.runDeadlineMs < 0) {
+    throw new Error("--run-deadline-ms must be an integer >= 0.");
+  }
   if (!Number.isInteger(args.xProfileMax) || args.xProfileMax < 0) {
     throw new Error("--x-profile-max must be an integer >= 0.");
+  }
+  if (args.scanXProfiles && !args.xBearerToken) {
+    throw new Error(
+      "--scan-x-profiles requires X_BEARER_TOKEN or TWITTER_BEARER_TOKEN.",
+    );
   }
   for (const [name, value] of [
     ["--max-pending-claims", args.maxPendingClaims],
@@ -147,10 +168,13 @@ function validateProjectionArgs(args) {
       throw new Error(`${name} must be an integer >= 0.`);
     }
   }
+  if (!Number.isInteger(args.maxRetryAttempts) || args.maxRetryAttempts <= 0) {
+    throw new Error("--max-retry-attempts must be a positive integer.");
+  }
 }
 
 function printProjectionHelp() {
-  console.log(`Usage: npm run crawl:directory:project -- [options]
+  console.log(`Usage: npm run project -- [options]
 
 Verify pending X/Nostr identity claims and project verified directory users.
 
@@ -160,6 +184,7 @@ Options:
   --projection-write-budget <n>          Maximum writes per run. Default: 10000
   --no-projection-write-budget           Disable the per-run write limit.
   --projection-external-retry-ms <n>     External retry delay. Default: 900000
+  --run-deadline-ms <n>                   Graceful run deadline; 0 disables it.
   --max-proofs <n>                       Proof tweets per run; 0 means all.
   --no-tweet-verify                      Skip proof tweet verification.
   --no-zap-check                         Skip NIP-57 capability checks.
@@ -168,6 +193,7 @@ Options:
   --max-pending-claims <n>               Pending claims retained. Default: 20
   --max-inactive-verified-claims <n>     Inactive verified claims. Default: 10
   --max-rejection-tombstones <n>         Rejected IDs retained. Default: 100
+  --max-retry-attempts <n>                Attempts before rejection. Default: 5
   --out <file>                           Optional JSON run summary.
 
 X bio scanning requires X_BEARER_TOKEN or TWITTER_BEARER_TOKEN. It recognizes
@@ -179,6 +205,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   const runMetrics = createRunMetrics("projection");
   const db =
     dependencies.db ?? (await createFirestore(args, FirestoreCtor));
+  const verifyClaims = dependencies.verifyHandleClaims || verifyHandleClaims;
+  const now = dependencies.now || Date.now;
   const handleDocs = await readPendingHandleDocs(db, args);
   const stats = {
     handleDocsRead: handleDocs.length,
@@ -187,26 +215,44 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     claimsConsidered: 0,
     proofTweetsAttempted: 0,
     xProfilesAttempted: 0,
+    xProfilesFailed: 0,
+    xProfileFailures: {},
     xBioIdentifiersResolved: 0,
     verified: 0,
     rejected: 0,
     retryLater: 0,
+    pendingDropped: 0,
     firestoreWrites: 0,
     writeBudgetExhausted: false,
     stoppedReason: null,
   };
   let proofsRemaining = args.maxProofs === 0 ? Infinity : args.maxProofs;
   let profilesRemaining = args.xProfileMax;
+  const deadlineAt =
+    args.runDeadlineMs > 0 ? now() + args.runDeadlineMs : Infinity;
 
   console.log(
     `Projecting pending claims from ${handleDocs.length} handle document(s)...`,
   );
 
   for (const handleDoc of handleDocs) {
+    if (now() >= deadlineAt) {
+      stats.stoppedReason = "run_deadline_reached";
+      break;
+    }
     if (!projectionHandleIsDue(handleDoc.data)) continue;
+    if (
+      args.projectionWriteBudget > 0 &&
+      stats.firestoreWrites + MAX_WRITES_PER_HANDLE >
+        args.projectionWriteBudget
+    ) {
+      stats.writeBudgetExhausted = true;
+      stats.stoppedReason = "write_budget_exhausted";
+      break;
+    }
     stats.handlesDue += 1;
 
-    const verification = await verifyHandleClaims(handleDoc.data, args, {
+    const verification = await verifyClaims(handleDoc.data, args, {
       proofsRemaining,
       profilesRemaining,
     });
@@ -215,6 +261,11 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     stats.claimsConsidered += verification.claimsConsidered;
     stats.proofTweetsAttempted += verification.proofTweetsAttempted;
     stats.xProfilesAttempted += verification.xProfilesAttempted;
+    stats.xProfilesFailed += verification.xProfilesFailed || 0;
+    mergeFailureCounts(
+      stats.xProfileFailures,
+      verification.xProfileFailures,
+    );
     stats.xBioIdentifiersResolved += verification.xBioIdentifiersResolved;
 
     const transition = applyProjectionResults(
@@ -225,6 +276,7 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
         maxPendingClaims: args.maxPendingClaims,
         maxInactiveVerifiedClaims: args.maxInactiveVerifiedClaims,
         maxRejectionTombstones: args.maxRejectionTombstones,
+        maxRetryAttempts: args.maxRetryAttempts,
       },
     );
     const writes = buildHandleProjectionWrites(handleDoc, transition, args);
@@ -243,6 +295,7 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       stats.verified += transition.stats.verified;
       stats.rejected += transition.stats.rejected;
       stats.retryLater += transition.stats.retryLater;
+      stats.pendingDropped += transition.stats.pendingDropped;
     }
     if (verification.stopRun) {
       stats.stoppedReason = verification.stoppedReason;
@@ -266,6 +319,7 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       maxProofs: args.maxProofs,
       scanXProfiles: args.scanXProfiles,
       xProfileMax: args.xProfileMax,
+      runDeadlineMs: args.runDeadlineMs,
     },
     stats,
   };
@@ -282,6 +336,8 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
   const completedClaimIds = new Set();
   let proofTweetsAttempted = 0;
   let xProfilesAttempted = 0;
+  let xProfilesFailed = 0;
+  let xProfileFailures = {};
   let xBioIdentifiersResolved = 0;
   let stopRun = false;
   let stoppedReason = null;
@@ -297,6 +353,8 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       maxProfiles: Math.min(1, profilesRemaining),
     });
     xProfilesAttempted = bioDiscovery.profilesAttempted;
+    xProfilesFailed = bioDiscovery.profilesFailed;
+    xProfileFailures = bioDiscovery.profileFailures;
     xBioIdentifiersResolved = bioDiscovery.identifiersResolved;
     const distinctBioPubkeys = new Set(
       bioDiscovery.records.map((record) => record.pubkey),
@@ -318,7 +376,8 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       results.push(verified);
       completedClaimIds.add(claim.claimId);
     }
-    if (bioDiscovery.checkedHandles?.includes(handleData.handle)) {
+    const normalizedHandle = normalizeTwitterHandle(handleData?.handle);
+    if (bioDiscovery.checkedHandles?.includes(normalizedHandle)) {
       for (const claim of pending) {
         if (completedClaimIds.has(claim.claimId) || claim.proofTweetId)
           continue;
@@ -341,7 +400,9 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       if (completedClaimIds.has(claim.claimId) || !claim.proofTweetId) continue;
       if (proofTweetsAttempted >= proofsRemaining) break;
       proofTweetsAttempted += 1;
-      let result = await verifyTweetCandidate(claim, args.timeoutMs);
+      let result = await verifyTweetCandidate(claim, args.timeoutMs, {
+        bearerToken: args.xBearerToken,
+      });
       if (result.identityStatus === "verified") {
         result = await enrichVerifiedResult(result, claim.metadata, args);
       }
@@ -360,6 +421,8 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     claimsConsidered: pending.length,
     proofTweetsAttempted,
     xProfilesAttempted,
+    xProfilesFailed,
+    xProfileFailures,
     xBioIdentifiersResolved,
     stopRun,
     stoppedReason,
@@ -367,8 +430,16 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
 }
 
 async function enrichVerifiedResult(result, metadata, args) {
-  if (!args.checkZaps) return result;
+  if (!args.checkZaps) {
+    return { ...result, zapReason: "zap-check-skipped" };
+  }
   return checkZapSupport(result, metadata || {}, args.timeoutMs);
+}
+
+function mergeFailureCounts(target, additions = {}) {
+  for (const [reason, count] of Object.entries(additions || {})) {
+    target[reason] = (target[reason] || 0) + Number(count || 0);
+  }
 }
 
 function findClaimForBioRecord(handleData, record) {
@@ -376,7 +447,10 @@ function findClaimForBioRecord(handleData, record) {
     pendingClaimsForHandle(handleData).find(
       (claim) => claim.pubkey === record.pubkey,
     ) ||
-    (handleData?.claims || []).find((claim) => claim?.pubkey === record.pubkey)
+    (handleData?.claims || []).find(
+      (claim) =>
+        claim?.status !== "rejected" && claim?.pubkey === record.pubkey,
+    )
   );
 }
 
@@ -395,23 +469,13 @@ function syntheticBioClaim(handleData, record, now = new Date()) {
 }
 
 async function readPendingHandleDocs(db, args) {
-  const readLimit = Math.max(
-    args.projectionLimit,
-    args.projectionLimit * PENDING_READ_MULTIPLIER,
-  );
   const snapshot = await db
     .collection(args.firestoreHandlesCollection)
     .where("pendingClaimCount", ">", 0)
-    .limit(readLimit)
+    .orderBy("nextAttemptAt")
+    .limit(args.projectionLimit)
     .get();
-  return snapshot.docs
-    .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
-    .sort(
-      (a, b) =>
-        (firestoreTimestampToMs(a.data.nextAttemptAt) || 0) -
-        (firestoreTimestampToMs(b.data.nextAttemptAt) || 0),
-    )
-    .slice(0, args.projectionLimit);
+  return snapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() || {} }));
 }
 
 export async function checkZapSupport(
@@ -420,6 +484,7 @@ export async function checkZapSupport(
   timeoutMs,
   fetchImpl = fetch,
 ) {
+  const zapCheckedAt = new Date().toISOString();
   const lightningAddress = metadata?.lud16 || null;
   if (!lightningAddress) {
     return {
@@ -427,6 +492,8 @@ export async function checkZapSupport(
       lud16: null,
       zappable: false,
       zapReason: "missing-lud16",
+      zapCheckedAt,
+      zapCheckTransient: false,
     };
   }
   const lnurlp = lightningAddressToLnurlp(lightningAddress);
@@ -436,10 +503,13 @@ export async function checkZapSupport(
       lud16: lightningAddress,
       zappable: false,
       zapReason: "invalid-lud16",
+      zapCheckedAt,
+      zapCheckTransient: false,
     };
   }
   try {
     const response = await fetchImpl(lnurlp, {
+      redirect: "error",
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
@@ -449,6 +519,8 @@ export async function checkZapSupport(
         lnurlp,
         zappable: false,
         zapReason: `lnurl-http-${response.status}`,
+        zapCheckedAt,
+        zapCheckTransient: response.status === 429 || response.status >= 500,
       };
     }
     const json = await response.json();
@@ -461,6 +533,8 @@ export async function checkZapSupport(
       zapReason: zappable ? "nip57-ready" : "lnurl-does-not-allow-nostr",
       lnurlAllowsNostr: json.allowsNostr === true,
       lnurlNostrPubkey: isHexPubkey(json.nostrPubkey) ? json.nostrPubkey : null,
+      zapCheckedAt,
+      zapCheckTransient: false,
     };
   } catch {
     return {
@@ -469,6 +543,8 @@ export async function checkZapSupport(
       lnurlp,
       zappable: false,
       zapReason: "lnurl-fetch-failed",
+      zapCheckedAt,
+      zapCheckTransient: true,
     };
   }
 }
@@ -477,12 +553,18 @@ export function lightningAddressToLnurlp(lud16) {
   const parts = String(lud16 || "")
     .trim()
     .split("@");
-  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
-  return `https://${parts[1]}/.well-known/lnurlp/${encodeURIComponent(parts[0])}`;
-}
-
-function isHexPubkey(value) {
-  return /^[0-9a-f]{64}$/i.test(String(value || ""));
+  const localName = parts[0];
+  const hostname = parts[1]?.toLowerCase();
+  if (
+    parts.length !== 2 ||
+    !/^[a-z0-9._-]+$/i.test(localName) ||
+    localName === "." ||
+    localName === ".." ||
+    !isPublicHostname(hostname)
+  ) {
+    return null;
+  }
+  return `https://${hostname}/.well-known/lnurlp/${encodeURIComponent(localName)}`;
 }
 
 function printProjectionSummary(output, args) {
@@ -491,12 +573,14 @@ function printProjectionSummary(output, args) {
   console.log(`  handles changed:      ${output.stats.handlesChanged}`);
   console.log(`  proof tweets checked: ${output.stats.proofTweetsAttempted}`);
   console.log(`  X profiles scanned:   ${output.stats.xProfilesAttempted}`);
+  console.log(`  X profile failures:   ${output.stats.xProfilesFailed}`);
   console.log(
     `  X bio ids resolved:   ${output.stats.xBioIdentifiersResolved}`,
   );
   console.log(`  verified:             ${output.stats.verified}`);
   console.log(`  rejected:             ${output.stats.rejected}`);
   console.log(`  retry later:          ${output.stats.retryLater}`);
+  console.log(`  pending dropped:      ${output.stats.pendingDropped}`);
   console.log(`  Firestore writes:     ${output.stats.firestoreWrites}`);
   console.log(
     `  write budget:         ${args.projectionWriteBudget || "unlimited"}`,

@@ -31,6 +31,28 @@ afterEach(() => {
 
 describe("projection configuration", () => {
   it("reads handle claims directly and keeps a free-tier write budget", () => {
+    for (const name of [
+      "FIRESTORE_HANDLES_COLLECTION",
+      "FIRESTORE_ENTRIES_COLLECTION",
+      "PROJECTION_TIMEOUT_MS",
+      "MAX_PROOFS",
+      "VERIFY_TWEETS",
+      "CHECK_ZAPS",
+      "PROJECTION_LIMIT",
+      "PROJECTION_WRITE_BUDGET",
+      "PROJECTION_EXTERNAL_RETRY_MS",
+      "PROJECTION_RUN_DEADLINE_MS",
+      "MAX_PENDING_CLAIMS",
+      "MAX_INACTIVE_VERIFIED_CLAIMS",
+      "MAX_REJECTION_TOMBSTONES",
+      "MAX_RETRY_ATTEMPTS",
+      "SCAN_X_PROFILES",
+      "X_PROFILE_MAX",
+      "X_BEARER_TOKEN",
+      "TWITTER_BEARER_TOKEN",
+    ]) {
+      vi.stubEnv(name, undefined);
+    }
     expect(
       parseProjectionArgs(["--firestore-project", "gr-prod"]),
     ).toMatchObject({
@@ -41,6 +63,8 @@ describe("projection configuration", () => {
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,
       maxRejectionTombstones: 100,
+      maxRetryAttempts: 5,
+      runDeadlineMs: 0,
     });
   });
 
@@ -64,6 +88,37 @@ describe("projection configuration", () => {
         "-1",
       ]),
     ).toThrow("--projection-write-budget must be an integer >= 0.");
+  });
+
+  it("parses and validates a graceful run deadline", () => {
+    expect(
+      parseProjectionArgs([
+        "--firestore-project",
+        "gr-prod",
+        "--run-deadline-ms",
+        "3300000",
+      ]),
+    ).toMatchObject({ runDeadlineMs: 3300000 });
+    expect(() =>
+      parseProjectionArgs([
+        "--firestore-project",
+        "gr-prod",
+        "--run-deadline-ms",
+        "-1",
+      ]),
+    ).toThrow("--run-deadline-ms must be an integer >= 0.");
+  });
+
+  it("requires a bearer-token secret when X profile scanning is enabled", () => {
+    vi.stubEnv("X_BEARER_TOKEN", "");
+    vi.stubEnv("TWITTER_BEARER_TOKEN", "");
+    expect(() =>
+      parseProjectionArgs([
+        "--firestore-project",
+        "gr-prod",
+        "--scan-x-profiles",
+      ]),
+    ).toThrow("--scan-x-profiles requires X_BEARER_TOKEN");
   });
 });
 
@@ -188,6 +243,86 @@ describe("claim projection policy", () => {
     expect(projectionHandleIsDue(transition.state, NOW.getTime())).toBe(false);
   });
 
+  it("honors retry hints and rejects claims after the retry cap", () => {
+    const first = applyProjectionResults(
+      {
+        claims: [pendingClaim("retry", PUBKEY_A, 100)],
+        pendingClaimCount: 1,
+      },
+      [
+        {
+          claimId: "retry",
+          identityStatus: "retry_later",
+          retryReason: "rate_limited",
+          retryAfter: "120",
+          rateLimitResetAt: String(NOW.getTime() / 1000 + 180),
+        },
+      ],
+      { now: NOW, retryDelayMs: 60000, maxRetryAttempts: 2 },
+    );
+
+    expect(first.state.claims[0]).toMatchObject({
+      attemptCount: 1,
+      retryAt: "2026-07-03T12:03:00.000Z",
+    });
+
+    const exhausted = applyProjectionResults(
+      first.state,
+      [
+        {
+          claimId: "retry",
+          identityStatus: "retry_later",
+          retryReason: "rate_limited",
+        },
+      ],
+      { now: NOW, retryDelayMs: 60000, maxRetryAttempts: 2 },
+    );
+
+    expect(exhausted.state.claims).toEqual([]);
+    expect(exhausted.state.rejectedClaimTombstones).toEqual([
+      expect.objectContaining({
+        claimId: "retry",
+        reason: "retry-attempts-exhausted:rate_limited",
+      }),
+    ]);
+  });
+
+  it("backs off a due handle when verification produces no results", () => {
+    const transition = applyProjectionResults(
+      {
+        claims: [pendingClaim("waiting", PUBKEY_A, 100, null)],
+        pendingClaimCount: 1,
+        projectionStatus: "pending",
+        nextAttemptAt: NOW,
+      },
+      [],
+      { now: NOW, retryDelayMs: 60000 },
+    );
+
+    expect(transition.changed).toBe(true);
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      nextAttemptAt: new Date("2026-07-03T12:01:00.000Z"),
+    });
+  });
+
+  it("does not resurrect an active identity after its claim is rejected", () => {
+    const active = verifiedClaim("active", PUBKEY_A, 100);
+    const transition = applyProjectionResults(
+      {
+        activeIdentity: active,
+        claims: [active],
+        pendingClaimCount: 0,
+      },
+      [{ claimId: "active", identityStatus: "rejected" }],
+      { now: NOW },
+    );
+
+    expect(transition.state.activeIdentity).toBeNull();
+    expect(transition.state.claims).toEqual([]);
+    expect(transition.activeChanged).toBe(true);
+  });
+
   it("bounds inactive verified claims and rejected tombstones", () => {
     const active = verifiedClaim("active", PUBKEY_A, 500);
     const transition = applyProjectionResults(
@@ -219,6 +354,55 @@ describe("claim projection policy", () => {
     expect(transition.state.rejectedClaimTombstones).toHaveLength(1);
     expect(transition.state.rejectedClaimTombstones[0].claimId).toBe("bad");
   });
+
+  it("reports pending claims dropped by the retention limit", () => {
+    const transition = applyProjectionResults(
+      {
+        claims: [
+          pendingClaim("new", PUBKEY_A, 200),
+          pendingClaim("old", PUBKEY_B, 100),
+        ],
+        pendingClaimCount: 2,
+      },
+      [],
+      { now: NOW, maxPendingClaims: 1 },
+    );
+
+    expect(transition.state.claims.map((claim) => claim.claimId)).toEqual([
+      "new",
+    ]);
+    expect(transition.stats.pendingDropped).toBe(1);
+  });
+
+  it("ignores object key insertion order when detecting state changes", () => {
+    const activeIdentity = {
+      claimId: "active",
+      pubkey: PUBKEY_A,
+      status: "verified",
+      sourceCreatedAt: 100,
+    };
+    const claimWithDifferentKeyOrder = {
+      status: "verified",
+      sourceCreatedAt: 100,
+      pubkey: PUBKEY_A,
+      claimId: "active",
+    };
+    const transition = applyProjectionResults(
+      {
+        activeIdentity,
+        claims: [claimWithDifferentKeyOrder],
+        rejectedClaimTombstones: [],
+        pendingClaimCount: 0,
+        projectionStatus: "complete",
+        nextAttemptAt: null,
+      },
+      [],
+      { now: NOW },
+    );
+
+    expect(transition.changed).toBe(false);
+    expect(transition.activeChanged).toBe(false);
+  });
 });
 
 describe("projection writes", () => {
@@ -246,6 +430,17 @@ describe("projection writes", () => {
       id: "twitter:alice",
       data: { pendingClaimCount: 0, projectionStatus: "complete" },
     });
+    expect(Object.keys(writes[0].data).sort()).toEqual([
+      "activeIdentity",
+      "claims",
+      "nextAttemptAt",
+      "pendingClaimCount",
+      "projectedAt",
+      "projectionStatus",
+      "rejectedClaimTombstones",
+      "updatedAt",
+    ]);
+    expect(writes[0].data.handle).toBeUndefined();
     expect(writes[1]).toMatchObject({
       collection: "entries",
       id: directoryEntryId("alice", PUBKEY_A),
@@ -272,12 +467,35 @@ describe("projection writes", () => {
       buildHandleProjectionWrites({ id: "twitter:alice", data }, transition),
     ).toHaveLength(1);
   });
+
+  it("does not build a directory entry for an invalid active pubkey", () => {
+    const data = {
+      handle: "alice",
+      activeIdentity: { claimId: "invalid", pubkey: "not-a-pubkey" },
+      claims: [],
+      pendingClaimCount: 0,
+    };
+    const transition = applyProjectionResults(data, [], { now: NOW });
+    const writes = buildHandleProjectionWrites(
+      { id: "twitter:alice", data },
+      transition,
+      {
+        firestoreHandlesCollection: "handles",
+        firestoreEntriesCollection: "entries",
+      },
+    );
+
+    expect(writes).toHaveLength(1);
+    expect(writes[0].collection).toBe("handles");
+    expect(transition.state.activeIdentity).toBeNull();
+  });
 });
 
 describe("external verification", () => {
   it("verifies a kind-0 claim from an npub in the current X bio", async () => {
+    let requestedUrl;
     vi.stubGlobal("fetch", async (url) => {
-      expect(String(url)).toContain("/2/users/by/username/alice");
+      requestedUrl = String(url);
       return response({
         data: {
           id: "x-user-1",
@@ -311,6 +529,7 @@ describe("external verification", () => {
         }),
       ],
     });
+    expect(requestedUrl).toContain("/2/users/by/username/alice");
   });
 
   it("treats a current X bio link as newer than an older active claim", async () => {
@@ -385,13 +604,83 @@ describe("external verification", () => {
     ]);
   });
 
-  it("verifies proof tweets without storing the source event", async () => {
+  it("normalizes a stored handle before matching checked X profiles", async () => {
     vi.stubGlobal("fetch", async () =>
+      response({
+        data: {
+          id: "x-user-1",
+          username: "alice",
+          description: "No Nostr profile here",
+        },
+      }),
+    );
+    const result = await verifyHandleClaims(
+      {
+        handle: "Alice",
+        claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      },
+      projectionArgs({
+        scanXProfiles: true,
+        xBearerToken: "token",
+        checkZaps: false,
+      }),
+      { profilesRemaining: 1, proofsRemaining: 1 },
+    );
+
+    expect(result.results[0]).toMatchObject({
+      claimId: "kind0",
+      identityStatus: "rejected",
+    });
+  });
+
+  it("creates a fresh bio claim instead of reusing a rejected claim", async () => {
+    vi.stubGlobal("fetch", async () =>
+      response({
+        data: {
+          id: "x-user-1",
+          username: "alice",
+          description: `Nostr: ${NPUB_A}`,
+        },
+      }),
+    );
+    const rejected = {
+      ...pendingClaim("rejected", PUBKEY_A, 100, null),
+      status: "rejected",
+    };
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [rejected, pendingClaim("other", PUBKEY_B, 200, null)],
+      },
+      projectionArgs({
+        scanXProfiles: true,
+        xBearerToken: "token",
+        checkZaps: false,
+      }),
+      { profilesRemaining: 1, proofsRemaining: 1 },
+    );
+
+    expect(result.results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          claimId: `x-bio:alice:${PUBKEY_A}`,
+          identityStatus: "verified",
+          claim: expect.objectContaining({ pubkey: PUBKEY_A }),
+        }),
+      ]),
+    );
+  });
+
+  it("verifies proof tweets without storing the source event", async () => {
+    vi.stubEnv("X_BEARER_TOKEN", undefined);
+    vi.stubEnv("TWITTER_BEARER_TOKEN", undefined);
+    const fetchImpl = vi.fn(async () =>
       response({
         text: `My Nostr profile is ${NPUB_A}`,
         user: { screen_name: "alice", id_str: "x-user-1" },
       }),
     );
+    vi.stubGlobal("fetch", fetchImpl);
     const result = await verifyHandleClaims(
       {
         handle: "alice",
@@ -405,23 +694,92 @@ describe("external verification", () => {
       claimId: "proof",
       identityStatus: "verified",
       verificationMethod: "nip39_proof_tweet",
+      zapReason: "zap-check-skipped",
     });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const transition = applyProjectionResults(
+      {
+        handle: "alice",
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+        pendingClaimCount: 1,
+      },
+      result.results,
+      { now: NOW },
+    );
+    const writes = buildHandleProjectionWrites(
+      { id: "twitter:alice", data: { handle: "alice" } },
+      transition,
+    );
+    expect(writes[1].data.directoryStatus).toBe("verified_zap_unknown");
   });
 
   it("checks NIP-57 support after identity verification", async () => {
     expect(lightningAddressToLnurlp("alice@example.com")).toBe(
       "https://example.com/.well-known/lnurlp/alice",
     );
+    let requestOptions;
     const result = await checkZapSupport(
       { identityStatus: "verified" },
       { lud16: "alice@example.com" },
       1000,
-      async () => response({ allowsNostr: true, nostrPubkey: PUBKEY_A }),
+      async (_url, options) => {
+        requestOptions = options;
+        return response({ allowsNostr: true, nostrPubkey: PUBKEY_A });
+      },
     );
     expect(result).toMatchObject({
       identityStatus: "verified",
       zappable: true,
       zapReason: "nip57-ready",
+      zapCheckTransient: false,
+    });
+    expect(requestOptions.redirect).toBe("error");
+  });
+
+  it("rejects private or path-injecting lightning addresses", () => {
+    expect(lightningAddressToLnurlp("alice@127.0.0.1")).toBeNull();
+    expect(lightningAddressToLnurlp("alice@localhost")).toBeNull();
+    expect(lightningAddressToLnurlp("alice@metadata.google.internal")).toBeNull();
+    expect(lightningAddressToLnurlp("../admin@example.com")).toBeNull();
+    expect(lightningAddressToLnurlp("..@example.com")).toBeNull();
+  });
+
+  it("records transient LNURL failures distinctly", async () => {
+    const result = await checkZapSupport(
+      { identityStatus: "verified" },
+      { lud16: "alice@example.com" },
+      1000,
+      async () => {
+        throw new Error("network down");
+      },
+    );
+
+    expect(result).toMatchObject({
+      zappable: false,
+      zapReason: "lnurl-fetch-failed",
+      zapCheckTransient: true,
+      zapCheckedAt: expect.any(String),
+    });
+    const transition = applyProjectionResults(
+      {
+        handle: "alice",
+        claims: [pendingClaim("transient-zap", PUBKEY_A, 100)],
+        pendingClaimCount: 1,
+      },
+      [{ ...result, claimId: "transient-zap" }],
+      { now: NOW },
+    );
+    const writes = buildHandleProjectionWrites(
+      { id: "twitter:alice", data: { handle: "alice" } },
+      transition,
+    );
+    expect(transition.state.activeIdentity).toMatchObject({
+      zapCheckTransient: true,
+      zapCheckedAt: expect.any(String),
+    });
+    expect(writes[1].data).toMatchObject({
+      zapCheckTransient: true,
+      zapCheckedAt: expect.any(String),
     });
   });
 });
@@ -441,14 +799,20 @@ describe("projection execution", () => {
       pendingClaimCount: 1,
       projectionStatus: "pending",
     };
+    const queryCalls = [];
     class FakeFirestore {
       collection(name) {
-        return collectionAdapter(name, handle);
+        return collectionAdapter(name, handle, queryCalls);
       }
       batch() {
         return {
-          set: (ref, data) =>
-            writes.push({ collection: ref.collection, id: ref.id, data }),
+          set: (ref, data, options) =>
+            writes.push({
+              collection: ref.collection,
+              id: ref.id,
+              data,
+              options,
+            }),
           commit: async () => {},
         };
       }
@@ -474,6 +838,137 @@ describe("projection execution", () => {
       "handles",
       "entries",
     ]);
+    expect(queryCalls).toContainEqual(["orderBy", "nextAttemptAt"]);
+    expect(writes[0].options).toEqual({ merge: true });
+  });
+
+  it("stops before external verification when fewer than two writes remain", async () => {
+    const fetchImpl = vi.fn();
+    vi.stubGlobal("fetch", fetchImpl);
+    const handle = {
+      handle: "alice",
+      claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+      projectionStatus: "pending",
+      nextAttemptAt: NOW,
+    };
+    const db = {
+      collection: (name) => collectionAdapter(name, handle),
+      batch: vi.fn(),
+    };
+
+    const output = await runProjection(
+      projectionArgs({ projectionWriteBudget: 1 }),
+      null,
+      { db },
+    );
+
+    expect(output.stats).toMatchObject({
+      writeBudgetExhausted: true,
+      stoppedReason: "write_budget_exhausted",
+      proofTweetsAttempted: 0,
+      firestoreWrites: 0,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(db.batch).not.toHaveBeenCalled();
+  });
+
+  it("stops before a second handle would exceed the write budget", async () => {
+    const handles = [
+      dueHandle("alice", "first", PUBKEY_A),
+      dueHandle("bob", "second", PUBKEY_B),
+    ];
+    const writes = [];
+    const db = fakeFirestore(handles, writes);
+    const verifyClaims = vi.fn(async (handleData) =>
+      verificationOutput({
+        results: [verifiedResult(handleData.claims[0].claimId)],
+        xProfilesFailed: 1,
+        xProfileFailures: { http_401: 1 },
+      }),
+    );
+
+    const output = await runProjection(
+      projectionArgs({ projectionWriteBudget: 2 }),
+      null,
+      { db, verifyHandleClaims: verifyClaims },
+    );
+
+    expect(output.stats).toMatchObject({
+      handleDocsRead: 2,
+      handlesDue: 1,
+      firestoreWrites: 2,
+      writeBudgetExhausted: true,
+      stoppedReason: "write_budget_exhausted",
+      xProfilesFailed: 1,
+      xProfileFailures: { http_401: 1 },
+    });
+    expect(verifyClaims).toHaveBeenCalledTimes(1);
+    expect(writes).toHaveLength(2);
+  });
+
+  it("stops iterating when verification requests a run stop", async () => {
+    const handles = [
+      dueHandle("alice", "first", PUBKEY_A),
+      dueHandle("bob", "second", PUBKEY_B),
+    ];
+    const verifyClaims = vi.fn(async (handleData) =>
+      verificationOutput({
+        results: [
+          {
+            claimId: handleData.claims[0].claimId,
+            identityStatus: "rejected",
+          },
+        ],
+        stopRun: true,
+        stoppedReason: "x_rate_limited",
+      }),
+    );
+
+    const output = await runProjection(projectionArgs(), null, {
+      db: fakeFirestore(handles),
+      verifyHandleClaims: verifyClaims,
+    });
+
+    expect(output.stats).toMatchObject({
+      handlesDue: 1,
+      stoppedReason: "x_rate_limited",
+    });
+    expect(verifyClaims).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips handle documents that are not due", async () => {
+    const handle = {
+      ...dueHandle("alice", "future", PUBKEY_A),
+      nextAttemptAt: new Date("2099-01-01T00:00:00.000Z"),
+    };
+    const verifyClaims = vi.fn();
+
+    const output = await runProjection(projectionArgs(), null, {
+      db: fakeFirestore([handle]),
+      verifyHandleClaims: verifyClaims,
+    });
+
+    expect(output.stats).toMatchObject({ handleDocsRead: 1, handlesDue: 0 });
+    expect(verifyClaims).not.toHaveBeenCalled();
+  });
+
+  it("stops cleanly when the run deadline is reached", async () => {
+    const now = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(1);
+    const verifyClaims = vi.fn();
+
+    const output = await runProjection(
+      projectionArgs({ runDeadlineMs: 1 }),
+      null,
+      {
+        db: fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)]),
+        verifyHandleClaims: verifyClaims,
+        now,
+      },
+    );
+
+    expect(output.stats.stoppedReason).toBe("run_deadline_reached");
+    expect(verifyClaims).not.toHaveBeenCalled();
   });
 });
 
@@ -525,9 +1020,11 @@ function projectionArgs(overrides = {}) {
     projectionLimit: 100,
     projectionWriteBudget: 10000,
     projectionExternalRetryMs: 60000,
+    runDeadlineMs: 0,
     maxPendingClaims: 20,
     maxInactiveVerifiedClaims: 10,
     maxRejectionTombstones: 100,
+    maxRetryAttempts: 5,
     scanXProfiles: false,
     xProfileMax: 10,
     xBearerToken: null,
@@ -545,15 +1042,67 @@ function response(json, status = 200) {
   };
 }
 
-function collectionAdapter(name, handle) {
+function collectionAdapter(name, handle, calls = []) {
+  const handles = Array.isArray(handle) ? handle : [handle];
   const adapter = {
-    where: () => adapter,
-    limit: () => adapter,
+    where: (...args) => {
+      calls.push(["where", ...args]);
+      return adapter;
+    },
+    orderBy: (...args) => {
+      calls.push(["orderBy", ...args]);
+      return adapter;
+    },
+    limit: (...args) => {
+      calls.push(["limit", ...args]);
+      return adapter;
+    },
     get: async () => ({
       docs:
-        name === "handles" ? [{ id: "twitter:alice", data: () => handle }] : [],
+        name === "handles"
+          ? handles.map((data, index) => ({
+              id: `twitter:${data.handle || index}`,
+              data: () => data,
+            }))
+          : [],
     }),
     doc: (id) => ({ collection: name, id }),
   };
   return adapter;
+}
+
+function dueHandle(handle, claimId, pubkey) {
+  return {
+    handle,
+    claims: [{ ...pendingClaim(claimId, pubkey, 100), handle }],
+    pendingClaimCount: 1,
+    projectionStatus: "pending",
+    nextAttemptAt: NOW,
+  };
+}
+
+function verificationOutput(overrides = {}) {
+  return {
+    results: [],
+    claimsConsidered: 1,
+    proofTweetsAttempted: 0,
+    xProfilesAttempted: 0,
+    xProfilesFailed: 0,
+    xProfileFailures: {},
+    xBioIdentifiersResolved: 0,
+    stopRun: false,
+    stoppedReason: null,
+    ...overrides,
+  };
+}
+
+function fakeFirestore(handles, writes = []) {
+  return {
+    collection: (name) => collectionAdapter(name, handles),
+    batch: () => ({
+      set: (ref, data, options) =>
+        writes.push({ collection: ref.collection, id: ref.id, data, options }),
+      commit: async () => {},
+    }),
+  };
 }

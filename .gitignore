@@ -8,7 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-/backend/package-lock.json
 lib
 dist-ssr
 *.local
@@ -45,8 +44,6 @@ dist
 /saiy2k-nostr-components/assets/
 /nostr-components-wp/assets/
 /storybook-static/
-/backend/package-lock.json
-/backend/.env
 
 .cursor
 .firebase

@@ -99,6 +99,41 @@ describe("backfill environment configuration", () => {
     ).toEqual(["wss://from-file.example"]);
   });
 
+  it("applies backfill CLI arguments instead of discarding them", () => {
+    expect(
+      loadBackfillConfig(
+        { FIRESTORE_PROJECT: "gr-test" },
+        1000,
+        {},
+        [
+          "--relays",
+          "wss://one.example,wss://two.example",
+          "--backfill-page-limit",
+          "50",
+          "--backfill-max-pages",
+          "5",
+          "--no-backfill-resume",
+        ],
+      ),
+    ).toMatchObject({
+      relays: ["wss://one.example", "wss://two.example"],
+      backfillPageLimit: 50,
+      backfillMaxPages: 5,
+      backfillResume: false,
+    });
+  });
+
+  it("rejects unknown backfill CLI arguments", () => {
+    expect(() =>
+      loadBackfillConfig(
+        { FIRESTORE_PROJECT: "gr-test" },
+        1000,
+        {},
+        ["--unknown-backfill-flag"],
+      ),
+    ).toThrow("Unknown backfill argument: --unknown-backfill-flag");
+  });
+
   it("fails fast when required configuration is missing", () => {
     expect(() =>
       loadBackfillConfig({}, 1000, {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildLiveEventWrite,
   buildLiveHeartbeatWrite,
@@ -10,6 +10,7 @@ import {
   listenRelayLive,
   parseLiveArgs,
   rememberSeenEventId,
+  runLiveMonitor,
 } from "./live-monitor.js";
 
 const PUBKEY =
@@ -107,6 +108,7 @@ describe("live monitor Firestore writes", () => {
       },
     });
     expect(write.data.processing).toBeUndefined();
+    expect(write.data.eventJson).toBeUndefined();
   });
 
   it("keeps event id dedupe bounded", () => {
@@ -144,5 +146,112 @@ describe("live monitor Firestore writes", () => {
         connectAttempts: 2,
       }),
     });
+  });
+
+  it("contains flush failures, bounds the buffer, and still shuts down", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const commitWrites = vi.fn(async (_db, writes) => {
+      if (writes[0]?.collection === "events") {
+        throw new Error("firestore unavailable");
+      }
+    });
+    const output = await runLiveMonitor(
+      {
+        relays: ["wss://relay.example"],
+        firestoreProject: "gr-prod",
+        firestoreDatabase: "(default)",
+        firestoreEventsCollection: "events",
+        firestoreQueueCollection: "queue",
+        firestoreStateCollection: "state",
+        firestoreLiveRunsCollection: "runs",
+        liveDurationMs: 0,
+        liveFlushLimit: 1,
+        liveFlushIntervalMs: 60000,
+        liveHeartbeatIntervalMs: 60000,
+        liveSeenCacheLimit: 10,
+        liveConnectTimeoutMs: 1000,
+        out: null,
+      },
+      null,
+      {
+        db: {},
+        isValidSignedEvent: () => true,
+        commitFirestoreWrites: commitWrites,
+        listenRelayLive: async (_relay, _args, callbacks) => {
+          for (let index = 0; index < 12; index += 1) {
+            callbacks.onEvent({
+              id: `live-event-${index}`,
+              kind: 10011,
+              pubkey: PUBKEY,
+              created_at: 100 + index,
+              tags: [],
+              content: "",
+              sig: "sig",
+            });
+          }
+        },
+      },
+    );
+
+    expect(output.stats).toMatchObject({
+      flushFailures: 2,
+      droppedWrites: 12,
+      validEventsWritten: 0,
+    });
+    expect(commitWrites).toHaveBeenLastCalledWith(
+      {},
+      [expect.objectContaining({ collection: "runs" })],
+    );
+    errorLog.mockRestore();
+  });
+
+  it("flushes buffered events on the interval before reaching the limit", async () => {
+    const commitWrites = vi.fn(async () => {});
+    const output = await runLiveMonitor(
+      {
+        relays: ["wss://relay.example"],
+        firestoreProject: "gr-prod",
+        firestoreDatabase: "(default)",
+        firestoreEventsCollection: "events",
+        firestoreQueueCollection: "queue",
+        firestoreStateCollection: "state",
+        firestoreLiveRunsCollection: "runs",
+        liveDurationMs: 0,
+        liveFlushLimit: 10,
+        liveFlushIntervalMs: 1,
+        liveHeartbeatIntervalMs: 60000,
+        liveSeenCacheLimit: 10,
+        liveConnectTimeoutMs: 1000,
+        out: null,
+      },
+      null,
+      {
+        db: {},
+        isValidSignedEvent: () => true,
+        commitFirestoreWrites: commitWrites,
+        listenRelayLive: async (_relay, _args, callbacks) => {
+          callbacks.onEvent({
+            id: "interval-event",
+            kind: 10011,
+            pubkey: PUBKEY,
+            created_at: 100,
+            tags: [],
+            content: "",
+            sig: "sig",
+          });
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        },
+      },
+    );
+
+    expect(output.stats).toMatchObject({
+      flushes: 1,
+      validEventsWritten: 1,
+      flushFailures: 0,
+    });
+    expect(commitWrites).toHaveBeenCalledWith(
+      {},
+      [expect.objectContaining({ collection: "events" })],
+    );
   });
 });

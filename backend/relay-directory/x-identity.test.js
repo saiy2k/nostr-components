@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { nip19 } from "nostr-tools";
 import {
   discoverXBioIdentities,
@@ -9,10 +9,13 @@ import {
   extractTweetId,
   normalizeTwitterHandle,
   resolveNostrIdentifier,
+  verifyTweetCandidate,
 } from "./x-identity.js";
 
 const PUBKEY =
   "7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e";
+const PUBKEY_B =
+  "8e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4f";
 const NPUB = "npub10elfcs4fr0l0r8af98jlmgdh9c8tcxjvz9qkw038js35mp4dma8qzvjptg";
 
 describe("X handle and relay input extraction", () => {
@@ -78,6 +81,108 @@ describe("X handle and relay input extraction", () => {
       nip05: "alice@example.com",
     });
   });
+
+  it("skips events whose author pubkey is invalid", () => {
+    expect(
+      extractDirectoryInputs([
+        {
+          id: "invalid-author",
+          kind: 0,
+          pubkey: "not-a-pubkey",
+          created_at: 1,
+          content: JSON.stringify({ twitter: "alice" }),
+          tags: [],
+        },
+      ]),
+    ).toMatchObject({ candidates: [], claimed: [] });
+  });
+
+  it("skips kind-0 events with malformed metadata JSON", () => {
+    const { metadataByPubkey } = extractDirectoryInputs([
+      {
+        id: "malformed-metadata",
+        kind: 0,
+        pubkey: PUBKEY_B,
+        created_at: 1,
+        content: "{not-json",
+        tags: [],
+      },
+    ]);
+
+    expect(metadataByPubkey.has(PUBKEY_B)).toBe(false);
+  });
+});
+
+describe("proof tweet verification", () => {
+  it("rejects a claim with no npub before making a network request", async () => {
+    const fetchImpl = vi.fn();
+    await expect(
+      verifyTweetCandidate(
+        {
+          handle: "alice",
+          proofTweetId: "2064733905014440088",
+        },
+        1000,
+        fetchImpl,
+      ),
+    ).resolves.toMatchObject({
+      identityStatus: "rejected",
+      rejectionReason: "claim-missing-npub",
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid persisted proof tweet id before fetching", async () => {
+    const fetchImpl = vi.fn();
+    await expect(
+      verifyTweetCandidate(
+        {
+          handle: "alice",
+          npub: NPUB,
+          proofTweetId: "not-a-tweet-id",
+        },
+        1000,
+        { fetchImpl },
+      ),
+    ).resolves.toMatchObject({
+      identityStatus: "rejected",
+      rejectionReason: "invalid-proof-tweet-id",
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("threads an explicit bearer token into official X API verification", async () => {
+    let requestedOptions;
+    const result = await verifyTweetCandidate(
+      {
+        handle: "alice",
+        npub: NPUB,
+        proofTweetId: "2064733905014440088",
+      },
+      1000,
+      {
+        bearerToken: "token",
+        fetchImpl: async (_url, options) => {
+          requestedOptions = options;
+          return {
+            ok: true,
+            json: async () => ({
+              data: {
+                author_id: "x-user-1",
+                text: `My Nostr profile is ${NPUB}`,
+              },
+              includes: {
+                users: [{ id: "x-user-1", username: "alice" }],
+              },
+            }),
+          };
+        },
+      },
+    );
+
+    expect(result.identityStatus).toBe("verified");
+    expect(requestedOptions.headers.Authorization).toBe("Bearer token");
+  });
 });
 
 describe("Nostr identifiers in X profile bios", () => {
@@ -137,9 +242,35 @@ describe("Nostr identifiers in X profile bios", () => {
     expect(requestedOptions.redirect).toBe("error");
   });
 
+  it("normalizes uppercase NIP-05 pubkeys before encoding npub", async () => {
+    await expect(
+      resolveNostrIdentifier(
+        { type: "nip05", value: "alice@example.com" },
+        1000,
+        async () => ({
+          ok: true,
+          json: async () => ({ names: { alice: PUBKEY.toUpperCase() } }),
+        }),
+      ),
+    ).resolves.toMatchObject({ pubkey: PUBKEY, npub: NPUB });
+  });
+
+  it("rejects non-public NIP-05 hosts before fetching", async () => {
+    const fetchImpl = vi.fn();
+    await expect(
+      resolveNostrIdentifier(
+        { type: "nip05", value: "alice@metadata.google.internal" },
+        1000,
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ ok: false, reason: "invalid_nip05" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("discovers a verified Nostr pubkey from an official X profile response", async () => {
+    let requestedUrl;
     const fetchImpl = async (url) => {
-      expect(String(url)).toContain("/2/users/by/username/alice");
+      requestedUrl = String(url);
       return {
         ok: true,
         json: async () => ({
@@ -184,6 +315,51 @@ describe("Nostr identifiers in X profile bios", () => {
         xUserId: "x-user-1",
       },
     ]);
+    expect(requestedUrl).toContain("/2/users/by/username/alice");
+  });
+
+  it("stops profile scanning when X rate-limits the request", async () => {
+    const result = await discoverXBioIdentities({
+      handleSeeds: [{ handle: "alice" }],
+      bearerToken: "token",
+      timeoutMs: 1000,
+      maxProfiles: 10,
+      fetchImpl: async () => ({
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+      }),
+    });
+
+    expect(result).toMatchObject({
+      records: [],
+      profilesChecked: 0,
+      profilesFailed: 0,
+      stoppedReason: "x_rate_limited",
+    });
+  });
+
+  it("reports non-rate-limited profile fetch failures by reason", async () => {
+    const result = await discoverXBioIdentities({
+      handleSeeds: [{ handle: "alice" }],
+      bearerToken: "token",
+      timeoutMs: 1000,
+      maxProfiles: 10,
+      fetchImpl: async () => ({
+        ok: false,
+        status: 401,
+        headers: { get: () => null },
+      }),
+    });
+
+    expect(result).toMatchObject({
+      records: [],
+      profilesAttempted: 1,
+      profilesChecked: 0,
+      profilesFailed: 1,
+      profileFailures: { http_401: 1 },
+      stoppedReason: null,
+    });
   });
 
   it("reports that profile scanning requires an X bearer token", async () => {
@@ -197,6 +373,8 @@ describe("Nostr identifiers in X profile bios", () => {
     ).resolves.toMatchObject({
       records: [],
       profilesAttempted: 0,
+      profilesFailed: 0,
+      profileFailures: {},
       stoppedReason: "missing_x_bearer_token",
     });
   });
