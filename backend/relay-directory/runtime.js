@@ -98,11 +98,15 @@ export function loadRelaysFromFile(filePath = DEFAULT_RELAYS_FILE) {
 }
 
 export const DEFAULT_COLLECTIONS = {
+  entries: "nostrDirectoryEntries",
   handles: "nostrDirectoryHandles",
+  projectionRuns: "relayProjectionRuns",
   state: "relayCrawlerState",
   gaps: "relayCrawlerGaps",
   handleWriteFailures: "nostrDirectoryHandleWriteFailures",
 };
+
+const BATCH_WRITE_LIMIT = 450;
 
 export function firestoreConfigFromEnv(env = process.env) {
   return {
@@ -112,8 +116,13 @@ export function firestoreConfigFromEnv(env = process.env) {
       env.GCLOUD_PROJECT ||
       null,
     firestoreDatabase: env.FIRESTORE_DATABASE || "(default)",
+    firestoreEntriesCollection:
+      env.FIRESTORE_ENTRIES_COLLECTION || DEFAULT_COLLECTIONS.entries,
     firestoreHandlesCollection:
       env.FIRESTORE_HANDLES_COLLECTION || DEFAULT_COLLECTIONS.handles,
+    firestoreProjectionRunsCollection:
+      env.FIRESTORE_PROJECTION_RUNS_COLLECTION ||
+      DEFAULT_COLLECTIONS.projectionRuns,
     firestoreStateCollection:
       env.FIRESTORE_STATE_COLLECTION || DEFAULT_COLLECTIONS.state,
     firestoreGapsCollection:
@@ -154,9 +163,9 @@ export async function terminateFirestore(db, { timeoutMs = 5000 } = {}) {
 }
 
 export async function commitFirestoreWrites(db, writes) {
-  for (let i = 0; i < writes.length; i += 450) {
+  for (let i = 0; i < writes.length; i += BATCH_WRITE_LIMIT) {
     const batch = db.batch();
-    for (const write of writes.slice(i, i + 450)) {
+    for (const write of writes.slice(i, i + BATCH_WRITE_LIMIT)) {
       batch.set(db.collection(write.collection).doc(write.id), write.data, {
         merge: true,
       });
@@ -245,6 +254,26 @@ export function serializeFirestoreDataForJson(value) {
   return result;
 }
 
+export function firestoreTimestampToMs(value) {
+  if (value == null) return null;
+  try {
+    const milliseconds =
+      value instanceof Date
+        ? value.getTime()
+        : typeof value.toMillis === "function"
+          ? value.toMillis()
+          : typeof value.seconds === "number"
+            ? value.seconds * 1000 +
+              Math.floor((value.nanoseconds || 0) / 1000000)
+            : typeof value === "number"
+              ? value
+              : Date.parse(value);
+    return Number.isFinite(milliseconds) ? milliseconds : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function writeJson(file, data) {
   const outPath = path.resolve(process.cwd(), file);
   await mkdir(path.dirname(outPath), { recursive: true });
@@ -274,6 +303,22 @@ export function finishRunMetrics(runMetrics, counters = {}, now = new Date()) {
     p95ProcessingMs: percentile(runMetrics.timings, 95),
     counters,
   });
+}
+
+export function buildRunSummaryWrite(run, output, collection) {
+  return {
+    collection,
+    id: run.runId,
+    data: stripUndefined({
+      ...run,
+      mode: output.mode || output.source || run.module,
+      source: output.source || null,
+      stats: output.stats || null,
+      firestore: output.firestore || null,
+      relays: output.relays || null,
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+  };
 }
 
 export function logRunSummary(run) {
@@ -317,7 +362,7 @@ export function isMainModule(moduleUrl) {
 
 export function runMain(moduleUrl, main) {
   if (!isMainModule(moduleUrl)) return;
-  Promise.resolve()
+  return Promise.resolve()
     .then(main)
     .catch((error) => {
       console.error(error.stack || error.message || error);

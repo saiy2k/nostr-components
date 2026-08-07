@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "backfill": "node --env-file-if-exists=.env relay-directory/backfill.js",
+    "project": "node --env-file-if-exists=.env relay-directory/projection.js",
     "test": "vitest run"
   },
   "dependencies": {

@@ -20,19 +20,17 @@ export function createNdkRelayClient(url) {
     connect: (timeoutMs) => ndk.connect(timeoutMs),
     subscribe(filter, { max, onEvent, onEose, onClosed }) {
       const subscription = ndk.subscribe(
-        { ...filter, limit: max },
+        Number.isFinite(max) ? { ...filter, limit: max } : filter,
         {
           closeOnEose: false,
           dontSaveToCache: true,
           groupable: false,
           relayUrls: [url],
         },
-        false,
       );
       subscription.on("event", (event) => onEvent(event.rawEvent()));
-      subscription.on("eose", onEose);
-      subscription.on("closed", (_relay, reason) => onClosed(reason));
-      subscription.start();
+      subscription.on("eose", () => onEose?.());
+      subscription.on("closed", (_relay, reason) => onClosed?.(reason));
       return () => subscription.stop();
     },
     close() {
