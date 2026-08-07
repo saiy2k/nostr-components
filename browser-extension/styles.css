@@ -1,20 +1,31 @@
+/* SPDX-License-Identifier: MIT */
+
 .nostr-competency-action-slot {
   display: flex;
   justify-content: center;
   align-items: center;
   flex: 1 1 0;
   min-width: 0;
+  height: 34px;
 }
 
 .nostr-competency-action-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 2px;
   min-width: 0;
+  height: 34px;
   padding: 0;
   border: 0;
   background: transparent;
   color: rgb(113, 118, 123);
-  font: 400 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font:
+    400 13px/1.2 system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   cursor: pointer;
 }
 
@@ -25,19 +36,22 @@
   width: 34px;
   height: 34px;
   border-radius: 9999px;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .nostr-competency-action-svg {
   width: 18px;
   height: 18px;
   fill: none;
-  stroke: currentColor;
+  stroke: currentcolor;
   stroke-width: 1.75;
 }
 
 .nostr-competency-action-button:hover .nostr-competency-action-icon-wrap,
-.nostr-competency-action-button:focus-visible .nostr-competency-action-icon-wrap {
+.nostr-competency-action-button:focus-visible
+  .nostr-competency-action-icon-wrap {
   background: rgba(29, 155, 240, 0.12);
 }
 
@@ -56,11 +70,24 @@
   cursor: wait;
 }
 
-.nostr-competency-action-button[data-liked="true"] .nostr-competency-action-icon-wrap {
+.nostr-competency-action-button[data-liked="true"]
+  .nostr-competency-action-icon-wrap {
   background: rgba(29, 155, 240, 0.12);
 }
 
-.nostr-competency-action-button[data-liked="true"] .nostr-competency-action-svg path {
-  fill: currentColor;
-  stroke: currentColor;
+.nostr-competency-action-button[data-liked="true"]
+  .nostr-competency-action-svg
+  path {
+  fill: currentcolor;
+  stroke: currentcolor;
+}
+
+.nostr-competency-action-count {
+  display: inline-block;
+  min-width: 1ch;
+  margin: 0 4px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
 }

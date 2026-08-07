@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 lib
+!browser-extension/lib/
+!browser-extension/lib/**
 dist-ssr
 *.local
 
