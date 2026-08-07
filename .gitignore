@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 /backend/package-lock.json
 lib
+!browser-extension/lib/
+!browser-extension/lib/**
 dist-ssr
 *.local
 
