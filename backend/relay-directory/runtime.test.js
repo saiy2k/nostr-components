@@ -2,7 +2,7 @@
 
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runMain } from "./runtime.js";
+import { firestoreTimestampToMs, runMain } from "./runtime.js";
 
 const ORIGINAL_ARGV = [...process.argv];
 
@@ -23,4 +23,23 @@ describe("job lifecycle", () => {
     expect(runner).toHaveBeenCalledOnce();
     expect(exit).toHaveBeenCalledWith(0);
   });
+});
+
+describe("firestoreTimestampToMs", () => {
+  it.each([
+    [0, 0],
+    [new Date("2026-08-07T00:00:00.000Z"), 1_786_060_800_000],
+    [{ toMillis: () => 1_234 }, 1_234],
+    [{ seconds: 2, nanoseconds: 999_999_999 }, 2_999],
+    ["1970-01-01T00:00:00.000Z", 0],
+  ])("converts %j to milliseconds", (value, expected) => {
+    expect(firestoreTimestampToMs(value)).toBe(expected);
+  });
+
+  it.each([null, undefined, new Date("invalid"), { toMillis: () => NaN }])(
+    "returns null for an absent or invalid value",
+    (value) => {
+      expect(firestoreTimestampToMs(value)).toBeNull();
+    },
+  );
 });

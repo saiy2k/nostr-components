@@ -255,17 +255,23 @@ export function serializeFirestoreDataForJson(value) {
 }
 
 export function firestoreTimestampToMs(value) {
-  if (!value) return null;
-  if (value instanceof Date) return value.getTime();
-  if (typeof value.toMillis === "function") return value.toMillis();
-  if (typeof value.seconds === "number") {
-    return (
-      value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000)
-    );
+  if (value == null) return null;
+  try {
+    const milliseconds =
+      value instanceof Date
+        ? value.getTime()
+        : typeof value.toMillis === "function"
+          ? value.toMillis()
+          : typeof value.seconds === "number"
+            ? value.seconds * 1000 +
+              Math.floor((value.nanoseconds || 0) / 1000000)
+            : typeof value === "number"
+              ? value
+              : Date.parse(value);
+    return Number.isFinite(milliseconds) ? milliseconds : null;
+  } catch {
+    return null;
   }
-  if (typeof value === "number") return value;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export async function writeJson(file, data) {
