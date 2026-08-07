@@ -133,14 +133,6 @@ export function firestoreConfigFromEnv(env = process.env) {
   };
 }
 
-export function takeOptionValue(argv, index, flagName) {
-  const value = argv[index + 1];
-  if (value === undefined || value.startsWith("--")) {
-    throw new Error(`${flagName} requires a value.`);
-  }
-  return { value, nextIndex: index + 1 };
-}
-
 export async function createFirestore(args, FirestoreCtor = Firestore) {
   await assertFirestoreCredentialsAvailable();
   return new FirestoreCtor({
@@ -374,9 +366,4 @@ export function runMain(moduleUrl, main) {
       // NDK/Firestore can leave open handles; Cloud Run batch jobs must exit.
       process.exit(process.exitCode ?? 0);
     });
-}
-
-export function runCli(moduleUrl, parseArgs, runner) {
-  if (!isMainModule(moduleUrl)) return;
-  return runMain(moduleUrl, () => runner(parseArgs(process.argv.slice(2))));
 }

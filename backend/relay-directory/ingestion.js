@@ -31,7 +31,6 @@ export function createNdkRelayClient(url) {
       subscription.on("event", (event) => onEvent(event.rawEvent()));
       subscription.on("eose", () => onEose?.());
       subscription.on("closed", (_relay, reason) => onClosed?.(reason));
-      subscription.start();
       return () => subscription.stop();
     },
     close() {

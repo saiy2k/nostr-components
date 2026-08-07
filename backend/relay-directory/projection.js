@@ -18,8 +18,7 @@ import {
   finishRunMetrics,
   firestoreConfigFromEnv,
   logRunSummary,
-  runCli,
-  takeOptionValue,
+  runMain,
   writeJson,
 } from "./runtime.js";
 import {
@@ -29,158 +28,76 @@ import {
 } from "./x-identity.js";
 import { isHexPubkey, isPublicHostname } from "./utils.js";
 
-export function parseProjectionArgs(argv) {
+export function loadProjectionConfig(env = process.env) {
   const args = {
-    ...firestoreConfigFromEnv(),
-    out: null,
-    timeoutMs: Number(process.env.PROJECTION_TIMEOUT_MS || 12000),
-    maxProofs: Number(process.env.MAX_PROOFS || 250),
-    verifyTweets: process.env.VERIFY_TWEETS !== "0",
-    checkZaps: process.env.CHECK_ZAPS !== "0",
-    projectionLimit: Number(process.env.PROJECTION_LIMIT || 1000),
+    ...firestoreConfigFromEnv(env),
+    out: env.PROJECTION_OUT || null,
+    timeoutMs: numberFromEnv(env, "PROJECTION_TIMEOUT_MS", 12000),
+    maxProofs: numberFromEnv(env, "MAX_PROOFS", 250),
+    verifyTweets: env.VERIFY_TWEETS !== "0",
+    checkZaps: env.CHECK_ZAPS !== "0",
+    projectionLimit: numberFromEnv(env, "PROJECTION_LIMIT", 1000),
     projectionExternalRetryMs: Number(
-      process.env.PROJECTION_EXTERNAL_RETRY_MS || 15 * 60 * 1000,
+      env.PROJECTION_EXTERNAL_RETRY_MS || 15 * 60 * 1000,
     ),
-    runDeadlineMs: Number(process.env.PROJECTION_RUN_DEADLINE_MS || 0),
+    runDeadlineMs: numberFromEnv(env, "PROJECTION_RUN_DEADLINE_MS", 0),
     maxPendingClaims: Number(
-      process.env.MAX_PENDING_CLAIMS || DEFAULT_MAX_PENDING_CLAIMS,
+      env.MAX_PENDING_CLAIMS || DEFAULT_MAX_PENDING_CLAIMS,
     ),
     maxInactiveVerifiedClaims: Number(
-      process.env.MAX_INACTIVE_VERIFIED_CLAIMS ||
-        DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+      env.MAX_INACTIVE_VERIFIED_CLAIMS || DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
     ),
     maxRejectionTombstones: Number(
-      process.env.MAX_REJECTION_TOMBSTONES || DEFAULT_MAX_REJECTION_TOMBSTONES,
+      env.MAX_REJECTION_TOMBSTONES || DEFAULT_MAX_REJECTION_TOMBSTONES,
     ),
     maxRetryAttempts: Number(
-      process.env.MAX_RETRY_ATTEMPTS || DEFAULT_MAX_RETRY_ATTEMPTS,
+      env.MAX_RETRY_ATTEMPTS || DEFAULT_MAX_RETRY_ATTEMPTS,
     ),
-    scanXProfiles: process.env.SCAN_X_PROFILES === "1",
-    xProfileMax: Number(process.env.X_PROFILE_MAX || 100),
+    xProfileMax: numberFromEnv(env, "X_PROFILE_MAX", 100),
     xBearerToken:
-      process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN || null,
+      env.X_BEARER_TOKEN || env.TWITTER_BEARER_TOKEN || null,
   };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const flag = argv[index];
-    const take = () => {
-      const result = takeOptionValue(argv, index, flag);
-      index = result.nextIndex;
-      return result.value;
-    };
-
-    if (flag === "--project-directory") continue;
-    if (flag === "--out") args.out = take();
-    else if (flag === "--no-json") args.out = null;
-    else if (flag === "--timeout-ms") args.timeoutMs = Number(take());
-    else if (flag === "--max-proofs") args.maxProofs = Number(take());
-    else if (flag === "--no-tweet-verify") args.verifyTweets = false;
-    else if (flag === "--no-zap-check") args.checkZaps = false;
-    else if (flag === "--scan-x-profiles") args.scanXProfiles = true;
-    else if (flag === "--no-x-profile-scan") args.scanXProfiles = false;
-    else if (flag === "--x-profile-max") args.xProfileMax = Number(take());
-    else if (flag === "--firestore-project") {
-      args.firestoreProject = take();
-    } else if (flag === "--firestore-database") {
-      args.firestoreDatabase = take();
-    } else if (flag === "--firestore-entries-collection") {
-      args.firestoreEntriesCollection = take();
-    } else if (flag === "--firestore-handles-collection") {
-      args.firestoreHandlesCollection = take();
-    } else if (flag === "--projection-limit") {
-      args.projectionLimit = Number(take());
-    } else if (flag === "--projection-external-retry-ms") {
-      args.projectionExternalRetryMs = Number(take());
-    } else if (flag === "--run-deadline-ms") {
-      args.runDeadlineMs = Number(take());
-    } else if (flag === "--max-pending-claims") {
-      args.maxPendingClaims = Number(take());
-    } else if (flag === "--max-inactive-verified-claims") {
-      args.maxInactiveVerifiedClaims = Number(take());
-    } else if (flag === "--max-rejection-tombstones") {
-      args.maxRejectionTombstones = Number(take());
-    } else if (flag === "--max-retry-attempts") {
-      args.maxRetryAttempts = Number(take());
-    } else if (flag === "--help" || flag === "-h") {
-      printProjectionHelp();
-      process.exit(0);
-    } else {
-      throw new Error(`Unknown projection argument: ${flag}`);
-    }
-  }
-
   validateProjectionArgs(args);
   return args;
 }
 
 function validateProjectionArgs(args) {
   if (!args.firestoreProject) {
-    throw new Error("--firestore-project or GOOGLE_CLOUD_PROJECT is required.");
+    throw new Error("FIRESTORE_PROJECT or GOOGLE_CLOUD_PROJECT is required.");
   }
   if (!Number.isFinite(args.timeoutMs) || args.timeoutMs <= 0) {
-    throw new Error("--timeout-ms must be positive.");
+    throw new Error("PROJECTION_TIMEOUT_MS must be positive.");
   }
   if (!Number.isInteger(args.maxProofs) || args.maxProofs < 0) {
-    throw new Error("--max-proofs must be an integer >= 0.");
+    throw new Error("MAX_PROOFS must be an integer >= 0.");
   }
   if (!Number.isInteger(args.projectionLimit) || args.projectionLimit <= 0) {
-    throw new Error("--projection-limit must be a positive integer.");
+    throw new Error("PROJECTION_LIMIT must be a positive integer.");
   }
   if (
     !Number.isFinite(args.projectionExternalRetryMs) ||
     args.projectionExternalRetryMs <= 0
   ) {
-    throw new Error("--projection-external-retry-ms must be positive.");
+    throw new Error("PROJECTION_EXTERNAL_RETRY_MS must be positive.");
   }
   if (!Number.isInteger(args.runDeadlineMs) || args.runDeadlineMs < 0) {
-    throw new Error("--run-deadline-ms must be an integer >= 0.");
+    throw new Error("PROJECTION_RUN_DEADLINE_MS must be an integer >= 0.");
   }
-  if (!Number.isInteger(args.xProfileMax) || args.xProfileMax < 0) {
-    throw new Error("--x-profile-max must be an integer >= 0.");
-  }
-  if (args.scanXProfiles && !args.xBearerToken) {
-    throw new Error(
-      "--scan-x-profiles requires X_BEARER_TOKEN or TWITTER_BEARER_TOKEN.",
-    );
+  if (!Number.isInteger(args.xProfileMax) || args.xProfileMax <= 0) {
+    throw new Error("X_PROFILE_MAX must be a positive integer.");
   }
   for (const [name, value] of [
-    ["--max-pending-claims", args.maxPendingClaims],
-    ["--max-inactive-verified-claims", args.maxInactiveVerifiedClaims],
-    ["--max-rejection-tombstones", args.maxRejectionTombstones],
+    ["MAX_PENDING_CLAIMS", args.maxPendingClaims],
+    ["MAX_INACTIVE_VERIFIED_CLAIMS", args.maxInactiveVerifiedClaims],
+    ["MAX_REJECTION_TOMBSTONES", args.maxRejectionTombstones],
   ]) {
     if (!Number.isInteger(value) || value < 0) {
       throw new Error(`${name} must be an integer >= 0.`);
     }
   }
   if (!Number.isInteger(args.maxRetryAttempts) || args.maxRetryAttempts <= 0) {
-    throw new Error("--max-retry-attempts must be a positive integer.");
+    throw new Error("MAX_RETRY_ATTEMPTS must be a positive integer.");
   }
-}
-
-function printProjectionHelp() {
-  console.log(`Usage: npm run project -- [options]
-
-Verify pending X/Nostr identity claims and project verified directory users.
-
-Options:
-  --firestore-project <id>               GCP project.
-  --projection-limit <n>                 Maximum handle docs. Default: 1000
-  --projection-external-retry-ms <n>     External retry delay. Default: 900000
-  --run-deadline-ms <n>                   Graceful run deadline; 0 disables it.
-  --max-proofs <n>                       Proof tweets per run; 0 means all.
-  --no-tweet-verify                      Skip proof tweet verification.
-  --no-zap-check                         Skip NIP-57 capability checks.
-  --scan-x-profiles                      Scan official X profile bios.
-  --x-profile-max <n>                    Maximum X profiles. Default: 100
-  --max-pending-claims <n>               Pending claims retained. Default: 20
-  --max-inactive-verified-claims <n>     Inactive verified claims. Default: 10
-  --max-rejection-tombstones <n>         Rejected IDs retained. Default: 100
-  --max-retry-attempts <n>                Attempts before rejection. Default: 5
-  --out <file>                           Optional JSON run summary.
-
-X bio scanning requires X_BEARER_TOKEN or TWITTER_BEARER_TOKEN. It recognizes
-npub, nprofile, and NIP-05 identifiers and can verify users without kind 10011.
-`);
 }
 
 export async function runProjection(args, FirestoreCtor, dependencies = {}) {
@@ -280,7 +197,7 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     controls: {
       projectionLimit: args.projectionLimit,
       maxProofs: args.maxProofs,
-      scanXProfiles: args.scanXProfiles,
+      scanXProfiles: true,
       xProfileMax: args.xProfileMax,
       runDeadlineMs: args.runDeadlineMs,
     },
@@ -307,7 +224,7 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
   const proofsRemaining = limits.proofsRemaining ?? Infinity;
   const profilesRemaining = limits.profilesRemaining ?? Infinity;
 
-  if (args.scanXProfiles && profilesRemaining > 0 && pending.length > 0) {
+  if (profilesRemaining > 0 && pending.length > 0) {
     const bioDiscovery = await discoverXBioIdentities({
       handleSeeds: pending,
       additionalHandles: [],
@@ -549,4 +466,9 @@ function printProjectionSummary(output, args) {
   if (args.out) console.log(`  output:               ${args.out}`);
 }
 
-runCli(import.meta.url, parseProjectionArgs, runProjection);
+function numberFromEnv(env, name, fallback) {
+  if (env[name] === undefined || env[name] === "") return fallback;
+  return Number(env[name]);
+}
+
+runMain(import.meta.url, () => runProjection(loadProjectionConfig()));

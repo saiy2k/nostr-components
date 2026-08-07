@@ -521,20 +521,6 @@ export async function discoverXBioIdentities({
   maxProfiles,
   fetchImpl = fetch,
 }) {
-  if (!bearerToken) {
-    return {
-      records: [],
-      profilesAttempted: 0,
-      profilesChecked: 0,
-      profilesFailed: 0,
-      profileFailures: {},
-      checkedHandles: [],
-      profilesWithIdentifiers: 0,
-      identifiersResolved: 0,
-      stoppedReason: "missing_x_bearer_token",
-    };
-  }
-
   const seedsByHandle = new Map();
   for (const seed of handleSeeds || []) {
     const handle = normalizeTwitterHandle(seed.handle);
@@ -612,7 +598,7 @@ export async function discoverXBioIdentities({
         identityStatus: "verified",
         verificationMethod: `x_profile_bio_${resolved.identifierType}`,
         nostrIdentifier: resolved.identifier,
-        proofSource: "x-api-profile",
+        proofSource: profileResult.source,
         xUserId: profileResult.profile.id,
         verifiedAt: new Date().toISOString(),
       });
@@ -633,6 +619,34 @@ export async function discoverXBioIdentities({
 }
 
 async function fetchXProfile(handle, bearerToken, timeoutMs, fetchImpl) {
+  const failures = [];
+  if (bearerToken) {
+    const official = await fetchXProfileViaOfficialApi(
+      handle,
+      bearerToken,
+      timeoutMs,
+      fetchImpl,
+    );
+    if (official.ok) return official;
+    failures.push(official);
+  }
+
+  const fxtwitter = await fetchXProfileViaFxTwitter(
+    handle,
+    timeoutMs,
+    fetchImpl,
+  );
+  if (fxtwitter.ok) return fxtwitter;
+  failures.push(fxtwitter);
+  return mostImportantFetchFailure(failures);
+}
+
+async function fetchXProfileViaOfficialApi(
+  handle,
+  bearerToken,
+  timeoutMs,
+  fetchImpl,
+) {
   try {
     const params = new URLSearchParams({
       "user.fields": "description,entities,id,url,username",
@@ -651,9 +665,43 @@ async function fetchXProfile(handle, bearerToken, timeoutMs, fetchImpl) {
         retryable: false,
       });
     }
-    return { ok: true, profile: json.data };
+    return { ok: true, profile: json.data, source: "x-api-profile" };
   } catch (error) {
     return fetchFailure("x-profile-api", fetchErrorReason(error), {
+      retryable: true,
+    });
+  }
+}
+
+async function fetchXProfileViaFxTwitter(handle, timeoutMs, fetchImpl) {
+  try {
+    const response = await fetchImpl(
+      `https://api.fxtwitter.com/2/profile/${encodeURIComponent(handle)}`,
+      {
+        headers: { "User-Agent": "nostr-components-relay-directory/0.1" },
+        signal: AbortSignal.timeout(timeoutMs),
+      },
+    );
+    if (!response.ok) return httpFailure("fxtwitter-profile", response);
+    const json = await response.json();
+    if (Number(json.code) !== 200) {
+      return httpFailure("fxtwitter-profile", {
+        status: Number(json.code) || 500,
+        headers: response.headers,
+      });
+    }
+    if (!json.user?.id || !json.user?.screen_name) {
+      return fetchFailure("fxtwitter-profile", "profile_unavailable", {
+        retryable: false,
+      });
+    }
+    return {
+      ok: true,
+      profile: json.user,
+      source: "fxtwitter-profile",
+    };
+  } catch (error) {
+    return fetchFailure("fxtwitter-profile", fetchErrorReason(error), {
       retryable: true,
     });
   }
@@ -666,7 +714,20 @@ function profileSearchText(profile) {
   ]
     .flatMap((url) => [url.expanded_url, url.display_url])
     .filter(Boolean);
-  return [profile.description, profile.url, ...urls].filter(Boolean).join(" ");
+  const fxtwitterUrls = [
+    ...(profile.raw_description?.facets || []),
+  ].flatMap((facet) => [facet.original, facet.replacement, facet.display]);
+  return [
+    profile.description,
+    profile.raw_description?.text,
+    profile.url,
+    profile.website?.url,
+    profile.website?.display_url,
+    ...urls,
+    ...fxtwitterUrls,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function httpFailure(source, response) {

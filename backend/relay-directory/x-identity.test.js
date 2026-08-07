@@ -318,6 +318,49 @@ describe("Nostr identifiers in X profile bios", () => {
     expect(requestedUrl).toContain("/2/users/by/username/alice");
   });
 
+  it("falls back to FxTwitter when the official X profile API is unavailable", async () => {
+    const requestedUrls = [];
+    const result = await discoverXBioIdentities({
+      handleSeeds: [{ handle: "alice", pubkey: PUBKEY }],
+      bearerToken: "expired-token",
+      timeoutMs: 1000,
+      maxProfiles: 10,
+      fetchImpl: async (url) => {
+        requestedUrls.push(String(url));
+        if (String(url).startsWith("https://api.x.com/")) {
+          return {
+            ok: false,
+            status: 401,
+            headers: { get: () => null },
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            code: 200,
+            message: "OK",
+            user: {
+              id: "x-user-1",
+              screen_name: "alice",
+              description: `Find me on Nostr: ${NPUB}`,
+            },
+          }),
+        };
+      },
+    });
+
+    expect(result.records[0]).toMatchObject({
+      pubkey: PUBKEY,
+      proofSource: "fxtwitter-profile",
+      identityStatus: "verified",
+    });
+    expect(requestedUrls).toEqual([
+      expect.stringContaining("https://api.x.com/2/users/by/username/alice"),
+      "https://api.fxtwitter.com/2/profile/alice",
+    ]);
+  });
+
   it("stops profile scanning when X rate-limits the request", async () => {
     const result = await discoverXBioIdentities({
       handleSeeds: [{ handle: "alice" }],
@@ -362,20 +405,45 @@ describe("Nostr identifiers in X profile bios", () => {
     });
   });
 
-  it("reports that profile scanning requires an X bearer token", async () => {
-    await expect(
-      discoverXBioIdentities({
-        handleSeeds: [{ handle: "alice" }],
-        bearerToken: null,
-        timeoutMs: 1000,
-        maxProfiles: 10,
-      }),
-    ).resolves.toMatchObject({
-      records: [],
-      profilesAttempted: 0,
-      profilesFailed: 0,
-      profileFailures: {},
-      stoppedReason: "missing_x_bearer_token",
+  it("discovers a verified Nostr pubkey through FxTwitter without a bearer token", async () => {
+    let requestedUrl;
+    const result = await discoverXBioIdentities({
+      handleSeeds: [{ handle: "alice", pubkey: PUBKEY }],
+      bearerToken: null,
+      timeoutMs: 1000,
+      maxProfiles: 10,
+      fetchImpl: async (url) => {
+        requestedUrl = String(url);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            code: 200,
+            message: "OK",
+            user: {
+              id: "x-user-1",
+              screen_name: "alice",
+              description: `Find me on Nostr: ${NPUB}`,
+            },
+          }),
+        };
+      },
     });
+
+    expect(result).toMatchObject({
+      profilesAttempted: 1,
+      profilesChecked: 1,
+      profilesFailed: 0,
+      stoppedReason: null,
+    });
+    expect(result.records).toMatchObject([
+      {
+        handle: "alice",
+        pubkey: PUBKEY,
+        proofSource: "fxtwitter-profile",
+        identityStatus: "verified",
+      },
+    ]);
+    expect(requestedUrl).toBe("https://api.fxtwitter.com/2/profile/alice");
   });
 });

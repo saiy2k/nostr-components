@@ -2,7 +2,7 @@
 
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runCli } from "./runtime.js";
+import { runMain } from "./runtime.js";
 
 const ORIGINAL_ARGV = [...process.argv];
 
@@ -12,21 +12,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("CLI lifecycle", () => {
-  it("uses the forced-exit path after a successful command", async () => {
-    process.argv = [process.execPath, "/tmp/relay-directory-cli.js", "--flag"];
+describe("job lifecycle", () => {
+  it("uses the forced-exit path after a successful run", async () => {
+    process.argv = [process.execPath, "/tmp/relay-directory-job.js"];
     const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined);
-    const parseArgs = vi.fn(() => ({ parsed: true }));
     const runner = vi.fn(async () => {});
 
-    await runCli(
-      pathToFileURL(process.argv[1]).href,
-      parseArgs,
-      runner,
-    );
+    await runMain(pathToFileURL(process.argv[1]).href, runner);
 
-    expect(parseArgs).toHaveBeenCalledWith(["--flag"]);
-    expect(runner).toHaveBeenCalledWith({ parsed: true });
+    expect(runner).toHaveBeenCalledOnce();
     expect(exit).toHaveBeenCalledWith(0);
   });
 });

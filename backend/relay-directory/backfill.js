@@ -36,7 +36,6 @@ export function loadBackfillConfig(
   env = process.env,
   nowSeconds = Math.floor(Date.now() / 1000),
   options = {},
-  argv = [],
 ) {
   const config = {
     ...firestoreConfigFromEnv(env),
@@ -72,93 +71,8 @@ export function loadBackfillConfig(
       5000,
     ),
   };
-  applyBackfillArgs(config, argv);
   validateBackfillConfig(config);
   return config;
-}
-
-function applyBackfillArgs(config, argv) {
-  const valueFlags = new Map([
-    ["--relays", (value) => (config.relays = parseRelayCsv(value))],
-    ["--out", (value) => (config.out = value)],
-    ["--timeout-ms", (value) => (config.timeoutMs = Number(value))],
-    ["--firestore-project", (value) => (config.firestoreProject = value)],
-    ["--firestore-database", (value) => (config.firestoreDatabase = value)],
-    [
-      "--firestore-handles-collection",
-      (value) => (config.firestoreHandlesCollection = value),
-    ],
-    [
-      "--firestore-state-collection",
-      (value) => (config.firestoreStateCollection = value),
-    ],
-    [
-      "--firestore-gaps-collection",
-      (value) => (config.firestoreGapsCollection = value),
-    ],
-    [
-      "--firestore-handle-write-failures-collection",
-      (value) => (config.firestoreHandleWriteFailuresCollection = value),
-    ],
-    [
-      "--backfill-page-limit",
-      (value) => (config.backfillPageLimit = Number(value)),
-    ],
-    [
-      "--backfill-max-page-limit",
-      (value) => (config.backfillMaxPageLimit = Number(value)),
-    ],
-    [
-      "--backfill-max-pages",
-      (value) => (config.backfillMaxPages = Number(value)),
-    ],
-    ["--backfill-until", (value) => (config.backfillUntil = Number(value))],
-    ["--backfill-since", (value) => (config.backfillSince = Number(value))],
-    [
-      "--backfill-state-prefix",
-      (value) => (config.backfillStatePrefix = value),
-    ],
-    [
-      "--backfill-cache-limit",
-      (value) => (config.backfillCacheLimit = Number(value)),
-    ],
-    [
-      "--max-pending-claims",
-      (value) => (config.maxPendingClaims = Number(value)),
-    ],
-    [
-      "--max-inactive-verified-claims",
-      (value) => (config.maxInactiveVerifiedClaims = Number(value)),
-    ],
-    [
-      "--max-rejection-tombstones",
-      (value) => (config.maxRejectionTombstones = Number(value)),
-    ],
-    [
-      "--x-mention-check-timeout-ms",
-      (value) => (config.xMentionCheckTimeoutMs = Number(value)),
-    ],
-  ]);
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const flag = argv[index];
-    if (flag === "--no-json") {
-      config.out = null;
-      continue;
-    }
-    if (flag === "--no-backfill-resume") {
-      config.backfillResume = false;
-      continue;
-    }
-    const applyValue = valueFlags.get(flag);
-    if (!applyValue) throw new Error(`Unknown backfill argument: ${flag}`);
-    const value = argv[index + 1];
-    if (value === undefined || value.startsWith("--")) {
-      throw new Error(`${flag} requires a value.`);
-    }
-    applyValue(value);
-    index += 1;
-  }
 }
 
 function validateBackfillConfig(config) {
@@ -1093,13 +1007,6 @@ function numberFromEnv(env, name, fallback) {
   return Number(env[name]);
 }
 
-function parseRelayCsv(value) {
-  return String(value)
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 /**
  * Resolve relay URLs: explicit RELAYS env wins; otherwise load from
  * RELAYS_FILE / relays.json (injectable via options for tests).
@@ -1190,8 +1097,4 @@ function printBackfillSummary(output, config) {
   if (config.out) console.log(`  output:               ${config.out}`);
 }
 
-runMain(import.meta.url, () =>
-  runBackfill(
-    loadBackfillConfig(process.env, undefined, {}, process.argv.slice(2)),
-  ),
-);
+runMain(import.meta.url, () => runBackfill(loadBackfillConfig()));

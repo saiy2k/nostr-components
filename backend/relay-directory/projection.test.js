@@ -5,7 +5,7 @@ import { nip19 } from "nostr-tools";
 import {
   checkZapSupport,
   lightningAddressToLnurlp,
-  parseProjectionArgs,
+  loadProjectionConfig,
   runProjection,
   verifyHandleClaims,
 } from "./projection.js";
@@ -30,30 +30,9 @@ afterEach(() => {
 });
 
 describe("projection configuration", () => {
-  it("reads handle claims directly with bounded projection controls", () => {
-    for (const name of [
-      "FIRESTORE_HANDLES_COLLECTION",
-      "FIRESTORE_ENTRIES_COLLECTION",
-      "PROJECTION_TIMEOUT_MS",
-      "MAX_PROOFS",
-      "VERIFY_TWEETS",
-      "CHECK_ZAPS",
-      "PROJECTION_LIMIT",
-      "PROJECTION_EXTERNAL_RETRY_MS",
-      "PROJECTION_RUN_DEADLINE_MS",
-      "MAX_PENDING_CLAIMS",
-      "MAX_INACTIVE_VERIFIED_CLAIMS",
-      "MAX_REJECTION_TOMBSTONES",
-      "MAX_RETRY_ATTEMPTS",
-      "SCAN_X_PROFILES",
-      "X_PROFILE_MAX",
-      "X_BEARER_TOKEN",
-      "TWITTER_BEARER_TOKEN",
-    ]) {
-      vi.stubEnv(name, undefined);
-    }
+  it("reads bounded projection controls from environment variables", () => {
     expect(
-      parseProjectionArgs(["--firestore-project", "gr-prod"]),
+      loadProjectionConfig({ FIRESTORE_PROJECT: "gr-prod" }),
     ).toMatchObject({
       firestoreHandlesCollection: "nostrDirectoryHandles",
       firestoreEntriesCollection: "nostrDirectoryEntries",
@@ -66,46 +45,28 @@ describe("projection configuration", () => {
     });
   });
 
-  it("removes the raw-event and queue source options", () => {
-    expect(() =>
-      parseProjectionArgs([
-        "--firestore-project",
-        "gr-prod",
-        "--projection-source",
-        "queue",
-      ]),
-    ).toThrow("Unknown projection argument: --projection-source");
-  });
-
-  it("parses and validates a graceful run deadline", () => {
+  it("loads and validates a graceful run deadline from the environment", () => {
     expect(
-      parseProjectionArgs([
-        "--firestore-project",
-        "gr-prod",
-        "--run-deadline-ms",
-        "3300000",
-      ]),
+      loadProjectionConfig({
+        FIRESTORE_PROJECT: "gr-prod",
+        PROJECTION_RUN_DEADLINE_MS: "3300000",
+      }),
     ).toMatchObject({ runDeadlineMs: 3300000 });
     expect(() =>
-      parseProjectionArgs([
-        "--firestore-project",
-        "gr-prod",
-        "--run-deadline-ms",
-        "-1",
-      ]),
-    ).toThrow("--run-deadline-ms must be an integer >= 0.");
+      loadProjectionConfig({
+        FIRESTORE_PROJECT: "gr-prod",
+        PROJECTION_RUN_DEADLINE_MS: "-1",
+      }),
+    ).toThrow("PROJECTION_RUN_DEADLINE_MS must be an integer >= 0.");
   });
 
-  it("requires a bearer-token secret when X profile scanning is enabled", () => {
-    vi.stubEnv("X_BEARER_TOKEN", "");
-    vi.stubEnv("TWITTER_BEARER_TOKEN", "");
+  it("does not allow the required X profile scan budget to be disabled", () => {
     expect(() =>
-      parseProjectionArgs([
-        "--firestore-project",
-        "gr-prod",
-        "--scan-x-profiles",
-      ]),
-    ).toThrow("--scan-x-profiles requires X_BEARER_TOKEN");
+      loadProjectionConfig({
+        FIRESTORE_PROJECT: "gr-prod",
+        X_PROFILE_MAX: "0",
+      }),
+    ).toThrow("X_PROFILE_MAX must be a positive integer.");
   });
 });
 
@@ -439,6 +400,49 @@ describe("projection writes", () => {
     });
   });
 
+  it("marks the previous directory entry obsolete when a new pubkey becomes active", () => {
+    const previous = verifiedClaim("old", PUBKEY_A, 100);
+    const data = {
+      handle: "alice",
+      activeIdentity: previous,
+      claims: [previous, pendingClaim("new", PUBKEY_B, 200)],
+      pendingClaimCount: 1,
+    };
+    const transition = applyProjectionResults(data, [verifiedResult("new")], {
+      now: NOW,
+    });
+    const writes = buildHandleProjectionWrites(
+      { id: "twitter:alice", data },
+      transition,
+      {
+        firestoreHandlesCollection: "handles",
+        firestoreEntriesCollection: "entries",
+      },
+    );
+
+    expect(writes).toHaveLength(3);
+    expect(writes[1]).toMatchObject({
+      collection: "entries",
+      id: directoryEntryId("alice", PUBKEY_A),
+      data: {
+        identityStatus: "obsolete",
+        directoryStatus: "obsolete",
+        autoZapAllowed: false,
+        supersededByEntryId: directoryEntryId("alice", PUBKEY_B),
+      },
+    });
+    expect(writes[2]).toMatchObject({
+      collection: "entries",
+      id: directoryEntryId("alice", PUBKEY_B),
+      data: {
+        identityStatus: "verified",
+        pubkey: PUBKEY_B,
+        obsoleteAt: null,
+        supersededByEntryId: null,
+      },
+    });
+  });
+
   it("uses one write for rejection without an active identity", () => {
     const data = {
       handle: "alice",
@@ -497,7 +501,6 @@ describe("external verification", () => {
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
       projectionArgs({
-        scanXProfiles: true,
         xBearerToken: "token",
         checkZaps: false,
       }),
@@ -540,7 +543,6 @@ describe("external verification", () => {
     const verification = await verifyHandleClaims(
       handleData,
       projectionArgs({
-        scanXProfiles: true,
         xBearerToken: "token",
         checkZaps: false,
       }),
@@ -575,7 +577,6 @@ describe("external verification", () => {
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
       projectionArgs({
-        scanXProfiles: true,
         xBearerToken: "token",
         checkZaps: false,
       }),
@@ -607,7 +608,6 @@ describe("external verification", () => {
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
       projectionArgs({
-        scanXProfiles: true,
         xBearerToken: "token",
         checkZaps: false,
       }),
@@ -640,7 +640,6 @@ describe("external verification", () => {
         claims: [rejected, pendingClaim("other", PUBKEY_B, 200, null)],
       },
       projectionArgs({
-        scanXProfiles: true,
         xBearerToken: "token",
         checkZaps: false,
       }),
@@ -946,7 +945,6 @@ function projectionArgs(overrides = {}) {
     maxInactiveVerifiedClaims: 10,
     maxRejectionTombstones: 100,
     maxRetryAttempts: 5,
-    scanXProfiles: false,
     xProfileMax: 10,
     xBearerToken: null,
     out: null,

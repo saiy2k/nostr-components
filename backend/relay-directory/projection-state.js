@@ -187,16 +187,44 @@ export function buildHandleProjectionWrites(
       }),
     },
   ];
+  const active = transition.state.activeIdentity;
+  const activeEntryId =
+    active && isHexPubkey(active.pubkey)
+      ? directoryEntryId(data?.handle || active.handle, active.pubkey)
+      : null;
+  const previousActive = data?.activeIdentity;
+  const previousEntryId =
+    previousActive && isHexPubkey(previousActive.pubkey)
+      ? directoryEntryId(
+          data?.handle || previousActive.handle,
+          previousActive.pubkey,
+        )
+      : null;
 
   if (
     transition.activeChanged &&
-    transition.state.activeIdentity &&
-    isHexPubkey(transition.state.activeIdentity.pubkey)
+    previousEntryId &&
+    previousEntryId !== activeEntryId
   ) {
-    const active = transition.state.activeIdentity;
     writes.push({
       collection: entriesCollection,
-      id: directoryEntryId(data?.handle || active.handle, active.pubkey),
+      id: previousEntryId,
+      data: stripUndefined({
+        identityStatus: "obsolete",
+        directoryStatus: "obsolete",
+        zappable: false,
+        autoZapAllowed: false,
+        supersededByEntryId: activeEntryId,
+        obsoleteAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+    });
+  }
+
+  if (transition.activeChanged && activeEntryId) {
+    writes.push({
+      collection: entriesCollection,
+      id: activeEntryId,
       data: stripUndefined({
         platform: "twitter",
         handle: data?.handle || active.handle,
@@ -208,6 +236,8 @@ export function buildHandleProjectionWrites(
         sourceCreatedAt: active.sourceCreatedAt,
         sourceRelay: active.sourceRelay,
         identityStatus: "verified",
+        obsoleteAt: null,
+        supersededByEntryId: null,
         directoryStatus:
           active.zappable === true
             ? "verified_zappable"
