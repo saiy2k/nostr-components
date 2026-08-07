@@ -1,4 +1,5 @@
 {
+  "_spdx": "SPDX-License-Identifier: MIT",
   "jack": {
     "verified": true,
     "platform": "x",
