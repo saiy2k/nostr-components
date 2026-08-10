@@ -21,7 +21,6 @@ export async function verifyTweetCandidate(
   const normalizedOptions =
     typeof options === "function" ? { fetchImpl: options } : options;
   const fetchImpl = normalizedOptions.fetchImpl || fetch;
-  const bearerToken = normalizedOptions.bearerToken || null;
   if (!candidate?.npub) {
     return {
       ...candidate,
@@ -38,12 +37,11 @@ export async function verifyTweetCandidate(
       rejectionReason: "invalid-proof-tweet-id",
     };
   }
-  const result = await fetchTweet(
+  const result = await fetchTweetViaFxTwitter(
     proofTweetId,
     handleHint,
     timeoutMs,
     fetchImpl,
-    bearerToken,
   );
   if (!result.ok) {
     if (result.retryable) {
@@ -99,140 +97,33 @@ export async function verifyTweetCandidate(
   };
 }
 
-async function fetchTweet(
+async function fetchTweetViaFxTwitter(
   tweetId,
   handleHint,
   timeoutMs,
   fetchImpl,
-  bearerToken,
 ) {
-  const failures = [];
-
-  if (bearerToken) {
-    const official = await fetchTweetViaXApi(
-      tweetId,
-      bearerToken,
-      timeoutMs,
-      fetchImpl,
-    );
-    if (official.ok) return official;
-    failures.push(official);
-    if (official.retryable && official.rateLimited) return official;
-  }
-
-  const syndication = await fetchTweetViaSyndication(
-    tweetId,
-    timeoutMs,
-    fetchImpl,
-  );
-  if (syndication.ok) return syndication;
-  failures.push(syndication);
-  if (syndication.retryable && syndication.rateLimited) return syndication;
-
-  const oembed = await fetchTweetViaOembed(
-    tweetId,
-    handleHint,
-    timeoutMs,
-    fetchImpl,
-  );
-  if (oembed.ok) return oembed;
-  failures.push(oembed);
-
-  return mostImportantFetchFailure(failures);
-}
-
-async function fetchTweetViaXApi(tweetId, bearerToken, timeoutMs, fetchImpl) {
+  const path = handleHint
+    ? `${encodeURIComponent(handleHint)}/status/${encodeURIComponent(tweetId)}`
+    : `status/${encodeURIComponent(tweetId)}`;
   try {
-    const params = new URLSearchParams({
-      expansions: "author_id",
-      "tweet.fields": "author_id,text",
-      "user.fields": "username",
-    });
-    const response = await fetchImpl(
-      `https://api.x.com/2/tweets/${tweetId}?${params}`,
-      {
-        headers: { Authorization: `Bearer ${bearerToken}` },
-        signal: AbortSignal.timeout(timeoutMs),
-      },
-    );
-    if (!response.ok) return httpFailure("x-api", response);
-    const json = await response.json();
-    const user = json.includes?.users?.find(
-      (candidateUser) => candidateUser.id === json.data?.author_id,
-    );
-    if (!json.data?.text || !user?.username) {
-      return fetchFailure("x-api", "tweet_unavailable", {
-        retryable: false,
-      });
-    }
-    return {
-      ok: true,
-      tweet: {
-        text: json.data.text,
-        handle: user.username,
-        userId: user.id,
-        source: "x-api",
-      },
-    };
-  } catch (error) {
-    return fetchFailure("x-api", fetchErrorReason(error), { retryable: true });
-  }
-}
-
-async function fetchTweetViaSyndication(tweetId, timeoutMs, fetchImpl) {
-  const failures = [];
-  for (const token of [syndicationToken(tweetId), "a"]) {
-    try {
-      const url = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&token=${token}&lang=en`;
-      const response = await fetchImpl(url, {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (!response.ok) {
-        const failure = httpFailure("syndication", response);
-        failures.push(failure);
-        if (failure.retryable && failure.rateLimited) return failure;
-        continue;
-      }
-      const json = await response.json();
-      if (!json?.text || !json.user?.screen_name) continue;
-      return {
-        ok: true,
-        tweet: {
-          text: json.text,
-          handle: json.user.screen_name,
-          userId: json.user.id_str || json.user.id || null,
-          source: "syndication",
-        },
-      };
-    } catch (error) {
-      failures.push(
-        fetchFailure("syndication", fetchErrorReason(error), {
-          retryable: true,
-        }),
-      );
-    }
-  }
-  return mostImportantFetchFailure(
-    failures,
-    fetchFailure("syndication", "tweet_unavailable", { retryable: false }),
-  );
-}
-
-async function fetchTweetViaOembed(tweetId, handleHint, timeoutMs, fetchImpl) {
-  try {
-    const tweetUrl = `https://twitter.com/${handleHint || "i"}/status/${tweetId}`;
-    const url = `https://publish.x.com/oembed?omit_script=1&url=${encodeURIComponent(tweetUrl)}`;
-    const response = await fetchImpl(url, {
-      redirect: "follow",
+    const response = await fetchImpl(`https://api.fxtwitter.com/${path}`, {
+      headers: { "User-Agent": "nostr-components-relay-directory/0.1" },
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!response.ok) return httpFailure("oembed", response);
+    if (!response.ok) return httpFailure("fxtwitter-tweet", response);
     const json = await response.json();
-    const handle = normalizeTwitterHandle(json.author_url);
-    const text = stripHtml(json.html || "");
-    if (!handle || !text) {
-      return fetchFailure("oembed", "tweet_unavailable", {
+    if (Number(json.code) !== 200) {
+      return httpFailure("fxtwitter-tweet", {
+        status: Number(json.code) || 500,
+        headers: response.headers,
+      });
+    }
+    const text = json.tweet?.text || json.tweet?.raw_text?.text || null;
+    const handle = json.tweet?.author?.screen_name || null;
+    const userId = json.tweet?.author?.id || null;
+    if (!text || !handle) {
+      return fetchFailure("fxtwitter-tweet", "tweet_unavailable", {
         retryable: false,
       });
     }
@@ -241,39 +132,15 @@ async function fetchTweetViaOembed(tweetId, handleHint, timeoutMs, fetchImpl) {
       tweet: {
         text,
         handle,
-        userId: null,
-        source: "oembed",
+        userId,
+        source: "fxtwitter-tweet",
       },
     };
   } catch (error) {
-    return fetchFailure("oembed", fetchErrorReason(error), {
+    return fetchFailure("fxtwitter-tweet", fetchErrorReason(error), {
       retryable: true,
     });
   }
-}
-
-function syndicationToken(tweetId) {
-  try {
-    const id = BigInt(tweetId);
-    const divisor = 1000000000000000n;
-    const scaled =
-      Number(id / divisor) + Number(id % divisor) / Number(divisor);
-    return (scaled * Math.PI).toString(36).replace(/(0+|\.)/g, "") || "a";
-  } catch {
-    return "a";
-  }
-}
-
-function stripHtml(html) {
-  return String(html)
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 export function extractNostrIdentifiers(text) {
@@ -565,17 +432,6 @@ function fetchFailure(source, reason, extra = {}) {
     rateLimitResetAt: extra.rateLimitResetAt || null,
     retryAfter: extra.retryAfter || null,
   };
-}
-
-function mostImportantFetchFailure(failures, fallback = null) {
-  const candidates = failures.filter(Boolean);
-  return (
-    candidates.find((failure) => failure.rateLimited) ||
-    candidates.find((failure) => failure.retryable) ||
-    candidates[0] ||
-    fallback ||
-    fetchFailure("unknown", "unavailable", { retryable: false })
-  );
 }
 
 function fetchErrorReason(error) {

@@ -26,21 +26,6 @@ MAX_PENDING_CLAIMS="${MAX_PENDING_CLAIMS:-20}"
 MAX_INACTIVE_VERIFIED_CLAIMS="${MAX_INACTIVE_VERIFIED_CLAIMS:-10}"
 MAX_REJECTION_TOMBSTONES="${MAX_REJECTION_TOMBSTONES:-100}"
 MAX_RETRY_ATTEMPTS="${MAX_RETRY_ATTEMPTS:-5}"
-X_BEARER_TOKEN_SECRET="${X_BEARER_TOKEN_SECRET:-}"
-
-if [ -z "${X_BEARER_TOKEN_SECRET}" ]; then
-  EXISTING_JOB_JSON="$(
-    gcloud run jobs describe "${JOB_NAME}" \
-      --project "${PROJECT_ID}" \
-      --region "${REGION}" \
-      --format json 2>/dev/null || true
-  )"
-  if [[ "${EXISTING_JOB_JSON}" == *X_BEARER_TOKEN* ]]; then
-    echo "Existing ${JOB_NAME} has an X_BEARER_TOKEN binding." >&2
-    echo "Set X_BEARER_TOKEN_SECRET explicitly before redeploying." >&2
-    exit 1
-  fi
-fi
 
 gcloud config set project "${PROJECT_ID}"
 gcloud services enable run.googleapis.com firestore.googleapis.com cloudbuild.googleapis.com
@@ -83,10 +68,6 @@ DEPLOY_ARGS=(
   --max-retries 0
   --task-timeout 3600
 )
-
-if [ -n "${X_BEARER_TOKEN_SECRET}" ]; then
-  DEPLOY_ARGS+=(--set-secrets "X_BEARER_TOKEN=${X_BEARER_TOKEN_SECRET}:latest")
-fi
 
 gcloud run jobs deploy "${DEPLOY_ARGS[@]}"
 

@@ -624,21 +624,11 @@ describe("external verification", () => {
   });
 
   it("verifies proof tweets without storing the source event", async () => {
-    vi.stubEnv("X_BEARER_TOKEN", undefined);
-    vi.stubEnv("TWITTER_BEARER_TOKEN", undefined);
-    const fetchImpl = vi.fn(async (url) => {
-      if (String(url).includes("api.fxtwitter.com/2/profile/")) {
-        return fxTwitterProfile({
-          id: "x-user-1",
-          screen_name: "alice",
-          description: "No Nostr profile here",
-        });
-      }
-      return response({
-        text: `My Nostr profile is ${NPUB_A}`,
-        user: { screen_name: "alice", id_str: "x-user-1" },
-      });
-    });
+    const fetchImpl = vi.fn(async (url) =>
+      fxTwitterFetch(url, {
+        tweetText: `My Nostr profile is ${NPUB_A}`,
+      }),
+    );
     vi.stubGlobal("fetch", fetchImpl);
     const result = await verifyHandleClaims(
       {
@@ -653,6 +643,7 @@ describe("external verification", () => {
       claimId: "proof",
       identityStatus: "verified",
       verificationMethod: "nip39_proof_tweet",
+      proofSource: "fxtwitter-tweet",
       zapReason: "zap-check-skipped",
     });
     expect(fetchImpl).toHaveBeenCalled();
@@ -745,10 +736,10 @@ describe("external verification", () => {
 
 describe("projection execution", () => {
   it("writes the handle, the active directory entry, and a run summary", async () => {
-    vi.stubGlobal("fetch", async () =>
-      response({
-        text: `My Nostr profile is ${NPUB_A}`,
-        user: { screen_name: "alice", id_str: "x-user-1" },
+    vi.stubGlobal("fetch", async (url) =>
+      fxTwitterFetch(url, {
+        profileDescription: "No Nostr profile here",
+        tweetText: `My Nostr profile is ${NPUB_A}`,
       }),
     );
     const writes = [];
@@ -809,10 +800,10 @@ describe("projection execution", () => {
   });
 
   it("persists the run summary to the configured collection", async () => {
-    vi.stubGlobal("fetch", async () =>
-      response({
-        text: `My Nostr profile is ${NPUB_A}`,
-        user: { screen_name: "alice", id_str: "x-user-1" },
+    vi.stubGlobal("fetch", async (url) =>
+      fxTwitterFetch(url, {
+        profileDescription: "No Nostr profile here",
+        tweetText: `My Nostr profile is ${NPUB_A}`,
       }),
     );
     const writes = [];
@@ -837,10 +828,10 @@ describe("projection execution", () => {
   });
 
   it("still succeeds when the run summary write fails", async () => {
-    vi.stubGlobal("fetch", async () =>
-      response({
-        text: `My Nostr profile is ${NPUB_A}`,
-        user: { screen_name: "alice", id_str: "x-user-1" },
+    vi.stubGlobal("fetch", async (url) =>
+      fxTwitterFetch(url, {
+        profileDescription: "No Nostr profile here",
+        tweetText: `My Nostr profile is ${NPUB_A}`,
       }),
     );
     const writes = [];
@@ -988,7 +979,6 @@ function projectionArgs(overrides = {}) {
     maxInactiveVerifiedClaims: 10,
     maxRejectionTombstones: 100,
     maxRetryAttempts: 5,
-    xBearerToken: null,
     out: null,
     ...overrides,
   };
@@ -1012,6 +1002,39 @@ function fxTwitterProfile(user, status = 200) {
     },
     status >= 400 ? status : 200,
   );
+}
+
+function fxTwitterTweet(tweet, status = 200) {
+  return response(
+    {
+      code: status,
+      message: status === 200 ? "OK" : "error",
+      tweet,
+    },
+    status >= 400 ? status : 200,
+  );
+}
+
+function fxTwitterFetch(
+  url,
+  {
+    handle = "alice",
+    profileDescription = "No Nostr profile here",
+    tweetText,
+    userId = "x-user-1",
+  } = {},
+) {
+  if (String(url).includes("/2/profile/")) {
+    return fxTwitterProfile({
+      id: userId,
+      screen_name: handle,
+      description: profileDescription,
+    });
+  }
+  return fxTwitterTweet({
+    text: tweetText,
+    author: { id: userId, screen_name: handle },
+  });
 }
 
 function collectionAdapter(name, handle, calls = []) {

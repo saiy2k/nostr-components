@@ -59,8 +59,6 @@ export function loadProjectionConfig(env = process.env) {
     maxRetryAttempts: Number(
       env.MAX_RETRY_ATTEMPTS || DEFAULT_MAX_RETRY_ATTEMPTS,
     ),
-    xBearerToken:
-      env.X_BEARER_TOKEN || env.TWITTER_BEARER_TOKEN || null,
   };
   validateProjectionArgs(args);
   return args;
@@ -370,9 +368,7 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       if (completedClaimIds.has(claim.claimId) || !claim.proofTweetId) continue;
       if (proofTweetsAttempted >= proofsRemaining) break;
       proofTweetsAttempted += 1;
-      let result = await verifyTweetCandidate(claim, args.timeoutMs, {
-        bearerToken: args.xBearerToken,
-      });
+      let result = await verifyTweetCandidate(claim, args.timeoutMs);
       if (result.identityStatus === "verified") {
         result = await enrichVerifiedResult(result, claim.metadata, args);
       }

@@ -69,8 +69,8 @@ describe("proof tweet verification", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("threads an explicit bearer token into official X API verification", async () => {
-    let requestedOptions;
+  it("verifies a proof tweet through FxTwitter without a bearer token", async () => {
+    let requestedUrl;
     const result = await verifyTweetCandidate(
       {
         handle: "alice",
@@ -79,18 +79,20 @@ describe("proof tweet verification", () => {
       },
       1000,
       {
-        bearerToken: "token",
-        fetchImpl: async (_url, options) => {
-          requestedOptions = options;
+        fetchImpl: async (url) => {
+          requestedUrl = String(url);
           return {
             ok: true,
+            status: 200,
             json: async () => ({
-              data: {
-                author_id: "x-user-1",
+              code: 200,
+              message: "OK",
+              tweet: {
                 text: `My Nostr profile is ${NPUB}`,
-              },
-              includes: {
-                users: [{ id: "x-user-1", username: "alice" }],
+                author: {
+                  id: "x-user-1",
+                  screen_name: "alice",
+                },
               },
             }),
           };
@@ -98,8 +100,46 @@ describe("proof tweet verification", () => {
       },
     );
 
-    expect(result.identityStatus).toBe("verified");
-    expect(requestedOptions.headers.Authorization).toBe("Bearer token");
+    expect(result).toMatchObject({
+      identityStatus: "verified",
+      verificationMethod: "nip39_proof_tweet",
+      proofSource: "fxtwitter-tweet",
+      xUserId: "x-user-1",
+    });
+    expect(requestedUrl).toBe(
+      "https://api.fxtwitter.com/alice/status/2064733905014440088",
+    );
+  });
+
+  it("rejects a proof tweet whose FxTwitter author does not match the claim handle", async () => {
+    await expect(
+      verifyTweetCandidate(
+        {
+          handle: "alice",
+          npub: NPUB,
+          proofTweetId: "2064733905014440088",
+        },
+        1000,
+        {
+          fetchImpl: async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              code: 200,
+              tweet: {
+                text: `My Nostr profile is ${NPUB}`,
+                author: { id: "x-user-2", screen_name: "bob" },
+              },
+            }),
+          }),
+        },
+      ),
+    ).resolves.toMatchObject({
+      identityStatus: "rejected",
+      rejectionReason: "proof-author-mismatch",
+      proofAuthor: "bob",
+      proofSource: "fxtwitter-tweet",
+    });
   });
 });
 
