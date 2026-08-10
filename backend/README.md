@@ -65,10 +65,10 @@ validation, pagination, deduplication, Firestore writes, and checkpoint logic.
 Run projection after backfill because it consumes the handle documents created
 by backfill. `deploy-relay-directory-projection.sh` creates an unscheduled job;
 execute it manually, or set `RUN_AFTER_DEPLOY=true` to run it once immediately.
-X-profile bio validation always runs. It uses FxTwitter's public profile API by
-default and falls back to it when the official X API is unavailable. Set
-`X_BEARER_TOKEN_SECRET` to try the official X API first. Projection limits and
-timeouts are passed to Cloud Run as environment variables.
+X-profile bio validation always runs via FxTwitter's public profile API
+(`api.fxtwitter.com`). Optional `X_BEARER_TOKEN` / `X_BEARER_TOKEN_SECRET` is
+only used for NIP-39 proof-tweet verification, not for bio scanning. Projection
+limits and timeouts are passed to Cloud Run as environment variables.
 
 The projector orders due work in Firestore before applying its read limit. For
 the default handles collection, create the required composite index once per

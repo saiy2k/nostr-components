@@ -267,16 +267,19 @@ describe("Nostr identifiers in X profile bios", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("discovers a verified Nostr pubkey from an official X profile response", async () => {
+  it("discovers a verified Nostr pubkey from an FxTwitter profile response", async () => {
     let requestedUrl;
     const fetchImpl = async (url) => {
       requestedUrl = String(url);
       return {
         ok: true,
+        status: 200,
         json: async () => ({
-          data: {
+          code: 200,
+          message: "OK",
+          user: {
             id: "x-user-1",
-            username: "alice",
+            screen_name: "alice",
             description: `Find me on Nostr: ${NPUB}`,
           },
         }),
@@ -292,7 +295,6 @@ describe("Nostr identifiers in X profile bios", () => {
           sourceKind: 0,
         },
       ],
-      bearerToken: "token",
       timeoutMs: 1000,
       maxProfiles: 10,
       fetchImpl,
@@ -312,59 +314,16 @@ describe("Nostr identifiers in X profile bios", () => {
         sourceEventId: "metadata-event",
         identityStatus: "verified",
         verificationMethod: "x_profile_bio_npub",
+        proofSource: "fxtwitter-profile",
         xUserId: "x-user-1",
       },
     ]);
-    expect(requestedUrl).toContain("/2/users/by/username/alice");
+    expect(requestedUrl).toBe("https://api.fxtwitter.com/2/profile/alice");
   });
 
-  it("falls back to FxTwitter when the official X profile API is unavailable", async () => {
-    const requestedUrls = [];
-    const result = await discoverXBioIdentities({
-      handleSeeds: [{ handle: "alice", pubkey: PUBKEY }],
-      bearerToken: "expired-token",
-      timeoutMs: 1000,
-      maxProfiles: 10,
-      fetchImpl: async (url) => {
-        requestedUrls.push(String(url));
-        if (String(url).startsWith("https://api.x.com/")) {
-          return {
-            ok: false,
-            status: 401,
-            headers: { get: () => null },
-          };
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            code: 200,
-            message: "OK",
-            user: {
-              id: "x-user-1",
-              screen_name: "alice",
-              description: `Find me on Nostr: ${NPUB}`,
-            },
-          }),
-        };
-      },
-    });
-
-    expect(result.records[0]).toMatchObject({
-      pubkey: PUBKEY,
-      proofSource: "fxtwitter-profile",
-      identityStatus: "verified",
-    });
-    expect(requestedUrls).toEqual([
-      expect.stringContaining("https://api.x.com/2/users/by/username/alice"),
-      "https://api.fxtwitter.com/2/profile/alice",
-    ]);
-  });
-
-  it("stops profile scanning when X rate-limits the request", async () => {
+  it("stops profile scanning when FxTwitter rate-limits the request", async () => {
     const result = await discoverXBioIdentities({
       handleSeeds: [{ handle: "alice" }],
-      bearerToken: "token",
       timeoutMs: 1000,
       maxProfiles: 10,
       fetchImpl: async () => ({
@@ -385,12 +344,11 @@ describe("Nostr identifiers in X profile bios", () => {
   it("reports non-rate-limited profile fetch failures by reason", async () => {
     const result = await discoverXBioIdentities({
       handleSeeds: [{ handle: "alice" }],
-      bearerToken: "token",
       timeoutMs: 1000,
       maxProfiles: 10,
       fetchImpl: async () => ({
         ok: false,
-        status: 401,
+        status: 404,
         headers: { get: () => null },
       }),
     });
@@ -400,20 +358,19 @@ describe("Nostr identifiers in X profile bios", () => {
       profilesAttempted: 1,
       profilesChecked: 0,
       profilesFailed: 1,
-      profileFailures: { http_401: 1 },
+      profileFailures: { http_404: 1 },
       stoppedReason: null,
     });
   });
 
-  it("discovers a verified Nostr pubkey through FxTwitter without a bearer token", async () => {
-    let requestedUrl;
-    const result = await discoverXBioIdentities({
+  it("never calls the official X profile API for bio discovery", async () => {
+    const requestedUrls = [];
+    await discoverXBioIdentities({
       handleSeeds: [{ handle: "alice", pubkey: PUBKEY }],
-      bearerToken: null,
       timeoutMs: 1000,
       maxProfiles: 10,
       fetchImpl: async (url) => {
-        requestedUrl = String(url);
+        requestedUrls.push(String(url));
         return {
           ok: true,
           status: 200,
@@ -430,20 +387,11 @@ describe("Nostr identifiers in X profile bios", () => {
       },
     });
 
-    expect(result).toMatchObject({
-      profilesAttempted: 1,
-      profilesChecked: 1,
-      profilesFailed: 0,
-      stoppedReason: null,
-    });
-    expect(result.records).toMatchObject([
-      {
-        handle: "alice",
-        pubkey: PUBKEY,
-        proofSource: "fxtwitter-profile",
-        identityStatus: "verified",
-      },
+    expect(requestedUrls).toEqual([
+      "https://api.fxtwitter.com/2/profile/alice",
     ]);
-    expect(requestedUrl).toBe("https://api.fxtwitter.com/2/profile/alice");
+    expect(
+      requestedUrls.some((url) => url.includes("api.x.com")),
+    ).toBe(false);
   });
 });

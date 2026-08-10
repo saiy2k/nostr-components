@@ -487,12 +487,10 @@ describe("external verification", () => {
     let requestedUrl;
     vi.stubGlobal("fetch", async (url) => {
       requestedUrl = String(url);
-      return response({
-        data: {
-          id: "x-user-1",
-          username: "alice",
-          description: `Nostr: ${NPUB_A}`,
-        },
+      return fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: `Nostr: ${NPUB_A}`,
       });
     });
     const result = await verifyHandleClaims(
@@ -500,10 +498,7 @@ describe("external verification", () => {
         handle: "alice",
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
-      projectionArgs({
-        xBearerToken: "token",
-        checkZaps: false,
-      }),
+      projectionArgs({ checkZaps: false }),
       { profilesRemaining: 1, proofsRemaining: 1 },
     );
 
@@ -519,18 +514,16 @@ describe("external verification", () => {
         }),
       ],
     });
-    expect(requestedUrl).toContain("/2/users/by/username/alice");
+    expect(requestedUrl).toBe("https://api.fxtwitter.com/2/profile/alice");
   });
 
   it("treats a current X bio link as newer than an older active claim", async () => {
     const npubB = nip19.npubEncode(PUBKEY_B);
     vi.stubGlobal("fetch", async () =>
-      response({
-        data: {
-          id: "x-user-1",
-          username: "alice",
-          description: `Current Nostr: ${npubB}`,
-        },
+      fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: `Current Nostr: ${npubB}`,
       }),
     );
     const active = verifiedClaim("active", PUBKEY_A, 200);
@@ -542,10 +535,7 @@ describe("external verification", () => {
     };
     const verification = await verifyHandleClaims(
       handleData,
-      projectionArgs({
-        xBearerToken: "token",
-        checkZaps: false,
-      }),
+      projectionArgs({ checkZaps: false }),
       { profilesRemaining: 1, proofsRemaining: 1 },
     );
     const transition = applyProjectionResults(
@@ -563,12 +553,10 @@ describe("external verification", () => {
 
   it("rejects a proofless claim after a checked X bio has no Nostr link", async () => {
     vi.stubGlobal("fetch", async () =>
-      response({
-        data: {
-          id: "x-user-1",
-          username: "alice",
-          description: "No Nostr profile here",
-        },
+      fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: "No Nostr profile here",
       }),
     );
     const result = await verifyHandleClaims(
@@ -576,10 +564,7 @@ describe("external verification", () => {
         handle: "alice",
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
-      projectionArgs({
-        xBearerToken: "token",
-        checkZaps: false,
-      }),
+      projectionArgs({ checkZaps: false }),
       { profilesRemaining: 1, proofsRemaining: 1 },
     );
 
@@ -594,12 +579,10 @@ describe("external verification", () => {
 
   it("normalizes a stored handle before matching checked X profiles", async () => {
     vi.stubGlobal("fetch", async () =>
-      response({
-        data: {
-          id: "x-user-1",
-          username: "alice",
-          description: "No Nostr profile here",
-        },
+      fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: "No Nostr profile here",
       }),
     );
     const result = await verifyHandleClaims(
@@ -607,10 +590,7 @@ describe("external verification", () => {
         handle: "Alice",
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
-      projectionArgs({
-        xBearerToken: "token",
-        checkZaps: false,
-      }),
+      projectionArgs({ checkZaps: false }),
       { profilesRemaining: 1, proofsRemaining: 1 },
     );
 
@@ -622,12 +602,10 @@ describe("external verification", () => {
 
   it("creates a fresh bio claim instead of reusing a rejected claim", async () => {
     vi.stubGlobal("fetch", async () =>
-      response({
-        data: {
-          id: "x-user-1",
-          username: "alice",
-          description: `Nostr: ${NPUB_A}`,
-        },
+      fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: `Nostr: ${NPUB_A}`,
       }),
     );
     const rejected = {
@@ -639,10 +617,7 @@ describe("external verification", () => {
         handle: "alice",
         claims: [rejected, pendingClaim("other", PUBKEY_B, 200, null)],
       },
-      projectionArgs({
-        xBearerToken: "token",
-        checkZaps: false,
-      }),
+      projectionArgs({ checkZaps: false }),
       { profilesRemaining: 1, proofsRemaining: 1 },
     );
 
@@ -959,6 +934,17 @@ function response(json, status = 200) {
     headers: { get: () => null },
     json: async () => json,
   };
+}
+
+function fxTwitterProfile(user, status = 200) {
+  return response(
+    {
+      code: status,
+      message: status === 200 ? "OK" : "error",
+      user,
+    },
+    status >= 400 ? status : 200,
+  );
 }
 
 function collectionAdapter(name, handle, calls = []) {

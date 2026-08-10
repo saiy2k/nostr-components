@@ -228,7 +228,6 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     const bioDiscovery = await discoverXBioIdentities({
       handleSeeds: pending,
       additionalHandles: [],
-      bearerToken: args.xBearerToken,
       timeoutMs: args.timeoutMs,
       maxProfiles: Math.min(1, profilesRemaining),
     });

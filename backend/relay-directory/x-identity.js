@@ -516,7 +516,6 @@ export async function resolveNostrIdentifier(
 export async function discoverXBioIdentities({
   handleSeeds,
   additionalHandles = [],
-  bearerToken,
   timeoutMs,
   maxProfiles,
   fetchImpl = fetch,
@@ -549,9 +548,8 @@ export async function discoverXBioIdentities({
 
   for (const handle of handles) {
     profilesAttempted += 1;
-    const profileResult = await fetchXProfile(
+    const profileResult = await fetchXProfileViaFxTwitter(
       handle,
-      bearerToken,
       timeoutMs,
       fetchImpl,
     );
@@ -616,61 +614,6 @@ export async function discoverXBioIdentities({
     identifiersResolved,
     stoppedReason,
   };
-}
-
-async function fetchXProfile(handle, bearerToken, timeoutMs, fetchImpl) {
-  const failures = [];
-  if (bearerToken) {
-    const official = await fetchXProfileViaOfficialApi(
-      handle,
-      bearerToken,
-      timeoutMs,
-      fetchImpl,
-    );
-    if (official.ok) return official;
-    failures.push(official);
-  }
-
-  const fxtwitter = await fetchXProfileViaFxTwitter(
-    handle,
-    timeoutMs,
-    fetchImpl,
-  );
-  if (fxtwitter.ok) return fxtwitter;
-  failures.push(fxtwitter);
-  return mostImportantFetchFailure(failures);
-}
-
-async function fetchXProfileViaOfficialApi(
-  handle,
-  bearerToken,
-  timeoutMs,
-  fetchImpl,
-) {
-  try {
-    const params = new URLSearchParams({
-      "user.fields": "description,entities,id,url,username",
-    });
-    const response = await fetchImpl(
-      `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?${params}`,
-      {
-        headers: { Authorization: `Bearer ${bearerToken}` },
-        signal: AbortSignal.timeout(timeoutMs),
-      },
-    );
-    if (!response.ok) return httpFailure("x-profile-api", response);
-    const json = await response.json();
-    if (!json.data?.id || !json.data?.username) {
-      return fetchFailure("x-profile-api", "profile_unavailable", {
-        retryable: false,
-      });
-    }
-    return { ok: true, profile: json.data, source: "x-api-profile" };
-  } catch (error) {
-    return fetchFailure("x-profile-api", fetchErrorReason(error), {
-      retryable: true,
-    });
-  }
 }
 
 async function fetchXProfileViaFxTwitter(handle, timeoutMs, fetchImpl) {
