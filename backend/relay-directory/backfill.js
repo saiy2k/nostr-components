@@ -279,7 +279,7 @@ async function executeBackfillCursor(
   const previousState = config.backfillResume
     ? await readBackfillState(stateRef)
     : null;
-  if (previousState?.status === "complete") {
+  if (isTerminalCursorStatus(previousState?.status)) {
     return completedCursorSummary(relay, kind, previousState);
   }
 
@@ -323,6 +323,18 @@ async function executeBackfillCursor(
         cursorUntil: safeState.cursorUntil,
         pageLimit: safeState.pageLimit,
       });
+      // Relays that permanently reject this kind filter will never yield
+      // events; mark the cursor terminal so daily runs stop retry_later churn.
+      if (isPermanentRelayKindUnsupported(page.reason)) {
+        await writeCursorCheckpoint(db, relay, kind, safeState, config, {
+          status: "unsupported",
+          completed: true,
+          lastReason: page.reason,
+        });
+        stats.completed = true;
+        stats.unsupported = true;
+        break;
+      }
       await writeCursorCheckpoint(db, relay, kind, safeState, config, {
         status: "retry_later",
         completed: false,
@@ -777,19 +789,28 @@ function createCursorStats(relay, kind) {
     duplicateEventsSkipped: 0,
     gapsWritten: 0,
     completed: false,
+    unsupported: false,
     retryPaused: false,
     lastReason: null,
   };
 }
 
 function completedCursorSummary(relay, kind, previousState) {
+  const unsupported = previousState?.status === "unsupported";
   return {
     ...createCursorStats(relay, kind),
     cursorUntil: previousState.cursorUntil,
     oldestSeenAt: previousState.oldestSeenAt,
     completed: true,
-    lastReason: previousState.lastReason || "already-complete",
+    unsupported,
+    lastReason:
+      previousState.lastReason ||
+      (unsupported ? "unsupported" : "already-complete"),
   };
+}
+
+export function isTerminalCursorStatus(status) {
+  return status === "complete" || status === "unsupported";
 }
 
 function addProcessedPageStats(stats, processed) {
@@ -915,6 +936,18 @@ function oldestCreatedAt(events) {
 
 export function isSuccessfulRelayPage(reason) {
   return reason === "eose" || reason === "max";
+}
+
+/**
+ * True when a relay closed the REQ because this kind is not accepted.
+ * Transient closes (timeout, auth, disconnect) must keep retrying.
+ */
+export function isPermanentRelayKindUnsupported(reason) {
+  if (typeof reason !== "string" || !reason.startsWith("closed:")) return false;
+  const detail = reason.slice("closed:".length).toLowerCase();
+  return (
+    detail.includes("kind not allowed") || detail.includes("kinds not supported")
+  );
 }
 
 export function decideBackfillCursor({
@@ -1068,8 +1101,15 @@ function printPageProgress({
 }
 
 function printCursorSummary(stats) {
+  const status = stats.completed
+    ? stats.unsupported
+      ? "unsupported"
+      : "complete"
+    : stats.retryPaused
+      ? "retry_later"
+      : "paused";
   console.log(
-    `    pages=${stats.pages} relayEvents=${stats.relayEvents} validEvents=${stats.validEvents} claims=${stats.identityClaimsDiscovered} handleWrites=${stats.directoryHandleWrites} status=${stats.completed ? "complete" : stats.retryPaused ? "retry_later" : "paused"}`,
+    `    pages=${stats.pages} relayEvents=${stats.relayEvents} validEvents=${stats.validEvents} claims=${stats.identityClaimsDiscovered} handleWrites=${stats.directoryHandleWrites} status=${status}`,
   );
 }
 
