@@ -36,7 +36,7 @@ export function loadProjectionConfig(env = process.env) {
     maxProofs: numberFromEnv(env, "MAX_PROOFS", 250),
     verifyTweets: env.VERIFY_TWEETS !== "0",
     checkZaps: env.CHECK_ZAPS !== "0",
-    projectionLimit: numberFromEnv(env, "PROJECTION_LIMIT", 1000),
+    projectionLimit: numberFromEnv(env, "PROJECTION_LIMIT", 100),
     projectionExternalRetryMs: Number(
       env.PROJECTION_EXTERNAL_RETRY_MS || 15 * 60 * 1000,
     ),
@@ -53,7 +53,6 @@ export function loadProjectionConfig(env = process.env) {
     maxRetryAttempts: Number(
       env.MAX_RETRY_ATTEMPTS || DEFAULT_MAX_RETRY_ATTEMPTS,
     ),
-    xProfileMax: numberFromEnv(env, "X_PROFILE_MAX", 100),
     xBearerToken:
       env.X_BEARER_TOKEN || env.TWITTER_BEARER_TOKEN || null,
   };
@@ -82,9 +81,6 @@ function validateProjectionArgs(args) {
   }
   if (!Number.isInteger(args.runDeadlineMs) || args.runDeadlineMs < 0) {
     throw new Error("PROJECTION_RUN_DEADLINE_MS must be an integer >= 0.");
-  }
-  if (!Number.isInteger(args.xProfileMax) || args.xProfileMax <= 0) {
-    throw new Error("X_PROFILE_MAX must be a positive integer.");
   }
   for (const [name, value] of [
     ["MAX_PENDING_CLAIMS", args.maxPendingClaims],
@@ -125,7 +121,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     stoppedReason: null,
   };
   let proofsRemaining = args.maxProofs === 0 ? Infinity : args.maxProofs;
-  let profilesRemaining = args.xProfileMax;
   const deadlineAt =
     args.runDeadlineMs > 0 ? now() + args.runDeadlineMs : Infinity;
 
@@ -143,10 +138,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
 
     const verification = await verifyClaims(handleDoc.data, args, {
       proofsRemaining,
-      profilesRemaining,
     });
     proofsRemaining -= verification.proofTweetsAttempted;
-    profilesRemaining -= verification.xProfilesAttempted;
     stats.claimsConsidered += verification.claimsConsidered;
     stats.proofTweetsAttempted += verification.proofTweetsAttempted;
     stats.xProfilesAttempted += verification.xProfilesAttempted;
@@ -198,7 +191,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       projectionLimit: args.projectionLimit,
       maxProofs: args.maxProofs,
       scanXProfiles: true,
-      xProfileMax: args.xProfileMax,
       runDeadlineMs: args.runDeadlineMs,
     },
     stats,
@@ -222,14 +214,13 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
   let stopRun = false;
   let stoppedReason = null;
   const proofsRemaining = limits.proofsRemaining ?? Infinity;
-  const profilesRemaining = limits.profilesRemaining ?? Infinity;
 
-  if (profilesRemaining > 0 && pending.length > 0) {
+  if (pending.length > 0) {
     const bioDiscovery = await discoverXBioIdentities({
       handleSeeds: pending,
       additionalHandles: [],
       timeoutMs: args.timeoutMs,
-      maxProfiles: Math.min(1, profilesRemaining),
+      maxProfiles: 1,
     });
     xProfilesAttempted = bioDiscovery.profilesAttempted;
     xProfilesFailed = bioDiscovery.profilesFailed;

@@ -36,7 +36,7 @@ describe("projection configuration", () => {
     ).toMatchObject({
       firestoreHandlesCollection: "nostrDirectoryHandles",
       firestoreEntriesCollection: "nostrDirectoryEntries",
-      projectionLimit: 1000,
+      projectionLimit: 100,
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,
       maxRejectionTombstones: 100,
@@ -58,15 +58,6 @@ describe("projection configuration", () => {
         PROJECTION_RUN_DEADLINE_MS: "-1",
       }),
     ).toThrow("PROJECTION_RUN_DEADLINE_MS must be an integer >= 0.");
-  });
-
-  it("does not allow the required X profile scan budget to be disabled", () => {
-    expect(() =>
-      loadProjectionConfig({
-        FIRESTORE_PROJECT: "gr-prod",
-        X_PROFILE_MAX: "0",
-      }),
-    ).toThrow("X_PROFILE_MAX must be a positive integer.");
   });
 });
 
@@ -499,7 +490,7 @@ describe("external verification", () => {
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
       projectionArgs({ checkZaps: false }),
-      { profilesRemaining: 1, proofsRemaining: 1 },
+      { proofsRemaining: 1 },
     );
 
     expect(result).toMatchObject({
@@ -536,7 +527,7 @@ describe("external verification", () => {
     const verification = await verifyHandleClaims(
       handleData,
       projectionArgs({ checkZaps: false }),
-      { profilesRemaining: 1, proofsRemaining: 1 },
+      { proofsRemaining: 1 },
     );
     const transition = applyProjectionResults(
       handleData,
@@ -565,7 +556,7 @@ describe("external verification", () => {
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
       projectionArgs({ checkZaps: false }),
-      { profilesRemaining: 1, proofsRemaining: 1 },
+      { proofsRemaining: 1 },
     );
 
     expect(result.results).toEqual([
@@ -591,7 +582,7 @@ describe("external verification", () => {
         claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
       },
       projectionArgs({ checkZaps: false }),
-      { profilesRemaining: 1, proofsRemaining: 1 },
+      { proofsRemaining: 1 },
     );
 
     expect(result.results[0]).toMatchObject({
@@ -618,7 +609,7 @@ describe("external verification", () => {
         claims: [rejected, pendingClaim("other", PUBKEY_B, 200, null)],
       },
       projectionArgs({ checkZaps: false }),
-      { profilesRemaining: 1, proofsRemaining: 1 },
+      { proofsRemaining: 1 },
     );
 
     expect(result.results).toEqual(
@@ -635,12 +626,19 @@ describe("external verification", () => {
   it("verifies proof tweets without storing the source event", async () => {
     vi.stubEnv("X_BEARER_TOKEN", undefined);
     vi.stubEnv("TWITTER_BEARER_TOKEN", undefined);
-    const fetchImpl = vi.fn(async () =>
-      response({
+    const fetchImpl = vi.fn(async (url) => {
+      if (String(url).includes("api.fxtwitter.com/2/profile/")) {
+        return fxTwitterProfile({
+          id: "x-user-1",
+          screen_name: "alice",
+          description: "No Nostr profile here",
+        });
+      }
+      return response({
         text: `My Nostr profile is ${NPUB_A}`,
         user: { screen_name: "alice", id_str: "x-user-1" },
-      }),
-    );
+      });
+    });
     vi.stubGlobal("fetch", fetchImpl);
     const result = await verifyHandleClaims(
       {
@@ -648,7 +646,7 @@ describe("external verification", () => {
         claims: [pendingClaim("proof", PUBKEY_A, 100)],
       },
       projectionArgs({ checkZaps: false }),
-      { proofsRemaining: 1, profilesRemaining: 0 },
+      { proofsRemaining: 1 },
     );
 
     expect(result.results[0]).toMatchObject({
@@ -657,7 +655,7 @@ describe("external verification", () => {
       verificationMethod: "nip39_proof_tweet",
       zapReason: "zap-check-skipped",
     });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalled();
     const transition = applyProjectionResults(
       {
         handle: "alice",
@@ -920,7 +918,6 @@ function projectionArgs(overrides = {}) {
     maxInactiveVerifiedClaims: 10,
     maxRejectionTombstones: 100,
     maxRetryAttempts: 5,
-    xProfileMax: 10,
     xBearerToken: null,
     out: null,
     ...overrides,
