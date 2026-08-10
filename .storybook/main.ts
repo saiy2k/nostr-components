@@ -39,10 +39,7 @@ const config: StorybookConfig = {
     options: {},
   },
 
-  // Add this line to serve the 'dist' and 'images' directories
-  staticDirs: [
-    '../dist',
-    { from: '../images', to: '/images' }
-  ],
+  // Components load from jsDelivr in preview-head.html; only local images are served here.
+  staticDirs: [{ from: '../images', to: '/images' }],
 };
 export default config;

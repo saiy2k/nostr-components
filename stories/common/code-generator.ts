@@ -41,14 +41,18 @@ export interface GenerateDashboardOptions {
   parameters: ParameterDefinition[];
 }
 
+/** Latest published production assets on jsDelivr (matches README CDN guidance). */
+export const CDN_BASE =
+  'https://cdn.jsdelivr.net/npm/nostr-components@latest/dist';
+
 // Shared constants
-export const BUNDLE_SCRIPT = '<script type="module" src="/nostr-components.es.js"></script>';
+export const BUNDLE_SCRIPT = `<script type="module" src="${CDN_BASE}/nostr-components.es.js"></script>`;
 
 /**
  * Generates component-specific bundle script
  */
 export const generateBundleScript = (componentName: string): string => {
-  return `<script type="module" src="/components/${componentName}.es.js"></script>`;
+  return `<script type="module" src="${CDN_BASE}/components/${componentName}.es.js"></script>`;
 };
 
 const serializeAttribute = (
