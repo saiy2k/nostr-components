@@ -121,6 +121,17 @@ export async function runBackfill(config, FirestoreCtor, dependencies = {}) {
     console.log(
       `Backfilling ${IDENTITY_KINDS.join(",")} from ${config.relays.length} relays into ${config.firestoreProject}/${config.firestoreDatabase}...`,
     );
+    logBackfillEvent("backfill_run_begin", {
+      relays: config.relays.length,
+      kinds: IDENTITY_KINDS,
+      firestoreProject: config.firestoreProject,
+      firestoreDatabase: config.firestoreDatabase,
+      pageLimit: config.backfillPageLimit,
+      maxPages: config.backfillMaxPages,
+      backfillUntil: config.backfillUntil,
+      backfillSince: config.backfillSince,
+      backfillResume: config.backfillResume,
+    });
 
     const { totals, cursorSummaries } = await runBackfillCursors(
       db,
@@ -193,6 +204,14 @@ export async function runBackfillCursors(db, config, dependencies = {}) {
         for (const kind of IDENTITY_KINDS) {
           totals.relayKindCursors += 1;
           const summary = failedCursorSummary(relay, kind, error);
+          printCursorFailure(summary);
+          logBackfillEvent("backfill_cursor_result", {
+            relay,
+            kind,
+            status: "failed",
+            lastReason: summary.lastReason,
+            error: summary.error || null,
+          });
           addCursorSummary(totals, summary);
           cursorSummaries.push(summary);
         }
@@ -215,6 +234,14 @@ export async function runBackfillCursors(db, config, dependencies = {}) {
           );
         } catch (error) {
           summary = failedCursorSummary(relay, kind, error);
+          printCursorFailure(summary);
+          logBackfillEvent("backfill_cursor_result", {
+            relay,
+            kind,
+            status: "failed",
+            lastReason: summary.lastReason,
+            error: summary.error || null,
+          });
         }
         addCursorSummary(totals, summary);
         cursorSummaries.push(summary);
@@ -280,7 +307,17 @@ async function executeBackfillCursor(
     ? await readBackfillState(stateRef)
     : null;
   if (previousState?.status === "complete") {
-    return completedCursorSummary(relay, kind, previousState);
+    const summary = completedCursorSummary(relay, kind, previousState);
+    printAlreadyCompleteSkip(summary);
+    logBackfillEvent("backfill_cursor_result", {
+      relay,
+      kind,
+      status: "already_complete",
+      lastReason: summary.lastReason,
+      cursorUntil: summary.cursorUntil ?? null,
+      oldestSeenAt: summary.oldestSeenAt ?? null,
+    });
+    return summary;
   }
 
   const cursor = createCursorState(previousState, config);
@@ -295,14 +332,34 @@ async function executeBackfillCursor(
       createBoundedCache(config.backfillCacheLimit),
   };
   const queryRelayFn = dependencies.queryRelay || queryRelay;
+  const cursorStartedMs = Date.now();
 
   console.log(`  ${relay} kind:${kind} starting until=${cursor.cursorUntil}`);
+  logBackfillEvent("backfill_cursor_begin", {
+    relay,
+    kind,
+    cursorUntil: cursor.cursorUntil,
+    pageLimit: cursor.pageLimit,
+    backfillSince: config.backfillSince,
+    maxPages: config.backfillMaxPages,
+    resumed: Boolean(previousState),
+    previousStatus: previousState?.status || null,
+  });
 
   while (
     stats.pages < config.backfillMaxPages &&
     cursor.cursorUntil > config.backfillSince
   ) {
+    const pageStartedMs = Date.now();
     const safeState = snapshotCursorState(cursor);
+    logBackfillEvent("backfill_page_begin", {
+      relay,
+      kind,
+      page: stats.pages + 1,
+      maxPages: config.backfillMaxPages,
+      cursorUntil: safeState.cursorUntil,
+      pageLimit: safeState.pageLimit,
+    });
     const page = await fetchBackfillPage(
       queryRelayFn,
       relay,
@@ -322,6 +379,21 @@ async function executeBackfillCursor(
         reason: page.reason,
         cursorUntil: safeState.cursorUntil,
         pageLimit: safeState.pageLimit,
+      });
+      logBackfillEvent("backfill_page_result", {
+        relay,
+        kind,
+        page: stats.pages,
+        maxPages: config.backfillMaxPages,
+        durationMs: Date.now() - pageStartedMs,
+        events: page.events.length,
+        valid: 0,
+        claims: 0,
+        writes: 0,
+        reason: page.reason,
+        cursorUntil: safeState.cursorUntil,
+        pageLimit: safeState.pageLimit,
+        retryPaused: true,
       });
       await writeCursorCheckpoint(db, relay, kind, safeState, config, {
         status: "retry_later",
@@ -349,6 +421,21 @@ async function executeBackfillCursor(
         reason: "page-contained-no-valid-events",
         cursorUntil: safeState.cursorUntil,
         pageLimit: safeState.pageLimit,
+      });
+      logBackfillEvent("backfill_page_result", {
+        relay,
+        kind,
+        page: stats.pages,
+        maxPages: config.backfillMaxPages,
+        durationMs: Date.now() - pageStartedMs,
+        events: page.events.length,
+        valid: 0,
+        claims: 0,
+        writes: 0,
+        reason: "page-contained-no-valid-events",
+        cursorUntil: safeState.cursorUntil,
+        pageLimit: safeState.pageLimit,
+        retryPaused: true,
       });
       await writeCursorCheckpoint(db, relay, kind, safeState, config, {
         status: "retry_later",
@@ -385,6 +472,9 @@ async function executeBackfillCursor(
     stats.directoryHandleWrites += commitResult.handlesWritten;
     stats.handleWriteFailures += commitResult.handlesFailed;
     stats.handleWriteDeadLetters += commitResult.handlesDeadLettered;
+    const pageReason = commitResult.retryPaused
+      ? commitResult.lastReason
+      : pageResult.reason || page.reason;
     printPageProgress({
       page: stats.pages,
       maxPages: config.backfillMaxPages,
@@ -393,11 +483,31 @@ async function executeBackfillCursor(
       oldest: pageOldest,
       claims: processed.claims.length,
       writes: commitResult.handlesWritten,
-      reason: commitResult.retryPaused
-        ? commitResult.lastReason
-        : pageResult.reason || page.reason,
+      reason: pageReason,
       cursorUntil: pageResult.nextState.cursorUntil,
       pageLimit: pageResult.nextState.pageLimit,
+    });
+    logBackfillEvent("backfill_page_result", {
+      relay,
+      kind,
+      page: stats.pages,
+      maxPages: config.backfillMaxPages,
+      durationMs: Date.now() - pageStartedMs,
+      events: page.events.length,
+      valid: processed.validEvents.length,
+      oldest: pageOldest,
+      claims: processed.claims.length,
+      writes: commitResult.handlesWritten,
+      handleWriteFailures: commitResult.handlesFailed,
+      handleWriteDeadLetters: commitResult.handlesDeadLettered,
+      duplicatesSkipped: processed.duplicateEventsSkipped,
+      planStats: processed.planStats || null,
+      gap: Boolean(pageResult.gap),
+      completed: Boolean(pageResult.completed),
+      reason: pageReason,
+      cursorUntil: pageResult.nextState.cursorUntil,
+      pageLimit: pageResult.nextState.pageLimit,
+      retryPaused: Boolean(commitResult.retryPaused),
     });
     if (commitResult.retryPaused) {
       stats.retryPaused = true;
@@ -416,11 +526,29 @@ async function executeBackfillCursor(
 
   await finalizePausedCursor(db, relay, kind, cursor, stats, config);
   printCursorSummary(stats);
-  return {
+  const cursorResult = {
     ...stats,
     cursorUntil: cursor.cursorUntil,
     oldestSeenAt: cursor.oldestSeenAt,
   };
+  logBackfillEvent("backfill_cursor_result", {
+    relay,
+    kind,
+    durationMs: Date.now() - cursorStartedMs,
+    status: cursorStatusLabel(cursorResult),
+    lastReason: cursorResult.lastReason || null,
+    pages: cursorResult.pages,
+    relayEvents: cursorResult.relayEvents,
+    validEvents: cursorResult.validEvents,
+    claims: cursorResult.identityClaimsDiscovered,
+    handleWrites: cursorResult.directoryHandleWrites,
+    handleWriteFailures: cursorResult.handleWriteFailures,
+    handleWriteDeadLetters: cursorResult.handleWriteDeadLetters,
+    gapsWritten: cursorResult.gapsWritten,
+    cursorUntil: cursorResult.cursorUntil,
+    oldestSeenAt: cursorResult.oldestSeenAt ?? null,
+  });
+  return cursorResult;
 }
 
 export async function processBackfillPage(db, page, relay, config, context) {
@@ -730,7 +858,9 @@ async function finalizePausedCursor(db, relay, kind, cursor, stats, config) {
     return;
   }
   if (stats.pages >= config.backfillMaxPages) {
-    stats.lastReason ||= "max-pages";
+    // Overwrite page-level "max" (hit event limit) so Firestore/logs
+    // reflect the daily page budget pause, not the last page reason.
+    stats.lastReason = "max-pages";
     await writeCursorCheckpoint(db, relay, kind, cursor, config, {
       status: "paused",
       completed: false,
@@ -788,7 +918,8 @@ function completedCursorSummary(relay, kind, previousState) {
     cursorUntil: previousState.cursorUntil,
     oldestSeenAt: previousState.oldestSeenAt,
     completed: true,
-    lastReason: previousState.lastReason || "already-complete",
+    alreadyComplete: true,
+    lastReason: "already-complete",
   };
 }
 
@@ -814,8 +945,12 @@ function createBackfillTotals() {
     claimsSkippedRejected: 0,
     duplicateEventsSkipped: 0,
     completedCursors: 0,
+    alreadyCompleteCursors: 0,
+    pausedCursors: 0,
+    retryLaterCursors: 0,
     failedCursors: 0,
     gapsWritten: 0,
+    lastReasonCounts: {},
   };
 }
 
@@ -835,8 +970,14 @@ function addCursorSummary(totals, summary) {
   ]) {
     totals[key] += summary[key] || 0;
   }
-  if (summary.completed) totals.completedCursors += 1;
   if (summary.failed) totals.failedCursors += 1;
+  else if (summary.alreadyComplete) totals.alreadyCompleteCursors += 1;
+  else if (summary.completed) totals.completedCursors += 1;
+  else if (summary.retryPaused) totals.retryLaterCursors += 1;
+  else totals.pausedCursors += 1;
+
+  const reason = summary.lastReason || "unknown";
+  totals.lastReasonCounts[reason] = (totals.lastReasonCounts[reason] || 0) + 1;
 }
 
 function failedCursorSummary(relay, kind, error) {
@@ -1041,6 +1182,17 @@ function nonNegativeInteger(value, name) {
   }
 }
 
+function logBackfillEvent(message, fields = {}) {
+  console.log(
+    JSON.stringify({
+      severity: "INFO",
+      message,
+      module: "backfill",
+      ...fields,
+    }),
+  );
+}
+
 function printPageProgress({
   page,
   maxPages,
@@ -1067,10 +1219,39 @@ function printPageProgress({
   console.log(`    ${parts.join(" ")}`);
 }
 
+function cursorStatusLabel(stats) {
+  if (stats.alreadyComplete) return "already_complete";
+  if (stats.completed) return "complete";
+  if (stats.retryPaused) return "retry_later";
+  if (stats.failed) return "failed";
+  return "paused";
+}
+
 function printCursorSummary(stats) {
+  const lastReason = stats.lastReason || "unknown";
   console.log(
-    `    pages=${stats.pages} relayEvents=${stats.relayEvents} validEvents=${stats.validEvents} claims=${stats.identityClaimsDiscovered} handleWrites=${stats.directoryHandleWrites} status=${stats.completed ? "complete" : stats.retryPaused ? "retry_later" : "paused"}`,
+    `    pages=${stats.pages} relayEvents=${stats.relayEvents} validEvents=${stats.validEvents} claims=${stats.identityClaimsDiscovered} handleWrites=${stats.directoryHandleWrites} status=${cursorStatusLabel(stats)} lastReason=${lastReason}`,
   );
+}
+
+function printAlreadyCompleteSkip(stats) {
+  console.log(
+    `  ${stats.relay} kind:${stats.kind} skip already-complete lastReason=${stats.lastReason}`,
+  );
+}
+
+function printCursorFailure(stats) {
+  const detail = stats.error ? `: ${stats.error}` : "";
+  console.log(
+    `  ${stats.relay} kind:${stats.kind} failed lastReason=${stats.lastReason || "cursor-error"}${detail}`,
+  );
+}
+
+function formatLastReasonCounts(counts) {
+  return Object.entries(counts || {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([reason, count]) => `${reason}=${count}`)
+    .join(" ");
 }
 
 function printBackfillSummary(output, config) {
@@ -1090,7 +1271,14 @@ function printBackfillSummary(output, config) {
   console.log(`  rejected skips:       ${output.stats.claimsSkippedRejected}`);
   console.log(`  gaps written:         ${output.stats.gapsWritten}`);
   console.log(`  completed cursors:    ${output.stats.completedCursors}`);
+  console.log(
+    `  already-complete:     ${output.stats.alreadyCompleteCursors}`,
+  );
+  console.log(`  paused cursors:       ${output.stats.pausedCursors}`);
+  console.log(`  retry_later cursors:  ${output.stats.retryLaterCursors}`);
   console.log(`  failed cursors:       ${output.stats.failedCursors}`);
+  const reasonCounts = formatLastReasonCounts(output.stats.lastReasonCounts);
+  if (reasonCounts) console.log(`  lastReason counts:    ${reasonCounts}`);
   console.log(`  firestore project:    ${config.firestoreProject}`);
   console.log(`  firestore handles:    ${config.firestoreHandlesCollection}`);
   console.log(`  firestore state:      ${config.firestoreStateCollection}`);

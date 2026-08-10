@@ -106,6 +106,7 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   const stats = {
     handleDocsRead: handleDocs.length,
     handlesDue: 0,
+    handlesSkippedNotDue: 0,
     handlesChanged: 0,
     claimsConsidered: 0,
     proofTweetsAttempted: 0,
@@ -124,17 +125,46 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   const deadlineAt =
     args.runDeadlineMs > 0 ? now() + args.runDeadlineMs : Infinity;
 
-  console.log(
-    `Projecting pending claims from ${handleDocs.length} handle document(s)...`,
-  );
+  logProjectionEvent("projection_run_begin", {
+    handleDocsRead: handleDocs.length,
+    projectionLimit: args.projectionLimit,
+    maxProofs: args.maxProofs,
+    runDeadlineMs: args.runDeadlineMs,
+    checkZaps: args.checkZaps,
+    verifyTweets: args.verifyTweets,
+  });
 
   for (const handleDoc of handleDocs) {
     if (now() >= deadlineAt) {
       stats.stoppedReason = "run_deadline_reached";
+      logProjectionEvent("projection_run_stopped", {
+        reason: stats.stoppedReason,
+        handlesDue: stats.handlesDue,
+        handlesChanged: stats.handlesChanged,
+      });
       break;
     }
-    if (!projectionHandleIsDue(handleDoc.data)) continue;
+    if (!projectionHandleIsDue(handleDoc.data)) {
+      stats.handlesSkippedNotDue += 1;
+      continue;
+    }
     stats.handlesDue += 1;
+
+    const handle = handleDoc.data?.handle || null;
+    const pending = pendingClaimsForHandle(handleDoc.data);
+    const handleStartedMs = now();
+    logProjectionEvent("projection_handle_begin", {
+      handleDocId: handleDoc.id,
+      handle,
+      handlesDueIndex: stats.handlesDue,
+      pendingClaimCount: pending.length,
+      projectionStatus: handleDoc.data?.projectionStatus || null,
+      nextAttemptAt: timestampForLog(handleDoc.data?.nextAttemptAt),
+      activePubkey: handleDoc.data?.activeIdentity?.pubkey || null,
+      pendingClaims: pending.map(summarizePendingClaimForLog),
+      proofsRemaining:
+        proofsRemaining === Infinity ? null : proofsRemaining,
+    });
 
     const verification = await verifyClaims(handleDoc.data, args, {
       proofsRemaining,
@@ -171,8 +201,53 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       stats.retryLater += transition.stats.retryLater;
       stats.pendingDropped += transition.stats.pendingDropped;
     }
+
+    logProjectionEvent("projection_handle_result", {
+      handleDocId: handleDoc.id,
+      handle,
+      durationMs: Math.max(0, now() - handleStartedMs),
+      changed: transition.changed,
+      activeChanged: transition.activeChanged,
+      firestoreWrites: writes.length,
+      writeTargets: writes.map((write) => ({
+        collection: write.collection,
+        id: write.id,
+        identityStatus: write.data?.identityStatus || null,
+        directoryStatus: write.data?.directoryStatus || null,
+      })),
+      verification: {
+        claimsConsidered: verification.claimsConsidered,
+        proofTweetsAttempted: verification.proofTweetsAttempted,
+        xProfilesAttempted: verification.xProfilesAttempted,
+        xProfilesFailed: verification.xProfilesFailed || 0,
+        xProfileFailures: verification.xProfileFailures || {},
+        xBioIdentifiersResolved: verification.xBioIdentifiersResolved,
+        stopRun: verification.stopRun,
+        stoppedReason: verification.stoppedReason,
+      },
+      results: (verification.results || []).map(summarizeResultForLog),
+      transition: {
+        verified: transition.stats.verified,
+        rejected: transition.stats.rejected,
+        retryLater: transition.stats.retryLater,
+        pendingDropped: transition.stats.pendingDropped,
+        projectionStatus: transition.state.projectionStatus,
+        pendingClaimCount: transition.state.pendingClaimCount,
+        nextAttemptAt: timestampForLog(transition.state.nextAttemptAt),
+        activePubkey: transition.state.activeIdentity?.pubkey || null,
+        activeClaimId: transition.state.activeIdentity?.claimId || null,
+      },
+    });
+
     if (verification.stopRun) {
       stats.stoppedReason = verification.stoppedReason;
+      logProjectionEvent("projection_run_stopped", {
+        reason: stats.stoppedReason,
+        handleDocId: handleDoc.id,
+        handle,
+        handlesDue: stats.handlesDue,
+        handlesChanged: stats.handlesChanged,
+      });
       break;
     }
   }
@@ -440,6 +515,10 @@ export function lightningAddressToLnurlp(lud16) {
 function printProjectionSummary(output, args) {
   console.log("\nDirectory projection complete.");
   console.log(`  handle docs read:     ${output.stats.handleDocsRead}`);
+  console.log(`  handles due:          ${output.stats.handlesDue}`);
+  console.log(
+    `  handles skipped:      ${output.stats.handlesSkippedNotDue || 0}`,
+  );
   console.log(`  handles changed:      ${output.stats.handlesChanged}`);
   console.log(`  proof tweets checked: ${output.stats.proofTweetsAttempted}`);
   console.log(`  X profiles scanned:   ${output.stats.xProfilesAttempted}`);
@@ -453,7 +532,70 @@ function printProjectionSummary(output, args) {
   console.log(`  pending dropped:      ${output.stats.pendingDropped}`);
   console.log(`  Firestore writes:     ${output.stats.firestoreWrites}`);
   console.log(`  firestore project:    ${args.firestoreProject}`);
+  if (output.stats.stoppedReason) {
+    console.log(`  stopped reason:       ${output.stats.stoppedReason}`);
+  }
   if (args.out) console.log(`  output:               ${args.out}`);
+}
+
+function logProjectionEvent(message, fields = {}) {
+  console.log(
+    JSON.stringify({
+      severity: "INFO",
+      message,
+      module: "projection",
+      ...fields,
+    }),
+  );
+}
+
+function summarizePendingClaimForLog(claim) {
+  return {
+    claimId: claim.claimId,
+    pubkey: claim.pubkey || null,
+    proofTweetId: claim.proofTweetId || null,
+    attemptCount: Number(claim.attemptCount || 0),
+    retryReason: claim.retryReason || null,
+    sourceKind: claim.sourceKind ?? null,
+  };
+}
+
+function summarizeResultForLog(result) {
+  return {
+    claimId: result.claimId || result.claim?.claimId || null,
+    identityStatus: result.identityStatus || null,
+    rejectionReason: result.rejectionReason || null,
+    retryReason: result.retryReason || null,
+    verificationMethod: result.verificationMethod || null,
+    proofSource: result.proofSource || null,
+    zapReason: result.zapReason || null,
+    zappable: result.zappable === true,
+    pubkey: result.pubkey || result.claim?.pubkey || null,
+  };
+}
+
+function timestampForLog(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value.toDate === "function") {
+    try {
+      return value.toDate().toISOString();
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value.toMillis === "function") {
+    try {
+      return new Date(value.toMillis()).toISOString();
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : String(value);
+  }
+  return null;
 }
 
 function numberFromEnv(env, name, fallback) {
