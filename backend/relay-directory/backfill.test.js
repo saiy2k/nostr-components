@@ -634,11 +634,177 @@ describe("top-level cursor coordination", () => {
       relayKindCursors: 4,
       completedCursors: 3,
       failedCursors: 1,
+      retryLaterCursors: 0,
+      pausedCursors: 0,
+      alreadyCompleteCursors: 0,
+      lastReasonCounts: {
+        eose: 3,
+        "cursor-error": 1,
+      },
     });
     expect(result.cursorSummaries[0]).toMatchObject({
       failed: true,
       error: "relay unavailable",
     });
+  });
+
+  it("counts already-complete skips separately from newly completed cursors", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__done_example:kind:10011", {
+      status: "complete",
+      cursorUntil: 10,
+      oldestSeenAt: 11,
+      lastReason: "eose",
+    });
+    db.seed("state", "backfill:wss:__done_example:kind:0", {
+      status: "complete",
+      cursorUntil: 10,
+      oldestSeenAt: 11,
+      lastReason: "eose",
+    });
+
+    const result = await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://done.example", "wss://fresh.example"],
+      }),
+      {
+        queryRelay: async () => ({ events: [], reason: "eose" }),
+      },
+    );
+
+    expect(result.totals).toMatchObject({
+      relayKindCursors: 4,
+      alreadyCompleteCursors: 2,
+      completedCursors: 2,
+      failedCursors: 0,
+      lastReasonCounts: {
+        "already-complete": 2,
+        eose: 2,
+      },
+    });
+    expect(result.cursorSummaries.slice(0, 2)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          relay: "wss://done.example",
+          alreadyComplete: true,
+          lastReason: "already-complete",
+        }),
+      ]),
+    );
+  });
+
+  it("records max-pages when the daily page budget pauses a cursor", async () => {
+    const db = fakeFirestore();
+    let page = 0;
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      0,
+      testConfig({
+        backfillUntil: 1000,
+        backfillSince: 0,
+        backfillPageLimit: 1,
+        backfillMaxPages: 2,
+      }),
+      {
+        queryRelay: async () => {
+          page += 1;
+          return {
+            events: [identityEvent(1000 - page)],
+            reason: "max",
+          };
+        },
+      },
+    );
+
+    expect(summary).toMatchObject({
+      completed: false,
+      retryPaused: false,
+      pages: 2,
+      lastReason: "max-pages",
+    });
+    expect(db.writes.at(-1)).toMatchObject({
+      collection: "state",
+      data: expect.objectContaining({
+        status: "paused",
+        lastReason: "max-pages",
+      }),
+    });
+  });
+
+  it("rolls up retry_later and paused cursors in run totals", async () => {
+    const db = fakeFirestore();
+    const result = await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://timeout.example", "wss://budget.example"],
+        backfillUntil: 1000,
+        backfillPageLimit: 1,
+        backfillMaxPages: 1,
+      }),
+      {
+        queryRelay: async (relay) => {
+          if (relay === "wss://timeout.example") {
+            return { events: [], reason: "timeout" };
+          }
+          return {
+            events: [identityEvent(999)],
+            reason: "max",
+          };
+        },
+      },
+    );
+
+    expect(result.totals).toMatchObject({
+      relayKindCursors: 4,
+      retryLaterCursors: 2,
+      pausedCursors: 2,
+      completedCursors: 0,
+      lastReasonCounts: {
+        timeout: 2,
+        "max-pages": 2,
+      },
+    });
+  });
+
+  it("buckets dynamic relay error reasons in run totals", async () => {
+    const db = fakeFirestore();
+    const result = await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://a.example", "wss://b.example"],
+      }),
+      {
+        queryRelay: async (relay) => {
+          if (relay === "wss://a.example") {
+            return {
+              events: [],
+              reason: "connection-error:socket hang up",
+            };
+          }
+          return {
+            events: [],
+            reason: "closed:auth-required",
+          };
+        },
+      },
+    );
+
+    expect(result.totals.lastReasonCounts).toEqual({
+      "connection-error": 2,
+      closed: 2,
+    });
+    expect(result.cursorSummaries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lastReason: "connection-error:socket hang up",
+        }),
+        expect.objectContaining({
+          lastReason: "closed:auth-required",
+        }),
+      ]),
+    );
   });
 
   it("reuses one connected NDK client for both kinds on a relay", async () => {

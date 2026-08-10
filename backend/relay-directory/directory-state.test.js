@@ -6,9 +6,9 @@ import {
   directoryHandleId,
   extractIdentityClaims,
   mergeHandleClaims,
-  normalizeTwitterHandle,
   planDirectoryHandleWrites,
 } from "./directory-state.js";
+import { normalizeTwitterHandle } from "./utils.js";
 
 const PUBKEY_A =
   "7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e";
@@ -162,7 +162,8 @@ describe("identity claim extraction", () => {
     expect(claims[0].metadata.about).toContain("_wir_de");
   });
 
-  it("accepts plain @handles only when the X profile does not return 404", async () => {
+  it("accepts plain @handles only when FxTwitter confirms the profile", async () => {
+    const requestedUrls = [];
     const event = {
       id: "event-mention",
       kind: 0,
@@ -177,17 +178,27 @@ describe("identity claim extraction", () => {
       new Date("2026-07-07T00:00:00.000Z"),
       {
         fetchImpl: async (url) => {
+          requestedUrls.push(String(url));
           const exists = String(url).endsWith("/saiy2k");
           return {
+            ok: exists,
             status: exists ? 200 : 404,
-            url,
-            text: async () =>
-              exists ? '<meta property="og:title" content="@saiy2k">' : "",
+            json: async () =>
+              exists
+                ? {
+                    code: 200,
+                    user: { id: "1", screen_name: "saiy2k" },
+                  }
+                : { code: 404 },
           };
         },
       },
     );
 
+    expect(requestedUrls).toEqual([
+      "https://api.fxtwitter.com/2/profile/saiy2k",
+      "https://api.fxtwitter.com/2/profile/missing_user",
+    ]);
     expect(claims.map((claim) => claim.handle)).toEqual(["saiy2k"]);
     expect(claims[0]).toMatchObject({
       sources: ["kind0.about_mention"],
@@ -195,13 +206,13 @@ describe("identity claim extraction", () => {
     });
   });
 
-  it("does not accept generic X shells or challenge redirects", async () => {
+  it("does not accept incomplete or mismatched FxTwitter profile payloads", async () => {
     await expect(
       checkXHandleExists("alice", {
         fetchImpl: async () => ({
+          ok: true,
           status: 200,
-          url: "https://x.com/alice",
-          text: async () => "<html><title>X</title></html>",
+          json: async () => ({ code: 200, user: { id: "1" } }),
         }),
       }),
     ).resolves.toBeNull();
@@ -209,16 +220,29 @@ describe("identity claim extraction", () => {
     await expect(
       checkXHandleExists("alice", {
         fetchImpl: async () => ({
+          ok: true,
           status: 200,
-          url: "https://x.com/i/flow/login",
-          text: async () => '<meta content="@alice">',
+          json: async () => ({
+            code: 200,
+            user: { id: "1", screen_name: "bob" },
+          }),
         }),
       }),
     ).resolves.toBeNull();
   });
 
-  it("reports indeterminate X lookup failures separately from missing users", async () => {
+  it("reports indeterminate FxTwitter lookup failures separately from missing users", async () => {
     const failures = [];
+    await expect(
+      checkXHandleExists("alice", {
+        fetchImpl: async () => ({
+          ok: false,
+          status: 404,
+          json: async () => ({ code: 404 }),
+        }),
+      }),
+    ).resolves.toBe(false);
+
     const result = await checkXHandleExists("alice", {
       fetchImpl: async () => {
         throw new Error("network unavailable");
@@ -359,6 +383,7 @@ describe("directory handle write planning", () => {
         projectionStatus: "pending",
       },
     });
+    expect(first.writes[0].data.nextAttemptAt).toBeTruthy();
     // Planning alone must not treat the write as committed.
     expect(handleStateCache.get("alice")).toBeNull();
 

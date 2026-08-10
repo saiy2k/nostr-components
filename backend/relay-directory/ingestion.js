@@ -19,8 +19,10 @@ export function createNdkRelayClient(url) {
   return {
     connect: (timeoutMs) => ndk.connect(timeoutMs),
     subscribe(filter, { max, onEvent, onEose, onClosed }) {
+      // NDK auto-starts unless the third arg is false; attach handlers first so
+      // cached/EOSE signals cannot fire before listeners are registered.
       const subscription = ndk.subscribe(
-        { ...filter, limit: max },
+        Number.isFinite(max) ? { ...filter, limit: max } : filter,
         {
           closeOnEose: false,
           dontSaveToCache: true,
@@ -30,9 +32,9 @@ export function createNdkRelayClient(url) {
         false,
       );
       subscription.on("event", (event) => onEvent(event.rawEvent()));
-      subscription.on("eose", onEose);
-      subscription.on("closed", (_relay, reason) => onClosed(reason));
-      subscription.start();
+      subscription.on("eose", () => onEose?.());
+      subscription.on("closed", (_relay, reason) => onClosed?.(reason));
+      void subscription.start();
       return () => subscription.stop();
     },
     close() {
