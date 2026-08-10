@@ -59,6 +59,21 @@ describe("projection configuration", () => {
       }),
     ).toThrow("PROJECTION_RUN_DEADLINE_MS must be an integer >= 0.");
   });
+
+  it("preserves zero-valued numeric environment overrides", () => {
+    expect(
+      loadProjectionConfig({
+        FIRESTORE_PROJECT: "gr-prod",
+        MAX_PENDING_CLAIMS: "0",
+        MAX_INACTIVE_VERIFIED_CLAIMS: "0",
+        MAX_REJECTION_TOMBSTONES: "0",
+      }),
+    ).toMatchObject({
+      maxPendingClaims: 0,
+      maxInactiveVerifiedClaims: 0,
+      maxRejectionTombstones: 0,
+    });
+  });
 });
 
 describe("claim projection policy", () => {
@@ -224,6 +239,35 @@ describe("claim projection policy", () => {
         reason: "retry-attempts-exhausted:rate_limited",
       }),
     ]);
+  });
+
+  it("caps hostile far-future retry hints", () => {
+    const transition = applyProjectionResults(
+      {
+        claims: [pendingClaim("retry", PUBKEY_A, 100)],
+        pendingClaimCount: 1,
+      },
+      [
+        {
+          claimId: "retry",
+          identityStatus: "retry_later",
+          retryReason: "rate_limited",
+          retryAfter: String(60 * 60 * 24 * 365),
+        },
+      ],
+      {
+        now: NOW,
+        retryDelayMs: 60000,
+        maxExternalRetryMs: 60 * 60 * 1000,
+      },
+    );
+
+    expect(transition.state.claims[0].retryAt).toBe(
+      new Date(NOW.getTime() + 60 * 60 * 1000).toISOString(),
+    );
+    expect(transition.state.nextAttemptAt).toEqual(
+      new Date(NOW.getTime() + 60 * 60 * 1000),
+    );
   });
 
   it("backs off a due handle when verification produces no results", () => {
@@ -908,6 +952,38 @@ describe("projection execution", () => {
     expect(verifyClaims).not.toHaveBeenCalled();
   });
 
+  it("surfaces legacy pending handles missing nextAttemptAt", async () => {
+    const legacy = {
+      handle: "legacy",
+      claims: [pendingClaim("legacy-claim", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+      projectionStatus: "pending",
+    };
+    const verifyClaims = vi.fn(async (handleData) =>
+      verificationOutput({
+        results: [
+          {
+            claimId: handleData.claims[0].claimId,
+            identityStatus: "rejected",
+            rejectionReason: "test",
+          },
+        ],
+      }),
+    );
+
+    const output = await runProjection(projectionArgs(), null, {
+      db: fakeFirestore([legacy]),
+      verifyHandleClaims: verifyClaims,
+    });
+
+    expect(output.stats).toMatchObject({
+      handleDocsRead: 1,
+      handlesDue: 1,
+      rejected: 1,
+    });
+    expect(verifyClaims).toHaveBeenCalledTimes(1);
+  });
+
   it("stops cleanly when the run deadline is reached", async () => {
     const now = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(1);
     const verifyClaims = vi.fn();
@@ -1039,31 +1115,32 @@ function fxTwitterFetch(
 
 function collectionAdapter(name, handle, calls = []) {
   const handles = Array.isArray(handle) ? handle : [handle];
-  const adapter = {
+  const make = (ordered) => ({
     where: (...args) => {
       calls.push(["where", ...args]);
-      return adapter;
+      return make(ordered);
     },
     orderBy: (...args) => {
       calls.push(["orderBy", ...args]);
-      return adapter;
+      return make(true);
     },
     limit: (...args) => {
       calls.push(["limit", ...args]);
-      return adapter;
+      return make(ordered);
     },
-    get: async () => ({
-      docs:
-        name === "handles"
-          ? handles.map((data, index) => ({
-              id: `twitter:${data.handle || index}`,
-              data: () => data,
-            }))
-          : [],
-    }),
+    get: async () => {
+      if (name !== "handles") return { docs: [] };
+      const docs = handles
+        .filter((data) => !ordered || data.nextAttemptAt != null)
+        .map((data, index) => ({
+          id: `twitter:${data.handle || index}`,
+          data: () => data,
+        }));
+      return { docs };
+    },
     doc: (id) => ({ collection: name, id }),
-  };
-  return adapter;
+  });
+  return make(false);
 }
 
 function dueHandle(handle, claimId, pubkey) {

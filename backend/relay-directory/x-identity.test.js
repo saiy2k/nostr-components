@@ -111,6 +111,35 @@ describe("proof tweet verification", () => {
     );
   });
 
+  it("accepts proof tweets that carry an uppercase bech32 npub", async () => {
+    await expect(
+      verifyTweetCandidate(
+        {
+          handle: "alice",
+          npub: NPUB,
+          proofTweetId: "2064733905014440088",
+        },
+        1000,
+        {
+          fetchImpl: async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              code: 200,
+              tweet: {
+                text: `My Nostr profile is ${NPUB.toUpperCase()}`,
+                author: { id: "x-user-1", screen_name: "alice" },
+              },
+            }),
+          }),
+        },
+      ),
+    ).resolves.toMatchObject({
+      identityStatus: "verified",
+      verificationMethod: "nip39_proof_tweet",
+    });
+  });
+
   it("rejects a proof tweet whose FxTwitter author does not match the claim handle", async () => {
     await expect(
       verifyTweetCandidate(

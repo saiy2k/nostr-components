@@ -26,6 +26,8 @@ import {
 } from "./utils.js";
 
 export const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
+/** Upper bound for externally supplied retry-after / rate-limit reset hints. */
+export const DEFAULT_MAX_EXTERNAL_RETRY_MS = 24 * 60 * 60 * 1000;
 
 export function pendingClaimsForHandle(handleData) {
   return (handleData?.claims || [])
@@ -45,6 +47,8 @@ export function applyProjectionResults(handleData, results, options = {}) {
   const now = options.now || new Date();
   const nowIso = now.toISOString();
   const retryDelayMs = options.retryDelayMs ?? 15 * 60 * 1000;
+  const maxExternalRetryMs =
+    options.maxExternalRetryMs ?? DEFAULT_MAX_EXTERNAL_RETRY_MS;
   const maxPendingClaims =
     options.maxPendingClaims ?? DEFAULT_MAX_PENDING_CLAIMS;
   const maxInactiveVerifiedClaims =
@@ -113,7 +117,7 @@ export function applyProjectionResults(handleData, results, options = {}) {
           retryReason,
           retrySource: result.retrySource || "projection",
           retryAt: new Date(
-            retryAtMs(result, now, retryDelayMs),
+            retryAtMs(result, now, retryDelayMs, maxExternalRetryMs),
           ).toISOString(),
         });
         stats.retryLater += 1;
@@ -387,13 +391,19 @@ function projectableState(value) {
   };
 }
 
-function retryAtMs(result, now, retryDelayMs) {
-  const candidates = [now.getTime() + retryDelayMs];
+function retryAtMs(
+  result,
+  now,
+  retryDelayMs,
+  maxExternalRetryMs = DEFAULT_MAX_EXTERNAL_RETRY_MS,
+) {
+  const nowMs = now.getTime();
+  const candidates = [nowMs + retryDelayMs];
   const retryAfter = String(result.retryAfter || "").trim();
   if (/^\d+$/.test(retryAfter)) {
     const retryAfterSeconds = Number(retryAfter);
     if (Number.isFinite(retryAfterSeconds)) {
-      candidates.push(now.getTime() + retryAfterSeconds * 1000);
+      candidates.push(nowMs + retryAfterSeconds * 1000);
     }
   } else {
     const retryAfterDate = Date.parse(retryAfter);
@@ -404,7 +414,8 @@ function retryAtMs(result, now, retryDelayMs) {
   if (Number.isFinite(reset) && reset > 0) {
     candidates.push(reset < 1_000_000_000_000 ? reset * 1000 : reset);
   }
-  return Math.max(...candidates);
+  const maxRetryMs = Math.max(retryDelayMs, maxExternalRetryMs);
+  return Math.min(Math.max(...candidates), nowMs + maxRetryMs);
 }
 
 function sameValue(left, right) {

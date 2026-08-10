@@ -43,21 +43,31 @@ export function loadProjectionConfig(env = process.env) {
     verifyTweets: env.VERIFY_TWEETS !== "0",
     checkZaps: env.CHECK_ZAPS !== "0",
     projectionLimit: numberFromEnv(env, "PROJECTION_LIMIT", 100),
-    projectionExternalRetryMs: Number(
-      env.PROJECTION_EXTERNAL_RETRY_MS || 15 * 60 * 1000,
+    projectionExternalRetryMs: numberFromEnv(
+      env,
+      "PROJECTION_EXTERNAL_RETRY_MS",
+      15 * 60 * 1000,
     ),
     runDeadlineMs: numberFromEnv(env, "PROJECTION_RUN_DEADLINE_MS", 0),
-    maxPendingClaims: Number(
-      env.MAX_PENDING_CLAIMS || DEFAULT_MAX_PENDING_CLAIMS,
+    maxPendingClaims: numberFromEnv(
+      env,
+      "MAX_PENDING_CLAIMS",
+      DEFAULT_MAX_PENDING_CLAIMS,
     ),
-    maxInactiveVerifiedClaims: Number(
-      env.MAX_INACTIVE_VERIFIED_CLAIMS || DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+    maxInactiveVerifiedClaims: numberFromEnv(
+      env,
+      "MAX_INACTIVE_VERIFIED_CLAIMS",
+      DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
     ),
-    maxRejectionTombstones: Number(
-      env.MAX_REJECTION_TOMBSTONES || DEFAULT_MAX_REJECTION_TOMBSTONES,
+    maxRejectionTombstones: numberFromEnv(
+      env,
+      "MAX_REJECTION_TOMBSTONES",
+      DEFAULT_MAX_REJECTION_TOMBSTONES,
     ),
-    maxRetryAttempts: Number(
-      env.MAX_RETRY_ATTEMPTS || DEFAULT_MAX_RETRY_ATTEMPTS,
+    maxRetryAttempts: numberFromEnv(
+      env,
+      "MAX_RETRY_ATTEMPTS",
+      DEFAULT_MAX_RETRY_ATTEMPTS,
     ),
   };
   validateProjectionArgs(args);
@@ -435,13 +445,37 @@ function syntheticBioClaim(handleData, record, now = new Date()) {
 }
 
 async function readPendingHandleDocs(db, args) {
-  const snapshot = await db
-    .collection(args.firestoreHandlesCollection)
+  const collection = db.collection(args.firestoreHandlesCollection);
+  const limit = args.projectionLimit;
+  const orderedSnap = await collection
     .where("pendingClaimCount", ">", 0)
     .orderBy("nextAttemptAt")
-    .limit(args.projectionLimit)
+    .limit(limit)
     .get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() || {} }));
+
+  // Docs missing nextAttemptAt are excluded from orderBy; surface them via an
+  // unordered pending query so legacy backfill rows can be healed.
+  const unorderedSnap = await collection
+    .where("pendingClaimCount", ">", 0)
+    .limit(limit)
+    .get();
+
+  const merged = [];
+  const seen = new Set();
+  for (const doc of unorderedSnap.docs) {
+    const data = doc.data() || {};
+    if (data.nextAttemptAt != null) continue;
+    merged.push({ id: doc.id, data });
+    seen.add(doc.id);
+    if (merged.length >= limit) return merged;
+  }
+  for (const doc of orderedSnap.docs) {
+    if (seen.has(doc.id)) continue;
+    merged.push({ id: doc.id, data: doc.data() || {} });
+    seen.add(doc.id);
+    if (merged.length >= limit) break;
+  }
+  return merged;
 }
 
 export async function checkZapSupport(

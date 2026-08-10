@@ -976,7 +976,7 @@ function addCursorSummary(totals, summary) {
   else if (summary.retryPaused) totals.retryLaterCursors += 1;
   else totals.pausedCursors += 1;
 
-  const reason = summary.lastReason || "unknown";
+  const reason = reasonBucket(summary.lastReason);
   totals.lastReasonCounts[reason] = (totals.lastReasonCounts[reason] || 0) + 1;
 }
 
@@ -1220,6 +1220,12 @@ function cursorStatusLabel(stats) {
   if (stats.retryPaused) return "retry_later";
   if (stats.failed) return "failed";
   return "paused";
+}
+
+function reasonBucket(lastReason) {
+  const reason = String(lastReason || "unknown");
+  const separator = reason.indexOf(":");
+  return separator === -1 ? reason : reason.slice(0, separator);
 }
 
 function printCursorSummary(stats) {

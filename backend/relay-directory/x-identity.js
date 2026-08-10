@@ -75,7 +75,9 @@ export async function verifyTweetCandidate(
     };
   }
 
-  if (!tweet.text.includes(candidate.npub)) {
+  const tweetText = String(tweet.text || "").toLowerCase();
+  const expectedNpub = String(candidate.npub || "").toLowerCase();
+  if (!expectedNpub || !tweetText.includes(expectedNpub)) {
     return {
       ...candidate,
       identityStatus: "rejected",

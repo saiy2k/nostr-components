@@ -383,6 +383,7 @@ describe("directory handle write planning", () => {
         projectionStatus: "pending",
       },
     });
+    expect(first.writes[0].data.nextAttemptAt).toBeTruthy();
     // Planning alone must not treat the write as committed.
     expect(handleStateCache.get("alice")).toBeNull();
 

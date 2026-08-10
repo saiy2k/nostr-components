@@ -768,6 +768,45 @@ describe("top-level cursor coordination", () => {
     });
   });
 
+  it("buckets dynamic relay error reasons in run totals", async () => {
+    const db = fakeFirestore();
+    const result = await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://a.example", "wss://b.example"],
+      }),
+      {
+        queryRelay: async (relay) => {
+          if (relay === "wss://a.example") {
+            return {
+              events: [],
+              reason: "connection-error:socket hang up",
+            };
+          }
+          return {
+            events: [],
+            reason: "closed:auth-required",
+          };
+        },
+      },
+    );
+
+    expect(result.totals.lastReasonCounts).toEqual({
+      "connection-error": 2,
+      closed: 2,
+    });
+    expect(result.cursorSummaries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lastReason: "connection-error:socket hang up",
+        }),
+        expect.objectContaining({
+          lastReason: "closed:auth-required",
+        }),
+      ]),
+    );
+  });
+
   it("reuses one connected NDK client for both kinds on a relay", async () => {
     const db = fakeFirestore();
     let connects = 0;
