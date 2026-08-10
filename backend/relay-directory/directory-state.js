@@ -3,47 +3,29 @@
 import { FieldValue } from "@google-cloud/firestore";
 import { nip19 } from "nostr-tools";
 import { DEFAULT_COLLECTIONS, stripUndefined } from "./runtime.js";
-import { firestoreSafeId } from "./utils.js";
+import {
+  compareClaimsNewestFirst,
+  extractTweetId,
+  firestoreSafeId,
+  matchTwitterTag,
+  normalizeTwitterHandle,
+  X_PROFILE_LINK,
+} from "./utils.js";
 
-export const DEFAULT_MAX_PENDING_CLAIMS = 20;
-export const DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS = 10;
-export const DEFAULT_MAX_REJECTION_TOMBSTONES = 100;
+export {
+  DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+  DEFAULT_MAX_PENDING_CLAIMS,
+  DEFAULT_MAX_REJECTION_TOMBSTONES,
+} from "./utils.js";
+import {
+  DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+  DEFAULT_MAX_PENDING_CLAIMS,
+  DEFAULT_MAX_REJECTION_TOMBSTONES,
+} from "./utils.js";
+
 const HANDLE_READ_CONCURRENCY = 50;
 
-const TWITTER_TAG = /^(?:twitter|x|com\.twitter):(.+)$/i;
-const X_PROFILE_LINK =
-  /(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/(@?[A-Za-z0-9_]{1,15})\b/gi;
 const X_MENTION = /(?:^|[\s([{"'])@([A-Za-z0-9_]{1,15})\b/g;
-const TWEET_ID = /(\d{10,25})/;
-const RESERVED_X_PATHS = new Set([
-  "compose",
-  "explore",
-  "hashtag",
-  "home",
-  "i",
-  "intent",
-  "messages",
-  "notifications",
-  "search",
-  "share",
-  "settings",
-]);
-
-export function normalizeTwitterHandle(value) {
-  if (!value) return null;
-  let handle = String(value).trim();
-  const urlMatch = [...handle.matchAll(X_PROFILE_LINK)][0];
-  if (urlMatch) handle = urlMatch[1];
-  handle = handle.replace(/^@/, "").split(/[/?#\s]/)[0];
-  if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) return null;
-  const normalized = handle.toLowerCase();
-  return RESERVED_X_PATHS.has(normalized) ? null : normalized;
-}
-
-export function extractTweetId(value) {
-  const match = String(value || "").match(TWEET_ID);
-  return match ? match[1] : null;
-}
 
 export async function extractIdentityClaims(
   events,
@@ -61,7 +43,7 @@ export async function extractIdentityClaims(
 
     for (const tag of event.tags || []) {
       if (tag[0] !== "i" || !tag[1]) continue;
-      const match = String(tag[1]).match(TWITTER_TAG);
+      const match = matchTwitterTag(tag[1]);
       if (!match) continue;
       const handle = normalizeTwitterHandle(match[1]);
       const proofTweetId = extractTweetId(tag[2]);
@@ -496,14 +478,6 @@ function normalizeTombstones(existing) {
   }
   return [...byId.values()].sort((a, b) =>
     String(b.rejectedAt || "").localeCompare(String(a.rejectedAt || "")),
-  );
-}
-
-function compareClaimsNewestFirst(a, b) {
-  return (
-    Number(b.proofPublishedAt || b.sourceCreatedAt || 0) -
-      Number(a.proofPublishedAt || a.sourceCreatedAt || 0) ||
-    String(a.claimId).localeCompare(String(b.claimId))
   );
 }
 

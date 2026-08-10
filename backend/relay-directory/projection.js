@@ -12,9 +12,11 @@ import {
   projectionHandleIsDue,
 } from "./projection-state.js";
 import {
+  buildRunSummaryWrite,
   commitFirestoreWrites,
   createFirestore,
   createRunMetrics,
+  DEFAULT_COLLECTIONS,
   finishRunMetrics,
   firestoreConfigFromEnv,
   logRunSummary,
@@ -23,10 +25,14 @@ import {
 } from "./runtime.js";
 import {
   discoverXBioIdentities,
-  normalizeTwitterHandle,
   verifyTweetCandidate,
 } from "./x-identity.js";
-import { isHexPubkey, isPublicHostname } from "./utils.js";
+import {
+  isHexPubkey,
+  isPublicHostname,
+  normalizeTwitterHandle,
+  numberFromEnv,
+} from "./utils.js";
 
 export function loadProjectionConfig(env = process.env) {
   const args = {
@@ -272,9 +278,28 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   };
   output.run = finishRunMetrics(runMetrics, stats);
   logRunSummary(output.run);
+  await persistRunSummary(db, output, args);
   if (args.out) await writeJson(args.out, output);
   printProjectionSummary(output, args);
   return output;
+}
+
+/** Best-effort: run summaries aid debugging but must not fail a healthy run. */
+async function persistRunSummary(db, output, args) {
+  try {
+    await commitFirestoreWrites(db, [
+      buildRunSummaryWrite(
+        output.run,
+        output,
+        args.firestoreProjectionRunsCollection ||
+          DEFAULT_COLLECTIONS.projectionRuns,
+      ),
+    ]);
+  } catch (error) {
+    console.warn(
+      `Projection run summary write failed: ${error?.message || error}`,
+    );
+  }
 }
 
 export async function verifyHandleClaims(handleData, args, limits = {}) {
@@ -596,11 +621,6 @@ function timestampForLog(value) {
     return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : String(value);
   }
   return null;
-}
-
-function numberFromEnv(env, name, fallback) {
-  if (env[name] === undefined || env[name] === "") return fallback;
-  return Number(env[name]);
 }
 
 runMain(import.meta.url, () => runProjection(loadProjectionConfig()));

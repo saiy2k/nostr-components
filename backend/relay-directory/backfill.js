@@ -30,7 +30,7 @@ import {
   terminateFirestore,
   writeJson,
 } from "./runtime.js";
-import { backfillStateId } from "./utils.js";
+import { backfillStateId, numberFromEnv } from "./utils.js";
 
 export function loadBackfillConfig(
   env = process.env,
@@ -1141,11 +1141,6 @@ function eventIdsAtTimestamp(events, timestamp) {
     .filter((event) => event.created_at === timestamp)
     .map((event) => event.id)
     .sort();
-}
-
-function numberFromEnv(env, name, fallback) {
-  if (env[name] === undefined || env[name] === "") return fallback;
-  return Number(env[name]);
 }
 
 /**

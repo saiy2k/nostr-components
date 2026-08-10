@@ -1,151 +1,17 @@
 // SPDX-License-Identifier: MIT
 
 import { nip19 } from "nostr-tools";
-import { isHexPubkey, isPublicHostname } from "./utils.js";
+import {
+  extractTweetId,
+  isHexPubkey,
+  isPublicHostname,
+  normalizeTwitterHandle,
+} from "./utils.js";
 
-const TWITTER_TAG = /^(?:twitter|x|com\.twitter):(.+)$/i;
-const X_PROFILE_LINK =
-  /(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/(@?[A-Za-z0-9_]{1,15})\b/gi;
-const TWEET_ID = /(\d{10,25})/;
 const NIP19_PROFILE_IDENTIFIER =
   /(?:nostr:)?((?:npub|nprofile)1[023456789acdefghjklmnpqrstuvwxyz]+)/gi;
 const NIP05_IDENTIFIER =
   /(?:^|[\s([<{'"`])([a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,})(?=$|[\s)\]}>,'"`.!?;:])/gi;
-const RESERVED_X_PATHS = new Set([
-  "compose",
-  "explore",
-  "hashtag",
-  "home",
-  "i",
-  "intent",
-  "messages",
-  "notifications",
-  "search",
-  "share",
-  "settings",
-]);
-
-export function normalizeTwitterHandle(value) {
-  if (!value) return null;
-  let handle = String(value).trim();
-  const urlMatch = [...handle.matchAll(X_PROFILE_LINK)][0];
-  if (urlMatch) handle = urlMatch[1];
-  handle = handle.replace(/^@/, "").split(/[/?#\s]/)[0];
-  if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) return null;
-  if (RESERVED_X_PATHS.has(handle.toLowerCase())) return null;
-  return handle.toLowerCase();
-}
-
-export function extractTweetId(value) {
-  const match = String(value || "").match(TWEET_ID);
-  return match ? match[1] : null;
-}
-
-export function extractDirectoryInputs(events) {
-  const candidatesByKey = new Map();
-  const claimedByKey = new Map();
-  const metadataByPubkey = new Map();
-
-  for (const event of events) {
-    if (!isHexPubkey(event?.pubkey)) continue;
-    const metadata = event.kind === 0 ? safeJson(event.content) : null;
-    if (metadata) {
-      metadataByPubkey.set(event.pubkey, {
-        pubkey: event.pubkey,
-        npub: nip19.npubEncode(event.pubkey),
-        name: metadata.name || metadata.display_name || null,
-        nip05: metadata.nip05 || null,
-        lud16: metadata.lud16 || null,
-        lud06: metadata.lud06 || null,
-        website: metadata.website || null,
-        about: metadata.about || null,
-      });
-    }
-
-    for (const tag of event.tags || []) {
-      if (tag[0] !== "i" || !tag[1]) continue;
-      const tagMatch = String(tag[1]).match(TWITTER_TAG);
-      if (!tagMatch) continue;
-
-      const handle = normalizeTwitterHandle(tagMatch[1]);
-      const proofTweetId = extractTweetId(tag[2]);
-      if (!handle || !proofTweetId) continue;
-
-      const key = `${handle}:${event.pubkey}:${proofTweetId}`;
-      candidatesByKey.set(key, {
-        platform: "twitter",
-        handle,
-        pubkey: event.pubkey,
-        npub: nip19.npubEncode(event.pubkey),
-        proofTweetId,
-        sourceKind: event.kind,
-        sourceEventId: event.id,
-        sourceCreatedAt: event.created_at,
-      });
-    }
-
-    if (!metadata) continue;
-    for (const { handle, field } of extractMetadataXHandles(metadata)) {
-      const key = `${handle}:${event.pubkey}:${field}`;
-      claimedByKey.set(key, {
-        platform: "twitter",
-        handle,
-        pubkey: event.pubkey,
-        npub: nip19.npubEncode(event.pubkey),
-        source: `kind0.${field}`,
-        sourceKind: event.kind,
-        sourceEventId: event.id,
-        sourceCreatedAt: event.created_at,
-        identityStatus: "claimed",
-      });
-    }
-  }
-
-  return {
-    candidates: [...candidatesByKey.values()].sort(sortCandidate),
-    claimed: [...claimedByKey.values()].sort(sortClaim),
-    metadataByPubkey,
-  };
-}
-
-function extractMetadataXHandles(metadata) {
-  const results = new Map();
-
-  for (const field of ["twitter", "x"]) {
-    const handle = normalizeTwitterHandle(metadata[field]);
-    if (handle) results.set(`${handle}:${field}`, { handle, field });
-  }
-
-  for (const field of ["website", "about"]) {
-    const text = String(metadata[field] || "");
-    for (const match of text.matchAll(X_PROFILE_LINK)) {
-      const handle = normalizeTwitterHandle(match[1]);
-      if (handle) results.set(`${handle}:${field}`, { handle, field });
-    }
-  }
-
-  return [...results.values()];
-}
-
-function safeJson(content) {
-  if (!content) return null;
-  try {
-    const parsed = JSON.parse(content);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function sortCandidate(a, b) {
-  return a.handle.localeCompare(b.handle) || a.pubkey.localeCompare(b.pubkey);
-}
-
-function sortClaim(a, b) {
-  return a.handle.localeCompare(b.handle) || a.source.localeCompare(b.source);
-}
 
 export async function verifyTweetCandidate(
   candidate,

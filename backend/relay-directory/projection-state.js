@@ -4,13 +4,27 @@ import { FieldValue } from "@google-cloud/firestore";
 import { nip19 } from "nostr-tools";
 import {
   DEFAULT_COLLECTIONS,
+  firestoreTimestampToMs,
   stripUndefined,
 } from "./runtime.js";
-import { firestoreSafeId, isHexPubkey } from "./utils.js";
+import {
+  claimRecency,
+  compareClaimsNewestFirst,
+  firestoreSafeId,
+  isHexPubkey,
+} from "./utils.js";
 
-export const DEFAULT_MAX_PENDING_CLAIMS = 20;
-export const DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS = 10;
-export const DEFAULT_MAX_REJECTION_TOMBSTONES = 100;
+export {
+  DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+  DEFAULT_MAX_PENDING_CLAIMS,
+  DEFAULT_MAX_REJECTION_TOMBSTONES,
+} from "./utils.js";
+import {
+  DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+  DEFAULT_MAX_PENDING_CLAIMS,
+  DEFAULT_MAX_REJECTION_TOMBSTONES,
+} from "./utils.js";
+
 export const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 
 export function pendingClaimsForHandle(handleData) {
@@ -23,7 +37,7 @@ export function projectionHandleIsDue(handleData, nowMs = Date.now()) {
   if (!handleData || Number(handleData.pendingClaimCount || 0) <= 0) {
     return false;
   }
-  const nextAttemptAt = timestampToMs(handleData.nextAttemptAt);
+  const nextAttemptAt = firestoreTimestampToMs(handleData.nextAttemptAt);
   return !nextAttemptAt || nextAttemptAt <= nowMs;
 }
 
@@ -369,28 +383,8 @@ function projectableState(value) {
     rejectedClaimTombstones: value?.rejectedClaimTombstones || [],
     pendingClaimCount: Number(value?.pendingClaimCount || 0),
     projectionStatus: value?.projectionStatus || null,
-    nextAttemptAt: timestampToMs(value?.nextAttemptAt),
+    nextAttemptAt: firestoreTimestampToMs(value?.nextAttemptAt),
   };
-}
-
-function compareClaimsNewestFirst(a, b) {
-  return (
-    claimRecency(b) - claimRecency(a) ||
-    String(a.claimId).localeCompare(String(b.claimId))
-  );
-}
-
-function claimRecency(claim) {
-  return Number(claim?.proofPublishedAt || claim?.sourceCreatedAt || 0);
-}
-
-function timestampToMs(value) {
-  if (!value) return null;
-  if (value instanceof Date) return value.getTime();
-  if (typeof value.toMillis === "function") return value.toMillis();
-  if (typeof value.seconds === "number") return value.seconds * 1000;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function retryAtMs(result, now, retryDelayMs) {

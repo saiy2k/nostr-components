@@ -6,9 +6,9 @@ import {
   directoryHandleId,
   extractIdentityClaims,
   mergeHandleClaims,
-  normalizeTwitterHandle,
   planDirectoryHandleWrites,
 } from "./directory-state.js";
+import { normalizeTwitterHandle } from "./utils.js";
 
 const PUBKEY_A =
   "7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e";

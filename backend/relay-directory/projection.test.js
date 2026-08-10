@@ -744,7 +744,7 @@ describe("external verification", () => {
 });
 
 describe("projection execution", () => {
-  it("writes only the handle and active directory entry, with stats in logs", async () => {
+  it("writes the handle, the active directory entry, and a run summary", async () => {
     vi.stubGlobal("fetch", async () =>
       response({
         text: `My Nostr profile is ${NPUB_A}`,
@@ -796,9 +796,79 @@ describe("projection execution", () => {
     expect(writes.map((write) => write.collection)).toEqual([
       "handles",
       "entries",
+      "relayProjectionRuns",
     ]);
+    expect(writes[2].data).toMatchObject({
+      mode: "projection",
+      source: "directory-handle-claims",
+      runId: expect.stringMatching(/^projection-/),
+      stats: expect.objectContaining({ verified: 1, handlesChanged: 1 }),
+    });
     expect(queryCalls).toContainEqual(["orderBy", "nextAttemptAt"]);
     expect(writes[0].options).toEqual({ merge: true });
+  });
+
+  it("persists the run summary to the configured collection", async () => {
+    vi.stubGlobal("fetch", async () =>
+      response({
+        text: `My Nostr profile is ${NPUB_A}`,
+        user: { screen_name: "alice", id_str: "x-user-1" },
+      }),
+    );
+    const writes = [];
+    const db = fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)], writes);
+
+    const output = await runProjection(
+      projectionArgs({ firestoreProjectionRunsCollection: "customRuns" }),
+      null,
+      { db },
+    );
+
+    const summary = writes.find((write) => write.collection === "customRuns");
+    expect(summary).toBeDefined();
+    expect(summary.id).toBe(output.run.runId);
+    expect(summary.data).toMatchObject({
+      module: "projection",
+      mode: "projection",
+      durationMs: expect.any(Number),
+      stats: expect.objectContaining({ handleDocsRead: 1 }),
+      firestore: expect.objectContaining({ project: "gr-prod" }),
+    });
+  });
+
+  it("still succeeds when the run summary write fails", async () => {
+    vi.stubGlobal("fetch", async () =>
+      response({
+        text: `My Nostr profile is ${NPUB_A}`,
+        user: { screen_name: "alice", id_str: "x-user-1" },
+      }),
+    );
+    const writes = [];
+    const db = fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)], writes);
+    const baseBatch = db.batch.bind(db);
+    db.batch = () => {
+      const batch = baseBatch();
+      const commit = batch.commit;
+      batch.commit = async () => {
+        if (batch.pendingWrites?.some((w) => w.collection === "runs")) {
+          throw new Error("firestore unavailable");
+        }
+        return commit();
+      };
+      return batch;
+    };
+
+    const output = await runProjection(
+      projectionArgs({ firestoreProjectionRunsCollection: "runs" }),
+      null,
+      { db },
+    );
+
+    expect(output.stats).toMatchObject({ verified: 1, handlesChanged: 1 });
+    expect(writes.map((write) => write.collection)).toEqual([
+      "handles",
+      "entries",
+    ]);
   });
 
   it("stops iterating when verification requests a run stop", async () => {
@@ -1001,10 +1071,21 @@ function verificationOutput(overrides = {}) {
 function fakeFirestore(handles, writes = []) {
   return {
     collection: (name) => collectionAdapter(name, handles),
-    batch: () => ({
-      set: (ref, data, options) =>
-        writes.push({ collection: ref.collection, id: ref.id, data, options }),
-      commit: async () => {},
-    }),
+    batch: () => {
+      const pendingWrites = [];
+      return {
+        pendingWrites,
+        set: (ref, data, options) =>
+          pendingWrites.push({
+            collection: ref.collection,
+            id: ref.id,
+            data,
+            options,
+          }),
+        commit: async () => {
+          writes.push(...pendingWrites);
+        },
+      };
+    },
   };
 }

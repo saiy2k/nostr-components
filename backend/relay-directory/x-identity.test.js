@@ -4,21 +4,17 @@ import { describe, expect, it, vi } from "vitest";
 import { nip19 } from "nostr-tools";
 import {
   discoverXBioIdentities,
-  extractDirectoryInputs,
   extractNostrIdentifiers,
-  extractTweetId,
-  normalizeTwitterHandle,
   resolveNostrIdentifier,
   verifyTweetCandidate,
 } from "./x-identity.js";
+import { extractTweetId, normalizeTwitterHandle } from "./utils.js";
 
 const PUBKEY =
   "7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e";
-const PUBKEY_B =
-  "8e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4f";
 const NPUB = "npub10elfcs4fr0l0r8af98jlmgdh9c8tcxjvz9qkw038js35mp4dma8qzvjptg";
 
-describe("X handle and relay input extraction", () => {
+describe("X handle normalization", () => {
   it("normalizes handles and profile URLs", () => {
     expect(normalizeTwitterHandle("@Jack")).toBe("jack");
     expect(normalizeTwitterHandle("https://x.com/Bebop2077_")).toBe(
@@ -32,84 +28,6 @@ describe("X handle and relay input extraction", () => {
       extractTweetId("https://x.com/alice/status/2064733905014440088?s=20"),
     ).toBe("2064733905014440088");
     expect(extractTweetId("AldenCo18783")).toBeNull();
-  });
-
-  it("extracts proof candidates and kind:0 X handles", () => {
-    const { candidates, claimed, metadataByPubkey } = extractDirectoryInputs([
-      {
-        id: "identity-event",
-        kind: 10011,
-        pubkey: PUBKEY,
-        created_at: 1,
-        content: "",
-        tags: [
-          [
-            "i",
-            "twitter:Alice",
-            "https://x.com/Alice/status/2064733905014440088",
-          ],
-        ],
-      },
-      {
-        id: "metadata-event",
-        kind: 0,
-        pubkey: PUBKEY,
-        created_at: 2,
-        content: JSON.stringify({
-          name: "Alice",
-          twitter: "@Alice",
-          about: "also https://x.com/second_account",
-          nip05: "alice@example.com",
-        }),
-        tags: [],
-      },
-    ]);
-
-    expect(candidates).toMatchObject([
-      {
-        handle: "alice",
-        pubkey: PUBKEY,
-        proofTweetId: "2064733905014440088",
-      },
-    ]);
-    expect(claimed.map((record) => record.handle)).toEqual([
-      "alice",
-      "second_account",
-    ]);
-    expect(metadataByPubkey.get(PUBKEY)).toMatchObject({
-      name: "Alice",
-      nip05: "alice@example.com",
-    });
-  });
-
-  it("skips events whose author pubkey is invalid", () => {
-    expect(
-      extractDirectoryInputs([
-        {
-          id: "invalid-author",
-          kind: 0,
-          pubkey: "not-a-pubkey",
-          created_at: 1,
-          content: JSON.stringify({ twitter: "alice" }),
-          tags: [],
-        },
-      ]),
-    ).toMatchObject({ candidates: [], claimed: [] });
-  });
-
-  it("skips kind-0 events with malformed metadata JSON", () => {
-    const { metadataByPubkey } = extractDirectoryInputs([
-      {
-        id: "malformed-metadata",
-        kind: 0,
-        pubkey: PUBKEY_B,
-        created_at: 1,
-        content: "{not-json",
-        tags: [],
-      },
-    ]);
-
-    expect(metadataByPubkey.has(PUBKEY_B)).toBe(false);
   });
 });
 
