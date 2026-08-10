@@ -379,48 +379,28 @@ async function filterExistingMentionHandles(candidates, cache, options) {
 export async function checkXHandleExists(handle, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const timeoutMs = options.xMentionCheckTimeoutMs || 5000;
+  const normalizedHandle = String(handle || "").toLowerCase();
   try {
     const response = await fetchImpl(
-      `https://x.com/${encodeURIComponent(handle)}`,
+      `https://api.fxtwitter.com/2/profile/${encodeURIComponent(handle)}`,
       {
-        method: "GET",
-        redirect: "follow",
+        headers: { "User-Agent": "nostr-components-relay-directory/0.1" },
         signal: AbortSignal.timeout(timeoutMs),
       },
     );
     if (response.status === 404) return false;
-    if (response.status !== 200) return null;
-    if (response.url && !responseUrlMatchesHandle(response.url, handle)) {
-      return null;
-    }
-    const body = await response.text();
-    return responseBodyConfirmsHandle(body, handle) ? true : null;
+    if (!response.ok) return null;
+    const json = await response.json();
+    const code = Number(json?.code);
+    if (code === 404) return false;
+    if (code !== 200) return null;
+    const screenName = String(json?.user?.screen_name || "").toLowerCase();
+    if (!json?.user?.id || !screenName) return null;
+    return screenName === normalizedHandle ? true : null;
   } catch (error) {
     options.onXLookupError?.(error, handle);
     return null;
   }
-}
-
-function responseUrlMatchesHandle(url, handle) {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.pathname.split("/").filter(Boolean)[0]?.toLowerCase() === handle
-    );
-  } catch {
-    return false;
-  }
-}
-
-function responseBodyConfirmsHandle(body, handle) {
-  const normalizedBody = String(body || "").toLowerCase();
-  const normalizedHandle = String(handle).toLowerCase();
-  return [
-    `"screen_name":"${normalizedHandle}"`,
-    `content="@${normalizedHandle}"`,
-    `(@${normalizedHandle})`,
-    `>@${normalizedHandle}<`,
-  ].some((marker) => normalizedBody.includes(marker));
 }
 
 function mergeEvidence(current, evidence) {
