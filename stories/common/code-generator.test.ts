@@ -44,6 +44,7 @@ describe('Storybook bundle scripts', () => {
 
   it('preview-head defers themes/bundle loading to preview.ts', () => {
     expect(previewHead).toContain('STORYBOOK_BUNDLE');
+    expect(previewHead).toContain('c._i.push([q,r,f])');
     expect(previewHead).not.toMatch(/href="\/themes\.css"/);
     expect(previewHead).not.toMatch(/src="\/nostr-components\.es\.js"/);
     expect(previewHead).not.toContain(`${CDN_BASE}/themes.css`);

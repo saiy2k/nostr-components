@@ -8,6 +8,8 @@
  */
 
 const baseUrl = (process.argv[2] || '').replace(/\/$/, '');
+const FETCH_TIMEOUT_MS = 30_000;
+const BODY_SAMPLE_CHARS = 200;
 
 if (!baseUrl) {
   console.error('Usage: node scripts/smoke-storybook-preview.mjs <base-url>');
@@ -16,6 +18,7 @@ if (!baseUrl) {
 
 const checks = [
   { path: '/nostr-components.es.js', expectJs: true },
+  { path: '/components/nostr-profile.es.js', expectJs: true },
   { path: '/themes.css', expectCss: true },
   { path: '/iframe.html', expectHtml: true },
 ];
@@ -26,15 +29,44 @@ function looksLikeHtml(contentType, bodySample) {
   return /^\s*</.test(bodySample) && /<html|<!doctype/i.test(bodySample);
 }
 
+async function readBodySample(res, maxChars = BODY_SAMPLE_CHARS) {
+  if (!res.body || typeof res.body.getReader !== 'function') {
+    const text = await res.text();
+    return text.slice(0, maxChars);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let sample = '';
+
+  try {
+    while (sample.length < maxChars) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sample += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    try {
+      await reader.cancel();
+    } catch {
+      // ignore cancel errors
+    }
+  }
+
+  return sample.slice(0, maxChars);
+}
+
 let failed = false;
 
 for (const check of checks) {
   const url = `${baseUrl}${check.path}`;
   try {
-    const res = await fetch(url, { redirect: 'follow' });
+    const res = await fetch(url, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
     const contentType = res.headers.get('content-type') || '';
-    const sample = await res.text();
-    const bodySample = sample.slice(0, 200);
+    const bodySample = await readBodySample(res);
 
     if (!res.ok) {
       console.error(`FAIL ${check.path}: HTTP ${res.status}`);
@@ -63,7 +95,7 @@ for (const check of checks) {
       continue;
     }
 
-    if (check.expectHtml && !looksLikeHtml(contentType, bodySample) && !contentType.includes('text/html')) {
+    if (check.expectHtml && !looksLikeHtml(contentType, bodySample)) {
       // iframe.html should be HTML; soft-warn only if totally wrong
       console.warn(`WARN ${check.path}: unexpected content-type ${contentType || 'missing'}`);
     }

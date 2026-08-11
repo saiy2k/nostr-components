@@ -43,8 +43,15 @@ function loadModuleScript(src: string): Promise<void> {
   });
 }
 
-await loadStylesheet(assetUrl('themes.css'));
-await loadModuleScript(assetUrl('nostr-components.es.js'));
+try {
+  await loadStylesheet(assetUrl('themes.css'));
+  await loadModuleScript(assetUrl('nostr-components.es.js'));
+} catch (error) {
+  console.error(
+    `[nostr-components] Storybook asset load failed in "${getStorybookBundleMode()}" mode:`,
+    error
+  );
+}
 
 const preview: Preview = {
   parameters: {

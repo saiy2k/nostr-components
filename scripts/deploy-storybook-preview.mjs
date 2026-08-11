@@ -34,9 +34,38 @@ const PROJECT = 'sat-the-standard';
 const STAGING_SITE = 'test-nostr-components';
 const FORBIDDEN_SITES = new Set(['nostr-components']);
 const EXPIRES = process.env.EXPIRES || '7d';
+const FIREBASE_BIN = path.join(
+  root,
+  'node_modules',
+  '.bin',
+  process.platform === 'win32' ? 'firebase.cmd' : 'firebase'
+);
+
+/** Temp dirs created for SA keys — cleaned on exit even when fail() calls process.exit. */
+const tempDirsToCleanup = new Set();
+
+function cleanupTempCredentials() {
+  for (const dir of tempDirsToCleanup) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // ignore cleanup errors
+    }
+  }
+  tempDirsToCleanup.clear();
+}
+
+process.on('exit', cleanupTempCredentials);
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(signal, () => {
+    cleanupTempCredentials();
+    process.exit(1);
+  });
+}
 
 function fail(message) {
   console.error(`\nERROR: ${message}`);
+  cleanupTempCredentials();
   process.exit(1);
 }
 
@@ -64,14 +93,13 @@ function run(command, args, { env = process.env, capture = false } = {}) {
 /** Prefer Hosting SA JSON; never require GCP_SA_KEY (reserved for other GCP work). */
 function resolveCredentialsEnv(baseEnv = process.env) {
   const env = { ...baseEnv };
-  let tempKeyPath = null;
 
   if (env.GOOGLE_APPLICATION_CREDENTIALS) {
     if (!fs.existsSync(env.GOOGLE_APPLICATION_CREDENTIALS)) {
       fail(`GOOGLE_APPLICATION_CREDENTIALS file not found: ${env.GOOGLE_APPLICATION_CREDENTIALS}`);
     }
     delete env.FIREBASE_TOKEN;
-    return { env, tempKeyPath };
+    return { env };
   }
 
   const rawKey = env.FIREBASE_HOSTING_SA_KEY?.trim();
@@ -79,11 +107,18 @@ function resolveCredentialsEnv(baseEnv = process.env) {
     if (!rawKey.startsWith('{')) {
       fail('FIREBASE_HOSTING_SA_KEY must be the full service-account JSON.');
     }
-    tempKeyPath = path.join(os.tmpdir(), `nc-firebase-sa-${process.pid}.json`);
-    fs.writeFileSync(tempKeyPath, rawKey, { mode: 0o600 });
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nc-firebase-sa-'));
+    tempDirsToCleanup.add(tempDir);
+    const tempKeyPath = path.join(tempDir, 'sa.json');
+    const fd = fs.openSync(tempKeyPath, 'wx', 0o600);
+    try {
+      fs.writeFileSync(fd, rawKey);
+    } finally {
+      fs.closeSync(fd);
+    }
     env.GOOGLE_APPLICATION_CREDENTIALS = tempKeyPath;
     delete env.FIREBASE_TOKEN;
-    return { env, tempKeyPath };
+    return { env };
   }
 
   if (env.GCP_SA_KEY) {
@@ -100,7 +135,23 @@ function resolveCredentialsEnv(baseEnv = process.env) {
     console.warn('WARN: Using legacy FIREBASE_TOKEN. Prefer FIREBASE_HOSTING_SA_KEY.');
   }
 
-  return { env, tempKeyPath };
+  return { env };
+}
+
+function assertStagingPreviewUrl(previewUrl) {
+  let previewHost = '';
+  try {
+    previewHost = new URL(previewUrl).hostname;
+  } catch {
+    fail(`Deploy returned an unparsable preview URL: ${previewUrl}`);
+  }
+
+  if (
+    previewHost !== `${STAGING_SITE}.web.app` &&
+    !previewHost.startsWith(`${STAGING_SITE}--`)
+  ) {
+    fail(`Refusing to continue: preview URL is not on ${STAGING_SITE}: ${previewUrl}`);
+  }
 }
 
 const issueNumber = process.env.ISSUE_NUMBER?.trim();
@@ -119,74 +170,68 @@ if (STAGING_SITE === 'nostr-components' || FORBIDDEN_SITES.has(STAGING_SITE)) {
   fail('Refusing to deploy to live site nostr-components.');
 }
 
-const { env: credEnv, tempKeyPath } = resolveCredentialsEnv(process.env);
-
-try {
-  if (process.env.SKIP_BUILD !== '1') {
-    run('npm', ['run', 'build'], { env: credEnv });
-    run('npm', ['run', 'build-storybook:local'], {
-      env: {
-        ...credEnv,
-        STORYBOOK_ENV: 'production',
-        STORYBOOK_BUNDLE: 'local',
-      },
-    });
-  }
-
-  const deployArgs = [
-    'hosting:channel:deploy',
-    channelId,
-    '--project',
-    PROJECT,
-    '--site',
-    STAGING_SITE,
-    '--expires',
-    EXPIRES,
-    '--json',
-  ];
-
-  const deploy = run('firebase', deployArgs, { env: credEnv, capture: true });
-  const combined = `${deploy.stdout || ''}\n${deploy.stderr || ''}`;
-
-  let previewUrl = '';
-  try {
-    const json = JSON.parse(deploy.stdout || '{}');
-    previewUrl =
-      json?.result?.[STAGING_SITE]?.url ||
-      json?.result?.url ||
-      json?.url ||
-      '';
-  } catch {
-    // Fall through to regex parse.
-  }
-
-  if (!previewUrl) {
-    const match = combined.match(/https:\/\/[^\s"']+web\.app[^\s"']*/);
-    previewUrl = match?.[0] || '';
-  }
-
-  if (!previewUrl) {
-    console.error(combined);
-    fail('Deploy succeeded but could not parse preview URL from Firebase output.');
-  }
-
-  if (previewUrl.includes('://nostr-components.web.app') && !previewUrl.includes('test-nostr-components')) {
-    fail(`Refusing to continue: preview URL looks like live site: ${previewUrl}`);
-  }
-
-  console.log(`\nDeployed preview channel "${channelId}"`);
-  console.log(`PREVIEW_URL=${previewUrl}`);
-
-  run('node', ['scripts/smoke-storybook-preview.mjs', previewUrl], { env: credEnv });
-
-  console.log('\nPreview is ready.');
-  console.log(`PREVIEW_URL=${previewUrl}`);
-} finally {
-  if (tempKeyPath) {
-    try {
-      fs.unlinkSync(tempKeyPath);
-    } catch {
-      // ignore cleanup errors
-    }
-  }
+if (!fs.existsSync(FIREBASE_BIN)) {
+  fail(
+    'Project-local firebase-tools is missing. Run npm install (firebase-tools is a devDependency).'
+  );
 }
+
+const { env: credEnv } = resolveCredentialsEnv(process.env);
+
+if (process.env.SKIP_BUILD !== '1') {
+  run('npm', ['run', 'build'], { env: credEnv });
+  run('npm', ['run', 'build-storybook:local'], {
+    env: {
+      ...credEnv,
+      STORYBOOK_ENV: 'production',
+      STORYBOOK_BUNDLE: 'local',
+    },
+  });
+}
+
+const deployArgs = [
+  'hosting:channel:deploy',
+  channelId,
+  '--project',
+  PROJECT,
+  '--site',
+  STAGING_SITE,
+  '--expires',
+  EXPIRES,
+  '--json',
+];
+
+const deploy = run(FIREBASE_BIN, deployArgs, { env: credEnv, capture: true });
+const combined = `${deploy.stdout || ''}\n${deploy.stderr || ''}`;
+
+let previewUrl = '';
+try {
+  const json = JSON.parse(deploy.stdout || '{}');
+  previewUrl =
+    json?.result?.[STAGING_SITE]?.url ||
+    json?.result?.url ||
+    json?.url ||
+    '';
+} catch {
+  // Fall through to regex parse.
+}
+
+if (!previewUrl) {
+  const match = combined.match(/https:\/\/[^\s"']+web\.app[^\s"']*/);
+  previewUrl = match?.[0] || '';
+}
+
+if (!previewUrl) {
+  console.error(combined);
+  fail('Deploy succeeded but could not parse preview URL from Firebase output.');
+}
+
+assertStagingPreviewUrl(previewUrl);
+
+console.log(`\nDeployed preview channel "${channelId}"`);
+console.log(`PREVIEW_URL=${previewUrl}`);
+
+run('node', ['scripts/smoke-storybook-preview.mjs', previewUrl], { env: credEnv });
+
+console.log('\nPreview is ready.');
+console.log(`PREVIEW_URL=${previewUrl}`);
