@@ -64,6 +64,7 @@ None - works out of the box with current page URL.
   - URLs are normalized for consistency (normalizeURL from nostr-tools)
   - Without this attribute, the component automatically uses the current page URL
 - `text` (string, default: "Like") - Button text (max 32 chars)
+- `compact` (boolean) - Render only the icon and numeric count in a 34px-tall action row; hides the text and help control
 - `data-theme` (string, default: "light") - Allowed values: "light" or "dark"
 - `relays` (string) - Comma-separated relay URLs
 
@@ -205,6 +206,11 @@ Dark theme:
 <nostr-like-button data-theme="dark"></nostr-like-button>
 ```
 
+Compact action-row layout:
+```html
+<nostr-like-button compact></nostr-like-button>
+```
+
 Custom relays:
 ```html
 <nostr-like-button relays="wss://relay1.com,wss://relay2.com"></nostr-like-button>
@@ -252,7 +258,7 @@ Each reaction entry shows:
 - All data stored on Nostr relays
 
 **Requirement:**
-Requires a connected signer via `window.nostr.js` (for example an extension-backed NIP-07 signer or a NIP-46 remote signer) to sign and publish likes.
+Requires a connected signer via `window.nostr.js` (for example an extension-backed NIP-07 signer or a NIP-46 remote signer) to sign and publish likes. The validated public key is cached in `sessionStorage` so additional components in the same tab do not repeatedly request it from the signer. Event signing still goes through the connected signer.
 
 ## NIP-25 Event Structure
 
@@ -288,4 +294,3 @@ Requires a connected signer via `window.nostr.js` (for example an extension-back
 - Bulk profile fetching optimization (NIP-45)
 - Pagination for 1000+ likes
 - Real-time updates via subscriptions
-

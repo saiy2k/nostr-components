@@ -22,9 +22,13 @@
   (function() {
     const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
     const STATUS_PATH_PATTERN = /^\/([^/]+)\/status\/(\d+)\/?$/;
+    const SUPPORTED_HOSTNAMES = /* @__PURE__ */ new Set(["x.com", "twitter.com"]);
     function parseTweetUrl(href, origin) {
       try {
         const url = new URL(href, origin || window.location.origin);
+        if (!SUPPORTED_HOSTNAMES.has(url.hostname)) {
+          return null;
+        }
         const match = url.pathname.match(STATUS_PATH_PATTERN);
         if (!match) {
           return null;

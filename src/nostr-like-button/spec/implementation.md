@@ -41,7 +41,7 @@ This document contains the technical implementation details for the `nostr-like-
 ### Internal Dependencies
 - NostrBaseComponent: Base class with relay and status management
 - NostrService: Relay connection management
-- Nostr Login Service: Lazy-loads `window.nostr.js`, resolves the current signer, and signs events
+- Nostr Login Service: Uses an existing NIP-07 signer when present, otherwise lazy-loads `window.nostr.js`; it caches the validated public key for the browser session and signs events through the active signer
 - getComponentStyles(): Utility for CSS injection
 - Common Utils: `formatRelativeTime()`
 - Zap Utils: `getBatchedProfileMetadata()` (reused for profile fetching)
@@ -55,7 +55,7 @@ This document contains the technical implementation details for the `nostr-like-
    - Connect to relays (inherited)
    - Attach delegated listeners
    - Render initial state
-3. Attribute Changed: Handle URL, text, data-theme updates
+3. Attribute Changed: Handle URL, text, compact, and data-theme updates
 4. Status Change: React to status updates via `onStatusChange()`, `onNostrRelaysConnected()`
 
 ## Like State Management
@@ -159,11 +159,18 @@ hasUserLiked(url, userPubkey, relays):
 - Limit queries to 1000 events
 - Filter by tags at relay level (#k, #i)
 - Deduplicate client-side to reduce data transfer
+- Reuse one page-lifetime `SimplePool` across component instances instead of opening duplicate relay pools for every action row
 
 ### Caching Strategy
 - Cache like count for component lifetime
 - Refresh after successful like/unlike
-- No persistent caching (always fresh data)
+- Cache the validated signer public key in `sessionStorage` to avoid repeated NIP-07 permission prompts as components mount
+- Do not persist reaction counts; relay data remains fresh
+
+### Compact Rendering
+- The boolean `compact` attribute renders an action-row presentation with a 34px host height
+- Compact mode shows the icon and numeric count, while hiding the text and help affordance
+- The action retains an accessible label and title describing the current Like state
 
 ## File Structure
 

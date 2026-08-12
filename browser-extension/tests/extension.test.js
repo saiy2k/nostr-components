@@ -1,67 +1,32 @@
 // SPDX-License-Identifier: MIT
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { finalizeEvent } from "nostr-tools";
 
 await import("../lib/url.js");
 await import("../lib/storage.js");
 await import("../lib/directory.js");
-await import("../lib/relay-pool.js");
-await import("../lib/reactions.js");
+await import("../lib/relay-client.js");
 await import("../lib/dom.js");
 
 const extension = globalThis.NostrLikeExtension;
 
-class FakeWebSocket {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSED = 3;
-  static instances = [];
-
-  constructor(url) {
-    this.url = url;
-    this.readyState = FakeWebSocket.CONNECTING;
-    this.listeners = new Map();
-    this.sent = [];
-    FakeWebSocket.instances.push(this);
-    queueMicrotask(() => {
-      this.readyState = FakeWebSocket.OPEN;
-      this.emit("open", {});
-    });
-  }
-
-  addEventListener(type, listener) {
-    const listeners = this.listeners.get(type) || [];
-    listeners.push(listener);
-    this.listeners.set(type, listeners);
-  }
-
-  emit(type, event) {
-    for (const listener of this.listeners.get(type) || []) {
-      listener(event);
-    }
-  }
-
-  send(payload) {
-    this.sent.push(JSON.parse(payload));
-  }
-
-  close() {
-    this.readyState = FakeWebSocket.CLOSED;
-    this.emit("close", {});
-  }
-}
-
 beforeEach(function () {
-  FakeWebSocket.instances = [];
+  vi.restoreAllMocks();
 });
 
 afterEach(function () {
   delete globalThis.browser;
   delete globalThis.chrome;
+  delete globalThis.document;
+  delete globalThis.MutationObserver;
+  delete globalThis.window;
+  delete globalThis.__nostrComponentsRelayTransport;
 });
 
 describe("URL normalization", function () {
-  it("uses the nostr-tools normalization behavior for status identifiers", function () {
+  it("uses the repository normalizer for X status identifiers", function () {
     const parsed = extension.url.parseTweetUrl(
       "/Jack/status/1234567890/?s=20#fragment",
       "https://x.com",
@@ -74,53 +39,16 @@ describe("URL normalization", function () {
       canonicalUrl: "https://x.com/Jack/status/1234567890",
     });
   });
-});
 
-describe("reaction summaries", function () {
-  it("counts only each author latest reaction", function () {
-    const summary = extension.reactions.summarize(
-      [
-        { id: "a1", pubkey: "a", created_at: 1, content: "+" },
-        { id: "a2", pubkey: "a", created_at: 2, content: "-" },
-        { id: "b1", pubkey: "b", created_at: 1, content: "+" },
-      ],
-      "a",
-    );
-
-    expect(summary).toEqual({ likeCount: 1, isLiked: false });
+  it("rejects status-shaped URLs from unsupported hosts", function () {
+    expect(
+      extension.url.parseTweetUrl("https://example.com/Jack/status/1234567890"),
+    ).toBeNull();
   });
 });
 
-describe("extension-private storage and Firestore directory lookup", function () {
-  it("stores reaction state through chrome.storage.local", async function () {
-    const values = {};
-    globalThis.chrome = {
-      runtime: { lastError: null },
-      storage: {
-        local: {
-          get(key, callback) {
-            callback({ [key]: values[key] });
-          },
-          set(next, callback) {
-            Object.assign(values, next);
-            callback();
-          },
-        },
-      },
-    };
-
-    await extension.storage.setReactionState(
-      "https://x.com/a/status/1",
-      "pubkey",
-      true,
-    );
-
-    await expect(
-      extension.storage.getReactionState("https://x.com/a/status/1", "pubkey"),
-    ).resolves.toBe(true);
-  });
-
-  it("queries the Firestore-backed runtime endpoint for author identity", async function () {
+describe("Firestore directory cache", function () {
+  it("queries the background lookup and stores a sanitized identity", async function () {
     const stored = {};
     const requested = [];
     globalThis.browser = {
@@ -150,13 +78,13 @@ describe("extension-private storage and Firestore directory lookup", function ()
       },
     };
 
-    const result = await extension.directory.lookup("FireStoreUser");
+    const result = await extension.directory.lookup("ComponentUser");
 
     expect(requested).toEqual([
       {
         type: "LOOKUP_DIRECTORY_HANDLE",
         platform: "twitter",
-        handle: "firestoreuser",
+        handle: "componentuser",
       },
     ]);
     expect(result).toMatchObject({
@@ -165,84 +93,510 @@ describe("extension-private storage and Firestore directory lookup", function ()
       activeIdentity: { npub: "npub1test" },
     });
   });
+
+  it("re-resolves entries after memory and storage expiry", async function () {
+    let now = 1000;
+    vi.spyOn(Date, "now").mockImplementation(function () {
+      return now;
+    });
+    const stored = {};
+    const requested = [];
+    globalThis.browser = {
+      runtime: {
+        async sendMessage(message) {
+          requested.push(message);
+          return {
+            ok: true,
+            result: {
+              found: true,
+              verified: true,
+              handle: message.handle,
+              activeIdentity: { npub: "npub1expiring" },
+            },
+          };
+        },
+      },
+      storage: {
+        local: {
+          async get(key) {
+            return { [key]: stored[key] };
+          },
+          async set(next) {
+            Object.assign(stored, next);
+          },
+        },
+      },
+    };
+
+    await extension.directory.lookup("ExpiryUser");
+    await extension.directory.lookup("ExpiryUser");
+    expect(requested).toHaveLength(1);
+
+    now += 24 * 60 * 60 * 1000 + 1;
+    await extension.directory.lookup("ExpiryUser");
+    expect(requested).toHaveLength(2);
+  });
 });
 
 describe("X action placement", function () {
-  it("inserts the Nostr action immediately after X's native Like control", function () {
+  it("selects and inserts into the group that owns X's native Like", function () {
+    const unrelatedGroup = { name: "unrelated" };
     const viewsContainer = { name: "views" };
     const actionBar = {
       querySelector() {
         return nativeLike;
       },
       insertBefore(slot, sibling) {
-        this.inserted = { slot, sibling };
-      },
-      appendChild() {
-        throw new Error("placement should not fall back to appendChild");
+        this.inserted = { slot: slot, sibling: sibling };
       },
     };
     const likeContainer = {
       parentElement: actionBar,
       nextSibling: viewsContainer,
     };
-    const nestedContainer = { parentElement: likeContainer };
-    const nativeLike = { parentElement: nestedContainer };
+    const nativeLike = {
+      parentElement: likeContainer,
+      closest() {
+        return actionBar;
+      },
+    };
+    const article = {
+      querySelector(selector) {
+        return selector.includes("data-testid") ? nativeLike : unrelatedGroup;
+      },
+    };
     const nostrSlot = { name: "nostr" };
 
-    extension.dom.insertAfterNativeLike(actionBar, nostrSlot);
+    const selectedActionBar = extension.dom.findActionBar(article);
+    extension.dom.insertAfterNativeLike(selectedActionBar, nostrSlot);
 
+    expect(selectedActionBar).toBe(actionBar);
     expect(actionBar.inserted).toEqual({
       slot: nostrSlot,
       sibling: viewsContainer,
     });
+    expect(unrelatedGroup.inserted).toBeUndefined();
+  });
+
+  it("contains clicks inside the complete Nostr action slot", function () {
+    const listeners = {};
+    class FakeElement {
+      constructor(tagName) {
+        this.tagName = tagName;
+        this.attributes = {};
+        this.children = [];
+        this.dataset = {};
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+      }
+
+      getAttribute(name) {
+        return this.attributes[name] ?? null;
+      }
+
+      appendChild(child) {
+        this.children.push(child);
+      }
+
+      addEventListener(type, listener) {
+        listeners[type] = listener;
+      }
+    }
+
+    globalThis.document = {
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      },
+    };
+
+    const action = extension.dom.createNostrAction(
+      {
+        canonicalUrl: "https://x.com/alokdangre/status/42",
+        statusId: "42",
+        username: "alokdangre",
+      },
+      "dark",
+    );
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    };
+
+    listeners.click(event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(event.stopPropagation).toHaveBeenCalledOnce();
+    expect(action.component.getAttribute("compact")).toBe("");
   });
 });
 
-describe("shared relay pool", function () {
-  it("reuses one connection for repeated queries to the same relay", async function () {
-    const pool = new extension.RelayPool(["wss://relay.example"], {
-      WebSocketCtor: FakeWebSocket,
-      connectionTimeoutMs: 25,
-      queryTimeoutMs: 5,
+describe("CSP-safe component and relay integration", function () {
+  it("loads the relay client and MAIN-world component loader in order", function () {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../manifest.json", import.meta.url), "utf8"),
+    );
+    const scripts = manifest.content_scripts[0].js;
+
+    expect(scripts).toContain("lib/relay-client.js");
+    expect(scripts).toContain("lib/component-loader.js");
+    expect(scripts.indexOf("lib/relay-client.js")).toBeLessThan(
+      scripts.indexOf("lib/component-loader.js"),
+    );
+    expect(scripts).not.toContain("lib/nostr-like-button.js");
+    expect(scripts).not.toContain("lib/signer-adapter.js");
+    expect(manifest.host_permissions).toEqual(
+      expect.arrayContaining([
+        "wss://relay.damus.io/*",
+        "wss://nostr.wine/*",
+        "wss://relay.nostr.net/*",
+        "wss://relay.nostr.band/*",
+        "wss://nos.lol/*",
+        "wss://nostr-pub.wellorder.net/*",
+        "wss://relay.getalby.com/*",
+        "wss://relay.primal.net/*",
+      ]),
+    );
+  });
+
+  it("injects the transport before the real component in X's MAIN world", async function () {
+    let runtimeListener;
+    const executeScript = vi.fn(async function () {
+      return [];
+    });
+    globalThis.chrome = {
+      runtime: {
+        onMessage: {
+          addListener(listener) {
+            runtimeListener = listener;
+          },
+        },
+      },
+      scripting: { executeScript: executeScript },
+    };
+
+    await import("../background.js");
+
+    const response = await new Promise(function (resolve) {
+      const staysOpen = runtimeListener(
+        {
+          type: "INJECT_NOSTR_LIKE_COMPONENT",
+          channel: "a".repeat(64),
+        },
+        { tab: { id: 87 }, frameId: 0, url: "https://x.com/home" },
+        resolve,
+      );
+      expect(staysOpen).toBe(true);
     });
 
-    await pool.query({ kinds: [17] });
-    await pool.query({ kinds: [17] });
+    expect(response).toEqual({ ok: true, result: true });
+    expect(executeScript).toHaveBeenCalledTimes(2);
+    expect(executeScript.mock.calls[0][0]).toMatchObject({
+      target: { tabId: 87, frameIds: [0] },
+      world: "MAIN",
+      func: expect.any(Function),
+      args: ["a".repeat(64)],
+    });
+    expect(executeScript.mock.calls[1][0]).toEqual({
+      target: { tabId: 87, frameIds: [0] },
+      world: "MAIN",
+      files: ["lib/nostr-like-button.js"],
+    });
+  });
 
-    expect(FakeWebSocket.instances).toHaveLength(1);
+  it("accepts only scoped queries and valid signed kind-17 publishes", async function () {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: "https://x.com" },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message, targetOrigin) {
+        responses.push({ message: message, targetOrigin: targetOrigin });
+      },
+    };
+    const pool = {
+      querySync: vi.fn(async function () {
+        return [];
+      }),
+      publish: vi.fn(function () {
+        return [Promise.resolve("saved")];
+      }),
+      destroy: vi.fn(),
+    };
+    const originalGetKnownPubkey = extension.storage.getKnownPubkey;
+    const originalSetKnownPubkey = extension.storage.setKnownPubkey;
+    extension.storage.getKnownPubkey = vi.fn(async function () {
+      return "a".repeat(64);
+    });
+    extension.storage.setKnownPubkey = vi.fn(async function () {});
+    const channel = "b".repeat(64);
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow,
+    });
+    const onMessage = listeners.get("message");
+    const relays = ["wss://relay.damus.io"];
+    const filter = {
+      kinds: [17],
+      "#k": ["web"],
+      "#i": ["https://x.com/alokdangre/status/42"],
+      limit: 1000,
+    };
+
+    await onMessage({
+      source: pageWindow,
+      origin: "https://x.com",
+      data: {
+        source: "nostr-components-relay-main",
+        channel: channel,
+        requestId: "0".repeat(32),
+        operation: "getKnownPublicKey",
+        payload: {},
+      },
+    });
+
+    await onMessage({
+      source: pageWindow,
+      origin: "https://x.com",
+      data: {
+        source: "nostr-components-relay-main",
+        channel: channel,
+        requestId: "1".repeat(32),
+        operation: "query",
+        payload: { relays: relays, filter: filter },
+      },
+    });
+
+    const signedEvent = finalizeEvent(
+      {
+        kind: 17,
+        content: "+",
+        tags: [
+          ["k", "web"],
+          ["i", "https://x.com/alokdangre/status/42"],
+        ],
+        created_at: 1234567890,
+      },
+      new Uint8Array(32).fill(7),
+    );
+    await onMessage({
+      source: pageWindow,
+      origin: "https://x.com",
+      data: {
+        source: "nostr-components-relay-main",
+        channel: channel,
+        requestId: "2".repeat(32),
+        operation: "publish",
+        payload: { relays: relays, event: signedEvent },
+      },
+    });
+
+    const normalizedRelays = ["wss://relay.damus.io/"];
+    expect(pool.querySync).toHaveBeenCalledWith(normalizedRelays, filter, {
+      maxWait: 8000,
+    });
+    expect(pool.publish).toHaveBeenCalledWith(normalizedRelays, signedEvent);
+    expect(responses.map((entry) => entry.message.ok)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+    expect(responses[0].message.result).toBe("a".repeat(64));
+    expect(extension.storage.setKnownPubkey).toHaveBeenCalledWith(
+      signedEvent.pubkey,
+    );
     expect(
-      FakeWebSocket.instances[0].sent.filter((message) => message[0] === "REQ"),
-    ).toHaveLength(2);
-    pool.close();
+      responses.every((entry) => entry.targetOrigin === "https://x.com"),
+    ).toBe(true);
+    expect(
+      extension.relayClient.validateFilter({ ...filter, kinds: [1] }),
+    ).toBeNull();
+    expect(
+      extension.relayClient.validateReactionEvent({
+        ...signedEvent,
+        content: "arbitrary relay proxy",
+      }),
+    ).toBeNull();
+    session.dispose();
+    extension.storage.getKnownPubkey = originalGetKnownPubkey;
+    extension.storage.setKnownPubkey = originalSetKnownPubkey;
   });
+});
 
-  it("does not treat relay silence as a successful publish", async function () {
-    const pool = new extension.RelayPool(["wss://relay.example"], {
-      WebSocketCtor: FakeWebSocket,
-      connectionTimeoutMs: 25,
-      publishTimeoutMs: 5,
-    });
+describe("timeline component integration", function () {
+  it("injects the compact library component for a repost with equal-row spacing", async function () {
+    const observerOptions = [];
+    const observerCallbacks = [];
+    const scheduledCallbacks = [];
 
-    const result = await pool.publish({ id: "event-id" });
+    class FakeElement {
+      constructor(tagName = "div") {
+        this.tagName = tagName.toLowerCase();
+        this.children = [];
+        this.dataset = {};
+        this.attributes = {};
+        this.parentElement = null;
+        this.nextSibling = null;
+        this.className = "";
+      }
 
-    expect(result).toMatchObject({ ok: false, openCount: 1, okCount: 0 });
-    pool.close();
-  });
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+        if (name.startsWith("data-")) {
+          const key = name
+            .slice(5)
+            .replace(/-([a-z])/g, function (_match, letter) {
+              return letter.toUpperCase();
+            });
+          this.dataset[key] = String(value);
+        }
+      }
 
-  it("requires an explicit OK acknowledgment for success", async function () {
-    const pool = new extension.RelayPool(["wss://relay.example"], {
-      WebSocketCtor: FakeWebSocket,
-      connectionTimeoutMs: 25,
-      publishTimeoutMs: 25,
-    });
+      getAttribute(name) {
+        return this.attributes[name] ?? null;
+      }
 
-    const pending = pool.publish({ id: "event-id" });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    FakeWebSocket.instances[0].emit("message", {
-      data: JSON.stringify(["OK", "event-id", true, "saved"]),
-    });
+      appendChild(child) {
+        child.parentElement = this;
+        this.children.push(child);
+      }
 
-    await expect(pending).resolves.toMatchObject({ ok: true, okCount: 1 });
-    pool.close();
+      addEventListener() {}
+
+      querySelector(selector) {
+        if (selector === "nostr-like-button") {
+          return this.children.find(
+            (child) => child.tagName === "nostr-like-button",
+          );
+        }
+        return null;
+      }
+    }
+
+    const actionBar = new FakeElement();
+    const viewsContainer = new FakeElement();
+    const likeContainer = new FakeElement();
+    likeContainer.parentElement = actionBar;
+    likeContainer.nextSibling = viewsContainer;
+    const nativeLike = new FakeElement("button");
+    nativeLike.parentElement = likeContainer;
+    nativeLike.closest = function () {
+      return actionBar;
+    };
+    actionBar.querySelector = function (selector) {
+      if (selector.includes("data-testid")) {
+        return nativeLike;
+      }
+      return null;
+    };
+    actionBar.insertBefore = function (slot, sibling) {
+      this.inserted = { slot: slot, sibling: sibling };
+    };
+
+    const statusAnchor = {
+      getAttribute() {
+        return "/original-author/status/4242";
+      },
+    };
+    const timeElement = {
+      closest() {
+        return statusAnchor;
+      },
+    };
+    const article = {
+      dataset: { reposted: "true" },
+      querySelector(selector) {
+        if (selector === 'a[href*="/status/"] time') {
+          return timeElement;
+        }
+        if (selector.includes("data-testid")) {
+          return nativeLike;
+        }
+        return null;
+      },
+      querySelectorAll() {
+        return [];
+      },
+    };
+
+    globalThis.document = {
+      body: {},
+      documentElement: {},
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      },
+      querySelectorAll() {
+        return [article];
+      },
+    };
+    globalThis.MutationObserver = class {
+      constructor(callback) {
+        observerCallbacks.push(callback);
+      }
+
+      observe(_target, options) {
+        observerOptions.push(options);
+      }
+    };
+    globalThis.window = {
+      location: { origin: "https://x.com" },
+      getComputedStyle() {
+        return { colorScheme: "dark" };
+      },
+      setTimeout(callback) {
+        scheduledCallbacks.push(callback);
+        return scheduledCallbacks.length;
+      },
+      requestAnimationFrame(callback) {
+        callback();
+      },
+      addEventListener() {},
+    };
+
+    const originalDirectoryLookup = extension.directory.lookup;
+    extension.directory.lookup = async function () {
+      throw new Error("directory unavailable");
+    };
+    extension.componentLoader = { ready: Promise.resolve() };
+    vi.spyOn(console, "warn").mockImplementation(function () {});
+
+    try {
+      await import("../content.js");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // A busy X page can mutate faster than INJECT_DELAY_MS. Repeated
+      // observer notifications must not postpone the already scheduled scan.
+      for (let index = 0; index < 10; index += 1) {
+        observerCallbacks[0]();
+      }
+      expect(scheduledCallbacks).toHaveLength(1);
+      scheduledCallbacks.shift()();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const slot = actionBar.inserted.slot;
+      const component = slot.querySelector("nostr-like-button");
+      expect(actionBar.inserted.sibling).toBe(viewsContainer);
+      expect(slot.dataset.statusId).toBe("4242");
+      expect(slot.dataset.directoryStatus).toBe("invalid");
+      expect(component.tagName).toBe("nostr-like-button");
+      expect(component.getAttribute("url")).toBe(
+        "https://x.com/original-author/status/4242",
+      );
+      expect(component.getAttribute("compact")).toBe("");
+      expect(component.getAttribute("data-theme")).toBe("dark");
+      expect(observerOptions).toEqual([
+        { childList: true, subtree: true },
+        { attributes: true, attributeFilter: ["class", "style"] },
+        { attributes: true, attributeFilter: ["class", "style"] },
+      ]);
+    } finally {
+      extension.directory.lookup = originalDirectoryLookup;
+    }
   });
 });
