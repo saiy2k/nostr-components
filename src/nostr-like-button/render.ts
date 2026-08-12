@@ -109,13 +109,9 @@ function renderContainer(
   }
 
   const buttonClass = isLiked ? "nostr-like-button liked" : "nostr-like-button";
-  const isUnavailable = isError && !compact;
-  const disabledAttrs =
-    isLoading || isUnavailable
-      ? ` disabled${isLoading ? ' aria-busy="true"' : ""}`
-      : "";
-  const actionLabel = isUnavailable
-    ? "Nostr Like is unavailable"
+  const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : "";
+  const actionLabel = isError
+    ? "Nostr Like failed. Select to retry."
     : isLiked
       ? "Unlike this post with Nostr"
       : "Like this post with Nostr";

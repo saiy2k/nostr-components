@@ -6815,15 +6815,32 @@
     }
     async function handleRequest(pool, message) {
       const payload = message.payload;
-      if (message.operation === "getKnownPublicKey") {
-        if (!payload || Object.keys(payload).length !== 0) {
-          throw new Error("Known-public-key request contains unexpected data");
-        }
-        return extension.storage.getKnownPubkey();
-      }
       const relays = validateRelays(payload && payload.relays);
       if (!relays) {
         throw new Error("Relay request contains an unsupported relay list");
+      }
+      if (message.operation === "getKnownReaction") {
+        if (!payload || Object.keys(payload).some((key) => key !== "relays" && key !== "url") || !isAllowedStatusUrl(payload.url)) {
+          throw new Error("Known-reaction request contains unexpected data");
+        }
+        const publicKey = await extension.storage.getKnownPubkey();
+        if (!publicKey) return false;
+        const events = await pool.querySync(
+          relays,
+          {
+            kinds: [17],
+            authors: [publicKey],
+            "#k": ["web"],
+            "#i": [payload.url],
+            limit: 1
+          },
+          { maxWait: 8e3 }
+        );
+        if (events.length === 0) return false;
+        const latest = [...events].sort(
+          (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
+        )[0];
+        return latest.content === "+" || latest.content === "";
       }
       if (message.operation === "query") {
         const filter = validateFilter(payload.filter);

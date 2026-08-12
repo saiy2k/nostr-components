@@ -27,6 +27,7 @@ import { normalizeURL } from "nostr-tools/utils";
 
   let activeSession = null;
 
+  /** Accept only canonical X/Twitter status URLs as NIP-25 identifiers. */
   function isAllowedStatusUrl(value) {
     try {
       const url = new URL(value);
@@ -45,6 +46,7 @@ import { normalizeURL } from "nostr-tools/utils";
     }
   }
 
+  /** Normalize a bounded relay list and reject relays outside the allowlist. */
   function validateRelays(value) {
     if (!Array.isArray(value) || value.length === 0 || value.length > 8) {
       return null;
@@ -67,6 +69,7 @@ import { normalizeURL } from "nostr-tools/utils";
     return normalized;
   }
 
+  /** Reduce a page query to the supported kind-17 filter shape. */
   function validateFilter(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return null;
@@ -111,6 +114,7 @@ import { normalizeURL } from "nostr-tools/utils";
     };
   }
 
+  /** Verify a signed like/unlike event before forwarding it to relays. */
   function validateReactionEvent(event) {
     if (
       !event ||
@@ -147,6 +151,7 @@ import { normalizeURL } from "nostr-tools/utils";
     return event;
   }
 
+  /** Restrict bridge messages to an HTTPS X/Twitter page origin. */
   function isAllowedPageOrigin(origin) {
     try {
       const url = new URL(origin);
@@ -160,18 +165,45 @@ import { normalizeURL } from "nostr-tools/utils";
     }
   }
 
+  /** Execute one validated relay operation inside the isolated extension world. */
   async function handleRequest(pool, message) {
     const payload = message.payload;
-    if (message.operation === "getKnownPublicKey") {
-      if (!payload || Object.keys(payload).length !== 0) {
-        throw new Error("Known-public-key request contains unexpected data");
-      }
-      return extension.storage.getKnownPubkey();
-    }
-
     const relays = validateRelays(payload && payload.relays);
     if (!relays) {
       throw new Error("Relay request contains an unsupported relay list");
+    }
+
+    if (message.operation === "getKnownReaction") {
+      if (
+        !payload ||
+        Object.keys(payload).some((key) => key !== "relays" && key !== "url") ||
+        !isAllowedStatusUrl(payload.url)
+      ) {
+        throw new Error("Known-reaction request contains unexpected data");
+      }
+
+      const publicKey = await extension.storage.getKnownPubkey();
+      if (!publicKey) return false;
+
+      const events = await pool.querySync(
+        relays,
+        {
+          kinds: [17],
+          authors: [publicKey],
+          "#k": ["web"],
+          "#i": [payload.url],
+          limit: 1,
+        },
+        { maxWait: 8000 },
+      );
+      if (events.length === 0) return false;
+
+      const latest = [...events].sort(
+        (a, b) =>
+          b.created_at - a.created_at ||
+          (a.id === b.id ? 0 : a.id > b.id ? -1 : 1),
+      )[0];
+      return latest.content === "+" || latest.content === "";
     }
 
     if (message.operation === "query") {
@@ -218,6 +250,7 @@ import { normalizeURL } from "nostr-tools/utils";
     const pool = (options && options.pool) || new SimplePool();
     const pageWindow = (options && options.window) || window;
 
+    /** Authenticate, execute, and correlate one page bridge message. */
     async function onMessage(event) {
       const message = event.data;
       if (

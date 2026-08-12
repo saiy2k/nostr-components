@@ -301,13 +301,14 @@ export default class NostrLike extends NostrBaseComponent {
       }
 
       // Check user like status
-      this.isLiked = await hasUserLiked(
+      const isLiked = await hasUserLiked(
         targetUrl,
         signerResult.publicKey,
         this.getRelays(),
       );
 
       if (isStale()) return;
+      this.isLiked = isLiked;
 
       // If already liked, show confirmation dialog
       if (this.isLiked) {

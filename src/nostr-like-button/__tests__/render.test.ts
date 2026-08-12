@@ -86,7 +86,7 @@ describe("renderLikeButton", () => {
     });
 
     expect(html).not.toContain(" disabled");
-    expect(html).toContain('aria-label="Like this post with Nostr"');
+    expect(html).toContain('aria-label="Nostr Like failed. Select to retry."');
   });
 
   it("gives compact actions a full-width target and a legible icon stroke", () => {

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 import { SimplePool } from "nostr-tools";
-import { normalizeURL } from "nostr-tools/utils";
+import { normalizeURL } from "../common/utils";
 import {
-  cachePublicKey,
   ensureInitialized,
   getCachedPublicKey,
   getPublicKey,
@@ -17,7 +16,7 @@ export type { LikeCountResult, LikeDetails };
 export interface NostrRelayTransport {
   query(relays: string[], filter: Record<string, unknown>): Promise<any[]>;
   publish(relays: string[], event: any): Promise<void>;
-  getKnownPublicKey?(): Promise<string | null>;
+  getKnownReaction?(relays: string[], url: string): Promise<boolean>;
 }
 
 export interface LikeStateResult extends LikeCountResult {
@@ -83,19 +82,7 @@ export async function fetchLikesForUrl(
 
 /** Resolve the last known signer without opening a prompt during page render. */
 async function getKnownUserPublicKey(): Promise<string | null> {
-  const sessionPublicKey = getCachedPublicKey();
-  if (sessionPublicKey) return sessionPublicKey;
-
-  const transport = getRelayTransport();
-  if (!transport || typeof transport.getKnownPublicKey !== "function") {
-    return null;
-  }
-
-  try {
-    return cachePublicKey(await transport.getKnownPublicKey());
-  } catch (_error) {
-    return null;
-  }
+  return getCachedPublicKey();
 }
 
 /** Fetch the count and restore the known user's existing reaction on revisit. */
@@ -103,10 +90,19 @@ export async function fetchLikeStateForUrl(
   url: string,
   relays: string[],
 ): Promise<LikeStateResult> {
-  const [result, userPublicKey] = await Promise.all([
-    fetchLikesForUrl(url, relays),
-    getKnownUserPublicKey(),
+  const normalizedUrl = normalizeURL(url);
+  const transport = getRelayTransport();
+  const [result, knownReaction] = await Promise.all([
+    fetchLikesForUrl(normalizedUrl, relays),
+    transport && typeof transport.getKnownReaction === "function"
+      ? transport.getKnownReaction(relays, normalizedUrl).catch(() => false)
+      : getKnownUserPublicKey(),
   ]);
+  if (typeof knownReaction === "boolean") {
+    return { ...result, isLiked: knownReaction };
+  }
+
+  const userPublicKey = knownReaction;
   const ownReaction = userPublicKey
     ? result.likeDetails.find(
         (detail) => detail.authorPubkey.toLowerCase() === userPublicKey,
@@ -125,12 +121,13 @@ export async function fetchLikeStateForUrl(
  * @param content - '+' for like, '-' for unlike
  */
 export function createReactionEvent(url: string, content: "+" | "-"): any {
+  const normalizedUrl = normalizeURL(url);
   return {
     kind: 17,
     content,
     tags: [
       ["k", "web"],
-      ["i", url],
+      ["i", normalizedUrl],
     ],
     created_at: Math.floor(Date.now() / 1000),
   };
@@ -160,7 +157,7 @@ export async function hasUserLiked(
   userPubkey: string,
   relays: string[],
 ): Promise<boolean> {
-  const normalizedUrl = url;
+  const normalizedUrl = normalizeURL(url);
 
   try {
     // Get user's latest reaction for this URL
@@ -179,7 +176,11 @@ export async function hasUserLiked(
     if (events.length === 0) return false;
 
     // Check if latest reaction is a like (not an unlike)
-    const latest = events[0];
+    const latest = [...events].sort(
+      (a, b) =>
+        b.created_at - a.created_at ||
+        (a.id === b.id ? 0 : a.id > b.id ? -1 : 1),
+    )[0];
     return latest.content === "+" || latest.content === "";
   } catch (error) {
     console.error(

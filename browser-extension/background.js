@@ -17,6 +17,12 @@ function getXExecutionTarget(sender) {
     throw new Error("Like component injection is unavailable");
   }
 
+  if (typeof sender.url !== "string" || !Number.isInteger(sender.frameId)) {
+    throw new Error(
+      "Like component injection requires a validated sender frame",
+    );
+  }
+
   const senderUrl = new URL(sender.url);
   if (
     senderUrl.protocol !== "https:" ||
@@ -26,12 +32,7 @@ function getXExecutionTarget(sender) {
     throw new Error("Like component injection is restricted to X/Twitter");
   }
 
-  const target = { tabId: sender.tab.id };
-  if (Number.isInteger(sender.frameId)) {
-    target.frameIds = [sender.frameId];
-  }
-
-  return target;
+  return { tabId: sender.tab.id, frameIds: [sender.frameId] };
 }
 
 /** Install the request half of the relay bridge in MAIN world. Self-contained. */
@@ -47,6 +48,7 @@ function installRelayTransport(channel) {
 
   const pending = new Map();
 
+  /** Create an unpredictable identifier for one page-to-extension request. */
   function createRequestId() {
     const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
@@ -55,6 +57,7 @@ function installRelayTransport(channel) {
     }).join("");
   }
 
+  /** Resolve only authenticated responses that belong to this bridge channel. */
   function onMessage(event) {
     const message = event.data;
     if (
@@ -78,6 +81,7 @@ function installRelayTransport(channel) {
     }
   }
 
+  /** Send a bounded relay request from MAIN world to the isolated client. */
   function request(operation, payload) {
     return new Promise(function (resolve, reject) {
       const requestId = createRequestId();
@@ -112,8 +116,8 @@ function installRelayTransport(channel) {
     query: function (relays, filter) {
       return request("query", { relays: relays, filter: filter });
     },
-    getKnownPublicKey: function () {
-      return request("getKnownPublicKey", {});
+    getKnownReaction: function (relays, url) {
+      return request("getKnownReaction", { relays: relays, url: url });
     },
     publish: function (relays, event) {
       return request("publish", { relays: relays, event: event });
