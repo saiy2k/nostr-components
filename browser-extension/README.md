@@ -6,9 +6,12 @@ Load this directory as an unpacked Manifest V3 extension in Chromium. The Like
 button is injected for every X/Twitter status, while author identity metadata is
 looked up through the `lookupDirectoryHandle` Firebase HTTPS function.
 
-Rebuild the small browser bundle that imports the repository's
-`nostr-tools/utils` URL normalizer whenever `browser-extension/src/url.js`
-changes:
+The extension registers the repository's real `nostr-like-button` component in
+X's MAIN world, where it can use the page-owned NIP-07 signer. X's restrictive
+`connect-src` policy blocks relay WebSockets there, so a narrow message bridge
+routes only validated kind-17 queries and signed reaction publishes through the
+extension's isolated world. Rebuild the URL helper, relay client, and component
+bundles whenever their source changes:
 
 ```bash
 npm run build:browser-extension
@@ -34,6 +37,7 @@ After deployment, verify that this URL returns a sanitized result:
 https://us-central1-gr-prod.cloudfunctions.net/lookupDirectoryHandle?platform=twitter&handle=jack
 ```
 
-The content script uses a single shared connection per configured relay. Post
-lookups multiplex subscriptions over that pool instead of opening a new set of
-WebSockets for every injected button.
+The component uses the library's shared Nostr service and Like relay pool rather
+than duplicating reaction logic inside the extension. Signer public keys are
+cached in `sessionStorage` for the current tab so scrolling does not repeat the
+read-public-key prompt for every rendered post.

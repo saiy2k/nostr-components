@@ -4,8 +4,8 @@
   const extension = (globalThis.NostrLikeExtension =
     globalThis.NostrLikeExtension || {});
   const KNOWN_PUBKEY_STORAGE_KEY = "nostr-competency-known-pubkey";
-  const REACTION_CACHE_STORAGE_PREFIX = "nostr-competency-reaction:";
   const DIRECTORY_CACHE_STORAGE_PREFIX = "nostr-directory-handle:";
+  const PUBLIC_KEY_PATTERN = /^[0-9a-f]{64}$/i;
 
   /** Resolve the extension-private storage API for Chrome or Firefox. */
   function getBrowserStorage() {
@@ -73,54 +73,25 @@
     });
   }
 
-  /** Build a per-account, per-URL reaction cache key. */
-  function reactionKey(url, pubkey) {
-    return REACTION_CACHE_STORAGE_PREFIX + pubkey + "::" + url;
-  }
-
-  /** Read the last known NIP-07 pubkey for optimistic rendering only. */
+  /** Read the last signer identity confirmed by a successful publish. */
   async function getKnownPubkey() {
     const values = await getValues(KNOWN_PUBKEY_STORAGE_KEY).catch(function () {
       return {};
     });
-    return values[KNOWN_PUBKEY_STORAGE_KEY] || null;
+    const value = values[KNOWN_PUBKEY_STORAGE_KEY];
+    return typeof value === "string" && PUBLIC_KEY_PATTERN.test(value)
+      ? value.toLowerCase()
+      : null;
   }
 
-  /** Store the most recently confirmed NIP-07 pubkey. */
+  /** Persist public identity only after its signed event reaches a relay. */
   async function setKnownPubkey(pubkey) {
-    await setValues({ [KNOWN_PUBKEY_STORAGE_KEY]: pubkey }).catch(
-      function () {},
-    );
-  }
-
-  /** Read cached liked state for an account and canonical URL. */
-  async function getReactionState(url, pubkey) {
-    if (!pubkey) {
-      return null;
-    }
-
-    const key = reactionKey(url, pubkey);
-    const values = await getValues(key).catch(function () {
-      return {};
-    });
-    if (values[key] === "liked") {
-      return true;
-    }
-    if (values[key] === "unliked") {
-      return false;
-    }
-    return null;
-  }
-
-  /** Store cached liked state for an account and canonical URL. */
-  async function setReactionState(url, pubkey, liked) {
-    if (!pubkey) {
+    if (typeof pubkey !== "string" || !PUBLIC_KEY_PATTERN.test(pubkey)) {
       return;
     }
-    const key = reactionKey(url, pubkey);
-    await setValues({ [key]: liked ? "liked" : "unliked" }).catch(
-      function () {},
-    );
+    await setValues({
+      [KNOWN_PUBKEY_STORAGE_KEY]: pubkey.toLowerCase(),
+    }).catch(function () {});
   }
 
   /** Read a fresh or explicitly allowed stale directory cache entry. */
@@ -141,7 +112,11 @@
         return null;
       }
     }
-    return cached.value || null;
+    const value = cached.value || null;
+    if (options && options.includeExpiry) {
+      return { value: value, expiresAt: cached.expiresAt };
+    }
+    return value;
   }
 
   /** Cache a sanitized directory response with an expiry time. */
@@ -158,8 +133,6 @@
   extension.storage = {
     getKnownPubkey: getKnownPubkey,
     setKnownPubkey: setKnownPubkey,
-    getReactionState: getReactionState,
-    setReactionState: setReactionState,
     getDirectoryEntry: getDirectoryEntry,
     setDirectoryEntry: setDirectoryEntry,
   };

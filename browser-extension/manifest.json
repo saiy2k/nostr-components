@@ -3,8 +3,20 @@
   "name": "Nostr Competency Test - X Like Button",
   "version": "0.2.0",
   "description": "Adds Firestore-backed Nostr identity metadata and Nostr Like reactions to X posts.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://us-central1-gr-prod.cloudfunctions.net/*"],
+  "permissions": ["scripting", "storage"],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://us-central1-gr-prod.cloudfunctions.net/*",
+    "wss://relay.damus.io/*",
+    "wss://nostr.wine/*",
+    "wss://relay.nostr.net/*",
+    "wss://relay.nostr.band/*",
+    "wss://nos.lol/*",
+    "wss://nostr-pub.wellorder.net/*",
+    "wss://relay.getalby.com/*",
+    "wss://relay.primal.net/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -15,9 +27,8 @@
         "lib/url.js",
         "lib/storage.js",
         "lib/directory.js",
-        "lib/bridge-client.js",
-        "lib/relay-pool.js",
-        "lib/reactions.js",
+        "lib/relay-client.js",
+        "lib/component-loader.js",
         "lib/dom.js",
         "content.js"
       ],
@@ -27,7 +38,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["page-bridge.js", "verified-directory.json"],
+      "resources": ["verified-directory.json"],
       "matches": ["https://x.com/*", "https://twitter.com/*"]
     }
   ]

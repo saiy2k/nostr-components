@@ -5,6 +5,7 @@
     globalThis.NostrLikeExtension || {});
   const VERIFIED_TTL_MS = 24 * 60 * 60 * 1000;
   const MISS_TTL_MS = 60 * 60 * 1000;
+  const DEGRADED_MEMORY_TTL_MS = 5 * 60 * 1000;
   const memoryCache = new Map();
   let bundledDirectoryPromise = null;
 
@@ -121,6 +122,24 @@
     };
   }
 
+  /** Return a valid memory entry and discard it after its expiry. */
+  function getMemoryEntry(handle) {
+    const cached = memoryCache.get(handle);
+    if (!cached) {
+      return null;
+    }
+    if (!Number.isFinite(cached.expiresAt) || cached.expiresAt <= Date.now()) {
+      memoryCache.delete(handle);
+      return null;
+    }
+    return cached.value;
+  }
+
+  /** Store one memory entry with the same bounded lifetime as its source. */
+  function setMemoryEntry(handle, value, expiresAt) {
+    memoryCache.set(handle, { value: value, expiresAt: expiresAt });
+  }
+
   /** Resolve author metadata through memory, extension storage, Firestore, then fallback. */
   async function lookup(value) {
     const handle = normalizeHandle(value);
@@ -128,38 +147,40 @@
       return null;
     }
 
-    if (memoryCache.has(handle)) {
-      return memoryCache.get(handle);
+    const memoryEntry = getMemoryEntry(handle);
+    if (memoryEntry) {
+      return memoryEntry;
     }
 
-    const cached = await extension.storage.getDirectoryEntry(handle);
-    if (cached) {
-      memoryCache.set(handle, cached);
-      return cached;
+    const cached = await extension.storage.getDirectoryEntry(handle, {
+      includeExpiry: true,
+    });
+    if (cached && cached.value) {
+      setMemoryEntry(handle, cached.value, cached.expiresAt);
+      return cached.value;
     }
 
     try {
       const result = await sendLookupRequest(handle);
       const valueToCache = { ...result, source: "firestore" };
-      memoryCache.set(handle, valueToCache);
-      await extension.storage.setDirectoryEntry(
-        handle,
-        valueToCache,
-        valueToCache.verified ? VERIFIED_TTL_MS : MISS_TTL_MS,
-      );
+      const ttlMs = valueToCache.verified ? VERIFIED_TTL_MS : MISS_TTL_MS;
+      const expiresAt = Date.now() + ttlMs;
+      setMemoryEntry(handle, valueToCache, expiresAt);
+      await extension.storage.setDirectoryEntry(handle, valueToCache, ttlMs);
       return valueToCache;
     } catch (_error) {
       const stale = await extension.storage.getDirectoryEntry(handle, {
         allowExpired: true,
+        includeExpiry: true,
       });
-      if (stale) {
-        const staleValue = { ...stale, source: "stale-cache" };
-        memoryCache.set(handle, staleValue);
+      if (stale && stale.value) {
+        const staleValue = { ...stale.value, source: "stale-cache" };
+        setMemoryEntry(handle, staleValue, Date.now() + DEGRADED_MEMORY_TTL_MS);
         return staleValue;
       }
 
       const fallback = await bundledFallback(handle);
-      memoryCache.set(handle, fallback);
+      setMemoryEntry(handle, fallback, Date.now() + DEGRADED_MEMORY_TTL_MS);
       return fallback;
     }
   }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { getComponentStyles } from '../common/base-styles';
+import { getComponentStyles } from "../common/base-styles";
 
 export function getLikeButtonStyles(): string {
   const customStyles = `
@@ -42,6 +42,82 @@ export function getLikeButtonStyles(): string {
       font-size: var(--nostrc-like-btn-font-size);
     }
 
+    /* Compact action-row mode used by dense host UIs such as X timelines. */
+    :host([compact]) {
+      --nostrc-icon-height: 18px;
+      --nostrc-icon-width: 18px;
+      --nostrc-like-btn-padding: 0;
+      --nostrc-like-btn-border: 0;
+      --nostrc-like-btn-hover-border: 0;
+      --nostrc-like-btn-min-height: 34px;
+      --nostrc-like-btn-width: 34px;
+      --nostrc-like-btn-bg: transparent;
+      --nostrc-like-btn-color: rgb(113, 118, 123);
+      --nostrc-like-btn-hover-bg: rgba(29, 155, 240, 0.12);
+      --nostrc-like-btn-hover-color: rgb(29, 155, 240);
+      --nostrc-like-btn-liked-bg: rgba(29, 155, 240, 0.12);
+      --nostrc-like-btn-liked-color: rgb(29, 155, 240);
+      --nostrc-like-btn-liked-border: transparent;
+      --nostrc-like-btn-liked-hover-bg: rgba(29, 155, 240, 0.18);
+      display: flex;
+      width: 100%;
+      height: 34px;
+      min-width: 0;
+      justify-content: center;
+      gap: 2px;
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    /* Relay/count startup is background work in compact timeline mode. */
+    :host([compact].is-disabled),
+    :host([compact].is-error) {
+      opacity: 1;
+      cursor: pointer;
+    }
+
+    :host([compact]) .nostr-like-button-container {
+      justify-content: center;
+      gap: 2px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    :host([compact]) .nostr-like-button {
+      box-sizing: border-box;
+      flex: 1 1 auto;
+      width: 100%;
+      border-radius: 9999px;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    :host([compact]) .nostr-like-button svg path {
+      stroke: currentcolor;
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    :host([compact]) .nostr-like-button.liked svg path {
+      fill: currentcolor;
+    }
+
+    :host([compact]) .like-count {
+      min-width: 1ch;
+      color: currentcolor;
+      font-size: 13px;
+      line-height: 20px;
+      font-variant-numeric: tabular-nums;
+      text-decoration: none;
+    }
+
+    :host([compact]) .like-count.skeleton {
+      width: 16px;
+      height: 12px;
+      margin: 0;
+    }
+
     /* Focus state for accessibility */
     .nostr-like-button:focus-visible,
     .help-icon:focus-visible,
@@ -55,6 +131,12 @@ export function getLikeButtonStyles(): string {
       border-radius: var(--nostrc-border-radius-md);
       padding: var(--nostrc-spacing-sm);
       color: var(--nostrc-color-error-text);
+    }
+
+    :host([compact].is-error) .nostr-like-button-container {
+      border: 0;
+      padding: 0;
+      color: var(--nostrc-like-btn-color);
     }
 
     .nostr-like-button-container {
@@ -111,12 +193,12 @@ export function getLikeButtonStyles(): string {
     }
 
     .nostr-like-button:disabled {
-      pointer-events: none;
       user-select: none;
-      opacity: 0.6;
+      cursor: wait;
+      opacity: 0.72;
     }
 
-    :host:not([status="ready"]) .nostr-like-button {
+    :host(:not([compact]):not([status="ready"])) .nostr-like-button {
       cursor: not-allowed;
     }
 
@@ -237,6 +319,6 @@ export function getLikeButtonStyles(): string {
       white-space: pre-line;
     }
   `;
-  
+
   return getComponentStyles(customStyles);
 }
