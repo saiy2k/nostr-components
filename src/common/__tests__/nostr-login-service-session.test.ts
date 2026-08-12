@@ -40,9 +40,13 @@ describe("nostr login session public-key cache", () => {
     expect(values[SESSION_KEY]).toBe(PUBLIC_KEY);
   });
 
-  it("reuses the tab session after the component bundle is evaluated again", async () => {
-    const values: Record<string, string> = { [SESSION_KEY]: PUBLIC_KEY };
-    const getPublicKeyFromSigner = vi.fn();
+  it("refreshes a tab session after the signer account changes", async () => {
+    const previousPublicKey = "a".repeat(64);
+    const currentPublicKey = "b".repeat(64);
+    const values: Record<string, string> = {
+      [SESSION_KEY]: previousPublicKey,
+    };
+    const getPublicKeyFromSigner = vi.fn().mockResolvedValue(currentPublicKey);
     vi.stubGlobal("window", {
       nostr: { getPublicKey: getPublicKeyFromSigner },
       sessionStorage: createSessionStorage(values),
@@ -50,8 +54,32 @@ describe("nostr login session public-key cache", () => {
 
     const { getPublicKey } = await import("../nostr-login-service");
 
+    await expect(getPublicKey()).resolves.toBe(currentPublicKey);
+    expect(getPublicKeyFromSigner).toHaveBeenCalledOnce();
+    expect(values[SESSION_KEY]).toBe(currentPublicKey);
+  });
+
+  it("keeps signer identity out of page storage when a host transport exists", async () => {
+    const values: Record<string, string> = { [SESSION_KEY]: "c".repeat(64) };
+    const sessionStorage = createSessionStorage(values);
+    vi.stubGlobal("window", {
+      nostr: { getPublicKey: vi.fn().mockResolvedValue(PUBLIC_KEY) },
+      sessionStorage: sessionStorage,
+    });
+    vi.stubGlobal("__nostrComponentsRelayTransport", {
+      query: vi.fn(),
+      publish: vi.fn(),
+    });
+
+    const { getCachedPublicKey, getPublicKey } = await import(
+      "../nostr-login-service"
+    );
+
+    expect(getCachedPublicKey()).toBeNull();
     await expect(getPublicKey()).resolves.toBe(PUBLIC_KEY);
-    expect(getPublicKeyFromSigner).not.toHaveBeenCalled();
+    expect(values[SESSION_KEY]).toBeUndefined();
+    expect(sessionStorage.setItem).not.toHaveBeenCalled();
+    expect(getCachedPublicKey()).toBe(PUBLIC_KEY);
   });
 
   it("uses an existing NIP-07 provider without injecting window.nostr.js", async () => {

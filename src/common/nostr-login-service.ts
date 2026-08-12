@@ -21,10 +21,29 @@ const PUBLIC_KEY_PATTERN = /^[0-9a-f]{64}$/i;
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 let publicKeyPromise: Promise<string | null> | null = null;
+let inMemoryPublicKey: string | null = null;
+
+/** Host transports run in the page's MAIN world, where storage is page-readable. */
+function hasHostRelayTransport(): boolean {
+  const transport = (
+    globalThis as typeof globalThis & {
+      __nostrComponentsRelayTransport?: unknown;
+    }
+  ).__nostrComponentsRelayTransport;
+  return !!transport;
+}
 
 /** Read a validated public key shared by component instances in this tab. */
 export function getCachedPublicKey(): string | null {
   if (typeof window === "undefined") return null;
+  if (hasHostRelayTransport()) {
+    try {
+      window.sessionStorage.removeItem(PUBLIC_KEY_SESSION_KEY);
+    } catch (_error) {
+      // Sandboxed pages can deny sessionStorage; module state remains private.
+    }
+    return inMemoryPublicKey;
+  }
 
   try {
     const value = window.sessionStorage.getItem(PUBLIC_KEY_SESSION_KEY);
@@ -46,6 +65,16 @@ export function cachePublicKey(value: unknown): string | null {
   }
 
   const publicKey = value.toLowerCase();
+  inMemoryPublicKey = publicKey;
+  if (hasHostRelayTransport()) {
+    try {
+      window.sessionStorage.removeItem(PUBLIC_KEY_SESSION_KEY);
+    } catch (_error) {
+      // Sandboxed pages can deny sessionStorage; module state remains private.
+    }
+    return publicKey;
+  }
+
   try {
     window.sessionStorage.setItem(PUBLIC_KEY_SESSION_KEY, publicKey);
   } catch (_error) {
@@ -147,11 +176,6 @@ export function isAvailable(): boolean {
  * @returns Promise resolving to public key or null
  */
 export async function getPublicKey(): Promise<string | null> {
-  const cachedPublicKey = getCachedPublicKey();
-  if (cachedPublicKey) {
-    return cachedPublicKey;
-  }
-
   if (publicKeyPromise) {
     return publicKeyPromise;
   }
@@ -159,11 +183,11 @@ export async function getPublicKey(): Promise<string | null> {
   publicKeyPromise = (async () => {
     await ensureInitialized();
 
-    if (!isAvailable()) {
-      return null;
-    }
+    if (!isAvailable()) return getCachedPublicKey();
 
     try {
+      // Always refresh from an available signer. A session value can belong to
+      // the account that was active before the user switched identities.
       const pubkey = await (window as any).nostr.getPublicKey();
       return cachePublicKey(pubkey);
     } catch (error) {

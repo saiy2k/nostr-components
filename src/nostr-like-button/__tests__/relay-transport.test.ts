@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createReactionEvent,
   fetchLikeStateForUrl,
   fetchLikesForUrl,
   hasUserLiked,
@@ -87,11 +88,11 @@ describe("Like component relay transport", () => {
       ],
       sig: "2".repeat(128),
     };
-    const getKnownPublicKey = vi.fn(async () => publicKey);
+    const getKnownReaction = vi.fn(async () => true);
     const query = vi.fn(async () => [existingLike]);
     Object.assign(globalThis, {
       __nostrComponentsRelayTransport: {
-        getKnownPublicKey: getKnownPublicKey,
+        getKnownReaction: getKnownReaction,
         query: query,
         publish: vi.fn(),
       },
@@ -103,8 +104,44 @@ describe("Like component relay transport", () => {
       totalCount: 1,
       isLiked: true,
     });
-    expect(getKnownPublicKey).toHaveBeenCalledOnce();
+    expect(getKnownReaction).toHaveBeenCalledWith(RELAYS, STATUS_URL);
     expect(query).toHaveBeenCalledOnce();
+  });
+
+  it("canonicalizes published tags and user-state queries", async () => {
+    const nonCanonicalUrl = "http://mobile.x.com/alokdangre//status/42/";
+    const query = vi.fn(async () => []);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query: query, publish: vi.fn() },
+    });
+
+    expect(createReactionEvent(nonCanonicalUrl, "+").tags).toContainEqual([
+      "i",
+      STATUS_URL,
+    ]);
+    await hasUserLiked(nonCanonicalUrl, "a".repeat(64), RELAYS);
+
+    expect(query).toHaveBeenCalledWith(RELAYS, {
+      kinds: [17],
+      authors: ["a".repeat(64)],
+      "#k": ["web"],
+      "#i": [STATUS_URL],
+      limit: 1,
+    });
+  });
+
+  it("selects the newest user reaction across relay responses", async () => {
+    const query = vi.fn(async () => [
+      { id: "1".repeat(64), created_at: 10, content: "+" },
+      { id: "2".repeat(64), created_at: 11, content: "-" },
+    ]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query: query, publish: vi.fn() },
+    });
+
+    await expect(
+      hasUserLiked(STATUS_URL, "a".repeat(64), RELAYS),
+    ).resolves.toBe(false);
   });
 
   it("publishes signed reactions through the transport without invoking NDK", async () => {

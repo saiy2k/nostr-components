@@ -20195,8 +20195,19 @@
   });
 
   // src/common/nostr-login-service.ts
+  function hasHostRelayTransport() {
+    const transport = globalThis.__nostrComponentsRelayTransport;
+    return !!transport;
+  }
   function getCachedPublicKey() {
     if (typeof window === "undefined") return null;
+    if (hasHostRelayTransport()) {
+      try {
+        window.sessionStorage.removeItem(PUBLIC_KEY_SESSION_KEY);
+      } catch (_error) {
+      }
+      return inMemoryPublicKey;
+    }
     try {
       const value = window.sessionStorage.getItem(PUBLIC_KEY_SESSION_KEY);
       if (!value) return null;
@@ -20214,6 +20225,14 @@
       return null;
     }
     const publicKey = value.toLowerCase();
+    inMemoryPublicKey = publicKey;
+    if (hasHostRelayTransport()) {
+      try {
+        window.sessionStorage.removeItem(PUBLIC_KEY_SESSION_KEY);
+      } catch (_error) {
+      }
+      return publicKey;
+    }
     try {
       window.sessionStorage.setItem(PUBLIC_KEY_SESSION_KEY, publicKey);
     } catch (_error) {
@@ -20282,18 +20301,12 @@
     return typeof window !== "undefined" && !!window.nostr;
   }
   async function getPublicKey2() {
-    const cachedPublicKey = getCachedPublicKey();
-    if (cachedPublicKey) {
-      return cachedPublicKey;
-    }
     if (publicKeyPromise) {
       return publicKeyPromise;
     }
     publicKeyPromise = (async () => {
       await ensureInitialized();
-      if (!isAvailable()) {
-        return null;
-      }
+      if (!isAvailable()) return getCachedPublicKey();
       try {
         const pubkey = await window.nostr.getPublicKey();
         return cachePublicKey(pubkey);
@@ -20322,7 +20335,7 @@
       throw error;
     }
   }
-  var WINDOW_NOSTR_JS_SRC, WINDOW_NOSTR_JS_SRI, PUBLIC_KEY_SESSION_KEY, PUBLIC_KEY_PATTERN, isInitialized, initPromise, publicKeyPromise;
+  var WINDOW_NOSTR_JS_SRC, WINDOW_NOSTR_JS_SRI, PUBLIC_KEY_SESSION_KEY, PUBLIC_KEY_PATTERN, isInitialized, initPromise, publicKeyPromise, inMemoryPublicKey;
   var init_nostr_login_service = __esm({
     "src/common/nostr-login-service.ts"() {
       "use strict";
@@ -20333,6 +20346,7 @@
       isInitialized = false;
       initPromise = null;
       publicKeyPromise = null;
+      inMemoryPublicKey = null;
     }
   });
 
@@ -21160,9 +21174,9 @@
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: linear-gradient(90deg,
-        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%,
-        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%,
+      background: linear-gradient(90deg, 
+        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%, 
+        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%, 
         ${isDark ? "#3a3a3a" : "#f0f0f0"} 75%
       );
       background-size: 200% 100%;
@@ -21173,9 +21187,9 @@
     .skeleton-name {
       width: 120px;
       height: 14px;
-      background: linear-gradient(90deg,
-        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%,
-        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%,
+      background: linear-gradient(90deg, 
+        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%, 
+        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%, 
         ${isDark ? "#3a3a3a" : "#f0f0f0"} 75%
       );
       background-size: 200% 100%;
@@ -22915,10 +22929,10 @@ ${url}`;
      * and then
      *  'user' switches to loading -> ready,
      * results in loading -> ready -> loading -> ready in profile-badge onStatusChange.
-     *
+     * 
      * To avoid this, this function is called from UserComponent constructor,
      * to set default value as 'loading' without emitting onStatusChange event.
-     *
+     * 
      * Makes sense?
      * Try commenting this function call in UserComponent()
      * and add a log in ProfileBadge :: onStatusChange. You will get it.
@@ -22996,7 +23010,7 @@ ${url}`;
     /**
      * Delegate events within shadow DOM.
      * Example: this.delegateEvent('click', '#npub-copy', (e) => this.copyNpub(e));
-     *
+     * 
      * Note: Listeners are automatically cleaned up in disconnectedCallback() to prevent memory leaks.
     */
     delegateEvent(type, selector, handler) {
@@ -23147,9 +23161,8 @@ ${url}`;
       countHtml = `<span class="like-count${canOpenLikers ? " clickable" : ""}"${canOpenLikers ? ' role="button" tabindex="0" aria-label="View likers"' : ""}>${countText}</span>`;
     }
     const buttonClass = isLiked ? "nostr-like-button liked" : "nostr-like-button";
-    const isUnavailable = isError && !compact;
-    const disabledAttrs = isLoading || isUnavailable ? ` disabled${isLoading ? ' aria-busy="true"' : ""}` : "";
-    const actionLabel = isUnavailable ? "Nostr Like is unavailable" : isLiked ? "Unlike this post with Nostr" : "Like this post with Nostr";
+    const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : "";
+    const actionLabel = isError ? "Nostr Like failed. Select to retry." : isLiked ? "Unlike this post with Nostr" : "Like this post with Nostr";
     const helpIconHtml = compact ? "" : `<button type="button" class="help-icon" aria-label="What is a like?" title="What is a like?">?</button>`;
     return `
     <div class="nostr-like-button-container">
@@ -23189,7 +23202,7 @@ ${url}`;
         --nostrc-color-error-background: #ffebee;
         --nostrc-color-error-text: #d32f2f;
         --nostrc-color-error-icon: #d32f2f;
-
+        
         /* === TYPOGRAPHY === */
         --nostrc-font-family-primary: ui-sans-serif, system-ui, sans-serif;
         --nostrc-font-family-mono: monospace;
@@ -23199,38 +23212,38 @@ ${url}`;
         --nostrc-font-weight-normal: 400;
         --nostrc-font-weight-medium: 500;
         --nostrc-font-weight-bold: 700;
-
+        
         /* === SPACING === */
         --nostrc-spacing-xs: 4px;
         --nostrc-spacing-sm: 8px;
         --nostrc-spacing-md: 12px;
         --nostrc-spacing-lg: 16px;
         --nostrc-spacing-xl: 20px;
-
+        
         /* === BORDERS === */
         --nostrc-border-radius-sm: 4px;
         --nostrc-border-radius-md: 8px;
         --nostrc-border-radius-lg: 12px;
         --nostrc-border-radius-full: 50%;
         --nostrc-border-width: 1px;
-
+        
         /* === SKELETON === */
         --nostrc-skeleton-color-min: #f0f0f0;
         --nostrc-skeleton-color-max: #e0e0e0;
         --nostrc-skeleton-duration: 1.5s;
         --nostrc-skeleton-timing-function: linear;
         --nostrc-skeleton-iteration-count: infinite;
-
+        
         /* === TRANSITIONS === */
         --nostrc-transition-duration: 0.2s;
         --nostrc-transition-timing: ease;
       }
-
+      
       :host(.is-disabled) {
         opacity: 0.7;
         cursor: not-allowed;
       }
-
+      
       /* === ESSENTIAL UTILITY STYLES === */
       ${styleUtils.skeleton()}
       ${styleUtils.copyButton()}
@@ -23274,11 +23287,11 @@ ${url}`;
       height: 16px;
       margin-bottom: var(--nostrc-spacing-xs);
     }
-
+    
     .skeleton:last-child {
       margin-bottom: 0;
     }
-
+    
     @keyframes skeleton-loading {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
@@ -23301,11 +23314,11 @@ ${url}`;
       background: transparent;
       color: var(--nostrc-color-text-muted);
     }
-
+    
     .nc-copy-btn:hover {
       opacity: 1;
     }
-
+    
     .nc-copy-btn.copied {
       color: var(--nostrc-color-accent);
     }
@@ -23330,7 +23343,7 @@ ${url}`;
       gap: var(--nostrc-spacing-sm);
       font-size: var(--nostrc-font-size-base);
     }
-
+    
     .text-row.mono {
       font-family: var(--nostrc-font-family-mono);
       font-size: var(--nostrc-font-size-small);
@@ -23375,7 +23388,7 @@ ${url}`;
       --nostrc-like-btn-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-like-btn-font-family: var(--nostrc-font-family-primary);
       --nostrc-like-btn-font-size: var(--nostrc-font-size-base);
-
+      
       /* Hover state variables */
       --nostrc-like-btn-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
       --nostrc-like-btn-hover-color: var(--nostrc-theme-text-primary, #333333);
@@ -23615,9 +23628,9 @@ ${url}`;
 
     /* Skeleton loader for like count */
     .like-count.skeleton {
-      background: linear-gradient(90deg,
-        var(--nostrc-skeleton-color-min) 25%,
-        var(--nostrc-skeleton-color-max) 50%,
+      background: linear-gradient(90deg, 
+        var(--nostrc-skeleton-color-min) 25%, 
+        var(--nostrc-skeleton-color-max) 50%, 
         var(--nostrc-skeleton-color-min) 75%
       );
       background-size: 200% 100%;
@@ -23630,9 +23643,9 @@ ${url}`;
 
     /* Skeleton loader for button text */
     .button-text-skeleton {
-      background: linear-gradient(90deg,
-        var(--nostrc-skeleton-color-min) 25%,
-        var(--nostrc-skeleton-color-max) 50%,
+      background: linear-gradient(90deg, 
+        var(--nostrc-skeleton-color-min) 25%, 
+        var(--nostrc-skeleton-color-max) 50%, 
         var(--nostrc-skeleton-color-min) 75%
       );
       background-size: 200% 100%;
@@ -23763,6 +23776,7 @@ ${url}`;
 
   // src/nostr-like-button/like-utils.ts
   init_esm2();
+  init_utils7();
   init_nostr_login_service();
 
   // src/nostr-like-button/like-netting.ts
@@ -23816,7 +23830,7 @@ ${url}`;
   }
   var likePool = new SimplePool();
   async function fetchLikesForUrl(url, relays) {
-    const normalizedUrl = normalizeURL2(url);
+    const normalizedUrl = normalizeURL3(url);
     try {
       const filter = {
         kinds: [17],
@@ -23832,23 +23846,19 @@ ${url}`;
     }
   }
   async function getKnownUserPublicKey() {
-    const sessionPublicKey = getCachedPublicKey();
-    if (sessionPublicKey) return sessionPublicKey;
-    const transport = getRelayTransport();
-    if (!transport || typeof transport.getKnownPublicKey !== "function") {
-      return null;
-    }
-    try {
-      return cachePublicKey(await transport.getKnownPublicKey());
-    } catch (_error) {
-      return null;
-    }
+    return getCachedPublicKey();
   }
   async function fetchLikeStateForUrl(url, relays) {
-    const [result, userPublicKey] = await Promise.all([
-      fetchLikesForUrl(url, relays),
-      getKnownUserPublicKey()
+    const normalizedUrl = normalizeURL3(url);
+    const transport = getRelayTransport();
+    const [result, knownReaction] = await Promise.all([
+      fetchLikesForUrl(normalizedUrl, relays),
+      transport && typeof transport.getKnownReaction === "function" ? transport.getKnownReaction(relays, normalizedUrl).catch(() => false) : getKnownUserPublicKey()
     ]);
+    if (typeof knownReaction === "boolean") {
+      return { ...result, isLiked: knownReaction };
+    }
+    const userPublicKey = knownReaction;
     const ownReaction = userPublicKey ? result.likeDetails.find(
       (detail) => detail.authorPubkey.toLowerCase() === userPublicKey
     ) : void 0;
@@ -23858,12 +23868,13 @@ ${url}`;
     };
   }
   function createReactionEvent(url, content) {
+    const normalizedUrl = normalizeURL3(url);
     return {
       kind: 17,
       content,
       tags: [
         ["k", "web"],
-        ["i", url]
+        ["i", normalizedUrl]
       ],
       created_at: Math.floor(Date.now() / 1e3)
     };
@@ -23875,7 +23886,7 @@ ${url}`;
     return createReactionEvent(url, "-");
   }
   async function hasUserLiked(url, userPubkey, relays) {
-    const normalizedUrl = url;
+    const normalizedUrl = normalizeURL3(url);
     try {
       const filter = {
         kinds: [17],
@@ -23887,7 +23898,9 @@ ${url}`;
       const transport = getRelayTransport();
       const events = transport ? await transport.query(relays, filter) : await likePool.querySync(relays, filter, { maxWait: 8e3 });
       if (events.length === 0) return false;
-      const latest = events[0];
+      const latest = [...events].sort(
+        (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
+      )[0];
       return latest.content === "+" || latest.content === "";
     } catch (error) {
       console.error(
@@ -24543,12 +24556,13 @@ ${url}`;
         if (!getRelayTransport()) {
           await this.nostrService.connectToNostr(this.getRelays());
         }
-        this.isLiked = await hasUserLiked(
+        const isLiked = await hasUserLiked(
           targetUrl,
           signerResult.publicKey,
           this.getRelays()
         );
         if (isStale()) return;
+        this.isLiked = isLiked;
         if (this.isLiked) {
           const confirmed = window.confirm(
             "You have already liked this. Do you want to unlike it?"

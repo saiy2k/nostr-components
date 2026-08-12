@@ -4,6 +4,7 @@
   const extension = (globalThis.NostrLikeExtension =
     globalThis.NostrLikeExtension || {});
 
+  /** Create a per-page secret used to authenticate relay bridge messages. */
   function createChannel() {
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
@@ -12,6 +13,7 @@
     }).join("");
   }
 
+  /** Ask the service worker to install the transport and component in MAIN. */
   async function sendInjectionRequest(channel) {
     const message = {
       type: "INJECT_NOSTR_LIKE_COMPONENT",

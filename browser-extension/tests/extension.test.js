@@ -305,6 +305,40 @@ describe("CSP-safe component and relay integration", function () {
     });
   });
 
+  it("rejects injection when the sender frame cannot be validated", async function () {
+    let runtimeListener;
+    const executeScript = vi.fn();
+    globalThis.chrome = {
+      runtime: {
+        onMessage: {
+          addListener(listener) {
+            runtimeListener = listener;
+          },
+        },
+      },
+      scripting: { executeScript: executeScript },
+    };
+
+    await import("../background.js?missing-frame");
+
+    const response = await new Promise(function (resolve) {
+      runtimeListener(
+        {
+          type: "INJECT_NOSTR_LIKE_COMPONENT",
+          channel: "a".repeat(64),
+        },
+        { tab: { id: 87 }, url: "https://x.com/home" },
+        resolve,
+      );
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      error: "Like component injection requires a validated sender frame",
+    });
+    expect(executeScript).not.toHaveBeenCalled();
+  });
+
   it("accepts only scoped queries and valid signed kind-17 publishes", async function () {
     const listeners = new Map();
     const responses = [];
@@ -321,8 +355,20 @@ describe("CSP-safe component and relay integration", function () {
       },
     };
     const pool = {
-      querySync: vi.fn(async function () {
-        return [];
+      querySync: vi.fn(async function (_relays, filter) {
+        return filter.authors
+          ? [
+              {
+                id: "f".repeat(64),
+                pubkey: "a".repeat(64),
+                created_at: 20,
+                kind: 17,
+                content: "+",
+                tags: [],
+                sig: "e".repeat(128),
+              },
+            ]
+          : [];
       }),
       publish: vi.fn(function () {
         return [Promise.resolve("saved")];
@@ -356,8 +402,8 @@ describe("CSP-safe component and relay integration", function () {
         source: "nostr-components-relay-main",
         channel: channel,
         requestId: "0".repeat(32),
-        operation: "getKnownPublicKey",
-        payload: {},
+        operation: "getKnownReaction",
+        payload: { relays: relays, url: filter["#i"][0] },
       },
     });
 
@@ -398,6 +444,17 @@ describe("CSP-safe component and relay integration", function () {
     });
 
     const normalizedRelays = ["wss://relay.damus.io/"];
+    expect(pool.querySync).toHaveBeenCalledWith(
+      normalizedRelays,
+      {
+        kinds: [17],
+        authors: ["a".repeat(64)],
+        "#k": ["web"],
+        "#i": [filter["#i"][0]],
+        limit: 1,
+      },
+      { maxWait: 8000 },
+    );
     expect(pool.querySync).toHaveBeenCalledWith(normalizedRelays, filter, {
       maxWait: 8000,
     });
@@ -407,7 +464,8 @@ describe("CSP-safe component and relay integration", function () {
       true,
       true,
     ]);
-    expect(responses[0].message.result).toBe("a".repeat(64));
+    expect(responses[0].message.result).toBe(true);
+    expect(JSON.stringify(responses[0].message)).not.toContain("a".repeat(64));
     expect(extension.storage.setKnownPubkey).toHaveBeenCalledWith(
       signedEvent.pubkey,
     );
