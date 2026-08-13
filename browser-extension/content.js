@@ -4,6 +4,19 @@
   const extension = globalThis.NostrLikeExtension;
   const INJECT_DELAY_MS = 120;
   let injectionScheduled = false;
+  const hydrationObserver =
+    typeof IntersectionObserver === "function"
+      ? new IntersectionObserver(
+          function (entries) {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              extension.dom.hydrateNostrAction(entry.target);
+              hydrationObserver.unobserve(entry.target);
+            }
+          },
+          { rootMargin: "600px 0px" },
+        )
+      : null;
 
   if (!extension || !extension.componentLoader) {
     throw new Error("Nostr Like extension modules were not loaded");
@@ -61,6 +74,11 @@
 
     const action = extension.dom.createNostrAction(tweetInfo, theme);
     extension.dom.insertAfterNativeLike(actionBar, action.slot);
+    if (hydrationObserver) {
+      hydrationObserver.observe(action.slot);
+    } else {
+      extension.dom.hydrateNostrAction(action.slot);
+    }
     void loadDirectoryIdentity(action.slot, tweetInfo.username);
   }
 

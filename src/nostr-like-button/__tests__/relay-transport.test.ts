@@ -6,6 +6,7 @@ import {
   fetchLikeStateForUrl,
   fetchLikesForUrl,
   hasUserLiked,
+  invalidateLikeStateCache,
   publishSignedReaction,
 } from "../like-utils";
 
@@ -13,6 +14,7 @@ const RELAYS = ["wss://relay.damus.io"];
 const STATUS_URL = "https://x.com/alokdangre/status/42";
 
 afterEach(() => {
+  invalidateLikeStateCache();
   delete (
     globalThis as typeof globalThis & {
       __nostrComponentsRelayTransport?: unknown;
@@ -75,24 +77,16 @@ describe("Like component relay transport", () => {
   });
 
   it("hydrates the liked state from an existing reaction when revisiting", async () => {
-    const publicKey = "a".repeat(64);
-    const existingLike = {
-      id: "1".repeat(64),
-      pubkey: publicKey,
-      created_at: 10,
-      kind: 17,
-      content: "+",
-      tags: [
-        ["k", "web"],
-        ["i", STATUS_URL],
-      ],
-      sig: "2".repeat(128),
-    };
-    const getKnownReaction = vi.fn(async () => true);
-    const query = vi.fn(async () => [existingLike]);
+    const getLikeState = vi.fn(async () => ({
+      totalCount: 1,
+      likedCount: 1,
+      dislikedCount: 0,
+      isLiked: true,
+    }));
+    const query = vi.fn();
     Object.assign(globalThis, {
       __nostrComponentsRelayTransport: {
-        getKnownReaction: getKnownReaction,
+        getLikeState: getLikeState,
         query: query,
         publish: vi.fn(),
       },
@@ -104,8 +98,69 @@ describe("Like component relay transport", () => {
       totalCount: 1,
       isLiked: true,
     });
-    expect(getKnownReaction).toHaveBeenCalledWith(RELAYS, STATUS_URL);
-    expect(query).toHaveBeenCalledOnce();
+    expect(getLikeState).toHaveBeenCalledWith(RELAYS, STATUS_URL);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates concurrent hydration and reuses the short-lived cache", async () => {
+    const getLikeState = vi.fn(async () => ({
+      totalCount: 0,
+      likedCount: 0,
+      dislikedCount: 0,
+      isLiked: false,
+    }));
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        getLikeState: getLikeState,
+        query: vi.fn(),
+        publish: vi.fn(),
+      },
+    });
+
+    const [first, second] = await Promise.all([
+      fetchLikeStateForUrl(STATUS_URL, RELAYS),
+      fetchLikeStateForUrl(STATUS_URL, RELAYS),
+    ]);
+    const third = await fetchLikeStateForUrl(STATUS_URL, RELAYS);
+
+    expect(first).toEqual(second);
+    expect(third).toEqual(first);
+    expect(getLikeState).toHaveBeenCalledOnce();
+  });
+
+  it("bounds concurrent timeline hydration requests", async () => {
+    let active = 0;
+    let maximumActive = 0;
+    const getLikeState = vi.fn(async () => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active -= 1;
+      return {
+        totalCount: 0,
+        likedCount: 0,
+        dislikedCount: 0,
+        isLiked: false,
+      };
+    });
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        getLikeState: getLikeState,
+        query: vi.fn(),
+        publish: vi.fn(),
+      },
+    });
+
+    await Promise.all(
+      Array.from({ length: 10 }, (_value, index) =>
+        fetchLikeStateForUrl(
+          `https://x.com/alokdangre/status/${100 + index}`,
+          RELAYS,
+        ),
+      ),
+    );
+
+    expect(maximumActive).toBeLessThanOrEqual(4);
   });
 
   it("canonicalizes published tags and user-state queries", async () => {

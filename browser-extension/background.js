@@ -90,7 +90,7 @@ function installRelayTransport(channel) {
           pending.delete(requestId);
           reject(new Error("Relay request timed out"));
         },
-        operation === "query" ? 10000 : 12000,
+        operation === "publish" ? 12000 : 4000,
       );
       pending.set(requestId, {
         resolve: resolve,
@@ -116,8 +116,8 @@ function installRelayTransport(channel) {
     query: function (relays, filter) {
       return request("query", { relays: relays, filter: filter });
     },
-    getKnownReaction: function (relays, url) {
-      return request("getKnownReaction", { relays: relays, url: url });
+    getLikeState: function (relays, url) {
+      return request("getLikeState", { relays: relays, url: url });
     },
     publish: function (relays, event) {
       return request("publish", { relays: relays, event: event });
