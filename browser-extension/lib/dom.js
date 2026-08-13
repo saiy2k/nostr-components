@@ -41,7 +41,7 @@
     );
   }
 
-  /** Build an X-row host for the repository's real Nostr Like component. */
+  /** Build a lightweight X-row host; hydrate the component near the viewport. */
   function createNostrAction(tweetInfo, theme) {
     const slot = document.createElement("div");
     slot.className = "nostr-competency-action-slot";
@@ -49,6 +49,8 @@
     slot.setAttribute("data-status-id", tweetInfo.statusId);
     slot.setAttribute("data-author-handle", tweetInfo.username);
     slot.setAttribute("data-directory-status", "loading");
+    slot.setAttribute("data-status-url", tweetInfo.canonicalUrl);
+    slot.setAttribute("data-theme", theme);
     // X treats unhandled clicks inside a tweet as navigation. Contain clicks
     // across the full action slot, including loading and re-render gaps.
     slot.addEventListener("click", function (event) {
@@ -56,17 +58,24 @@
       event.stopPropagation();
     });
 
-    const component = document.createElement("nostr-like-button");
-    component.setAttribute("url", tweetInfo.canonicalUrl);
-    component.setAttribute("compact", "");
-    component.setAttribute("data-theme", theme);
-    slot.appendChild(component);
+    return { slot: slot, component: null };
+  }
 
-    return { slot: slot, component: component };
+  /** Instantiate the real component once a timeline action approaches view. */
+  function hydrateNostrAction(slot) {
+    const existing = slot.querySelector("nostr-like-button");
+    if (existing) return existing;
+    const component = document.createElement("nostr-like-button");
+    component.setAttribute("url", slot.dataset.statusUrl);
+    component.setAttribute("compact", "");
+    component.setAttribute("data-theme", slot.dataset.theme || "light");
+    slot.appendChild(component);
+    return component;
   }
 
   /** Keep injected components in sync with X's live color-scheme switch. */
   function updateActionTheme(slot, theme) {
+    slot.dataset.theme = theme;
     const component = slot.querySelector("nostr-like-button");
     if (component && component.getAttribute("data-theme") !== theme) {
       component.setAttribute("data-theme", theme);
@@ -119,6 +128,7 @@
     findActionBar: findActionBar,
     findAction: findAction,
     createNostrAction: createNostrAction,
+    hydrateNostrAction: hydrateNostrAction,
     updateActionTheme: updateActionTheme,
     insertAfterNativeLike: insertAfterNativeLike,
     applyDirectoryIdentity: applyDirectoryIdentity,

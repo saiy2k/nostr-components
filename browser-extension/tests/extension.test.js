@@ -21,6 +21,7 @@ afterEach(function () {
   delete globalThis.chrome;
   delete globalThis.document;
   delete globalThis.MutationObserver;
+  delete globalThis.IntersectionObserver;
   delete globalThis.window;
   delete globalThis.__nostrComponentsRelayTransport;
 });
@@ -203,6 +204,14 @@ describe("X action placement", function () {
       addEventListener(type, listener) {
         listeners[type] = listener;
       }
+
+      querySelector(selector) {
+        return selector === "nostr-like-button"
+          ? (this.children.find(
+              (child) => child.tagName === "nostr-like-button",
+            ) ?? null)
+          : null;
+      }
     }
 
     globalThis.document = {
@@ -228,7 +237,10 @@ describe("X action placement", function () {
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(event.stopPropagation).toHaveBeenCalledOnce();
-    expect(action.component.getAttribute("compact")).toBe("");
+    expect(action.slot.querySelector("nostr-like-button")).toBeNull();
+
+    const component = extension.dom.hydrateNostrAction(action.slot);
+    expect(component.getAttribute("compact")).toBe("");
   });
 });
 
@@ -354,21 +366,22 @@ describe("CSP-safe component and relay integration", function () {
         responses.push({ message: message, targetOrigin: targetOrigin });
       },
     };
+    const existingLike = {
+      id: "f".repeat(64),
+      pubkey: "a".repeat(64),
+      created_at: 20,
+      kind: 17,
+      content: "+",
+      tags: [],
+      sig: "e".repeat(128),
+    };
     const pool = {
-      querySync: vi.fn(async function (_relays, filter) {
-        return filter.authors
-          ? [
-              {
-                id: "f".repeat(64),
-                pubkey: "a".repeat(64),
-                created_at: 20,
-                kind: 17,
-                content: "+",
-                tags: [],
-                sig: "e".repeat(128),
-              },
-            ]
-          : [];
+      subscribeMany: vi.fn(function (_relays, _filters, options) {
+        queueMicrotask(function () {
+          options.onevent(existingLike);
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
       }),
       publish: vi.fn(function () {
         return [Promise.resolve("saved")];
@@ -377,10 +390,13 @@ describe("CSP-safe component and relay integration", function () {
     };
     const originalGetKnownPubkey = extension.storage.getKnownPubkey;
     const originalSetKnownPubkey = extension.storage.setKnownPubkey;
+    let knownPubkey = "a".repeat(64);
     extension.storage.getKnownPubkey = vi.fn(async function () {
-      return "a".repeat(64);
+      return knownPubkey;
     });
-    extension.storage.setKnownPubkey = vi.fn(async function () {});
+    extension.storage.setKnownPubkey = vi.fn(async function (pubkey) {
+      knownPubkey = pubkey;
+    });
     const channel = "b".repeat(64);
     const session = extension.relayClient.configure(channel, {
       pool: pool,
@@ -402,20 +418,8 @@ describe("CSP-safe component and relay integration", function () {
         source: "nostr-components-relay-main",
         channel: channel,
         requestId: "0".repeat(32),
-        operation: "getKnownReaction",
+        operation: "getLikeState",
         payload: { relays: relays, url: filter["#i"][0] },
-      },
-    });
-
-    await onMessage({
-      source: pageWindow,
-      origin: "https://x.com",
-      data: {
-        source: "nostr-components-relay-main",
-        channel: channel,
-        requestId: "1".repeat(32),
-        operation: "query",
-        payload: { relays: relays, filter: filter },
       },
     });
 
@@ -437,35 +441,53 @@ describe("CSP-safe component and relay integration", function () {
       data: {
         source: "nostr-components-relay-main",
         channel: channel,
-        requestId: "2".repeat(32),
+        requestId: "1".repeat(32),
         operation: "publish",
         payload: { relays: relays, event: signedEvent },
       },
     });
+    await onMessage({
+      source: pageWindow,
+      origin: "https://x.com",
+      data: {
+        source: "nostr-components-relay-main",
+        channel: channel,
+        requestId: "2".repeat(32),
+        operation: "getLikeState",
+        payload: { relays: relays, url: filter["#i"][0] },
+      },
+    });
 
     const normalizedRelays = ["wss://relay.damus.io/"];
-    expect(pool.querySync).toHaveBeenCalledWith(
+    expect(pool.subscribeMany).toHaveBeenCalledWith(
       normalizedRelays,
-      {
-        kinds: [17],
-        authors: ["a".repeat(64)],
-        "#k": ["web"],
-        "#i": [filter["#i"][0]],
-        limit: 1,
-      },
-      { maxWait: 8000 },
+      [
+        filter,
+        {
+          ...filter,
+          authors: ["a".repeat(64)],
+          limit: 1,
+        },
+      ],
+      expect.objectContaining({ maxWait: 2500 }),
     );
-    expect(pool.querySync).toHaveBeenCalledWith(normalizedRelays, filter, {
-      maxWait: 8000,
-    });
     expect(pool.publish).toHaveBeenCalledWith(normalizedRelays, signedEvent);
     expect(responses.map((entry) => entry.message.ok)).toEqual([
       true,
       true,
       true,
     ]);
-    expect(responses[0].message.result).toBe(true);
+    expect(responses[0].message.result).toEqual({
+      totalCount: 1,
+      likedCount: 1,
+      dislikedCount: 0,
+      isLiked: true,
+    });
     expect(JSON.stringify(responses[0].message)).not.toContain("a".repeat(64));
+    expect(responses[2].message.result).toMatchObject({
+      totalCount: 2,
+      isLiked: true,
+    });
     expect(extension.storage.setKnownPubkey).toHaveBeenCalledWith(
       signedEvent.pubkey,
     );
@@ -485,12 +507,91 @@ describe("CSP-safe component and relay integration", function () {
     extension.storage.getKnownPubkey = originalGetKnownPubkey;
     extension.storage.setKnownPubkey = originalSetKnownPubkey;
   });
+
+  it("queries a health-ranked relay quorum instead of waiting for all eight", async function () {
+    const subscribedRelays = [];
+    const pool = {
+      subscribe(relays, _filter, options) {
+        subscribedRelays.push(relays[0]);
+        queueMicrotask(function () {
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      },
+    };
+    const relays = [
+      "wss://relay.damus.io/",
+      "wss://nostr.wine/",
+      "wss://relay.nostr.net/",
+      "wss://relay.nostr.band/",
+      "wss://nos.lol/",
+      "wss://nostr-pub.wellorder.net/",
+      "wss://relay.getalby.com/",
+      "wss://relay.primal.net/",
+    ];
+
+    await extension.relayClient.queryWithFastQuorum(pool, relays, {
+      kinds: [17],
+      "#k": ["web"],
+      "#i": ["https://x.com/alokdangre/status/42"],
+      limit: 1000,
+    });
+
+    expect(subscribedRelays).toHaveLength(4);
+    expect(subscribedRelays).not.toContain("wss://relay.nostr.band/");
+  });
+
+  it("does not count failed relays toward the successful response quorum", async function () {
+    let subscriptionIndex = 0;
+    const lateEvent = {
+      id: "9".repeat(64),
+      pubkey: "8".repeat(64),
+      created_at: 30,
+      kind: 17,
+      content: "+",
+      tags: [],
+      sig: "7".repeat(128),
+    };
+    const pool = {
+      subscribe(_relays, _filter, options) {
+        const index = subscriptionIndex++;
+        queueMicrotask(function () {
+          if (index === 0 || index === 2) {
+            options.onclose();
+            return;
+          }
+          if (index === 3) options.onevent(lateEvent);
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      },
+    };
+
+    const events = await extension.relayClient.queryWithFastQuorum(
+      pool,
+      [
+        "wss://relay.damus.io/",
+        "wss://relay.getalby.com/",
+        "wss://relay.primal.net/",
+        "wss://nostr.wine/",
+      ],
+      {
+        kinds: [17],
+        "#k": ["web"],
+        "#i": ["https://x.com/alokdangre/status/42"],
+        limit: 1000,
+      },
+    );
+
+    expect(events).toContain(lateEvent);
+  });
 });
 
 describe("timeline component integration", function () {
   it("injects the compact library component for a repost with equal-row spacing", async function () {
     const observerOptions = [];
     const observerCallbacks = [];
+    const intersectionCallbacks = [];
     const scheduledCallbacks = [];
 
     class FakeElement {
@@ -602,6 +703,17 @@ describe("timeline component integration", function () {
         observerOptions.push(options);
       }
     };
+    globalThis.IntersectionObserver = class {
+      constructor(callback) {
+        intersectionCallbacks.push(callback);
+      }
+
+      observe(target) {
+        this.target = target;
+      }
+
+      unobserve() {}
+    };
     globalThis.window = {
       location: { origin: "https://x.com" },
       getComputedStyle() {
@@ -638,10 +750,13 @@ describe("timeline component integration", function () {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       const slot = actionBar.inserted.slot;
-      const component = slot.querySelector("nostr-like-button");
       expect(actionBar.inserted.sibling).toBe(viewsContainer);
       expect(slot.dataset.statusId).toBe("4242");
       expect(slot.dataset.directoryStatus).toBe("invalid");
+      expect(slot.querySelector("nostr-like-button")).toBeFalsy();
+
+      intersectionCallbacks[0]([{ target: slot, isIntersecting: true }]);
+      const component = slot.querySelector("nostr-like-button");
       expect(component.tagName).toBe("nostr-like-button");
       expect(component.getAttribute("url")).toBe(
         "https://x.com/original-author/status/4242",

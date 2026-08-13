@@ -23829,6 +23829,44 @@ ${url}`;
     return transport;
   }
   var likePool = new SimplePool();
+  var LIKE_STATE_CACHE_TTL_MS = 3e4;
+  var MAX_HYDRATION_CONCURRENCY = 4;
+  var likeStateCache = /* @__PURE__ */ new Map();
+  var inFlightLikeStates = /* @__PURE__ */ new Map();
+  var hydrationQueue = [];
+  var activeHydrations = 0;
+  function likeStateCacheKey(url, relays) {
+    return `${normalizeURL3(url)}
+${[...new Set(relays)].sort().join(",")}`;
+  }
+  function runNextHydration() {
+    while (activeHydrations < MAX_HYDRATION_CONCURRENCY && hydrationQueue.length > 0) {
+      hydrationQueue.shift()?.();
+    }
+  }
+  function scheduleHydration(operation) {
+    return new Promise((resolve, reject) => {
+      const start = () => {
+        activeHydrations += 1;
+        void operation().then(resolve, reject).finally(() => {
+          activeHydrations -= 1;
+          runNextHydration();
+        });
+      };
+      hydrationQueue.push(start);
+      runNextHydration();
+    });
+  }
+  function invalidateLikeStateCache(url, relays) {
+    if (url && relays) {
+      likeStateCache.delete(likeStateCacheKey(url, relays));
+      return;
+    }
+    likeStateCache.clear();
+    inFlightLikeStates.clear();
+    hydrationQueue.splice(0, hydrationQueue.length);
+    activeHydrations = 0;
+  }
   async function fetchLikesForUrl(url, relays) {
     const normalizedUrl = normalizeURL3(url);
     try {
@@ -23848,24 +23886,49 @@ ${url}`;
   async function getKnownUserPublicKey() {
     return getCachedPublicKey();
   }
-  async function fetchLikeStateForUrl(url, relays) {
+  async function fetchLikeStateForUrl(url, relays, options = {}) {
     const normalizedUrl = normalizeURL3(url);
-    const transport = getRelayTransport();
-    const [result, knownReaction] = await Promise.all([
-      fetchLikesForUrl(normalizedUrl, relays),
-      transport && typeof transport.getKnownReaction === "function" ? transport.getKnownReaction(relays, normalizedUrl).catch(() => false) : getKnownUserPublicKey()
-    ]);
-    if (typeof knownReaction === "boolean") {
-      return { ...result, isLiked: knownReaction };
+    const cacheKey = likeStateCacheKey(normalizedUrl, relays);
+    if (!options.force) {
+      const cached = likeStateCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) return cached.value;
+      const inFlight = inFlightLikeStates.get(cacheKey);
+      if (inFlight) return inFlight;
     }
-    const userPublicKey = knownReaction;
-    const ownReaction = userPublicKey ? result.likeDetails.find(
-      (detail) => detail.authorPubkey.toLowerCase() === userPublicKey
-    ) : void 0;
-    return {
-      ...result,
-      isLiked: ownReaction?.content === "+" || ownReaction?.content === ""
+    const request = scheduleHydration(async () => {
+      const transport = getRelayTransport();
+      let result;
+      let isLiked;
+      if (transport && typeof transport.getLikeState === "function") {
+        const state = await transport.getLikeState(relays, normalizedUrl);
+        result = { ...state, likeDetails: [] };
+        isLiked = state.isLiked;
+      } else {
+        const [countResult, userPublicKey] = await Promise.all([
+          fetchLikesForUrl(normalizedUrl, relays),
+          getKnownUserPublicKey()
+        ]);
+        result = countResult;
+        const ownReaction = userPublicKey ? result.likeDetails.find(
+          (detail) => detail.authorPubkey.toLowerCase() === userPublicKey
+        ) : void 0;
+        isLiked = ownReaction?.content === "+" || ownReaction?.content === "";
+      }
+      const value = { ...result, isLiked };
+      likeStateCache.set(cacheKey, {
+        value,
+        expiresAt: Date.now() + LIKE_STATE_CACHE_TTL_MS
+      });
+      return value;
+    });
+    inFlightLikeStates.set(cacheKey, request);
+    const clearInFlight = () => {
+      if (inFlightLikeStates.get(cacheKey) === request) {
+        inFlightLikeStates.delete(cacheKey);
+      }
     };
+    void request.then(clearInFlight, clearInFlight);
+    return request;
   }
   function createReactionEvent(url, content) {
     const normalizedUrl = normalizeURL3(url);
@@ -23884,31 +23947,6 @@ ${url}`;
   }
   function createUnlikeEvent(url) {
     return createReactionEvent(url, "-");
-  }
-  async function hasUserLiked(url, userPubkey, relays) {
-    const normalizedUrl = normalizeURL3(url);
-    try {
-      const filter = {
-        kinds: [17],
-        authors: [userPubkey],
-        "#k": ["web"],
-        "#i": [normalizedUrl],
-        limit: 1
-      };
-      const transport = getRelayTransport();
-      const events = transport ? await transport.query(relays, filter) : await likePool.querySync(relays, filter, { maxWait: 8e3 });
-      if (events.length === 0) return false;
-      const latest = [...events].sort(
-        (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
-      )[0];
-      return latest.content === "+" || latest.content === "";
-    } catch (error) {
-      console.error(
-        "Nostr-Components: Like button: Error checking user like status",
-        error
-      );
-      return false;
-    }
   }
   async function publishSignedReaction(event, relays, publishWithNdk) {
     const transport = getRelayTransport();
@@ -24357,7 +24395,7 @@ ${url}`;
   }
 
   // src/nostr-like-button/nostr-like.ts
-  var NostrLike = class extends NostrBaseComponent {
+  var NostrLike = class _NostrLike extends NostrBaseComponent {
     likeActionStatus = this.channel("likeAction");
     likeListStatus = this.channel("likeList");
     currentUrl = "";
@@ -24368,6 +24406,9 @@ ${url}`;
     actionSeq = 0;
     isResyncingLikeCount = false;
     needsResyncLikeCount = false;
+    likeStateUrl = "";
+    likeStateLoadedAt = 0;
+    static LIKE_STATE_FRESH_MS = 3e4;
     constructor() {
       super();
     }
@@ -24462,7 +24503,10 @@ ${url}`;
         );
       }
     }
-    async updateLikeCount() {
+    hasFreshLikeState(url) {
+      return this.likeListStatus.get() === 2 /* Ready */ && this.likeStateUrl === url && Date.now() - this.likeStateLoadedAt < _NostrLike.LIKE_STATE_FRESH_MS;
+    }
+    async updateLikeCount(force = false) {
       const seq = ++this.loadSeq;
       try {
         await this.ensureNostrConnected();
@@ -24474,12 +24518,15 @@ ${url}`;
         this.render();
         const result = await fetchLikeStateForUrl(
           this.currentUrl,
-          this.getRelays()
+          this.getRelays(),
+          { force }
         );
         if (seq !== this.loadSeq) return;
         this.likeCount = clampLikeCount(result.totalCount);
         this.isLiked = result.isLiked;
         this.cachedLikeDetails = result;
+        this.likeStateUrl = this.currentUrl;
+        this.likeStateLoadedAt = Date.now();
         this.likeListStatus.set(2 /* Ready */);
       } catch (error) {
         if (seq !== this.loadSeq) return;
@@ -24535,10 +24582,25 @@ ${url}`;
       this.likeActionStatus.set(1 /* Loading */);
       this.render();
       try {
-        const signerResult = await ensureSignerForAction({
-          action: "like",
-          theme: this.theme
+        const statePromise = this.hasFreshLikeState(targetUrl) ? Promise.resolve(this.isLiked) : fetchLikeStateForUrl(targetUrl, this.getRelays()).then((result) => {
+          if (!isStale()) {
+            this.likeCount = clampLikeCount(result.totalCount);
+            this.isLiked = result.isLiked;
+            this.cachedLikeDetails = result;
+            this.likeStateUrl = targetUrl;
+            this.likeStateLoadedAt = Date.now();
+            this.likeListStatus.set(2 /* Ready */);
+            this.render();
+          }
+          return result.isLiked;
         });
+        const [signerResult, isLiked] = await Promise.all([
+          ensureSignerForAction({
+            action: "like",
+            theme: this.theme
+          }),
+          statePromise
+        ]);
         if (isStale()) return;
         if (signerResult.status === "dismissed") {
           this.likeActionStatus.set(2 /* Ready */);
@@ -24556,11 +24618,6 @@ ${url}`;
         if (!getRelayTransport()) {
           await this.nostrService.connectToNostr(this.getRelays());
         }
-        const isLiked = await hasUserLiked(
-          targetUrl,
-          signerResult.publicKey,
-          this.getRelays()
-        );
         if (isStale()) return;
         this.isLiked = isLiked;
         if (this.isLiked) {
@@ -24609,12 +24666,17 @@ ${url}`;
         this.isLiked = optimisticState.isLiked;
         this.likeCount = optimisticState.likeCount;
         didApplyOptimisticUpdate = true;
+        this.render();
         await publishSignedReaction(signedEvent, this.getRelays(), async () => {
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         });
-        await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
+        this.render();
+        invalidateLikeStateCache(likeUrl, this.getRelays());
+        window.setTimeout(() => {
+          void this.updateLikeCount(true);
+        }, 1e3);
       } catch (error) {
         console.error("[NostrLike] Failed to like:", error);
         this.handleLikeMutationFailure(
@@ -24653,12 +24715,17 @@ ${url}`;
         this.isLiked = optimisticState.isLiked;
         this.likeCount = optimisticState.likeCount;
         didApplyOptimisticUpdate = true;
+        this.render();
         await publishSignedReaction(signedEvent, this.getRelays(), async () => {
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         });
-        await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
+        this.render();
+        invalidateLikeStateCache(unlikeUrl, this.getRelays());
+        window.setTimeout(() => {
+          void this.updateLikeCount(true);
+        }, 1e3);
       } catch (error) {
         console.error("[NostrLike] Failed to unlike:", error);
         this.handleLikeMutationFailure(

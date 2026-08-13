@@ -6727,6 +6727,20 @@
     const REQUEST_ID_PATTERN = /^[0-9a-f]{32}$/;
     const HEX_64_PATTERN = /^[0-9a-f]{64}$/i;
     const HEX_128_PATTERN = /^[0-9a-f]{128}$/i;
+    const QUERY_DEADLINE_MS = 2500;
+    const QUERY_RELAY_QUORUM = 4;
+    const QUERY_RESPONSE_QUORUM = 3;
+    const RECENT_REACTION_TTL_MS = 2 * 60 * 1e3;
+    const INITIAL_RELAY_ORDER = [
+      "wss://relay.damus.io/",
+      "wss://relay.getalby.com/",
+      "wss://relay.primal.net/",
+      "wss://nostr.wine/",
+      "wss://relay.nostr.net/",
+      "wss://nos.lol/",
+      "wss://nostr-pub.wellorder.net/",
+      "wss://relay.nostr.band/"
+    ];
     const ALLOWED_RELAY_URLS = new Set(
       [
         "wss://relay.damus.io",
@@ -6740,6 +6754,143 @@
       ].map(normalizeURL2)
     );
     let activeSession = null;
+    const relayHealth = /* @__PURE__ */ new Map();
+    const recentReactionsByUrl = /* @__PURE__ */ new Map();
+    function rememberRecentReaction(event) {
+      const identifierTag = event.tags.find(
+        (tag) => Array.isArray(tag) && tag[0] === "i"
+      );
+      const url = identifierTag?.[1];
+      if (!url) return;
+      let reactionsByPubkey = recentReactionsByUrl.get(url);
+      if (!reactionsByPubkey) {
+        reactionsByPubkey = /* @__PURE__ */ new Map();
+        recentReactionsByUrl.set(url, reactionsByPubkey);
+      }
+      reactionsByPubkey.set(event.pubkey, {
+        event,
+        expiresAt: Date.now() + RECENT_REACTION_TTL_MS
+      });
+    }
+    function getRecentReactions(url) {
+      const reactionsByPubkey = recentReactionsByUrl.get(url);
+      if (!reactionsByPubkey) return [];
+      const now2 = Date.now();
+      const events = [];
+      for (const [pubkey, entry] of reactionsByPubkey) {
+        if (entry.expiresAt <= now2) reactionsByPubkey.delete(pubkey);
+        else events.push(entry.event);
+      }
+      if (reactionsByPubkey.size === 0) recentReactionsByUrl.delete(url);
+      return events;
+    }
+    function relayScore(relay) {
+      const health = relayHealth.get(relay);
+      if (health) return health.latencyMs + health.failures * QUERY_DEADLINE_MS;
+      const initialRank = INITIAL_RELAY_ORDER.indexOf(relay);
+      return (initialRank === -1 ? INITIAL_RELAY_ORDER.length : initialRank) * 100;
+    }
+    function selectQueryRelays(relays) {
+      return [...relays].sort((left, right) => relayScore(left) - relayScore(right)).slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
+    }
+    function summarizeReactionEvents(events) {
+      const latestByPubkey = /* @__PURE__ */ new Map();
+      for (const event of events) {
+        if (!event?.pubkey) continue;
+        const previous = latestByPubkey.get(event.pubkey);
+        if (!previous || event.created_at > previous.created_at || event.created_at === previous.created_at && event.id > previous.id) {
+          latestByPubkey.set(event.pubkey, event);
+        }
+      }
+      let likedCount = 0;
+      let dislikedCount = 0;
+      for (const event of latestByPubkey.values()) {
+        if (event.content === "-") dislikedCount += 1;
+        else if (event.content === "+" || event.content === "") likedCount += 1;
+      }
+      return { totalCount: likedCount, likedCount, dislikedCount };
+    }
+    function queryWithFastQuorum(pool, relays, filters) {
+      const selectedRelays = selectQueryRelays(relays);
+      const filterList = Array.isArray(filters) ? filters : [filters];
+      const eventsById = /* @__PURE__ */ new Map();
+      const closers = [];
+      return new Promise(function(resolve) {
+        let successfulResponses = 0;
+        let finished = false;
+        const startedAt = Date.now();
+        const completedRelays = /* @__PURE__ */ new Set();
+        const requiredResponses = Math.min(
+          QUERY_RESPONSE_QUORUM,
+          selectedRelays.length
+        );
+        function finish(penalizePending = true) {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timeoutId);
+          if (penalizePending) {
+            for (const relay of selectedRelays) {
+              if (completedRelays.has(relay)) continue;
+              const previous = relayHealth.get(relay);
+              relayHealth.set(relay, {
+                latencyMs: QUERY_DEADLINE_MS,
+                failures: (previous?.failures || 0) + 1
+              });
+            }
+          }
+          for (const closer of closers) void closer.close();
+          resolve(Array.from(eventsById.values()));
+        }
+        const timeoutId = setTimeout(function() {
+          for (const relay of selectedRelays) {
+            if (completedRelays.has(relay)) continue;
+            const previous = relayHealth.get(relay);
+            relayHealth.set(relay, {
+              latencyMs: QUERY_DEADLINE_MS,
+              failures: (previous?.failures || 0) + 1
+            });
+          }
+          finish(false);
+        }, QUERY_DEADLINE_MS);
+        for (const relay of selectedRelays) {
+          let settleRelay2 = function(succeeded) {
+            if (finished) return;
+            if (completedRelays.has(relay)) return;
+            completedRelays.add(relay);
+            const previous = relayHealth.get(relay);
+            relayHealth.set(relay, {
+              latencyMs: Date.now() - relayStartedAt,
+              failures: succeeded ? 0 : (previous?.failures || 0) + 1
+            });
+            if (succeeded) successfulResponses += 1;
+            if (successfulResponses >= requiredResponses || completedRelays.size === selectedRelays.length) {
+              finish();
+            }
+          };
+          var settleRelay = settleRelay2;
+          const relayStartedAt = Date.now();
+          const options = {
+            maxWait: QUERY_DEADLINE_MS,
+            onevent(event) {
+              if (event && event.id) eventsById.set(event.id, event);
+            },
+            oneose() {
+              settleRelay2(true);
+            },
+            onclose() {
+              settleRelay2(false);
+            }
+          };
+          try {
+            const closer = filterList.length === 1 ? pool.subscribe([relay], filterList[0], options) : pool.subscribeMany([relay], filterList, options);
+            closers.push(closer);
+          } catch (_error) {
+            settleRelay2(false);
+          }
+          if (finished) break;
+        }
+      });
+    }
     function isAllowedStatusUrl(value) {
       try {
         const url = new URL(value);
@@ -6819,35 +6970,50 @@
       if (!relays) {
         throw new Error("Relay request contains an unsupported relay list");
       }
-      if (message.operation === "getKnownReaction") {
+      if (message.operation === "getLikeState") {
         if (!payload || Object.keys(payload).some((key) => key !== "relays" && key !== "url") || !isAllowedStatusUrl(payload.url)) {
           throw new Error("Known-reaction request contains unexpected data");
         }
         const publicKey = await extension.storage.getKnownPubkey();
-        if (!publicKey) return false;
-        const events = await pool.querySync(
-          relays,
-          {
+        const countFilter = {
+          kinds: [17],
+          "#k": ["web"],
+          "#i": [payload.url],
+          limit: 1e3
+        };
+        const filters = [countFilter];
+        if (publicKey) {
+          filters.push({
             kinds: [17],
             authors: [publicKey],
             "#k": ["web"],
             "#i": [payload.url],
             limit: 1
-          },
-          { maxWait: 8e3 }
+          });
+        }
+        const queriedEvents = await queryWithFastQuorum(pool, relays, filters);
+        const eventsById = new Map(
+          [...queriedEvents, ...getRecentReactions(payload.url)].map((event) => [
+            event.id,
+            event
+          ])
         );
-        if (events.length === 0) return false;
-        const latest = [...events].sort(
+        const events = Array.from(eventsById.values());
+        const ownEvents = publicKey ? events.filter((event) => event.pubkey === publicKey) : [];
+        const latest = [...ownEvents].sort(
           (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
         )[0];
-        return latest.content === "+" || latest.content === "";
+        return {
+          ...summarizeReactionEvents(events),
+          isLiked: latest?.content === "+" || latest?.content === ""
+        };
       }
       if (message.operation === "query") {
         const filter = validateFilter(payload.filter);
         if (!filter) {
           throw new Error("Relay request contains an unsupported filter");
         }
-        return pool.querySync(relays, filter, { maxWait: 8e3 });
+        return queryWithFastQuorum(pool, relays, filter);
       }
       if (message.operation === "publish") {
         const event = validateReactionEvent(payload.event);
@@ -6864,6 +7030,7 @@
           throw new Error("No relay acknowledged the reaction event");
         }
         await extension.storage.setKnownPubkey(event.pubkey);
+        rememberRecentReaction(event);
         return null;
       }
       throw new Error("Unsupported relay operation");
@@ -6925,6 +7092,7 @@
     }
     extension.relayClient = {
       configure,
+      queryWithFastQuorum,
       isAllowedStatusUrl,
       validateFilter,
       validateReactionEvent,
