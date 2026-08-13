@@ -160,7 +160,72 @@ describe("Like component relay transport", () => {
       ),
     );
 
-    expect(maximumActive).toBeLessThanOrEqual(4);
+    expect(getLikeState).toHaveBeenCalledTimes(10);
+    expect(maximumActive).toBe(4);
+  });
+
+  it("settles queued hydrations without resetting active concurrency", async () => {
+    const resolvers: Array<
+      (value: {
+        totalCount: number;
+        likedCount: number;
+        dislikedCount: number;
+        isLiked: boolean;
+      }) => void
+    > = [];
+    const getLikeState = vi.fn(
+      () =>
+        new Promise<{
+          totalCount: number;
+          likedCount: number;
+          dislikedCount: number;
+          isLiked: boolean;
+        }>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        getLikeState: getLikeState,
+        query: vi.fn(),
+        publish: vi.fn(),
+      },
+    });
+
+    const running = Array.from({ length: 4 }, (_value, index) =>
+      fetchLikeStateForUrl(
+        `https://x.com/alokdangre/status/${200 + index}`,
+        RELAYS,
+      ),
+    );
+    const queued = fetchLikeStateForUrl(
+      "https://x.com/alokdangre/status/299",
+      RELAYS,
+    );
+    expect(getLikeState).toHaveBeenCalledTimes(4);
+
+    invalidateLikeStateCache();
+    await expect(queued).rejects.toThrow("hydration was canceled");
+
+    const afterReset = fetchLikeStateForUrl(
+      "https://x.com/alokdangre/status/300",
+      RELAYS,
+    );
+    expect(getLikeState).toHaveBeenCalledTimes(4);
+
+    const emptyState = {
+      totalCount: 0,
+      likedCount: 0,
+      dislikedCount: 0,
+      isLiked: false,
+    };
+    resolvers.slice(0, 4).forEach((resolve) => resolve(emptyState));
+    await Promise.all(running);
+    await vi.waitFor(() => {
+      expect(getLikeState).toHaveBeenCalledTimes(5);
+    });
+    resolvers[4](emptyState);
+    await expect(afterReset).resolves.toMatchObject(emptyState);
   });
 
   it("canonicalizes published tags and user-state queries", async () => {

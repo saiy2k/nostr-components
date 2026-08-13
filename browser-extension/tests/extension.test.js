@@ -191,6 +191,14 @@ describe("X action placement", function () {
 
       setAttribute(name, value) {
         this.attributes[name] = String(value);
+        if (name.startsWith("data-")) {
+          const key = name
+            .slice(5)
+            .replace(/-([a-z])/g, function (_match, letter) {
+              return letter.toUpperCase();
+            });
+          this.dataset[key] = String(value);
+        }
       }
 
       getAttribute(name) {
@@ -235,12 +243,15 @@ describe("X action placement", function () {
 
     listeners.click(event);
 
-    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(event.preventDefault).not.toHaveBeenCalled();
     expect(event.stopPropagation).toHaveBeenCalledOnce();
     expect(action.slot.querySelector("nostr-like-button")).toBeNull();
 
     const component = extension.dom.hydrateNostrAction(action.slot);
     expect(component.getAttribute("compact")).toBe("");
+    expect(component.getAttribute("url")).toBe(
+      "https://x.com/alokdangre/status/42",
+    );
   });
 });
 
@@ -539,6 +550,86 @@ describe("CSP-safe component and relay integration", function () {
 
     expect(subscribedRelays).toHaveLength(4);
     expect(subscribedRelays).not.toContain("wss://relay.nostr.band/");
+  });
+
+  it("closes a subscription returned after synchronous settlement", async function () {
+    const close = vi.fn(async function () {});
+    const pool = {
+      subscribe(_relays, _filter, options) {
+        options.oneose();
+        return { close: close };
+      },
+    };
+
+    await extension.relayClient.queryWithFastQuorum(
+      pool,
+      ["wss://relay.damus.io/"],
+      {
+        kinds: [17],
+        "#k": ["web"],
+        "#i": ["https://x.com/alokdangre/status/42"],
+        limit: 1000,
+      },
+    );
+
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("expires stale relay-health penalties", async function () {
+    const originalRelayClient = extension.relayClient;
+    await import("../src/relay-client.js?relay-health-expiry");
+    try {
+      const baseline = Date.now();
+      let now = baseline;
+      vi.spyOn(Date, "now").mockImplementation(function () {
+        return now;
+      });
+      const subscribedRelays = [];
+      let failDamus = true;
+      const pool = {
+        subscribe(relays, _filter, options) {
+          subscribedRelays.push(relays[0]);
+          queueMicrotask(function () {
+            if (failDamus && relays[0] === "wss://relay.damus.io/") {
+              options.onclose();
+            } else {
+              options.oneose();
+            }
+          });
+          return { close: vi.fn(async function () {}) };
+        },
+      };
+      const filter = {
+        kinds: [17],
+        "#k": ["web"],
+        "#i": ["https://x.com/alokdangre/status/42"],
+        limit: 1000,
+      };
+      const relays = [
+        "wss://relay.damus.io/",
+        "wss://relay.getalby.com/",
+        "wss://relay.primal.net/",
+        "wss://nostr.wine/",
+        "wss://relay.nostr.net/",
+      ];
+
+      await extension.relayClient.queryWithFastQuorum(
+        pool,
+        ["wss://relay.damus.io/"],
+        filter,
+      );
+      failDamus = false;
+      subscribedRelays.splice(0, subscribedRelays.length);
+      await extension.relayClient.queryWithFastQuorum(pool, relays, filter);
+      expect(subscribedRelays).not.toContain("wss://relay.damus.io/");
+
+      now += 5 * 60 * 1000 + 1;
+      subscribedRelays.splice(0, subscribedRelays.length);
+      await extension.relayClient.queryWithFastQuorum(pool, relays, filter);
+      expect(subscribedRelays).toContain("wss://relay.damus.io/");
+    } finally {
+      extension.relayClient = originalRelayClient;
+    }
   });
 
   it("does not count failed relays toward the successful response quorum", async function () {

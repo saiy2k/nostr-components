@@ -54,7 +54,6 @@
     // X treats unhandled clicks inside a tweet as navigation. Contain clicks
     // across the full action slot, including loading and re-render gaps.
     slot.addEventListener("click", function (event) {
-      event.preventDefault();
       event.stopPropagation();
     });
 

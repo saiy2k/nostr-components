@@ -83,6 +83,17 @@ export function cachePublicKey(value: unknown): string | null {
   return publicKey;
 }
 
+/** Remove an identity that can no longer be confirmed by the active signer. */
+function clearCachedPublicKey(): void {
+  inMemoryPublicKey = null;
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(PUBLIC_KEY_SESSION_KEY);
+  } catch (_error) {
+    // Sandboxed pages can deny sessionStorage; module state is already clear.
+  }
+}
+
 function injectScript(
   src: string,
   integrity: string,
@@ -192,6 +203,7 @@ export async function getPublicKey(): Promise<string | null> {
       return cachePublicKey(pubkey);
     } catch (error) {
       console.error("Failed to get public key from window.nostr:", error);
+      clearCachedPublicKey();
       return null;
     }
   })().finally(() => {
