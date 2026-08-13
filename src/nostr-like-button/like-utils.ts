@@ -54,7 +54,11 @@ const likeStateCache = new Map<
   { value: LikeStateResult; expiresAt: number }
 >();
 const inFlightLikeStates = new Map<string, Promise<LikeStateResult>>();
-const hydrationQueue: Array<() => void> = [];
+interface HydrationQueueEntry {
+  start(): void;
+  cancel(): void;
+}
+const hydrationQueue: HydrationQueueEntry[] = [];
 let activeHydrations = 0;
 
 function likeStateCacheKey(url: string, relays: string[]): string {
@@ -66,13 +70,16 @@ function runNextHydration(): void {
     activeHydrations < MAX_HYDRATION_CONCURRENCY &&
     hydrationQueue.length > 0
   ) {
-    hydrationQueue.shift()?.();
+    hydrationQueue.shift()?.start();
   }
 }
 
 function scheduleHydration<T>(operation: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
+    let startedOrCanceled = false;
     const start = () => {
+      if (startedOrCanceled) return;
+      startedOrCanceled = true;
       activeHydrations += 1;
       void operation()
         .then(resolve, reject)
@@ -81,7 +88,12 @@ function scheduleHydration<T>(operation: () => Promise<T>): Promise<T> {
           runNextHydration();
         });
     };
-    hydrationQueue.push(start);
+    const cancel = () => {
+      if (startedOrCanceled) return;
+      startedOrCanceled = true;
+      reject(new Error("Like-state hydration was canceled"));
+    };
+    hydrationQueue.push({ start, cancel });
     runNextHydration();
   });
 }
@@ -97,8 +109,8 @@ export function invalidateLikeStateCache(
   }
   likeStateCache.clear();
   inFlightLikeStates.clear();
-  hydrationQueue.splice(0, hydrationQueue.length);
-  activeHydrations = 0;
+  const queued = hydrationQueue.splice(0, hydrationQueue.length);
+  for (const entry of queued) entry.cancel();
 }
 
 /**

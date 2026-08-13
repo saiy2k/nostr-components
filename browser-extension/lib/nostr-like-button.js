@@ -20239,6 +20239,14 @@
     }
     return publicKey;
   }
+  function clearCachedPublicKey() {
+    inMemoryPublicKey = null;
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.removeItem(PUBLIC_KEY_SESSION_KEY);
+    } catch (_error) {
+    }
+  }
   function injectScript(src, integrity, crossOrigin) {
     return new Promise((resolve, reject) => {
       const existing = document.querySelector(
@@ -20312,6 +20320,7 @@
         return cachePublicKey(pubkey);
       } catch (error) {
         console.error("Failed to get public key from window.nostr:", error);
+        clearCachedPublicKey();
         return null;
       }
     })().finally(() => {
@@ -23841,19 +23850,27 @@ ${[...new Set(relays)].sort().join(",")}`;
   }
   function runNextHydration() {
     while (activeHydrations < MAX_HYDRATION_CONCURRENCY && hydrationQueue.length > 0) {
-      hydrationQueue.shift()?.();
+      hydrationQueue.shift()?.start();
     }
   }
   function scheduleHydration(operation) {
     return new Promise((resolve, reject) => {
+      let startedOrCanceled = false;
       const start = () => {
+        if (startedOrCanceled) return;
+        startedOrCanceled = true;
         activeHydrations += 1;
         void operation().then(resolve, reject).finally(() => {
           activeHydrations -= 1;
           runNextHydration();
         });
       };
-      hydrationQueue.push(start);
+      const cancel = () => {
+        if (startedOrCanceled) return;
+        startedOrCanceled = true;
+        reject(new Error("Like-state hydration was canceled"));
+      };
+      hydrationQueue.push({ start, cancel });
       runNextHydration();
     });
   }
@@ -23864,8 +23881,8 @@ ${[...new Set(relays)].sort().join(",")}`;
     }
     likeStateCache.clear();
     inFlightLikeStates.clear();
-    hydrationQueue.splice(0, hydrationQueue.length);
-    activeHydrations = 0;
+    const queued = hydrationQueue.splice(0, hydrationQueue.length);
+    for (const entry of queued) entry.cancel();
   }
   async function fetchLikesForUrl(url, relays) {
     const normalizedUrl = normalizeURL3(url);

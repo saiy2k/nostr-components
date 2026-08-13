@@ -6730,6 +6730,7 @@
     const QUERY_DEADLINE_MS = 2500;
     const QUERY_RELAY_QUORUM = 4;
     const QUERY_RESPONSE_QUORUM = 3;
+    const RELAY_HEALTH_TTL_MS = 5 * 60 * 1e3;
     const RECENT_REACTION_TTL_MS = 2 * 60 * 1e3;
     const INITIAL_RELAY_ORDER = [
       "wss://relay.damus.io/",
@@ -6786,7 +6787,10 @@
     }
     function relayScore(relay) {
       const health = relayHealth.get(relay);
-      if (health) return health.latencyMs + health.failures * QUERY_DEADLINE_MS;
+      if (health && health.recordedAt + RELAY_HEALTH_TTL_MS > Date.now()) {
+        return health.latencyMs + health.failures * QUERY_DEADLINE_MS;
+      }
+      if (health) relayHealth.delete(relay);
       const initialRank = INITIAL_RELAY_ORDER.indexOf(relay);
       return (initialRank === -1 ? INITIAL_RELAY_ORDER.length : initialRank) * 100;
     }
@@ -6818,7 +6822,6 @@
       return new Promise(function(resolve) {
         let successfulResponses = 0;
         let finished = false;
-        const startedAt = Date.now();
         const completedRelays = /* @__PURE__ */ new Set();
         const requiredResponses = Math.min(
           QUERY_RESPONSE_QUORUM,
@@ -6834,7 +6837,8 @@
               const previous = relayHealth.get(relay);
               relayHealth.set(relay, {
                 latencyMs: QUERY_DEADLINE_MS,
-                failures: (previous?.failures || 0) + 1
+                failures: (previous?.failures || 0) + 1,
+                recordedAt: Date.now()
               });
             }
           }
@@ -6842,15 +6846,7 @@
           resolve(Array.from(eventsById.values()));
         }
         const timeoutId = setTimeout(function() {
-          for (const relay of selectedRelays) {
-            if (completedRelays.has(relay)) continue;
-            const previous = relayHealth.get(relay);
-            relayHealth.set(relay, {
-              latencyMs: QUERY_DEADLINE_MS,
-              failures: (previous?.failures || 0) + 1
-            });
-          }
-          finish(false);
+          finish(true);
         }, QUERY_DEADLINE_MS);
         for (const relay of selectedRelays) {
           let settleRelay2 = function(succeeded) {
@@ -6860,7 +6856,8 @@
             const previous = relayHealth.get(relay);
             relayHealth.set(relay, {
               latencyMs: Date.now() - relayStartedAt,
-              failures: succeeded ? 0 : (previous?.failures || 0) + 1
+              failures: succeeded ? 0 : (previous?.failures || 0) + 1,
+              recordedAt: Date.now()
             });
             if (succeeded) successfulResponses += 1;
             if (successfulResponses >= requiredResponses || completedRelays.size === selectedRelays.length) {
@@ -6883,7 +6880,8 @@
           };
           try {
             const closer = filterList.length === 1 ? pool.subscribe([relay], filterList[0], options) : pool.subscribeMany([relay], filterList, options);
-            closers.push(closer);
+            if (finished) void closer.close();
+            else closers.push(closer);
           } catch (_error) {
             settleRelay2(false);
           }

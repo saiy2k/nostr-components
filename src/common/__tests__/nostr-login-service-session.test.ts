@@ -59,6 +59,31 @@ describe("nostr login session public-key cache", () => {
     expect(values[SESSION_KEY]).toBe(currentPublicKey);
   });
 
+  it("clears the previous identity when signer refresh fails", async () => {
+    const values: Record<string, string> = { [SESSION_KEY]: PUBLIC_KEY };
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(function () {});
+    vi.stubGlobal("window", {
+      nostr: {
+        getPublicKey: vi
+          .fn()
+          .mockRejectedValue(new Error("Signer unavailable")),
+      },
+      sessionStorage: createSessionStorage(values),
+    });
+
+    const { getCachedPublicKey, getPublicKey } = await import(
+      "../nostr-login-service"
+    );
+
+    expect(getCachedPublicKey()).toBe(PUBLIC_KEY);
+    await expect(getPublicKey()).resolves.toBeNull();
+    expect(getCachedPublicKey()).toBeNull();
+    expect(values[SESSION_KEY]).toBeUndefined();
+    expect(consoleError).toHaveBeenCalled();
+  });
+
   it("keeps signer identity out of page storage when a host transport exists", async () => {
     const values: Record<string, string> = { [SESSION_KEY]: "c".repeat(64) };
     const sessionStorage = createSessionStorage(values);
