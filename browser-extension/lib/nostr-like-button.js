@@ -1064,7 +1064,7 @@
           createDebug6.namespaces = namespaces;
           createDebug6.names = [];
           createDebug6.skips = [];
-          const split = (typeof namespaces === "string" ? namespaces : "").trim().replace(" ", ",").split(",").filter(Boolean);
+          const split = (typeof namespaces === "string" ? namespaces : "").trim().replace(/\s+/g, ",").split(",").filter(Boolean);
           for (const ns of split) {
             if (ns[0] === "-") {
               createDebug6.skips.push(ns.slice(1));
@@ -1282,7 +1282,7 @@
       function load() {
         let r;
         try {
-          r = exports2.storage.getItem("debug");
+          r = exports2.storage.getItem("debug") || exports2.storage.getItem("DEBUG");
         } catch (error) {
         }
         if (!r && typeof process !== "undefined" && "env" in process) {
@@ -1936,8 +1936,8 @@
       const n = y - v * q;
       b = a, a = r, x = u, y = v, u = m, v = n;
     }
-    const gcd3 = b;
-    if (gcd3 !== _1n2)
+    const gcd2 = b;
+    if (gcd2 !== _1n2)
       throw new Error("invert: does not exist");
     return mod(x, modulo);
   }
@@ -3785,7 +3785,7 @@
     }
   });
 
-  // node_modules/nostr-tools/node_modules/@scure/base/lib/esm/index.js
+  // node_modules/@scure/base/lib/esm/index.js
   function assertNumber(n) {
     if (!Number.isSafeInteger(n))
       throw new Error(`Wrong integer: ${n}`);
@@ -3796,16 +3796,16 @@
     const decode3 = args.reduce((acc, i2) => acc ? wrap(acc, i2.decode) : i2.decode, void 0);
     return { encode: encode2, decode: decode3 };
   }
-  function alphabet(alphabet3) {
+  function alphabet(alphabet2) {
     return {
       encode: (digits) => {
         if (!Array.isArray(digits) || digits.length && typeof digits[0] !== "number")
           throw new Error("alphabet.encode input should be an array of numbers");
         return digits.map((i2) => {
           assertNumber(i2);
-          if (i2 < 0 || i2 >= alphabet3.length)
-            throw new Error(`Digit index outside alphabet: ${i2} (alphabet: ${alphabet3.length})`);
-          return alphabet3[i2];
+          if (i2 < 0 || i2 >= alphabet2.length)
+            throw new Error(`Digit index outside alphabet: ${i2} (alphabet: ${alphabet2.length})`);
+          return alphabet2[i2];
         });
       },
       decode: (input) => {
@@ -3814,9 +3814,9 @@
         return input.map((letter) => {
           if (typeof letter !== "string")
             throw new Error(`alphabet.decode: not string element=${letter}`);
-          const index = alphabet3.indexOf(letter);
+          const index = alphabet2.indexOf(letter);
           if (index === -1)
-            throw new Error(`Unknown letter: "${letter}". Allowed: ${alphabet3}`);
+            throw new Error(`Unknown letter: "${letter}". Allowed: ${alphabet2}`);
           return index;
         });
       }
@@ -4078,7 +4078,7 @@
   }
   var gcd, radix2carry, base16, base32, base32hex, base32crockford, base64, base64url, genBase58, base58, base58flickr, base58xrp, XMR_BLOCK_LEN, base58xmr, BECH_ALPHABET, POLYMOD_GENERATORS, bech32, bech32m, utf8, hex, CODERS, coderTypeError;
   var init_esm = __esm({
-    "node_modules/nostr-tools/node_modules/@scure/base/lib/esm/index.js"() {
+    "node_modules/@scure/base/lib/esm/index.js"() {
       gcd = (a, b) => !b ? a : gcd(b, a % b);
       radix2carry = (from, to) => from + (to - gcd(from, to));
       base16 = chain(radix2(4), alphabet("0123456789ABCDEF"), join(""));
@@ -9009,8 +9009,8 @@
       const n = y - v * q;
       b = a, a = r, x = u, y = v, u = m, v = n;
     }
-    const gcd3 = b;
-    if (gcd3 !== _1n7)
+    const gcd2 = b;
+    if (gcd2 !== _1n7)
       throw new Error("invert: does not exist");
     return mod2(x, modulo);
   }
@@ -11283,9 +11283,9 @@
     }
   });
 
-  // node_modules/light-bolt11-decoder/node_modules/@scure/base/lib/index.js
+  // node_modules/@scure/base/lib/index.js
   var require_lib2 = __commonJS({
-    "node_modules/light-bolt11-decoder/node_modules/@scure/base/lib/index.js"(exports2) {
+    "node_modules/@scure/base/lib/index.js"(exports2) {
       "use strict";
       Object.defineProperty(exports2, "__esModule", { value: true });
       exports2.bytes = exports2.stringToBytes = exports2.str = exports2.bytesToString = exports2.hex = exports2.utf8 = exports2.bech32m = exports2.bech32 = exports2.base58check = exports2.base58xmr = exports2.base58xrp = exports2.base58flickr = exports2.base58 = exports2.base64url = exports2.base64 = exports2.base32crockford = exports2.base32hex = exports2.base32 = exports2.base16 = exports2.utils = exports2.assertNumber = void 0;
@@ -11294,22 +11294,22 @@
           throw new Error(`Wrong integer: ${n}`);
       }
       exports2.assertNumber = assertNumber2;
-      function chain3(...args) {
+      function chain2(...args) {
         const wrap = (a, b) => (c) => a(b(c));
         const encode2 = Array.from(args).reverse().reduce((acc, i2) => acc ? wrap(acc, i2.encode) : i2.encode, void 0);
         const decode3 = args.reduce((acc, i2) => acc ? wrap(acc, i2.decode) : i2.decode, void 0);
         return { encode: encode2, decode: decode3 };
       }
-      function alphabet3(alphabet4) {
+      function alphabet2(alphabet3) {
         return {
           encode: (digits) => {
             if (!Array.isArray(digits) || digits.length && typeof digits[0] !== "number")
               throw new Error("alphabet.encode input should be an array of numbers");
             return digits.map((i2) => {
               assertNumber2(i2);
-              if (i2 < 0 || i2 >= alphabet4.length)
-                throw new Error(`Digit index outside alphabet: ${i2} (alphabet: ${alphabet4.length})`);
-              return alphabet4[i2];
+              if (i2 < 0 || i2 >= alphabet3.length)
+                throw new Error(`Digit index outside alphabet: ${i2} (alphabet: ${alphabet3.length})`);
+              return alphabet3[i2];
             });
           },
           decode: (input) => {
@@ -11318,15 +11318,15 @@
             return input.map((letter) => {
               if (typeof letter !== "string")
                 throw new Error(`alphabet.decode: not string element=${letter}`);
-              const index = alphabet4.indexOf(letter);
+              const index = alphabet3.indexOf(letter);
               if (index === -1)
-                throw new Error(`Unknown letter: "${letter}". Allowed: ${alphabet4}`);
+                throw new Error(`Unknown letter: "${letter}". Allowed: ${alphabet3}`);
               return index;
             });
           }
         };
       }
-      function join3(separator = "") {
+      function join2(separator = "") {
         if (typeof separator !== "string")
           throw new Error("join separator should be string");
         return {
@@ -11427,17 +11427,17 @@
           res.push(0);
         return res.reverse();
       }
-      var gcd3 = (a, b) => !b ? a : gcd3(b, a % b);
-      var radix2carry3 = (from, to) => from + (to - gcd3(from, to));
-      function convertRadix23(data, from, to, padding3) {
+      var gcd2 = (a, b) => !b ? a : gcd2(b, a % b);
+      var radix2carry2 = (from, to) => from + (to - gcd2(from, to));
+      function convertRadix22(data, from, to, padding3) {
         if (!Array.isArray(data))
           throw new Error("convertRadix2: data should be array");
         if (from <= 0 || from > 32)
           throw new Error(`convertRadix2: wrong from=${from}`);
         if (to <= 0 || to > 32)
           throw new Error(`convertRadix2: wrong to=${to}`);
-        if (radix2carry3(from, to) > 32) {
-          throw new Error(`convertRadix2: carry overflow from=${from} to=${to} carryBits=${radix2carry3(from, to)}`);
+        if (radix2carry2(from, to) > 32) {
+          throw new Error(`convertRadix2: carry overflow from=${from} to=${to} carryBits=${radix2carry2(from, to)}`);
         }
         let carry = 0;
         let pos = 0;
@@ -11479,26 +11479,26 @@
           }
         };
       }
-      function radix23(bits, revPadding = false) {
+      function radix22(bits, revPadding = false) {
         assertNumber2(bits);
         if (bits <= 0 || bits > 32)
           throw new Error("radix2: bits should be in (0..32]");
-        if (radix2carry3(8, bits) > 32 || radix2carry3(bits, 8) > 32)
+        if (radix2carry2(8, bits) > 32 || radix2carry2(bits, 8) > 32)
           throw new Error("radix2: carry overflow");
         return {
           encode: (bytes4) => {
             if (!(bytes4 instanceof Uint8Array))
               throw new Error("radix2.encode input should be Uint8Array");
-            return convertRadix23(Array.from(bytes4), 8, bits, !revPadding);
+            return convertRadix22(Array.from(bytes4), 8, bits, !revPadding);
           },
           decode: (digits) => {
             if (!Array.isArray(digits) || digits.length && typeof digits[0] !== "number")
               throw new Error("radix2.decode input should be array of strings");
-            return Uint8Array.from(convertRadix23(digits, bits, 8, revPadding));
+            return Uint8Array.from(convertRadix22(digits, bits, 8, revPadding));
           }
         };
       }
-      function unsafeWrapper3(fn) {
+      function unsafeWrapper2(fn) {
         if (typeof fn !== "function")
           throw new Error("unsafeWrapper fn should be function");
         return function(...args) {
@@ -11535,14 +11535,14 @@
           }
         };
       }
-      exports2.utils = { alphabet: alphabet3, chain: chain3, checksum, radix: radix3, radix2: radix23, join: join3, padding: padding2 };
-      exports2.base16 = chain3(radix23(4), alphabet3("0123456789ABCDEF"), join3(""));
-      exports2.base32 = chain3(radix23(5), alphabet3("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"), padding2(5), join3(""));
-      exports2.base32hex = chain3(radix23(5), alphabet3("0123456789ABCDEFGHIJKLMNOPQRSTUV"), padding2(5), join3(""));
-      exports2.base32crockford = chain3(radix23(5), alphabet3("0123456789ABCDEFGHJKMNPQRSTVWXYZ"), join3(""), normalize3((s) => s.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1")));
-      exports2.base64 = chain3(radix23(6), alphabet3("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"), padding2(6), join3(""));
-      exports2.base64url = chain3(radix23(6), alphabet3("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), padding2(6), join3(""));
-      var genBase582 = (abc) => chain3(radix3(58), alphabet3(abc), join3(""));
+      exports2.utils = { alphabet: alphabet2, chain: chain2, checksum, radix: radix3, radix2: radix22, join: join2, padding: padding2 };
+      exports2.base16 = chain2(radix22(4), alphabet2("0123456789ABCDEF"), join2(""));
+      exports2.base32 = chain2(radix22(5), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"), padding2(5), join2(""));
+      exports2.base32hex = chain2(radix22(5), alphabet2("0123456789ABCDEFGHIJKLMNOPQRSTUV"), padding2(5), join2(""));
+      exports2.base32crockford = chain2(radix22(5), alphabet2("0123456789ABCDEFGHJKMNPQRSTVWXYZ"), join2(""), normalize3((s) => s.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1")));
+      exports2.base64 = chain2(radix22(6), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"), padding2(6), join2(""));
+      exports2.base64url = chain2(radix22(6), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), padding2(6), join2(""));
+      var genBase582 = (abc) => chain2(radix3(58), alphabet2(abc), join2(""));
       exports2.base58 = genBase582("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
       exports2.base58flickr = genBase582("123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ");
       exports2.base58xrp = genBase582("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz");
@@ -11571,44 +11571,44 @@
           return Uint8Array.from(res);
         }
       };
-      var base58check = (sha2564) => chain3(checksum(4, (data) => sha2564(sha2564(data))), exports2.base58);
+      var base58check = (sha2564) => chain2(checksum(4, (data) => sha2564(sha2564(data))), exports2.base58);
       exports2.base58check = base58check;
-      var BECH_ALPHABET3 = chain3(alphabet3("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), join3(""));
-      var POLYMOD_GENERATORS3 = [996825010, 642813549, 513874426, 1027748829, 705979059];
-      function bech32Polymod3(pre) {
+      var BECH_ALPHABET2 = chain2(alphabet2("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), join2(""));
+      var POLYMOD_GENERATORS2 = [996825010, 642813549, 513874426, 1027748829, 705979059];
+      function bech32Polymod2(pre) {
         const b = pre >> 25;
         let chk = (pre & 33554431) << 5;
-        for (let i2 = 0; i2 < POLYMOD_GENERATORS3.length; i2++) {
+        for (let i2 = 0; i2 < POLYMOD_GENERATORS2.length; i2++) {
           if ((b >> i2 & 1) === 1)
-            chk ^= POLYMOD_GENERATORS3[i2];
+            chk ^= POLYMOD_GENERATORS2[i2];
         }
         return chk;
       }
-      function bechChecksum3(prefix, words, encodingConst = 1) {
+      function bechChecksum2(prefix, words, encodingConst = 1) {
         const len = prefix.length;
         let chk = 1;
         for (let i2 = 0; i2 < len; i2++) {
           const c = prefix.charCodeAt(i2);
           if (c < 33 || c > 126)
             throw new Error(`Invalid prefix (${prefix})`);
-          chk = bech32Polymod3(chk) ^ c >> 5;
+          chk = bech32Polymod2(chk) ^ c >> 5;
         }
-        chk = bech32Polymod3(chk);
+        chk = bech32Polymod2(chk);
         for (let i2 = 0; i2 < len; i2++)
-          chk = bech32Polymod3(chk) ^ prefix.charCodeAt(i2) & 31;
+          chk = bech32Polymod2(chk) ^ prefix.charCodeAt(i2) & 31;
         for (let v of words)
-          chk = bech32Polymod3(chk) ^ v;
+          chk = bech32Polymod2(chk) ^ v;
         for (let i2 = 0; i2 < 6; i2++)
-          chk = bech32Polymod3(chk);
+          chk = bech32Polymod2(chk);
         chk ^= encodingConst;
-        return BECH_ALPHABET3.encode(convertRadix23([chk % 2 ** 30], 30, 5, false));
+        return BECH_ALPHABET2.encode(convertRadix22([chk % 2 ** 30], 30, 5, false));
       }
-      function genBech323(encoding) {
+      function genBech322(encoding) {
         const ENCODING_CONST = encoding === "bech32" ? 1 : 734539939;
-        const _words = radix23(5);
+        const _words = radix22(5);
         const fromWords = _words.decode;
         const toWords = _words.encode;
-        const fromWordsUnsafe = unsafeWrapper3(fromWords);
+        const fromWordsUnsafe = unsafeWrapper2(fromWords);
         function encode2(prefix, words, limit2 = 90) {
           if (typeof prefix !== "string")
             throw new Error(`bech32.encode prefix should be string, not ${typeof prefix}`);
@@ -11618,7 +11618,7 @@
           if (limit2 !== false && actualLength > limit2)
             throw new TypeError(`Length ${actualLength} exceeds limit ${limit2}`);
           prefix = prefix.toLowerCase();
-          return `${prefix}1${BECH_ALPHABET3.encode(words)}${bechChecksum3(prefix, words, ENCODING_CONST)}`;
+          return `${prefix}1${BECH_ALPHABET2.encode(words)}${bechChecksum2(prefix, words, ENCODING_CONST)}`;
         }
         function decode3(str, limit2 = 90) {
           if (typeof str !== "string")
@@ -11636,26 +11636,26 @@
           const _words2 = str.slice(sepIndex + 1);
           if (_words2.length < 6)
             throw new Error("Data must be at least 6 characters long");
-          const words = BECH_ALPHABET3.decode(_words2).slice(0, -6);
-          const sum = bechChecksum3(prefix, words, ENCODING_CONST);
+          const words = BECH_ALPHABET2.decode(_words2).slice(0, -6);
+          const sum = bechChecksum2(prefix, words, ENCODING_CONST);
           if (!_words2.endsWith(sum))
             throw new Error(`Invalid checksum in ${str}: expected "${sum}"`);
           return { prefix, words };
         }
-        const decodeUnsafe = unsafeWrapper3(decode3);
+        const decodeUnsafe = unsafeWrapper2(decode3);
         function decodeToBytes(str) {
           const { prefix, words } = decode3(str, false);
           return { prefix, words, bytes: fromWords(words) };
         }
         return { encode: encode2, decode: decode3, decodeToBytes, decodeUnsafe, fromWords, fromWordsUnsafe, toWords };
       }
-      exports2.bech32 = genBech323("bech32");
-      exports2.bech32m = genBech323("bech32m");
+      exports2.bech32 = genBech322("bech32");
+      exports2.bech32m = genBech322("bech32m");
       exports2.utf8 = {
         encode: (data) => new TextDecoder().decode(data),
         decode: (str) => new TextEncoder().encode(str)
       };
-      exports2.hex = chain3(radix23(4), alphabet3("0123456789abcdef"), join3(""), normalize3((s) => {
+      exports2.hex = chain2(radix22(4), alphabet2("0123456789abcdef"), join2(""), normalize3((s) => {
         if (typeof s !== "string" || s.length % 2)
           throw new TypeError(`hex.decode: expected string, got ${typeof s} with length ${s.length}`);
         return s.toLowerCase();
@@ -11695,7 +11695,7 @@
   // node_modules/light-bolt11-decoder/bolt11.js
   var require_bolt11 = __commonJS({
     "node_modules/light-bolt11-decoder/bolt11.js"(exports2, module2) {
-      var { bech32: bech323, hex: hex2, utf8: utf82 } = require_lib2();
+      var { bech32: bech322, hex: hex2, utf8: utf82 } = require_lib2();
       var DEFAULTNETWORK = {
         // default network is bitcoin
         bech32: "bc",
@@ -11771,17 +11771,17 @@
         TAGNAMES[currentCode] = currentName;
       }
       var TAGPARSERS = {
-        1: (words) => hex2.encode(bech323.fromWordsUnsafe(words)),
+        1: (words) => hex2.encode(bech322.fromWordsUnsafe(words)),
         // 256 bits
-        16: (words) => hex2.encode(bech323.fromWordsUnsafe(words)),
+        16: (words) => hex2.encode(bech322.fromWordsUnsafe(words)),
         // 256 bits
-        13: (words) => utf82.encode(bech323.fromWordsUnsafe(words)),
+        13: (words) => utf82.encode(bech322.fromWordsUnsafe(words)),
         // string variable length
-        19: (words) => hex2.encode(bech323.fromWordsUnsafe(words)),
+        19: (words) => hex2.encode(bech322.fromWordsUnsafe(words)),
         // 264 bits
-        23: (words) => hex2.encode(bech323.fromWordsUnsafe(words)),
+        23: (words) => hex2.encode(bech322.fromWordsUnsafe(words)),
         // 256 bits
-        27: (words) => hex2.encode(bech323.fromWordsUnsafe(words)),
+        27: (words) => hex2.encode(bech322.fromWordsUnsafe(words)),
         // variable
         6: wordsToIntBE,
         // default: 3600 (1 hour)
@@ -11795,7 +11795,7 @@
       function getUnknownParser(tagCode) {
         return (words) => ({
           tagCode: parseInt(tagCode),
-          words: bech323.encode("unknown", words, Number.MAX_SAFE_INTEGER)
+          words: bech322.encode("unknown", words, Number.MAX_SAFE_INTEGER)
         });
       }
       function wordsToIntBE(words) {
@@ -11806,7 +11806,7 @@
       function routingInfoParser(words) {
         const routes = [];
         let pubkey, shortChannelId, feeBaseMSats, feeProportionalMillionths, cltvExpiryDelta;
-        let routesBuffer = bech323.fromWordsUnsafe(words);
+        let routesBuffer = bech322.fromWordsUnsafe(words);
         while (routesBuffer.length > 0) {
           pubkey = hex2.encode(routesBuffer.slice(0, 33));
           shortChannelId = hex2.encode(routesBuffer.slice(33, 41));
@@ -11886,7 +11886,7 @@
         if (paymentRequest.slice(0, 2).toLowerCase() !== "ln")
           throw new Error("Not a proper lightning payment request");
         const sections = [];
-        const decoded = bech323.decode(paymentRequest, Number.MAX_SAFE_INTEGER);
+        const decoded = bech322.decode(paymentRequest, Number.MAX_SAFE_INTEGER);
         paymentRequest = paymentRequest.toLowerCase();
         const prefix = decoded.prefix;
         let words = decoded.words;
@@ -11983,7 +11983,7 @@
         sections.push({
           name: "signature",
           letters: letters.slice(0, 104),
-          value: hex2.encode(bech323.fromWordsUnsafe(sigWords))
+          value: hex2.encode(bech322.fromWordsUnsafe(sigWords))
         });
         letters = letters.slice(104);
         sections.push({
@@ -12021,269 +12021,6 @@
         decode: decode3,
         hrpToMillisat
       };
-    }
-  });
-
-  // node_modules/@scure/base/lib/esm/index.js
-  function isBytes4(a) {
-    return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
-  }
-  function isArrayOf(isString, arr) {
-    if (!Array.isArray(arr))
-      return false;
-    if (arr.length === 0)
-      return true;
-    if (isString) {
-      return arr.every((item) => typeof item === "string");
-    } else {
-      return arr.every((item) => Number.isSafeInteger(item));
-    }
-  }
-  function afn(input) {
-    if (typeof input !== "function")
-      throw new Error("function expected");
-    return true;
-  }
-  function astr(label, input) {
-    if (typeof input !== "string")
-      throw new Error(`${label}: string expected`);
-    return true;
-  }
-  function anumber2(n) {
-    if (!Number.isSafeInteger(n))
-      throw new Error(`invalid integer: ${n}`);
-  }
-  function aArr(input) {
-    if (!Array.isArray(input))
-      throw new Error("array expected");
-  }
-  function astrArr(label, input) {
-    if (!isArrayOf(true, input))
-      throw new Error(`${label}: array of strings expected`);
-  }
-  function anumArr(label, input) {
-    if (!isArrayOf(false, input))
-      throw new Error(`${label}: array of numbers expected`);
-  }
-  // @__NO_SIDE_EFFECTS__
-  function chain2(...args) {
-    const id = (a) => a;
-    const wrap = (a, b) => (c) => a(b(c));
-    const encode2 = args.map((x) => x.encode).reduceRight(wrap, id);
-    const decode3 = args.map((x) => x.decode).reduce(wrap, id);
-    return { encode: encode2, decode: decode3 };
-  }
-  // @__NO_SIDE_EFFECTS__
-  function alphabet2(letters) {
-    const lettersA = typeof letters === "string" ? letters.split("") : letters;
-    const len = lettersA.length;
-    astrArr("alphabet", lettersA);
-    const indexes = new Map(lettersA.map((l, i2) => [l, i2]));
-    return {
-      encode: (digits) => {
-        aArr(digits);
-        return digits.map((i2) => {
-          if (!Number.isSafeInteger(i2) || i2 < 0 || i2 >= len)
-            throw new Error(`alphabet.encode: digit index outside alphabet "${i2}". Allowed: ${letters}`);
-          return lettersA[i2];
-        });
-      },
-      decode: (input) => {
-        aArr(input);
-        return input.map((letter) => {
-          astr("alphabet.decode", letter);
-          const i2 = indexes.get(letter);
-          if (i2 === void 0)
-            throw new Error(`Unknown letter: "${letter}". Allowed: ${letters}`);
-          return i2;
-        });
-      }
-    };
-  }
-  // @__NO_SIDE_EFFECTS__
-  function join2(separator = "") {
-    astr("join", separator);
-    return {
-      encode: (from) => {
-        astrArr("join.decode", from);
-        return from.join(separator);
-      },
-      decode: (to) => {
-        astr("join.decode", to);
-        return to.split(separator);
-      }
-    };
-  }
-  function convertRadix22(data, from, to, padding2) {
-    aArr(data);
-    if (from <= 0 || from > 32)
-      throw new Error(`convertRadix2: wrong from=${from}`);
-    if (to <= 0 || to > 32)
-      throw new Error(`convertRadix2: wrong to=${to}`);
-    if (/* @__PURE__ */ radix2carry2(from, to) > 32) {
-      throw new Error(`convertRadix2: carry overflow from=${from} to=${to} carryBits=${/* @__PURE__ */ radix2carry2(from, to)}`);
-    }
-    let carry = 0;
-    let pos = 0;
-    const max = powers[from];
-    const mask = powers[to] - 1;
-    const res = [];
-    for (const n of data) {
-      anumber2(n);
-      if (n >= max)
-        throw new Error(`convertRadix2: invalid data word=${n} from=${from}`);
-      carry = carry << from | n;
-      if (pos + from > 32)
-        throw new Error(`convertRadix2: carry overflow pos=${pos} from=${from}`);
-      pos += from;
-      for (; pos >= to; pos -= to)
-        res.push((carry >> pos - to & mask) >>> 0);
-      const pow4 = powers[pos];
-      if (pow4 === void 0)
-        throw new Error("invalid carry");
-      carry &= pow4 - 1;
-    }
-    carry = carry << to - pos & mask;
-    if (!padding2 && pos >= from)
-      throw new Error("Excess padding");
-    if (!padding2 && carry > 0)
-      throw new Error(`Non-zero padding: ${carry}`);
-    if (padding2 && pos > 0)
-      res.push(carry >>> 0);
-    return res;
-  }
-  // @__NO_SIDE_EFFECTS__
-  function radix22(bits, revPadding = false) {
-    anumber2(bits);
-    if (bits <= 0 || bits > 32)
-      throw new Error("radix2: bits should be in (0..32]");
-    if (/* @__PURE__ */ radix2carry2(8, bits) > 32 || /* @__PURE__ */ radix2carry2(bits, 8) > 32)
-      throw new Error("radix2: carry overflow");
-    return {
-      encode: (bytes4) => {
-        if (!isBytes4(bytes4))
-          throw new Error("radix2.encode input should be Uint8Array");
-        return convertRadix22(Array.from(bytes4), 8, bits, !revPadding);
-      },
-      decode: (digits) => {
-        anumArr("radix2.decode", digits);
-        return Uint8Array.from(convertRadix22(digits, bits, 8, revPadding));
-      }
-    };
-  }
-  function unsafeWrapper2(fn) {
-    afn(fn);
-    return function(...args) {
-      try {
-        return fn.apply(null, args);
-      } catch (e) {
-      }
-    };
-  }
-  function bech32Polymod2(pre) {
-    const b = pre >> 25;
-    let chk = (pre & 33554431) << 5;
-    for (let i2 = 0; i2 < POLYMOD_GENERATORS2.length; i2++) {
-      if ((b >> i2 & 1) === 1)
-        chk ^= POLYMOD_GENERATORS2[i2];
-    }
-    return chk;
-  }
-  function bechChecksum2(prefix, words, encodingConst = 1) {
-    const len = prefix.length;
-    let chk = 1;
-    for (let i2 = 0; i2 < len; i2++) {
-      const c = prefix.charCodeAt(i2);
-      if (c < 33 || c > 126)
-        throw new Error(`Invalid prefix (${prefix})`);
-      chk = bech32Polymod2(chk) ^ c >> 5;
-    }
-    chk = bech32Polymod2(chk);
-    for (let i2 = 0; i2 < len; i2++)
-      chk = bech32Polymod2(chk) ^ prefix.charCodeAt(i2) & 31;
-    for (let v of words)
-      chk = bech32Polymod2(chk) ^ v;
-    for (let i2 = 0; i2 < 6; i2++)
-      chk = bech32Polymod2(chk);
-    chk ^= encodingConst;
-    return BECH_ALPHABET2.encode(convertRadix22([chk % powers[30]], 30, 5, false));
-  }
-  // @__NO_SIDE_EFFECTS__
-  function genBech322(encoding) {
-    const ENCODING_CONST = encoding === "bech32" ? 1 : 734539939;
-    const _words = /* @__PURE__ */ radix22(5);
-    const fromWords = _words.decode;
-    const toWords = _words.encode;
-    const fromWordsUnsafe = unsafeWrapper2(fromWords);
-    function encode2(prefix, words, limit2 = 90) {
-      astr("bech32.encode prefix", prefix);
-      if (isBytes4(words))
-        words = Array.from(words);
-      anumArr("bech32.encode", words);
-      const plen = prefix.length;
-      if (plen === 0)
-        throw new TypeError(`Invalid prefix length ${plen}`);
-      const actualLength = plen + 7 + words.length;
-      if (limit2 !== false && actualLength > limit2)
-        throw new TypeError(`Length ${actualLength} exceeds limit ${limit2}`);
-      const lowered = prefix.toLowerCase();
-      const sum = bechChecksum2(lowered, words, ENCODING_CONST);
-      return `${lowered}1${BECH_ALPHABET2.encode(words)}${sum}`;
-    }
-    function decode3(str, limit2 = 90) {
-      astr("bech32.decode input", str);
-      const slen = str.length;
-      if (slen < 8 || limit2 !== false && slen > limit2)
-        throw new TypeError(`invalid string length: ${slen} (${str}). Expected (8..${limit2})`);
-      const lowered = str.toLowerCase();
-      if (str !== lowered && str !== str.toUpperCase())
-        throw new Error(`String must be lowercase or uppercase`);
-      const sepIndex = lowered.lastIndexOf("1");
-      if (sepIndex === 0 || sepIndex === -1)
-        throw new Error(`Letter "1" must be present between prefix and data only`);
-      const prefix = lowered.slice(0, sepIndex);
-      const data = lowered.slice(sepIndex + 1);
-      if (data.length < 6)
-        throw new Error("Data must be at least 6 characters long");
-      const words = BECH_ALPHABET2.decode(data).slice(0, -6);
-      const sum = bechChecksum2(prefix, words, ENCODING_CONST);
-      if (!data.endsWith(sum))
-        throw new Error(`Invalid checksum in ${str}: expected "${sum}"`);
-      return { prefix, words };
-    }
-    const decodeUnsafe = unsafeWrapper2(decode3);
-    function decodeToBytes(str) {
-      const { prefix, words } = decode3(str, false);
-      return { prefix, words, bytes: fromWords(words) };
-    }
-    function encodeFromBytes(prefix, bytes4) {
-      return encode2(prefix, toWords(bytes4));
-    }
-    return {
-      encode: encode2,
-      decode: decode3,
-      encodeFromBytes,
-      decodeToBytes,
-      decodeUnsafe,
-      fromWords,
-      fromWordsUnsafe,
-      toWords
-    };
-  }
-  var gcd2, radix2carry2, powers, BECH_ALPHABET2, POLYMOD_GENERATORS2, bech322;
-  var init_esm3 = __esm({
-    "node_modules/@scure/base/lib/esm/index.js"() {
-      gcd2 = (a, b) => b === 0 ? a : gcd2(b, a % b);
-      radix2carry2 = /* @__NO_SIDE_EFFECTS__ */ (from, to) => from + (to - gcd2(from, to));
-      powers = /* @__PURE__ */ (() => {
-        let res = [];
-        for (let i2 = 0; i2 < 40; i2++)
-          res.push(2 ** i2);
-        return res;
-      })();
-      BECH_ALPHABET2 = /* @__PURE__ */ chain2(/* @__PURE__ */ alphabet2("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), /* @__PURE__ */ join2(""));
-      POLYMOD_GENERATORS2 = [996825010, 642813549, 513874426, 1027748829, 705979059];
-      bech322 = /* @__PURE__ */ genBech322("bech32");
     }
   });
 
@@ -13257,9 +12994,9 @@
   function isNip33AValue(value) {
     return value.match(NIP33_A_REGEX) !== null;
   }
-  function relaysFromBech32(bech3222, ndk) {
+  function relaysFromBech32(bech322, ndk) {
     try {
-      const decoded = nip19_exports.decode(bech3222);
+      const decoded = nip19_exports.decode(bech322);
       if (["naddr", "nevent"].includes(decoded?.type)) {
         const data = decoded.data;
         if (data?.relays) {
@@ -20249,19 +19986,13 @@
   }
   function injectScript(src, integrity, crossOrigin) {
     return new Promise((resolve, reject) => {
-      const existing = document.querySelector(
-        `script[src="${src}"]`
-      );
+      const existing = document.querySelector(`script[src="${src}"]`);
       if (existing) {
         if (window.nostr !== void 0) {
           resolve();
         } else {
           existing.addEventListener("load", () => resolve(), { once: true });
-          existing.addEventListener(
-            "error",
-            () => reject(new Error(`Failed to load script: ${src}`)),
-            { once: true }
-          );
+          existing.addEventListener("error", () => reject(new Error(`Failed to load script: ${src}`)), { once: true });
         }
         return;
       }
@@ -20334,9 +20065,7 @@
       throw new Error("window.nostr is not available");
     }
     try {
-      const signedEvent = await window.nostr.signEvent(
-        event
-      );
+      const signedEvent = await window.nostr.signEvent(event);
       cachePublicKey(signedEvent.pubkey);
       return signedEvent;
     } catch (error) {
@@ -20373,8 +20102,8 @@
         return new URL(`/.well-known/lnurlp/${name}`, `https://${domain}`).toString();
       }
       if (lud06 && typeof lud06 === "string") {
-        const { words } = bech322.decode(lud06, 1e3);
-        const data = bech322.fromWords(words);
+        const { words } = bech32.decode(lud06, 1e3);
+        const data = bech32.fromWords(words);
         const decodedUrl = new TextDecoder().decode(Uint8Array.from(data));
         const parsed = new URL(decodedUrl);
         return parsed.protocol === "https:" ? parsed.toString() : null;
@@ -20414,8 +20143,8 @@
     try {
       let urlString = value;
       if (/^lnurl1/i.test(value)) {
-        const { words } = bech322.decode(value.toLowerCase(), 1e3);
-        urlString = new TextDecoder().decode(Uint8Array.from(bech322.fromWords(words)));
+        const { words } = bech32.decode(value.toLowerCase(), 1e3);
+        urlString = new TextDecoder().decode(Uint8Array.from(bech32.fromWords(words)));
       }
       return new URL(urlString).toString();
     } catch {
@@ -20505,7 +20234,7 @@
   var init_zap_receipt = __esm({
     "src/nostr-zap-button/zap-receipt.ts"() {
       "use strict";
-      init_esm3();
+      init_esm();
       import_light_bolt11_decoder2 = __toESM(require_bolt11(), 1);
       init_esm2();
     }
@@ -23785,7 +23514,6 @@ ${url}`;
 
   // src/nostr-like-button/like-utils.ts
   init_esm2();
-  init_utils7();
   init_nostr_login_service();
 
   // src/nostr-like-button/like-netting.ts
@@ -23837,55 +23565,9 @@ ${url}`;
     }
     return transport;
   }
-  var likePool = new SimplePool();
-  var LIKE_STATE_CACHE_TTL_MS = 3e4;
-  var MAX_HYDRATION_CONCURRENCY = 4;
-  var likeStateCache = /* @__PURE__ */ new Map();
-  var inFlightLikeStates = /* @__PURE__ */ new Map();
-  var hydrationQueue = [];
-  var activeHydrations = 0;
-  function likeStateCacheKey(url, relays) {
-    return `${normalizeURL3(url)}
-${[...new Set(relays)].sort().join(",")}`;
-  }
-  function runNextHydration() {
-    while (activeHydrations < MAX_HYDRATION_CONCURRENCY && hydrationQueue.length > 0) {
-      hydrationQueue.shift()?.start();
-    }
-  }
-  function scheduleHydration(operation) {
-    return new Promise((resolve, reject) => {
-      let startedOrCanceled = false;
-      const start = () => {
-        if (startedOrCanceled) return;
-        startedOrCanceled = true;
-        activeHydrations += 1;
-        void operation().then(resolve, reject).finally(() => {
-          activeHydrations -= 1;
-          runNextHydration();
-        });
-      };
-      const cancel = () => {
-        if (startedOrCanceled) return;
-        startedOrCanceled = true;
-        reject(new Error("Like-state hydration was canceled"));
-      };
-      hydrationQueue.push({ start, cancel });
-      runNextHydration();
-    });
-  }
-  function invalidateLikeStateCache(url, relays) {
-    if (url && relays) {
-      likeStateCache.delete(likeStateCacheKey(url, relays));
-      return;
-    }
-    likeStateCache.clear();
-    inFlightLikeStates.clear();
-    const queued = hydrationQueue.splice(0, hydrationQueue.length);
-    for (const entry of queued) entry.cancel();
-  }
   async function fetchLikesForUrl(url, relays) {
-    const normalizedUrl = normalizeURL3(url);
+    const normalizedUrl = normalizeURL2(url);
+    const pool = new SimplePool();
     try {
       const filter = {
         kinds: [17],
@@ -23894,67 +23576,21 @@ ${[...new Set(relays)].sort().join(",")}`;
         limit: 1e3
       };
       const transport = getRelayTransport();
-      const events = transport ? await transport.query(relays, filter) : await likePool.querySync(relays, filter, { maxWait: 8e3 });
+      const events = transport ? await transport.query(relays, filter) : await pool.querySync(relays, filter);
       return netLikesByPubkey(events);
     } catch (error) {
       throw error instanceof Error ? error : new Error(String(error));
+    } finally {
+      pool.close(relays);
     }
-  }
-  async function getKnownUserPublicKey() {
-    return getCachedPublicKey();
-  }
-  async function fetchLikeStateForUrl(url, relays, options = {}) {
-    const normalizedUrl = normalizeURL3(url);
-    const cacheKey = likeStateCacheKey(normalizedUrl, relays);
-    if (!options.force) {
-      const cached = likeStateCache.get(cacheKey);
-      if (cached && cached.expiresAt > Date.now()) return cached.value;
-      const inFlight = inFlightLikeStates.get(cacheKey);
-      if (inFlight) return inFlight;
-    }
-    const request = scheduleHydration(async () => {
-      const transport = getRelayTransport();
-      let result;
-      let isLiked;
-      if (transport && typeof transport.getLikeState === "function") {
-        const state = await transport.getLikeState(relays, normalizedUrl);
-        result = { ...state, likeDetails: [] };
-        isLiked = state.isLiked;
-      } else {
-        const [countResult, userPublicKey] = await Promise.all([
-          fetchLikesForUrl(normalizedUrl, relays),
-          getKnownUserPublicKey()
-        ]);
-        result = countResult;
-        const ownReaction = userPublicKey ? result.likeDetails.find(
-          (detail) => detail.authorPubkey.toLowerCase() === userPublicKey
-        ) : void 0;
-        isLiked = ownReaction?.content === "+" || ownReaction?.content === "";
-      }
-      const value = { ...result, isLiked };
-      likeStateCache.set(cacheKey, {
-        value,
-        expiresAt: Date.now() + LIKE_STATE_CACHE_TTL_MS
-      });
-      return value;
-    });
-    inFlightLikeStates.set(cacheKey, request);
-    const clearInFlight = () => {
-      if (inFlightLikeStates.get(cacheKey) === request) {
-        inFlightLikeStates.delete(cacheKey);
-      }
-    };
-    void request.then(clearInFlight, clearInFlight);
-    return request;
   }
   function createReactionEvent(url, content) {
-    const normalizedUrl = normalizeURL3(url);
     return {
       kind: 17,
       content,
       tags: [
         ["k", "web"],
-        ["i", normalizedUrl]
+        ["i", url]
       ],
       created_at: Math.floor(Date.now() / 1e3)
     };
@@ -23964,6 +23600,29 @@ ${[...new Set(relays)].sort().join(",")}`;
   }
   function createUnlikeEvent(url) {
     return createReactionEvent(url, "-");
+  }
+  async function hasUserLiked(url, userPubkey, relays) {
+    const pool = new SimplePool();
+    const normalizedUrl = url;
+    try {
+      const filter = {
+        kinds: [17],
+        authors: [userPubkey],
+        "#k": ["web"],
+        "#i": [normalizedUrl],
+        limit: 1
+      };
+      const transport = getRelayTransport();
+      const events = transport ? await transport.query(relays, filter) : await pool.querySync(relays, filter);
+      if (events.length === 0) return false;
+      const latest = events[0];
+      return latest.content === "+" || latest.content === "";
+    } catch (error) {
+      console.error("Nostr-Components: Like button: Error checking user like status", error);
+      return false;
+    } finally {
+      pool.close(relays);
+    }
   }
   async function publishSignedReaction(event, relays, publishWithNdk) {
     const transport = getRelayTransport();
@@ -24412,7 +24071,7 @@ ${[...new Set(relays)].sort().join(",")}`;
   }
 
   // src/nostr-like-button/nostr-like.ts
-  var NostrLike = class _NostrLike extends NostrBaseComponent {
+  var NostrLike = class extends NostrBaseComponent {
     likeActionStatus = this.channel("likeAction");
     likeListStatus = this.channel("likeList");
     currentUrl = "";
@@ -24423,24 +24082,24 @@ ${[...new Set(relays)].sort().join(",")}`;
     actionSeq = 0;
     isResyncingLikeCount = false;
     needsResyncLikeCount = false;
-    likeStateUrl = "";
-    likeStateLoadedAt = 0;
-    static LIKE_STATE_FRESH_MS = 3e4;
     constructor() {
       super();
     }
     connectedCallback() {
       super.connectedCallback?.();
       if (this.likeListStatus.get() === 0 /* Idle */) {
-        this.initChannelStatus("likeList", 1 /* Loading */, {
-          reflectOverall: false
-        });
+        this.initChannelStatus("likeList", 1 /* Loading */, { reflectOverall: false });
       }
       this.attachDelegatedListeners();
       this.render();
     }
     static get observedAttributes() {
-      return [...super.observedAttributes, "url", "text", "compact"];
+      return [
+        ...super.observedAttributes,
+        "url",
+        "text",
+        "compact"
+      ];
     }
     attributeChangedCallback(name, oldValue, newValue) {
       if (oldValue === newValue) return;
@@ -24515,35 +24174,21 @@ ${[...new Set(relays)].sort().join(",")}`;
      */
     ensureCurrentUrl() {
       if (!this.currentUrl) {
-        this.currentUrl = normalizeURL2(
-          this.getAttribute("url") || window.location.href
-        );
+        this.currentUrl = normalizeURL2(this.getAttribute("url") || window.location.href);
       }
     }
-    hasFreshLikeState(url) {
-      return this.likeListStatus.get() === 2 /* Ready */ && this.likeStateUrl === url && Date.now() - this.likeStateLoadedAt < _NostrLike.LIKE_STATE_FRESH_MS;
-    }
-    async updateLikeCount(force = false) {
+    async updateLikeCount() {
       const seq = ++this.loadSeq;
       try {
         await this.ensureNostrConnected();
         if (seq !== this.loadSeq) return;
-        this.currentUrl = normalizeURL2(
-          this.getAttribute("url") || window.location.href
-        );
+        this.currentUrl = normalizeURL2(this.getAttribute("url") || window.location.href);
         this.likeListStatus.set(1 /* Loading */);
         this.render();
-        const result = await fetchLikeStateForUrl(
-          this.currentUrl,
-          this.getRelays(),
-          { force }
-        );
+        const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
         if (seq !== this.loadSeq) return;
         this.likeCount = clampLikeCount(result.totalCount);
-        this.isLiked = result.isLiked;
         this.cachedLikeDetails = result;
-        this.likeStateUrl = this.currentUrl;
-        this.likeStateLoadedAt = Date.now();
         this.likeListStatus.set(2 /* Ready */);
       } catch (error) {
         if (seq !== this.loadSeq) return;
@@ -24599,25 +24244,10 @@ ${[...new Set(relays)].sort().join(",")}`;
       this.likeActionStatus.set(1 /* Loading */);
       this.render();
       try {
-        const statePromise = this.hasFreshLikeState(targetUrl) ? Promise.resolve(this.isLiked) : fetchLikeStateForUrl(targetUrl, this.getRelays()).then((result) => {
-          if (!isStale()) {
-            this.likeCount = clampLikeCount(result.totalCount);
-            this.isLiked = result.isLiked;
-            this.cachedLikeDetails = result;
-            this.likeStateUrl = targetUrl;
-            this.likeStateLoadedAt = Date.now();
-            this.likeListStatus.set(2 /* Ready */);
-            this.render();
-          }
-          return result.isLiked;
+        const signerResult = await ensureSignerForAction({
+          action: "like",
+          theme: this.theme
         });
-        const [signerResult, isLiked] = await Promise.all([
-          ensureSignerForAction({
-            action: "like",
-            theme: this.theme
-          }),
-          statePromise
-        ]);
         if (isStale()) return;
         if (signerResult.status === "dismissed") {
           this.likeActionStatus.set(2 /* Ready */);
@@ -24636,11 +24266,14 @@ ${[...new Set(relays)].sort().join(",")}`;
           await this.nostrService.connectToNostr(this.getRelays());
         }
         if (isStale()) return;
-        this.isLiked = isLiked;
+        this.isLiked = await hasUserLiked(
+          targetUrl,
+          signerResult.publicKey,
+          this.getRelays()
+        );
+        if (isStale()) return;
         if (this.isLiked) {
-          const confirmed = window.confirm(
-            "You have already liked this. Do you want to unlike it?"
-          );
+          const confirmed = window.confirm("You have already liked this. Do you want to unlike it?");
           if (!confirmed) {
             this.likeActionStatus.set(2 /* Ready */);
             this.render();
@@ -24683,17 +24316,12 @@ ${[...new Set(relays)].sort().join(",")}`;
         this.isLiked = optimisticState.isLiked;
         this.likeCount = optimisticState.likeCount;
         didApplyOptimisticUpdate = true;
-        this.render();
         await publishSignedReaction(signedEvent, this.getRelays(), async () => {
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         });
+        await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
-        this.render();
-        invalidateLikeStateCache(likeUrl, this.getRelays());
-        window.setTimeout(() => {
-          void this.updateLikeCount(true);
-        }, 1e3);
       } catch (error) {
         console.error("[NostrLike] Failed to like:", error);
         this.handleLikeMutationFailure(
@@ -24732,17 +24360,12 @@ ${[...new Set(relays)].sort().join(",")}`;
         this.isLiked = optimisticState.isLiked;
         this.likeCount = optimisticState.likeCount;
         didApplyOptimisticUpdate = true;
-        this.render();
         await publishSignedReaction(signedEvent, this.getRelays(), async () => {
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         });
+        await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
-        this.render();
-        invalidateLikeStateCache(unlikeUrl, this.getRelays());
-        window.setTimeout(() => {
-          void this.updateLikeCount(true);
-        }, 1e3);
       } catch (error) {
         console.error("[NostrLike] Failed to unlike:", error);
         this.handleLikeMutationFailure(
@@ -24788,16 +24411,12 @@ ${[...new Set(relays)].sort().join(",")}`;
         e.stopPropagation?.();
         void this.handleCountClick();
       });
-      this.delegateEvent(
-        "keydown",
-        ".like-count.clickable",
-        (e) => {
-          if (e.key !== "Enter" && e.key !== " ") return;
-          e.preventDefault();
-          e.stopPropagation();
-          void this.handleCountClick();
-        }
-      );
+      this.delegateEvent("keydown", ".like-count.clickable", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        e.stopPropagation();
+        void this.handleCountClick();
+      });
       this.delegateEvent("click", ".help-icon", (e) => {
         e.preventDefault?.();
         e.stopPropagation?.();
@@ -24891,9 +24510,6 @@ ${[...new Set(relays)].sort().join(",")}`;
   (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 
 @scure/base/lib/index.js:
-  (*! scure-base - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
-
-@scure/base/lib/esm/index.js:
   (*! scure-base - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 
 dompurify/dist/purify.es.mjs:

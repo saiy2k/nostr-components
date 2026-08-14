@@ -159,7 +159,6 @@ hasUserLiked(url, userPubkey, relays):
 - Limit queries to 1000 events
 - Filter by tags at relay level (#k, #i)
 - Deduplicate client-side to reduce data transfer
-- Reuse one page-lifetime `SimplePool` across component instances instead of opening duplicate relay pools for every action row
 
 ### Caching Strategy
 - Cache like count for component lifetime

@@ -3,23 +3,19 @@
 import { NostrBaseComponent } from '../base/base-component/nostr-base-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
 import { NDKEvent } from '@nostr-dev-kit/ndk';
-import {
-  renderLikeButton,
-  RenderLikeButtonOptions,
-  shouldDisableLikeButton,
-} from './render';
+import { renderLikeButton, RenderLikeButtonOptions, shouldDisableLikeButton } from './render';
 import { getLikeButtonStyles } from './style';
 import { showHelpDialog } from './dialog-help';
 import { isValidUrl } from '../common/utils';
-import {
-  fetchLikeStateForUrl,
+import { 
+  fetchLikesForUrl, 
   createLikeEvent,
   createUnlikeEvent,
+  hasUserLiked, 
   getRelayTransport,
-  invalidateLikeStateCache,
   publishSignedReaction,
-  signEvent,
-  LikeCountResult,
+  signEvent, 
+  LikeCountResult 
 } from './like-utils';
 import { ensureSignerForAction } from '../common/auth-onboarding';
 import { normalizeURL } from 'nostr-tools/utils';
@@ -56,10 +52,6 @@ export default class NostrLike extends NostrBaseComponent {
   private actionSeq = 0;
   private isResyncingLikeCount = false;
   private needsResyncLikeCount = false;
-  private likeStateUrl = '';
-  private likeStateLoadedAt = 0;
-
-  private static readonly LIKE_STATE_FRESH_MS = 30_000;
 
   constructor() {
     super();
@@ -179,15 +171,7 @@ export default class NostrLike extends NostrBaseComponent {
     }
   }
 
-  private hasFreshLikeState(url: string): boolean {
-    return (
-      this.likeListStatus.get() === NCStatus.Ready &&
-      this.likeStateUrl === url &&
-      Date.now() - this.likeStateLoadedAt < NostrLike.LIKE_STATE_FRESH_MS
-    );
-  }
-
-  private async updateLikeCount(force = false) {
+  private async updateLikeCount() {
     const seq = ++this.loadSeq;
     try {
       await this.ensureNostrConnected();
@@ -195,18 +179,11 @@ export default class NostrLike extends NostrBaseComponent {
       this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
       this.likeListStatus.set(NCStatus.Loading);
       this.render();
-
-      const result = await fetchLikeStateForUrl(
-        this.currentUrl,
-        this.getRelays(),
-        { force },
-      );
+     
+      const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
       if (seq !== this.loadSeq) return; // stale
       this.likeCount = clampLikeCount(result.totalCount);
-      this.isLiked = result.isLiked;
       this.cachedLikeDetails = result;
-      this.likeStateUrl = this.currentUrl;
-      this.likeStateLoadedAt = Date.now();
       this.likeListStatus.set(NCStatus.Ready);
     } catch (error) {
       if (seq !== this.loadSeq) return;
@@ -284,27 +261,10 @@ export default class NostrLike extends NostrBaseComponent {
     this.render();
 
     try {
-      const statePromise = this.hasFreshLikeState(targetUrl)
-        ? Promise.resolve(this.isLiked)
-        : fetchLikeStateForUrl(targetUrl, this.getRelays()).then((result) => {
-            if (!isStale()) {
-              this.likeCount = clampLikeCount(result.totalCount);
-              this.isLiked = result.isLiked;
-              this.cachedLikeDetails = result;
-              this.likeStateUrl = targetUrl;
-              this.likeStateLoadedAt = Date.now();
-              this.likeListStatus.set(NCStatus.Ready);
-              this.render();
-            }
-            return result.isLiked;
-          });
-      const [signerResult, isLiked] = await Promise.all([
-        ensureSignerForAction({
-          action: 'like',
-          theme: this.theme,
-        }),
-        statePromise,
-      ]);
+      const signerResult = await ensureSignerForAction({
+        action: 'like',
+        theme: this.theme,
+      });
 
       if (isStale()) return;
 
@@ -330,7 +290,15 @@ export default class NostrLike extends NostrBaseComponent {
       }
 
       if (isStale()) return;
-      this.isLiked = isLiked;
+
+      // Check user like status
+      this.isLiked = await hasUserLiked(
+        targetUrl,
+        signerResult.publicKey,
+        this.getRelays()
+      );
+
+      if (isStale()) return;
 
       // If already liked, show confirmation dialog
       if (this.isLiked) {
@@ -390,19 +358,16 @@ export default class NostrLike extends NostrBaseComponent {
       this.isLiked = optimisticState.isLiked;
       this.likeCount = optimisticState.likeCount;
       didApplyOptimisticUpdate = true;
-      this.render();
-
+      
+      // Create NDKEvent and publish
       await publishSignedReaction(signedEvent, this.getRelays(), async () => {
         const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
         await ndkEvent.publish();
       });
 
+      // Keep action locked until authoritative refresh finishes
+      await this.updateLikeCount();
       this.likeActionStatus.set(NCStatus.Ready);
-      this.render();
-      invalidateLikeStateCache(likeUrl, this.getRelays());
-      window.setTimeout(() => {
-        void this.updateLikeCount(true);
-      }, 1000);
     } catch (error) {
       console.error('[NostrLike] Failed to like:', error);
 
@@ -452,19 +417,16 @@ export default class NostrLike extends NostrBaseComponent {
       this.isLiked = optimisticState.isLiked;
       this.likeCount = optimisticState.likeCount;
       didApplyOptimisticUpdate = true;
-      this.render();
-
+      
+      // Create NDKEvent and publish
       await publishSignedReaction(signedEvent, this.getRelays(), async () => {
         const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
         await ndkEvent.publish();
       });
 
+      // Keep action locked until authoritative refresh finishes
+      await this.updateLikeCount();
       this.likeActionStatus.set(NCStatus.Ready);
-      this.render();
-      invalidateLikeStateCache(unlikeUrl, this.getRelays());
-      window.setTimeout(() => {
-        void this.updateLikeCount(true);
-      }, 1000);
     } catch (error) {
       console.error('[NostrLike] Failed to unlike:', error);
 
