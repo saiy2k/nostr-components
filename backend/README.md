@@ -63,8 +63,10 @@ Relay connections and subscriptions use NDK. The jobs retain explicit event
 validation, pagination, deduplication, Firestore writes, and checkpoint logic.
 
 Run projection after backfill because it consumes the handle documents created
-by backfill. `deploy-relay-directory-projection.sh` creates an unscheduled job;
-execute it manually, or set `RUN_AFTER_DEPLOY=true` to run it once immediately.
+by backfill. `deploy-relay-directory-projection.sh` creates a daily Cloud
+Scheduler job (`relay-directory-projection-daily`, default `0 7 * * *` UTC —
+one hour after backfill). Set `CREATE_SCHEDULER=false` to skip it, or
+`RUN_AFTER_DEPLOY=true` to also execute once immediately after deploy.
 X bio scans, NIP-39 proof-tweet checks, and backfill `@mention` existence
 checks all use FxTwitter's public API (`api.fxtwitter.com`); no X bearer token
 is required. Projection limits and timeouts are passed to Cloud Run as
