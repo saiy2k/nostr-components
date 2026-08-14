@@ -7,7 +7,6 @@
   const MISS_TTL_MS = 60 * 60 * 1000;
   const DEGRADED_MEMORY_TTL_MS = 5 * 60 * 1000;
   const memoryCache = new Map();
-  let bundledDirectoryPromise = null;
 
   /** Resolve the browser runtime messaging API. */
   function getRuntime() {
@@ -66,62 +65,6 @@
     return response.result;
   }
 
-  /** Load the compatibility directory used only when the backend is unavailable. */
-  async function loadBundledDirectory() {
-    if (bundledDirectoryPromise) {
-      return bundledDirectoryPromise;
-    }
-
-    const runtime = getRuntime();
-    if (!runtime) {
-      return {};
-    }
-
-    bundledDirectoryPromise = fetch(
-      runtime.runtime.getURL("verified-directory.json"),
-    )
-      .then(function (response) {
-        if (!response.ok) {
-          throw new Error("Failed to load bundled directory");
-        }
-        return response.json();
-      })
-      .catch(function () {
-        bundledDirectoryPromise = null;
-        return {};
-      });
-
-    return bundledDirectoryPromise;
-  }
-
-  /** Convert a bundled directory record to the public lookup response shape. */
-  async function bundledFallback(handle) {
-    const directory = await loadBundledDirectory();
-    const entry = directory[handle];
-    if (!entry || entry.verified !== true) {
-      return {
-        found: false,
-        verified: false,
-        platform: "twitter",
-        handle: handle,
-        source: "bundled-fallback",
-      };
-    }
-
-    return {
-      found: true,
-      verified: true,
-      platform: "twitter",
-      handle: handle,
-      source: "bundled-fallback",
-      activeIdentity: {
-        npub: entry.npub,
-        proofUrl: entry.proofUrl,
-        status: "verified",
-      },
-    };
-  }
-
   /** Return a valid memory entry and discard it after its expiry. */
   function getMemoryEntry(handle) {
     const cached = memoryCache.get(handle);
@@ -140,7 +83,7 @@
     memoryCache.set(handle, { value: value, expiresAt: expiresAt });
   }
 
-  /** Resolve author metadata through memory, extension storage, Firestore, then fallback. */
+  /** Resolve author metadata through memory, extension storage, then Firestore. */
   async function lookup(value) {
     const handle = normalizeHandle(value);
     if (!handle) {
@@ -179,9 +122,15 @@
         return staleValue;
       }
 
-      const fallback = await bundledFallback(handle);
-      setMemoryEntry(handle, fallback, Date.now() + DEGRADED_MEMORY_TTL_MS);
-      return fallback;
+      const miss = {
+        found: false,
+        verified: false,
+        platform: "twitter",
+        handle: handle,
+        source: "unavailable",
+      };
+      setMemoryEntry(handle, miss, Date.now() + DEGRADED_MEMORY_TTL_MS);
+      return miss;
     }
   }
 

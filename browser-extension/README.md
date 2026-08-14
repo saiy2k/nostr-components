@@ -20,8 +20,8 @@ npm run build:browser-extension
 The function reads only `nostrDirectoryHandles/twitter:{normalized-handle}` from
 Firestore and returns a sanitized active identity. It never exposes pending
 claims, evidence arrays, rejection tombstones, or Firestore credentials. The
-extension caches directory results in `chrome.storage.local` and uses the
-bundled `verified-directory.json` only as an offline compatibility fallback.
+extension caches directory results in `chrome.storage.local` and reuses a stale
+cache if Firestore is temporarily unavailable.
 
 Deploy the read-only lookup function to `gr-prod`:
 
