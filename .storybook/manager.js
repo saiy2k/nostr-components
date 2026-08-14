@@ -1,18 +1,19 @@
-import { addons } from '@storybook/manager-api';
+import { addons } from 'storybook/manager-api';
 import { themes } from 'storybook/theming';
+import { initCleanUrls } from './clean-urls-manager';
 
 addons.setConfig({
   storySort: {
     order: [
-      'Introduction', 
+      'Introduction',
       'Zap Button',
-      'Follow Button', 
-      'Like Button', 
+      'Follow Button',
+      'Like Button',
       'Profile Badge',
-      'Profile', 
+      'Profile',
       'Post',
       'Stream',
-      'Documentation'
+      'Documentation',
     ],
   },
   initialActive: 'Introduction',
@@ -22,3 +23,5 @@ addons.setConfig({
     brandUrl: 'https://nostr-components.web.app/',
   },
 });
+
+initCleanUrls();

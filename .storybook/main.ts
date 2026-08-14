@@ -41,5 +41,43 @@ const config: StorybookConfig = {
 
   // Components load from jsDelivr in preview-head.html; only local images are served here.
   staticDirs: [{ from: '../images', to: '/images' }],
+
+  // SPA fallback so /zap-button deep links work in `storybook dev`.
+  async viteFinal(config) {
+    const existingPlugins = config.plugins ?? [];
+    return {
+      ...config,
+      appType: 'spa',
+      plugins: [
+        ...existingPlugins,
+        {
+          name: 'storybook-clean-url-fallback',
+          configureServer(server) {
+            server.middlewares.use((req, _res, next) => {
+              const url = req.url ?? '';
+              if (
+                req.method !== 'GET' ||
+                url.startsWith('/@') ||
+                url.startsWith('/node_modules') ||
+                url.startsWith('/sb-') ||
+                url.startsWith('/iframe.html') ||
+                url.startsWith('/index.json') ||
+                url.startsWith('/images/') ||
+                url.startsWith('/themes') ||
+                url.includes('.')
+              ) {
+                next();
+                return;
+              }
+              if (url !== '/' && !url.startsWith('/?')) {
+                req.url = '/';
+              }
+              next();
+            });
+          },
+        },
+      ],
+    };
+  },
 };
 export default config;

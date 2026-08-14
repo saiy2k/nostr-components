@@ -1,0 +1,91 @@
+<!--
+  Early rewrite: convert clean pathnames to Storybook ?path= before the manager boots.
+  Paired with clean-urls-manager.ts which keeps the address bar clean after load.
+  Note: <base href="/"> is injected at the top of <head> by scripts/patch-storybook-base.js
+  so nested clean URLs resolve static assets from the site root.
+-->
+<script>
+  (function () {
+    try {
+      var location = window.location;
+      if (location.search.indexOf('path=') !== -1) return;
+
+      var pathname = location.pathname || '/';
+      if (pathname === '/') return;
+
+      var staticPrefixes = [
+        '/sb-',
+        '/assets/',
+        '/images/',
+        '/themes',
+        '/dist/',
+        '/iframe.html',
+        '/iframe',
+        '/index.json',
+        '/index.html',
+        '/vite-inject',
+        '/@',
+        '/node_modules/',
+        '/nostr-components',
+        '/favicon',
+        '/project.json',
+      ];
+      for (var i = 0; i < staticPrefixes.length; i++) {
+        if (pathname.indexOf(staticPrefixes[i]) === 0) return;
+      }
+
+      var firstSegment = pathname.split('/').filter(Boolean)[0] || '';
+      if (
+        firstSegment === 'iframe' ||
+        firstSegment === 'sb-addons' ||
+        firstSegment === 'sb-manager' ||
+        firstSegment === 'sb-common-assets'
+      ) {
+        return;
+      }
+
+      var lastSegment = pathname.split('/').pop() || '';
+      if (lastSegment.indexOf('.') !== -1) return;
+
+      function sanitize(input) {
+        return String(input)
+          .toLowerCase()
+          .replace(/[ ’–—―′¿'`‘“”"″′‘’']/g, '-')
+          .replace(/&/g, 'and')
+          .replace(/[^\w-]/g, '-')
+          .replace(/--+/g, '-')
+          .replace(/(^-|-$)/g, '');
+      }
+
+      var segments = pathname
+        .split('/')
+        .filter(Boolean)
+        .map(sanitize)
+        .filter(Boolean);
+      if (!segments.length) return;
+
+      var viewMode;
+      var storyId;
+      if (segments.length === 1) {
+        viewMode = 'docs';
+        storyId = segments[0] + '--docs';
+      } else {
+        viewMode = 'story';
+        storyId =
+          segments.slice(0, -1).join('-') + '--' + segments[segments.length - 1];
+      }
+
+      // Keep `path` unencoded like Storybook does (`?path=/docs/...`).
+      var params = new URLSearchParams(location.search);
+      var parts = ['path=/' + viewMode + '/' + storyId];
+      params.forEach(function (value, key) {
+        if (key === 'path') return;
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+      });
+      var next = '/?' + parts.join('&') + location.hash;
+      window.history.replaceState(window.history.state, '', next);
+    } catch (e) {
+      // Fail open: Storybook still works with default query routing.
+    }
+  })();
+</script>

@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     // Test file patterns
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', 'dist', '.storybook', 'storybook-static', 'functions', 'backend'],
+    exclude: ['node_modules', 'dist', 'storybook-static', 'functions', 'backend'],
     
     // Test environment - using 'node' for pure functions, can switch to 'happy-dom' when testing Web Components
     environment: 'node',
