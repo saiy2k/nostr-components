@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Nostr Like for X",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Adds Nostr Like buttons to posts on X.",
+  "incognito": "split",
   "permissions": ["scripting", "storage"],
   "host_permissions": [
     "https://x.com/*",

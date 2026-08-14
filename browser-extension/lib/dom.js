@@ -3,6 +3,16 @@
 (function () {
   const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
 
+  function nestingDepth(node, ancestor) {
+    let depth = 0;
+    let current = node;
+    while (current && current !== ancestor) {
+      depth += 1;
+      current = current.parentElement;
+    }
+    return current === ancestor ? depth : Number.POSITIVE_INFINITY;
+  }
+
   function getTweetInfo(article) {
     const timeLink = article.querySelector('a[href*="/status/"] time');
     if (timeLink && timeLink.closest('a')) {
@@ -14,19 +24,109 @@
       }
     }
 
+    const parsedLinks = [];
     const links = Array.from(article.querySelectorAll('a[href*="/status/"]'));
     for (const link of links) {
       const parsed = extension.url.parseTweetUrl(link.getAttribute('href'));
-      if (parsed) {
-        return parsed;
+      if (!parsed) continue;
+      parsedLinks.push({
+        info: parsed,
+        depth: nestingDepth(link, article)
+      });
+    }
+    if (parsedLinks.length === 0) {
+      return null;
+    }
+
+    const page = extension.url.parseTweetUrl(
+      typeof window !== 'undefined' ? window.location.href : ''
+    );
+    if (page) {
+      const matchingPage = parsedLinks.find(function (entry) {
+        return entry.info.statusId === page.statusId;
+      });
+      if (matchingPage) {
+        return matchingPage.info;
+      }
+    }
+
+    parsedLinks.sort(function (left, right) {
+      return left.depth - right.depth;
+    });
+    return parsedLinks[0].info;
+  }
+
+  function isLikeAriaLabel(value) {
+    const label = String(value || '').trim().toLowerCase();
+    return (
+      label === 'like' ||
+      label.startsWith('like ') ||
+      label.startsWith('liked') ||
+      label.startsWith('unlike')
+    );
+  }
+
+  function findLikeControl(root) {
+    const nativeLike = root.querySelector(
+      '[data-testid="like"], [data-testid="unlike"]'
+    );
+    if (nativeLike) {
+      return nativeLike;
+    }
+
+    const buttons = root.querySelectorAll('button');
+    for (let index = 0; index < buttons.length; index += 1) {
+      if (isLikeAriaLabel(buttons[index].getAttribute('aria-label'))) {
+        return buttons[index];
       }
     }
     return null;
   }
 
+  function isActionRow(node, likeControl) {
+    if (!node || node === likeControl) {
+      return false;
+    }
+    const childCount = node.children ? node.children.length : 0;
+    if (childCount < 3 || childCount > 8) {
+      return false;
+    }
+    const buttons = node.querySelectorAll('button');
+    let hasLike = false;
+    let hasPeer = false;
+    for (let index = 0; index < buttons.length; index += 1) {
+      const label = String(buttons[index].getAttribute('aria-label') || '')
+        .trim()
+        .toLowerCase();
+      if (isLikeAriaLabel(label)) hasLike = true;
+      if (label === 'reply' || label.startsWith('reply ') ||
+          label === 'repost' || label.startsWith('repost ')) {
+        hasPeer = true;
+      }
+    }
+    return hasLike && hasPeer;
+  }
+
   function findActionBar(article) {
-    const nativeLike = article.querySelector('[data-testid="like"], [data-testid="unlike"]');
-    return nativeLike ? nativeLike.closest('div[role="group"]') : null;
+    const likeControl = findLikeControl(article);
+    if (!likeControl) {
+      return null;
+    }
+    if (typeof likeControl.closest === 'function') {
+      const group = likeControl.closest('div[role="group"]');
+      if (group) {
+        return group;
+      }
+    }
+
+    let current = likeControl.parentElement;
+    while (current && current !== article) {
+      if (isActionRow(current, likeControl)) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return null;
   }
 
   function findAction(actionBar, statusId) {
@@ -81,8 +181,10 @@
   }
 
   function insertAfterNativeLike(actionBar, slot) {
-    const nativeLike = actionBar.querySelector('[data-testid="like"], [data-testid="unlike"]');
-    const likeContainer = nativeLike ? directChildContaining(actionBar, nativeLike) : null;
+    const likeControl = findLikeControl(actionBar);
+    const likeContainer = likeControl
+      ? directChildContaining(actionBar, likeControl)
+      : null;
     if (likeContainer) {
       actionBar.insertBefore(slot, likeContainer.nextSibling);
       return;
