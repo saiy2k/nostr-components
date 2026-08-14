@@ -15,8 +15,9 @@ export type SbPath = { viewMode: ViewMode; storyId: string };
 export type Entry = { id: string; title: string; name: string; type: string };
 
 const ROOT = new Set(['nostr-components', 'introduction']);
-const STATIC_RE =
-  /^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|nostr-components|favicon|project\.json|nunito-sans)/;
+/** Keep in sync with the early-rewrite guard in manager-head.html. */
+export const STATIC_RE =
+  /^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|favicon|project\.json|nunito-sans)/;
 
 export const sanitize = (s: string) =>
   s
@@ -32,6 +33,9 @@ export const isStaticPath = (pathname: string) => {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return STATIC_RE.test(p) || (p.split('/').pop() ?? '').includes('.');
 };
+
+export const hasStorybookPathParam = (search = location.search) =>
+  new URLSearchParams(search).has('path');
 
 const titleSegs = (title: string) =>
   title.split('/').map(t => sanitize(t.trim())).filter(Boolean);
@@ -64,9 +68,10 @@ export const cleanPathToStorybookPath = (pathname: string): SbPath | null => {
 };
 
 export const buildCleanPathMaps = (entries: Iterable<Entry>) => {
+  const all = [...entries];
   const idToClean = new Map<string, string>();
   const cleanToSb = new Map<string, SbPath>();
-  for (const e of entries) {
+  for (const e of all) {
     if (e.type !== 'docs' && e.type !== 'story') continue;
     const clean = entryToCleanPath(e);
     idToClean.set(e.id, clean);
@@ -74,7 +79,7 @@ export const buildCleanPathMaps = (entries: Iterable<Entry>) => {
       cleanToSb.set(clean, { viewMode: e.type as ViewMode, storyId: e.id });
     }
   }
-  const intro = [...entries].find(
+  const intro = all.find(
     e => e.type === 'docs' && ROOT.has(titleSegs(e.title).join('/'))
   );
   if (intro) {
@@ -113,23 +118,32 @@ export const storybookPathToCleanPath = (
     : `/${parsed.storyId.slice(0, i)}/${parsed.storyId.slice(i + 2)}`;
 };
 
+/** Keep Storybook `:` separators readable; escape query structure chars only. */
+const escapeQueryValue = (value: string) =>
+  value.replace(/%/g, '%25').replace(/&/g, '%26').replace(/#/g, '%23').replace(/\?/g, '%3F');
+
 const search = (params: URLSearchParams, path?: string) => {
   const parts = path ? [`path=${path}`] : [];
   params.forEach((v, k) => {
     if (k === 'path') return;
-    parts.push(k === 'args' || k === 'globals' ? `${k}=${v}` : `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+    parts.push(
+      k === 'args' || k === 'globals'
+        ? `${k}=${escapeQueryValue(v)}`
+        : `${encodeURIComponent(k)}=${encodeURIComponent(v)}`
+    );
   });
   return parts.length ? `?${parts.join('&')}` : '';
 };
 
 export const rewriteUrlToClean = (url: string | URL, idToClean?: Map<string, string>) => {
-  const u = typeof url === 'string' ? new URL(url, 'http://sb.local') : url;
+  const u = typeof url === 'string' ? new URL(url, 'http://sb.local') : new URL(url.href);
   const q = u.searchParams.get('path');
   if (!q) return null;
   const clean = storybookPathToCleanPath(q, idToClean);
   if (clean == null) return null;
-  u.searchParams.delete('path');
-  return `${clean}${search(u.searchParams)}${u.hash}`;
+  const rest = new URLSearchParams(u.searchParams);
+  rest.delete('path');
+  return `${clean}${search(rest)}${u.hash}`;
 };
 
 export const rewriteUrlToStorybook = (
@@ -147,9 +161,24 @@ export const rewriteUrlToStorybook = (
 
 let idToClean = new Map<string, string>();
 let cleanToSb = new Map<string, SbPath>();
-let syncing = false;
+let syncDepth = 0;
 let rawPush: History['pushState'];
 let rawReplace: History['replaceState'];
+
+const isSyncing = () => syncDepth > 0;
+
+const endSyncSoon = (after?: () => void) => {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    syncDepth = Math.max(0, syncDepth - 1);
+    if (syncDepth === 0) after?.();
+  };
+  requestAnimationFrame(finish);
+  // Background tabs may throttle rAF; always clear.
+  setTimeout(finish, 100);
+};
 
 const applyMaps = (entries: Entry[]) => {
   if (!entries.length) return;
@@ -169,34 +198,31 @@ const leafEntries = (index?: API_IndexHash): Entry[] =>
         }));
 
 const polish = () => {
-  if (syncing || idToClean.size === 0 || !location.search.includes('path=')) return;
+  if (isSyncing() || idToClean.size === 0 || !hasStorybookPathParam()) return;
   const next = rewriteUrlToClean(location.href, idToClean);
   if (!next || next === `${location.pathname}${location.search}${location.hash}`) return;
-  syncing = true;
+  syncDepth += 1;
   try {
     rawReplace.call(history, history.state, '', next);
   } finally {
-    syncing = false;
+    syncDepth = Math.max(0, syncDepth - 1);
   }
 };
 
 const selectClean = (api: API) => {
-  if (location.search.includes('path=') || isStaticPath(location.pathname)) return;
+  if (hasStorybookPathParam() || isStaticPath(location.pathname)) return;
   if (location.pathname === '/' || !location.pathname) return;
   const r = resolveCleanPath(location.pathname, cleanToSb);
   if (!r) return;
   const s = api.getState?.() as { storyId?: string; viewMode?: string } | undefined;
   if (s?.storyId === r.storyId && s?.viewMode === r.viewMode) return;
-  syncing = true;
+  syncDepth += 1;
   try {
     api.selectStory(r.storyId, undefined, { viewMode: r.viewMode });
   } catch {
     /* index still hydrating */
   } finally {
-    requestAnimationFrame(() => {
-      syncing = false;
-      polish();
-    });
+    endSyncSoon(polish);
   }
 };
 
@@ -206,7 +232,9 @@ const patchHistory = () => {
   const wrap =
     (orig: History['pushState']): History['pushState'] =>
     (state, title, url) => {
-      if (syncing || url == null || idToClean.size === 0) return orig(state, title, url as string);
+      if (isSyncing() || url == null || idToClean.size === 0) {
+        return orig(state, title, url as string);
+      }
       return orig(state, title, rewriteUrlToClean(String(url), idToClean) ?? url);
     };
   history.pushState = wrap(rawPush);
@@ -227,8 +255,8 @@ export function initCleanUrls() {
       requestAnimationFrame(polish);
     });
     addEventListener('popstate', () => {
-      if (syncing) return;
-      location.search.includes('path=') ? polish() : selectClean(api);
+      if (isSyncing()) return;
+      hasStorybookPathParam() ? polish() : selectClean(api);
     });
     fetch('/index.json')
       .then(r => (r.ok ? r.json() : null))

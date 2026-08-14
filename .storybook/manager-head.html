@@ -3,8 +3,9 @@
 (function () {
   try {
     var loc = location;
-    if (loc.search.indexOf('path=') !== -1 || loc.pathname === '/') return;
-    if (/^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|nostr-components|favicon|project\.json)/.test(loc.pathname)) return;
+    // Keep STATIC_RE in sync with .storybook/clean-urls.ts
+    if (new URLSearchParams(loc.search).has('path') || loc.pathname === '/') return;
+    if (/^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|favicon|project\.json|nunito-sans)/.test(loc.pathname)) return;
     if ((loc.pathname.split('/').pop() || '').indexOf('.') !== -1) return;
     var slug = function (s) {
       return String(s).toLowerCase().replace(/[ ’–—―′¿'`‘“”"″′‘’']/g, '-').replace(/&/g, 'and').replace(/[^\w-]/g, '-').replace(/--+/g, '-').replace(/(^-|-$)/g, '');

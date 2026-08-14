@@ -3,6 +3,8 @@ import {
   buildCleanPathMaps,
   cleanPathToStorybookPath,
   entryToCleanPath,
+  hasStorybookPathParam,
+  isStaticPath,
   parseStorybookPath,
   resolveCleanPath,
   rewriteUrlToClean,
@@ -68,5 +70,30 @@ describe('clean Storybook URLs', () => {
       '/?path=/story/zap-button-styling--ocean-glass'
     );
     expect(rewriteUrlToStorybook('/zap-button')).toBe('/?path=/docs/zap-button--docs');
+  });
+
+  it('handles CodeRabbit edge cases', () => {
+    expect(hasStorybookPathParam('?basepath=/x')).toBe(false);
+    expect(hasStorybookPathParam('?path=/docs/zap-button--docs')).toBe(true);
+    expect(isStaticPath('/nostr-components')).toBe(false);
+    expect(isStaticPath('/nunito-sans')).toBe(true);
+    expect(cleanPathToStorybookPath('/nostr-components')).toEqual({
+      viewMode: 'docs',
+      storyId: 'nostr-components--docs',
+    });
+    expect(rewriteUrlToStorybook('/nostr-components')).toBe(
+      '/?path=/docs/nostr-components--docs'
+    );
+    // Decoded "&" in args must not become a new query delimiter.
+    expect(
+      rewriteUrlToClean('/?path=/docs/zap-button--docs&args=text:a%26b')
+    ).toBe('/zap-button?args=text:a%26b');
+    // Single-pass iterables still get intro aliases.
+    function* once() {
+      yield entries[0];
+      yield entries[1];
+    }
+    const { cleanToSb } = buildCleanPathMaps(once());
+    expect(cleanToSb.get('/')?.storyId).toBe('nostr-components--docs');
   });
 });
