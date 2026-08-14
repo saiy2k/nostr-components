@@ -1,12 +1,15 @@
 /* SPDX-License-Identifier: MIT */
 
+/* Stretch with the action row; fixed height misaligns on taller standalone rows. */
 .nostr-competency-action-slot {
   display: flex;
   justify-content: center;
   align-items: center;
+  align-self: stretch;
   flex: 1 1 0;
   min-width: 0;
-  height: 34px;
+  min-height: 34px;
+  height: auto;
   padding: 0 2px;
   box-sizing: border-box;
   position: relative;
@@ -20,4 +23,5 @@
   width: 100%;
   min-width: 0;
   height: 34px;
+  align-self: center;
 }

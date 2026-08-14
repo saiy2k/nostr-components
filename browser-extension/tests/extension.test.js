@@ -336,6 +336,66 @@ describe('X action placement', function () {
     expect(component.getAttribute('compact')).toBe('');
     expect(component.getAttribute('url')).toBe('https://x.com/alokdangre/status/42');
   });
+
+  it('keeps Like→Nostr→Views order on standalone status action rows', function () {
+    const viewsContainer = { name: 'views', offsetHeight: 44 };
+    const actionBar = {
+      children: { length: 5 },
+      querySelector(selector) {
+        return String(selector).includes('data-testid') ? nativeLike : null;
+      },
+      insertBefore(slot, sibling) {
+        this.inserted = { slot: slot, sibling: sibling };
+      }
+    };
+    const likeContainer = {
+      name: 'like',
+      offsetHeight: 44,
+      parentElement: actionBar,
+      nextSibling: viewsContainer
+    };
+    const nativeLike = {
+      parentElement: likeContainer,
+      closest() {
+        return actionBar;
+      }
+    };
+    const article = {
+      querySelector(selector) {
+        return selector.includes('data-testid') ? nativeLike : null;
+      }
+    };
+
+    globalThis.window = {
+      location: {
+        href: 'https://x.com/jack/status/2082355452583526840',
+        origin: 'https://x.com'
+      }
+    };
+
+    const selectedActionBar = extension.dom.findActionBar(article);
+    const slot = { className: 'nostr-competency-action-slot' };
+    extension.dom.insertAfterNativeLike(selectedActionBar, slot);
+
+    expect(selectedActionBar).toBe(actionBar);
+    expect(actionBar.inserted).toEqual({
+      slot: slot,
+      sibling: viewsContainer
+    });
+    expect(likeContainer.offsetHeight).toBe(44);
+    expect(viewsContainer.offsetHeight).toBe(44);
+  });
+
+  it('stretches the action slot so standalone rows can vertically center the control', function () {
+    const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+    const slotRule = css.match(/\.nostr-competency-action-slot\s*\{[^}]+\}/);
+
+    expect(slotRule).not.toBeNull();
+    expect(slotRule[0]).toMatch(/align-self:\s*stretch/);
+    expect(slotRule[0]).toMatch(/align-items:\s*center/);
+    expect(slotRule[0]).toMatch(/(?:^|[^-])height:\s*auto/m);
+    expect(slotRule[0]).not.toMatch(/(?:^|[^-])height:\s*34px/m);
+  });
 });
 
 describe('CSP-safe component and relay integration', function () {
