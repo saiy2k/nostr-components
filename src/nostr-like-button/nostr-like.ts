@@ -12,12 +12,12 @@ import {
   createLikeEvent,
   createUnlikeEvent,
   hasUserLiked, 
-  getRelayTransport,
   publishSignedReaction,
   signEvent, 
   LikeCountResult 
 } from './like-utils';
 import { ensureSignerForAction } from '../common/auth-onboarding';
+import { getRelayTransport } from '../common/relay-transport';
 import { normalizeURL } from 'nostr-tools/utils';
 import {
   applyOptimisticLike,
