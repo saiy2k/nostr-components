@@ -1,6 +1,6 @@
 import { addons } from 'storybook/manager-api';
 import { themes } from 'storybook/theming';
-import { initCleanUrls } from './clean-urls-manager';
+import { initCleanUrls } from './clean-urls';
 
 addons.setConfig({
   storySort: {

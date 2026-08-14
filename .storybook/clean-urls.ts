@@ -1,321 +1,257 @@
 /**
- * Clean path-based Storybook URLs.
- *
- * Maps Storybook query routes like:
- *   /?path=/docs/zap-button--docs
- *   /?path=/story/zap-button-styling--ocean-glass-theme
- * to:
- *   /zap-button
- *   /zap-button/styling/ocean-glass-theme
+ * Clean Storybook URLs: /?path=/story/zap-button-styling--ocean-glass
+ *                     → /zap-button/styling/ocean-glass
  */
+import { addons, type API } from 'storybook/manager-api';
+import {
+  CURRENT_STORY_WAS_SET,
+  SET_INDEX,
+  STORY_INDEX_INVALIDATED,
+} from 'storybook/internal/core-events';
+import type { API_IndexHash } from 'storybook/internal/types';
 
-/** Match Storybook's CSF sanitize for stable slug generation. */
-export function sanitize(input: string): string {
-  return input
+export type ViewMode = 'docs' | 'story';
+export type SbPath = { viewMode: ViewMode; storyId: string };
+export type Entry = { id: string; title: string; name: string; type: string };
+
+const ROOT = new Set(['nostr-components', 'introduction']);
+const STATIC_RE =
+  /^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|nostr-components|favicon|project\.json|nunito-sans)/;
+
+export const sanitize = (s: string) =>
+  s
     .toLowerCase()
-    .replace(/[ ’–—―′¿'`‘“”"″′‘’]/g, '-')
+    .replace(/[ ’–—―′¿'`‘“”"″′‘’']/g, '-')
     .replace(/&/g, 'and')
     .replace(/[^\w-]/g, '-')
     .replace(/--+/g, '-')
     .replace(/(^-|-$)/g, '');
-}
 
-export type StorybookViewMode = 'docs' | 'story';
-
-export interface LeafEntryLike {
-  id: string;
-  title: string;
-  name: string;
-  type: 'docs' | 'story' | string;
-}
-
-export interface StorybookPath {
-  viewMode: StorybookViewMode;
-  storyId: string;
-}
-
-/** Title slugs that should resolve to the site root `/`. */
-const ROOT_TITLE_SLUGS = new Set(['nostr-components', 'introduction']);
-
-/** Path prefixes that are static assets / Storybook internals, not stories. */
-const STATIC_PATH_PREFIXES = [
-  '/sb-',
-  '/assets/',
-  '/images/',
-  '/themes',
-  '/dist/',
-  '/iframe.html',
-  '/iframe',
-  '/index.json',
-  '/index.html',
-  '/vite-inject',
-  '/@',
-  '/node_modules/',
-  '/nostr-components',
-  '/favicon',
-  '/project.json',
-  '/nunito-sans',
-];
-
-/** First path segments that must never be treated as story titles. */
-const STATIC_FIRST_SEGMENTS = new Set([
-  'iframe',
-  'iframe.html',
-  'sb-addons',
-  'sb-common-assets',
-  'sb-manager',
-  'assets',
-  'images',
-  'themes',
-  'dist',
-  'static',
-  'vite-inject',
-  'node_modules',
-  'favicon.svg',
-  'favicon-wrapper.svg',
-  'project.json',
-  'index.json',
-  'index.html',
-]);
-
-export function isStaticPath(pathname: string): boolean {
+export const isStaticPath = (pathname: string) => {
   if (!pathname || pathname === '/') return false;
-  const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`;
-  if (STATIC_PATH_PREFIXES.some(prefix => normalized.startsWith(prefix))) {
-    return true;
+  const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  return STATIC_RE.test(p) || (p.split('/').pop() ?? '').includes('.');
+};
+
+const titleSegs = (title: string) =>
+  title.split('/').map(t => sanitize(t.trim())).filter(Boolean);
+
+export const entryToCleanPath = (e: Entry) => {
+  const segs = titleSegs(e.title);
+  const titlePath = segs.join('/');
+  if (e.type === 'docs' || e.id.endsWith('--docs')) {
+    return !segs.length || ROOT.has(titlePath) ? '/' : `/${titlePath}`;
   }
-  const segments = normalized.split('/').filter(Boolean);
-  if (segments.length > 0 && STATIC_FIRST_SEGMENTS.has(segments[0])) {
-    return true;
-  }
-  const lastSegment = segments[segments.length - 1] ?? '';
-  return lastSegment.includes('.');
-}
+  const slug = e.id.includes('--') ? e.id.slice(e.id.indexOf('--') + 2) : sanitize(e.name);
+  return `/${titlePath}/${slug}`;
+};
 
-export function titleToPathSegments(title: string): string[] {
-  return title
-    .split('/')
-    .map(part => sanitize(part.trim()))
-    .filter(Boolean);
-}
+export const parseStorybookPath = (q?: string | null): SbPath | null => {
+  const m = (q?.startsWith('/') ? q : `/${q ?? ''}`).match(/^\/(docs|story)\/(.+)$/);
+  return m ? { viewMode: m[1] as ViewMode, storyId: m[2] } : null;
+};
 
-/**
- * Convert a leaf story/docs entry into a clean URL pathname.
- * Docs for the intro page map to `/`; other docs omit the story slug.
- */
-export function entryToCleanPath(entry: LeafEntryLike): string {
-  const segments = titleToPathSegments(entry.title);
-  const titlePath = segments.join('/');
-  const isDocs = entry.type === 'docs' || entry.id.endsWith('--docs');
-
-  if (isDocs) {
-    if (segments.length === 0 || ROOT_TITLE_SLUGS.has(titlePath)) {
-      return '/';
-    }
-    return `/${titlePath}`;
-  }
-
-  const storySlug = entry.id.includes('--')
-    ? entry.id.slice(entry.id.indexOf('--') + 2)
-    : sanitize(entry.name);
-
-  return `/${titlePath}/${storySlug}`;
-}
-
-/**
- * Parse Storybook's internal `path` query value (`/docs/id` or `/story/id`).
- */
-export function parseStorybookPath(pathQuery: string | null | undefined): StorybookPath | null {
-  if (!pathQuery) return null;
-  const cleaned = pathQuery.startsWith('/') ? pathQuery : `/${pathQuery}`;
-  const match = cleaned.match(/^\/(docs|story)\/(.+)$/);
-  if (!match) return null;
-  return {
-    viewMode: match[1] as StorybookViewMode,
-    storyId: match[2],
-  };
-}
-
-export function toStorybookPathQuery(viewMode: StorybookViewMode, storyId: string): string {
-  return `/${viewMode}/${storyId}`;
-}
-
-/**
- * Heuristic reverse mapping used before the story index is available.
- * `/zap-button` → docs `zap-button--docs`
- * `/zap-button/nip05` → story `zap-button--nip05`
- * `/zap-button/styling/ocean-glass-theme` → story `zap-button-styling--ocean-glass-theme`
- */
-export function cleanPathToStorybookPath(pathname: string): StorybookPath | null {
-  if (!pathname || pathname === '/' || isStaticPath(pathname)) {
-    return null;
-  }
-
-  const segments = pathname.split('/').filter(Boolean).map(sanitize).filter(Boolean);
-  if (segments.length === 0) return null;
-
-  if (segments.length === 1) {
-    const titleId = segments[0];
-    if (ROOT_TITLE_SLUGS.has(titleId)) {
-      return { viewMode: 'docs', storyId: `${titleId}--docs` };
-    }
-    return { viewMode: 'docs', storyId: `${titleId}--docs` };
-  }
-
-  const storySlug = segments[segments.length - 1];
-  const titleId = segments.slice(0, -1).join('-');
+/** Heuristic used before index.json is available. */
+export const cleanPathToStorybookPath = (pathname: string): SbPath | null => {
+  if (!pathname || pathname === '/' || isStaticPath(pathname)) return null;
+  const segs = pathname.split('/').filter(Boolean).map(sanitize).filter(Boolean);
+  if (!segs.length) return null;
+  if (segs.length === 1) return { viewMode: 'docs', storyId: `${segs[0]}--docs` };
   return {
     viewMode: 'story',
-    storyId: `${titleId}--${storySlug}`,
+    storyId: `${segs.slice(0, -1).join('-')}--${segs[segs.length - 1]}`,
   };
-}
+};
 
-export function buildCleanPathMaps(entries: Iterable<LeafEntryLike>): {
-  idToClean: Map<string, string>;
-  cleanToStorybook: Map<string, StorybookPath>;
-} {
+export const buildCleanPathMaps = (entries: Iterable<Entry>) => {
   const idToClean = new Map<string, string>();
-  const cleanToStorybook = new Map<string, StorybookPath>();
-
-  for (const entry of entries) {
-    if (entry.type !== 'docs' && entry.type !== 'story') continue;
-
-    const clean = entryToCleanPath(entry);
-    const viewMode: StorybookViewMode = entry.type === 'docs' ? 'docs' : 'story';
-    idToClean.set(entry.id, clean);
-
-    // First writer wins so component docs keep `/zap-button` over any collision.
-    if (!cleanToStorybook.has(clean)) {
-      cleanToStorybook.set(clean, { viewMode, storyId: entry.id });
+  const cleanToSb = new Map<string, SbPath>();
+  for (const e of entries) {
+    if (e.type !== 'docs' && e.type !== 'story') continue;
+    const clean = entryToCleanPath(e);
+    idToClean.set(e.id, clean);
+    if (!cleanToSb.has(clean)) {
+      cleanToSb.set(clean, { viewMode: e.type as ViewMode, storyId: e.id });
     }
   }
-
-  // Explicit root aliases for the intro docs page.
   const intro = [...entries].find(
-    e =>
-      e.type === 'docs' &&
-      ROOT_TITLE_SLUGS.has(titleToPathSegments(e.title).join('/'))
+    e => e.type === 'docs' && ROOT.has(titleSegs(e.title).join('/'))
   );
   if (intro) {
     idToClean.set(intro.id, '/');
-    cleanToStorybook.set('/', { viewMode: 'docs', storyId: intro.id });
-    cleanToStorybook.set(
-      `/${titleToPathSegments(intro.title).join('/')}`,
-      { viewMode: 'docs', storyId: intro.id }
-    );
+    cleanToSb.set('/', { viewMode: 'docs', storyId: intro.id });
+    cleanToSb.set(`/${titleSegs(intro.title).join('/')}`, {
+      viewMode: 'docs',
+      storyId: intro.id,
+    });
   }
+  return { idToClean, cleanToSb };
+};
 
-  return { idToClean, cleanToStorybook };
-}
-
-/**
- * Resolve a clean pathname to a Storybook path using the index map when
- * available, otherwise the deterministic heuristic.
- */
-export function resolveCleanPath(
+export const resolveCleanPath = (
   pathname: string,
-  cleanToStorybook?: Map<string, StorybookPath>
-): StorybookPath | null {
-  const normalized =
-    pathname !== '/' && pathname.endsWith('/')
-      ? pathname.slice(0, -1)
-      : pathname;
+  cleanToSb?: Map<string, SbPath>
+) => {
+  const p = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  return cleanToSb?.get(p) ?? cleanPathToStorybookPath(p);
+};
 
-  if (cleanToStorybook?.has(normalized)) {
-    return cleanToStorybook.get(normalized) ?? null;
-  }
-
-  return cleanPathToStorybookPath(normalized);
-}
-
-/**
- * Given a Storybook path query and optional id→clean map, return the clean pathname.
- */
-export function storybookPathToCleanPath(
+export const storybookPathToCleanPath = (
   pathQuery: string,
   idToClean?: Map<string, string>
-): string | null {
+) => {
   const parsed = parseStorybookPath(pathQuery);
   if (!parsed) return null;
-
-  if (idToClean?.has(parsed.storyId)) {
-    return idToClean.get(parsed.storyId) ?? null;
-  }
-
-  // Fallback without index: flatten title id, keep docs as single segment.
+  if (idToClean?.has(parsed.storyId)) return idToClean.get(parsed.storyId)!;
   if (parsed.viewMode === 'docs' || parsed.storyId.endsWith('--docs')) {
-    const titleId = parsed.storyId.replace(/--docs$/, '');
-    if (ROOT_TITLE_SLUGS.has(titleId)) return '/';
-    return `/${titleId}`;
+    const id = parsed.storyId.replace(/--docs$/, '');
+    return ROOT.has(id) ? '/' : `/${id}`;
   }
+  const i = parsed.storyId.indexOf('--');
+  return i === -1
+    ? `/${parsed.storyId}`
+    : `/${parsed.storyId.slice(0, i)}/${parsed.storyId.slice(i + 2)}`;
+};
 
-  const separator = parsed.storyId.indexOf('--');
-  if (separator === -1) return `/${parsed.storyId}`;
-  const titleId = parsed.storyId.slice(0, separator);
-  const storySlug = parsed.storyId.slice(separator + 2);
-  // Without hierarchy info, keep a readable two-segment form.
-  return `/${titleId}/${storySlug}`;
-}
-
-/**
- * Build a query string while keeping Storybook's `path` value readable
- * (`?path=/story/...` instead of percent-encoded slashes).
- */
-function buildSearch(params: URLSearchParams, pathValue?: string): string {
-  const parts: string[] = [];
-  if (pathValue) {
-    parts.push(`path=${pathValue}`);
-  }
-  params.forEach((value, key) => {
-    if (key === 'path') return;
-    // Storybook args use unencoded `:` separators in practice.
-    if (key === 'args' || key === 'globals') {
-      parts.push(`${key}=${value}`);
-      return;
-    }
-    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+const search = (params: URLSearchParams, path?: string) => {
+  const parts = path ? [`path=${path}`] : [];
+  params.forEach((v, k) => {
+    if (k === 'path') return;
+    parts.push(k === 'args' || k === 'globals' ? `${k}=${v}` : `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
   });
   return parts.length ? `?${parts.join('&')}` : '';
-}
+};
 
-/**
- * Rewrite a full URL (string or URL) that uses `?path=` into a clean pathname URL,
- * preserving non-path query params (e.g. args, globals) and hash.
- */
-export function rewriteUrlToClean(
+export const rewriteUrlToClean = (url: string | URL, idToClean?: Map<string, string>) => {
+  const u = typeof url === 'string' ? new URL(url, 'http://sb.local') : url;
+  const q = u.searchParams.get('path');
+  if (!q) return null;
+  const clean = storybookPathToCleanPath(q, idToClean);
+  if (clean == null) return null;
+  u.searchParams.delete('path');
+  return `${clean}${search(u.searchParams)}${u.hash}`;
+};
+
+export const rewriteUrlToStorybook = (
   url: string | URL,
-  idToClean?: Map<string, string>
-): string | null {
-  const parsed = typeof url === 'string' ? new URL(url, 'http://storybook.local') : url;
-  const pathQuery = parsed.searchParams.get('path');
-  if (!pathQuery) return null;
+  cleanToSb?: Map<string, SbPath>
+) => {
+  const u = typeof url === 'string' ? new URL(url, 'http://sb.local') : url;
+  if (u.searchParams.has('path') || isStaticPath(u.pathname)) return null;
+  const r = resolveCleanPath(u.pathname, cleanToSb);
+  if (!r) return null;
+  return `/${search(u.searchParams, `/${r.viewMode}/${r.storyId}`)}${u.hash}`;
+};
 
-  const cleanPath = storybookPathToCleanPath(pathQuery, idToClean);
-  if (cleanPath == null) return null;
+// --- manager sync ---
 
-  parsed.searchParams.delete('path');
-  return `${cleanPath}${buildSearch(parsed.searchParams)}${parsed.hash}`;
-}
+let idToClean = new Map<string, string>();
+let cleanToSb = new Map<string, SbPath>();
+let syncing = false;
+let rawPush: History['pushState'];
+let rawReplace: History['replaceState'];
 
-/**
- * Rewrite a clean pathname URL into Storybook's `/?path=...` form.
- */
-export function rewriteUrlToStorybook(
-  url: string | URL,
-  cleanToStorybook?: Map<string, StorybookPath>
-): string | null {
-  const parsed = typeof url === 'string' ? new URL(url, 'http://storybook.local') : url;
-  if (parsed.searchParams.has('path')) return null;
-  if (isStaticPath(parsed.pathname)) return null;
+const applyMaps = (entries: Entry[]) => {
+  if (!entries.length) return;
+  ({ idToClean, cleanToSb } = buildCleanPathMaps(entries));
+};
 
-  const resolved = resolveCleanPath(parsed.pathname, cleanToStorybook);
-  if (!resolved) {
-    if (parsed.pathname === '/' || parsed.pathname === '') return null;
-    return null;
+const leafEntries = (index?: API_IndexHash): Entry[] =>
+  !index
+    ? []
+    : Object.values(index)
+        .filter(e => (e.type === 'docs' || e.type === 'story') && 'title' in e)
+        .map(e => ({
+          id: e.id,
+          title: String((e as { title: string }).title),
+          name: e.name,
+          type: e.type,
+        }));
+
+const polish = () => {
+  if (syncing || idToClean.size === 0 || !location.search.includes('path=')) return;
+  const next = rewriteUrlToClean(location.href, idToClean);
+  if (!next || next === `${location.pathname}${location.search}${location.hash}`) return;
+  syncing = true;
+  try {
+    rawReplace.call(history, history.state, '', next);
+  } finally {
+    syncing = false;
   }
+};
 
-  return `/${buildSearch(
-    parsed.searchParams,
-    toStorybookPathQuery(resolved.viewMode, resolved.storyId)
-  )}${parsed.hash}`;
+const selectClean = (api: API) => {
+  if (location.search.includes('path=') || isStaticPath(location.pathname)) return;
+  if (location.pathname === '/' || !location.pathname) return;
+  const r = resolveCleanPath(location.pathname, cleanToSb);
+  if (!r) return;
+  const s = api.getState?.() as { storyId?: string; viewMode?: string } | undefined;
+  if (s?.storyId === r.storyId && s?.viewMode === r.viewMode) return;
+  syncing = true;
+  try {
+    api.selectStory(r.storyId, undefined, { viewMode: r.viewMode });
+  } catch {
+    /* index still hydrating */
+  } finally {
+    requestAnimationFrame(() => {
+      syncing = false;
+      polish();
+    });
+  }
+};
+
+const patchHistory = () => {
+  rawPush = history.pushState.bind(history);
+  rawReplace = history.replaceState.bind(history);
+  const wrap =
+    (orig: History['pushState']): History['pushState'] =>
+    (state, title, url) => {
+      if (syncing || url == null || idToClean.size === 0) return orig(state, title, url as string);
+      return orig(state, title, rewriteUrlToClean(String(url), idToClean) ?? url);
+    };
+  history.pushState = wrap(rawPush);
+  history.replaceState = wrap(rawReplace);
+};
+
+export function initCleanUrls() {
+  patchHistory();
+  addons.register('nostr-components/clean-urls', api => {
+    const refresh = () => {
+      applyMaps(leafEntries((api.getState?.() as { index?: API_IndexHash })?.index));
+      polish();
+    };
+    api.on(SET_INDEX, refresh);
+    api.on(STORY_INDEX_INVALIDATED, refresh);
+    api.on(CURRENT_STORY_WAS_SET, () => {
+      refresh();
+      requestAnimationFrame(polish);
+    });
+    addEventListener('popstate', () => {
+      if (syncing) return;
+      location.search.includes('path=') ? polish() : selectClean(api);
+    });
+    fetch('/index.json')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (!data?.entries) return;
+        applyMaps(
+          Object.values(data.entries as Record<string, Entry>).filter(
+            e => e.type === 'docs' || e.type === 'story'
+          )
+        );
+        polish();
+        selectClean(api);
+      })
+      .catch(() => {});
+    refresh();
+    selectClean(api);
+    const t = setInterval(() => {
+      refresh();
+      if (idToClean.size) {
+        selectClean(api);
+        clearInterval(t);
+      }
+    }, 100);
+    setTimeout(() => clearInterval(t), 8000);
+  });
 }
