@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { getComponentStyles } from "../common/base-styles";
+import { getComponentStyles } from '../common/base-styles';
 
 export function getLikeButtonStyles(): string {
   const customStyles = `

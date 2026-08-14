@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-import { NostrBaseComponent } from "../base/base-component/nostr-base-component";
-import { NCStatus } from "../base/base-component/nostr-base-component";
-import { NDKEvent } from "@nostr-dev-kit/ndk";
+import { NostrBaseComponent } from '../base/base-component/nostr-base-component';
+import { NCStatus } from '../base/base-component/nostr-base-component';
+import { NDKEvent } from '@nostr-dev-kit/ndk';
 import {
   renderLikeButton,
   RenderLikeButtonOptions,
   shouldDisableLikeButton,
-} from "./render";
-import { getLikeButtonStyles } from "./style";
-import { showHelpDialog } from "./dialog-help";
-import { isValidUrl } from "../common/utils";
+} from './render';
+import { getLikeButtonStyles } from './style';
+import { showHelpDialog } from './dialog-help';
+import { isValidUrl } from '../common/utils';
 import {
   fetchLikeStateForUrl,
   createLikeEvent,
@@ -20,16 +20,16 @@ import {
   publishSignedReaction,
   signEvent,
   LikeCountResult,
-} from "./like-utils";
-import { ensureSignerForAction } from "../common/auth-onboarding";
-import { normalizeURL } from "nostr-tools/utils";
+} from './like-utils';
+import { ensureSignerForAction } from '../common/auth-onboarding';
+import { normalizeURL } from 'nostr-tools/utils';
 import {
   applyOptimisticLike,
   applyOptimisticUnlike,
   clampLikeCount,
   rollbackOptimisticLikeState,
   type LikeUiState,
-} from "./optimistic-state";
+} from './optimistic-state';
 
 /**
  * <nostr-like-button>
@@ -45,18 +45,18 @@ import {
  *   - Click count to view likers
  */
 export default class NostrLike extends NostrBaseComponent {
-  protected likeActionStatus = this.channel("likeAction");
-  protected likeListStatus = this.channel("likeList");
+  protected likeActionStatus  = this.channel('likeAction');
+  protected likeListStatus    = this.channel('likeList');
 
-  private currentUrl: string = "";
-  private isLiked: boolean = false;
-  private likeCount: number = 0;
+  private currentUrl: string  = '';
+  private isLiked: boolean    = false;
+  private likeCount: number   = 0;
   private cachedLikeDetails: LikeCountResult | null = null;
   private loadSeq = 0;
   private actionSeq = 0;
   private isResyncingLikeCount = false;
   private needsResyncLikeCount = false;
-  private likeStateUrl = "";
+  private likeStateUrl = '';
   private likeStateLoadedAt = 0;
 
   private static readonly LIKE_STATE_FRESH_MS = 30_000;
@@ -68,40 +68,43 @@ export default class NostrLike extends NostrBaseComponent {
   connectedCallback() {
     super.connectedCallback?.();
     if (this.likeListStatus.get() === NCStatus.Idle) {
-      this.initChannelStatus("likeList", NCStatus.Loading, {
-        reflectOverall: false,
-      });
+      this.initChannelStatus('likeList', NCStatus.Loading, { reflectOverall: false });
     }
     this.attachDelegatedListeners();
     this.render();
   }
 
   static get observedAttributes() {
-    return [...super.observedAttributes, "url", "text", "compact"];
+    return [
+      ...super.observedAttributes,
+      'url',
+      'text',
+      'compact'
+    ];
   }
 
   attributeChangedCallback(
     name: string,
     oldValue: string | null,
-    newValue: string | null,
+    newValue: string | null
   ) {
     if (oldValue === newValue) return;
     super.attributeChangedCallback(name, oldValue, newValue);
 
-    if (name === "compact") {
+    if (name === 'compact') {
       this.render();
       return;
     }
 
-    if (name === "url" || name === "text") {
-      if (name === "url") {
+    if (name === 'url' || name === 'text') {
+      if (name === 'url') {
         // Invalidate any in-flight like/unlike action for the previous URL.
         this.actionSeq++;
       }
       this.likeActionStatus.set(NCStatus.Ready);
       this.likeListStatus.set(NCStatus.Loading);
       this.isLiked = false;
-      this.errorMessage = "";
+      this.errorMessage = '';
       this.updateLikeCount();
       this.render();
     }
@@ -115,20 +118,20 @@ export default class NostrLike extends NostrBaseComponent {
       return false;
     }
 
-    const urlAttr = this.getAttribute("url");
-    const textAttr = this.getAttribute("text");
-    const tagName = this.tagName.toLowerCase();
+    const urlAttr   = this.getAttribute('url');
+    const textAttr  = this.getAttribute('text');
+    const tagName   = this.tagName.toLowerCase();
 
     let errorMessage: string | null = null;
 
     if (urlAttr) {
       if (!isValidUrl(urlAttr)) {
-        errorMessage = "Invalid URL format";
+        errorMessage = 'Invalid URL format';
       }
     }
 
     if (textAttr && textAttr.length > 32) {
-      errorMessage = "Max text length: 32 characters";
+      errorMessage = 'Max text length: 32 characters';
     }
 
     if (errorMessage) {
@@ -162,7 +165,7 @@ export default class NostrLike extends NostrBaseComponent {
     try {
       this.onNostrRelaysConnected();
     } catch (hookError) {
-      console.error("Error in onNostrRelaysConnected hook:", hookError);
+      console.error('Error in onNostrRelaysConnected hook:', hookError);
     }
   }
 
@@ -172,9 +175,7 @@ export default class NostrLike extends NostrBaseComponent {
    */
   private ensureCurrentUrl(): void {
     if (!this.currentUrl) {
-      this.currentUrl = normalizeURL(
-        this.getAttribute("url") || window.location.href,
-      );
+      this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
     }
   }
 
@@ -191,9 +192,7 @@ export default class NostrLike extends NostrBaseComponent {
     try {
       await this.ensureNostrConnected();
       if (seq !== this.loadSeq) return;
-      this.currentUrl = normalizeURL(
-        this.getAttribute("url") || window.location.href,
-      );
+      this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
       this.likeListStatus.set(NCStatus.Loading);
       this.render();
 
@@ -211,8 +210,8 @@ export default class NostrLike extends NostrBaseComponent {
       this.likeListStatus.set(NCStatus.Ready);
     } catch (error) {
       if (seq !== this.loadSeq) return;
-      console.error("[NostrLike] Failed to fetch like count:", error);
-      this.likeListStatus.set(NCStatus.Error, "Failed to load likes");
+      console.error('[NostrLike] Failed to fetch like count:', error);
+      this.likeListStatus.set(NCStatus.Error, 'Failed to load likes');
     } finally {
       if (seq === this.loadSeq) {
         this.render();
@@ -241,7 +240,7 @@ export default class NostrLike extends NostrBaseComponent {
     error: unknown,
     snapshot: LikeUiState,
     didApplyOptimisticUpdate: boolean,
-    fallbackMessage: string,
+    fallbackMessage: string
   ): void {
     const restoredState = rollbackOptimisticLikeState({
       current: {
@@ -255,8 +254,7 @@ export default class NostrLike extends NostrBaseComponent {
     this.isLiked = restoredState.isLiked;
     this.likeCount = restoredState.likeCount;
 
-    const errorMessage =
-      error instanceof Error ? error.message : fallbackMessage;
+    const errorMessage = error instanceof Error ? error.message : fallbackMessage;
     this.likeActionStatus.set(NCStatus.Error, errorMessage);
 
     this.queueAuthoritativeCountResync();
@@ -274,11 +272,10 @@ export default class NostrLike extends NostrBaseComponent {
     // separate from loadSeq so routine count refreshes don't strand this action.
     const targetUrl = this.currentUrl;
     const actionSeq = this.actionSeq;
-    const isStale = () =>
-      actionSeq !== this.actionSeq || targetUrl !== this.currentUrl;
+    const isStale = () => actionSeq !== this.actionSeq || targetUrl !== this.currentUrl;
 
     if (!targetUrl) {
-      this.likeActionStatus.set(NCStatus.Error, "Invalid URL");
+      this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
       this.render();
       return;
     }
@@ -303,7 +300,7 @@ export default class NostrLike extends NostrBaseComponent {
           });
       const [signerResult, isLiked] = await Promise.all([
         ensureSignerForAction({
-          action: "like",
+          action: 'like',
           theme: this.theme,
         }),
         statePromise,
@@ -311,7 +308,7 @@ export default class NostrLike extends NostrBaseComponent {
 
       if (isStale()) return;
 
-      if (signerResult.status === "dismissed") {
+      if (signerResult.status === 'dismissed') {
         this.likeActionStatus.set(NCStatus.Ready);
         this.render();
         return;
@@ -320,7 +317,7 @@ export default class NostrLike extends NostrBaseComponent {
       if (!signerResult.publicKey) {
         this.likeActionStatus.set(
           NCStatus.Error,
-          signerResult.message || "Connect a Nostr signer to like this page.",
+          signerResult.message || 'Connect a Nostr signer to like this page.'
         );
         this.render();
         return;
@@ -337,9 +334,7 @@ export default class NostrLike extends NostrBaseComponent {
 
       // If already liked, show confirmation dialog
       if (this.isLiked) {
-        const confirmed = window.confirm(
-          "You have already liked this. Do you want to unlike it?",
-        );
+        const confirmed = window.confirm('You have already liked this. Do you want to unlike it?');
         if (!confirmed) {
           this.likeActionStatus.set(NCStatus.Ready);
           this.render();
@@ -353,11 +348,8 @@ export default class NostrLike extends NostrBaseComponent {
         await this.handleLike(targetUrl);
       }
     } catch (error) {
-      console.error("[NostrLike] Failed to check user like status:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to check user like status";
+      console.error('[NostrLike] Failed to check user like status:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to check user like status';
       this.likeActionStatus.set(NCStatus.Error, errorMessage);
       this.render();
     }
@@ -369,7 +361,7 @@ export default class NostrLike extends NostrBaseComponent {
     const likeUrl = targetUrl ?? this.currentUrl;
 
     if (!likeUrl) {
-      this.likeActionStatus.set(NCStatus.Error, "Invalid URL");
+      this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
       this.render();
       return;
     }
@@ -412,13 +404,13 @@ export default class NostrLike extends NostrBaseComponent {
         void this.updateLikeCount(true);
       }, 1000);
     } catch (error) {
-      console.error("[NostrLike] Failed to like:", error);
+      console.error('[NostrLike] Failed to like:', error);
 
       this.handleLikeMutationFailure(
         error,
         rollbackSnapshot,
         didApplyOptimisticUpdate,
-        "Failed to like",
+        'Failed to like'
       );
     } finally {
       this.render();
@@ -431,7 +423,7 @@ export default class NostrLike extends NostrBaseComponent {
     const unlikeUrl = targetUrl ?? this.currentUrl;
 
     if (!unlikeUrl) {
-      this.likeActionStatus.set(NCStatus.Error, "Invalid URL");
+      this.likeActionStatus.set(NCStatus.Error, 'Invalid URL');
       this.render();
       return;
     }
@@ -474,13 +466,13 @@ export default class NostrLike extends NostrBaseComponent {
         void this.updateLikeCount(true);
       }, 1000);
     } catch (error) {
-      console.error("[NostrLike] Failed to unlike:", error);
+      console.error('[NostrLike] Failed to unlike:', error);
 
       this.handleLikeMutationFailure(
         error,
         rollbackSnapshot,
         didApplyOptimisticUpdate,
-        "Failed to unlike",
+        'Failed to unlike'
       );
     } finally {
       this.render();
@@ -494,50 +486,46 @@ export default class NostrLike extends NostrBaseComponent {
 
     try {
       // Import dialog dynamically to avoid circular dependencies
-      const { openLikersDialog } = await import("./dialog-likers");
+      const { openLikersDialog } = await import('./dialog-likers');
       await openLikersDialog({
         likeDetails: this.cachedLikeDetails.likeDetails,
-        theme: this.theme === "dark" ? "dark" : "light",
+        theme: this.theme === 'dark' ? 'dark' : 'light',
         relays: this.getRelays(),
       });
     } catch (error) {
-      console.error("[NostrLike] Error opening likers dialog:", error);
+      console.error('[NostrLike] Error opening likers dialog:', error);
     }
   }
 
   private async handleHelpClick() {
     try {
-      await showHelpDialog(this.theme === "dark" ? "dark" : "light");
+      await showHelpDialog(this.theme === 'dark' ? 'dark' : 'light');
     } catch (error) {
-      console.error("[NostrLike] Error showing help dialog:", error);
+      console.error('[NostrLike] Error showing help dialog:', error);
     }
   }
 
   private attachDelegatedListeners() {
-    this.delegateEvent("click", ".nostr-like-button", (e) => {
+    this.delegateEvent('click', '.nostr-like-button', (e) => {
       e.preventDefault?.();
       e.stopPropagation?.();
       void this.handleLikeClick();
     });
 
-    this.delegateEvent("click", ".like-count", (e) => {
+    this.delegateEvent('click', '.like-count', (e) => {
       e.preventDefault?.();
       e.stopPropagation?.();
       void this.handleCountClick();
     });
 
-    this.delegateEvent(
-      "keydown",
-      ".like-count.clickable",
-      (e: KeyboardEvent) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        e.stopPropagation();
-        void this.handleCountClick();
-      },
-    );
+    this.delegateEvent('keydown', '.like-count.clickable', (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      e.stopPropagation();
+      void this.handleCountClick();
+    });
 
-    this.delegateEvent("click", ".help-icon", (e) => {
+    this.delegateEvent('click', '.help-icon', (e) => {
       e.preventDefault?.();
       e.stopPropagation?.();
       this.handleHelpClick();
@@ -546,7 +534,7 @@ export default class NostrLike extends NostrBaseComponent {
 
   protected renderContent() {
     // console.log(`Like: Render: conn: ${this.conn.get()}, likeActionStatus: ${this.likeActionStatus.get()}, likeListStatus: ${this.likeListStatus.get()}`);
-    const compact = this.hasAttribute("compact");
+    const compact = this.hasAttribute('compact');
     const isLoading = shouldDisableLikeButton({
       compact,
       actionLoading: this.likeActionStatus.get() === NCStatus.Loading,
@@ -555,7 +543,7 @@ export default class NostrLike extends NostrBaseComponent {
     const isCountLoading = this.likeListStatus.get() === NCStatus.Loading;
     const isError = this.computeOverall() === NCStatus.Error;
     const errorMessage = this.errorMessage;
-    const buttonText = this.getAttribute("text") || "Like";
+    const buttonText = this.getAttribute('text') || 'Like';
 
     const renderOptions: RenderLikeButtonOptions = {
       isLoading,
@@ -566,7 +554,7 @@ export default class NostrLike extends NostrBaseComponent {
       likeCount: this.likeCount,
       hasLikes: this.likeCount > 0,
       isCountLoading,
-      theme: this.theme as "light" | "dark",
+      theme: this.theme as 'light' | 'dark',
       compact,
     };
 
@@ -577,6 +565,6 @@ export default class NostrLike extends NostrBaseComponent {
   }
 }
 
-if (!customElements.get("nostr-like-button")) {
-  customElements.define("nostr-like-button", NostrLike);
+if (!customElements.get('nostr-like-button')) {
+  customElements.define('nostr-like-button', NostrLike);
 }

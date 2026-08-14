@@ -4,53 +4,43 @@
   const extension = globalThis.NostrLikeExtension;
   const INJECT_DELAY_MS = 120;
   let injectionScheduled = false;
-  const hydrationObserver =
-    typeof IntersectionObserver === "function"
-      ? new IntersectionObserver(
-          function (entries) {
-            for (const entry of entries) {
-              if (!entry.isIntersecting) continue;
-              extension.dom.hydrateNostrAction(entry.target);
-              hydrationObserver.unobserve(entry.target);
-            }
-          },
-          { rootMargin: "600px 0px" },
-        )
-      : null;
+  const hydrationObserver = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver(function (entries) {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          extension.dom.hydrateNostrAction(entry.target);
+          hydrationObserver.unobserve(entry.target);
+        }
+      }, { rootMargin: '600px 0px' })
+    : null;
 
   if (!extension || !extension.componentLoader) {
-    throw new Error("Nostr Like extension modules were not loaded");
+    throw new Error('Nostr Like extension modules were not loaded');
   }
 
-  /** Report non-interactive failures without interrupting timeline rendering. */
   function reportBackgroundError(context, error) {
-    console.warn("[Nostr Like] " + context, error);
+    console.warn('[Nostr Like] ' + context, error);
   }
 
-  /** Read X's active color scheme for the component's theme attribute. */
   function getPageTheme() {
     try {
-      const scheme = window.getComputedStyle(
-        document.documentElement,
-      ).colorScheme;
-      return String(scheme).includes("dark") ? "dark" : "light";
+      const scheme = window.getComputedStyle(document.documentElement).colorScheme;
+      return String(scheme).includes('dark') ? 'dark' : 'light';
     } catch (_error) {
-      return "light";
+      return 'light';
     }
   }
 
-  /** Resolve Firestore author metadata without gating the Like component. */
   async function loadDirectoryIdentity(slot, handle) {
     try {
       const identity = await extension.directory.lookup(handle);
       extension.dom.applyDirectoryIdentity(slot, identity);
     } catch (error) {
       extension.dom.applyDirectoryIdentity(slot, null);
-      reportBackgroundError("Directory lookup failed", error);
+      reportBackgroundError('Directory lookup failed', error);
     }
   }
 
-  /** Inject the repository's Nostr Like component into one rendered post. */
   function injectIntoArticle(article) {
     const tweetInfo = extension.dom.getTweetInfo(article);
     if (!tweetInfo) {
@@ -63,10 +53,7 @@
     }
 
     const theme = getPageTheme();
-    const existingAction = extension.dom.findAction(
-      actionBar,
-      tweetInfo.statusId,
-    );
+    const existingAction = extension.dom.findAction(actionBar, tweetInfo.statusId);
     if (existingAction) {
       extension.dom.updateActionTheme(existingAction, theme);
       return;
@@ -82,19 +69,17 @@
     void loadDirectoryIdentity(action.slot, tweetInfo.username);
   }
 
-  /** Process original posts, reposts, and quoted statuses currently in the DOM. */
   function processTweets() {
     const articles = document.querySelectorAll('article[data-testid="tweet"]');
     articles.forEach(function (article) {
       try {
         injectIntoArticle(article);
       } catch (error) {
-        reportBackgroundError("Could not inject a timeline action", error);
+        reportBackgroundError('Could not inject a timeline action', error);
       }
     });
   }
 
-  /** Bound DOM-driven scans even while X mutates the timeline continuously. */
   function scheduleInjection() {
     if (injectionScheduled) return;
     injectionScheduled = true;
@@ -107,7 +92,6 @@
   const timelineObserver = new MutationObserver(scheduleInjection);
   const themeObserver = new MutationObserver(scheduleInjection);
 
-  /** Observe X only after the manifest-loaded component has been registered. */
   function start() {
     if (!document.body) {
       window.requestAnimationFrame(function () {
@@ -118,15 +102,15 @@
 
     timelineObserver.observe(document.body, {
       childList: true,
-      subtree: true,
+      subtree: true
     });
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class", "style"],
+      attributeFilter: ['class', 'style']
     });
     themeObserver.observe(document.body, {
       attributes: true,
-      attributeFilter: ["class", "style"],
+      attributeFilter: ['class', 'style']
     });
     scheduleInjection();
   }
@@ -134,11 +118,11 @@
   void extension.componentLoader.ready.then(
     function () {
       start();
-      window.addEventListener("load", scheduleInjection);
-      window.addEventListener("popstate", scheduleInjection);
+      window.addEventListener('load', scheduleInjection);
+      window.addEventListener('popstate', scheduleInjection);
     },
     function (error) {
-      reportBackgroundError("Like component injection failed", error);
-    },
+      reportBackgroundError('Like component injection failed', error);
+    }
   );
 })();

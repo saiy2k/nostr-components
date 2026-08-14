@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createReactionEvent,
   fetchLikeStateForUrl,
@@ -8,10 +8,10 @@ import {
   hasUserLiked,
   invalidateLikeStateCache,
   publishSignedReaction,
-} from "../like-utils";
+} from '../like-utils';
 
-const RELAYS = ["wss://relay.damus.io"];
-const STATUS_URL = "https://x.com/alokdangre/status/42";
+const RELAYS = ['wss://relay.damus.io'];
+const STATUS_URL = 'https://x.com/alokdangre/status/42';
 
 afterEach(() => {
   invalidateLikeStateCache();
@@ -22,30 +22,30 @@ afterEach(() => {
   ).__nostrComponentsRelayTransport;
 });
 
-describe("Like component relay transport", () => {
-  it("routes count and active-user queries through the host transport", async () => {
+describe('Like component relay transport', () => {
+  it('routes count and active-user queries through the host transport', async () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce([
         {
-          id: "1".repeat(64),
-          pubkey: "a".repeat(64),
+          id: '1'.repeat(64),
+          pubkey: 'a'.repeat(64),
           created_at: 10,
           kind: 17,
-          content: "+",
+          content: '+',
           tags: [],
-          sig: "2".repeat(128),
+          sig: '2'.repeat(128),
         },
       ])
       .mockResolvedValueOnce([
         {
-          id: "3".repeat(64),
-          pubkey: "a".repeat(64),
+          id: '3'.repeat(64),
+          pubkey: 'a'.repeat(64),
           created_at: 10,
           kind: 17,
-          content: "+",
+          content: '+',
           tags: [],
-          sig: "4".repeat(128),
+          sig: '4'.repeat(128),
         },
       ]);
     const publish = vi.fn();
@@ -58,25 +58,25 @@ describe("Like component relay transport", () => {
       likedCount: 1,
     });
     await expect(
-      hasUserLiked(STATUS_URL, "a".repeat(64), RELAYS),
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
     ).resolves.toBe(true);
 
     expect(query).toHaveBeenNthCalledWith(1, RELAYS, {
       kinds: [17],
-      "#k": ["web"],
-      "#i": [STATUS_URL],
+      '#k': ['web'],
+      '#i': [STATUS_URL],
       limit: 1000,
     });
     expect(query).toHaveBeenNthCalledWith(2, RELAYS, {
       kinds: [17],
-      authors: ["a".repeat(64)],
-      "#k": ["web"],
-      "#i": [STATUS_URL],
+      authors: ['a'.repeat(64)],
+      '#k': ['web'],
+      '#i': [STATUS_URL],
       limit: 1,
     });
   });
 
-  it("hydrates the liked state from an existing reaction when revisiting", async () => {
+  it('hydrates the liked state from an existing reaction when revisiting', async () => {
     const getLikeState = vi.fn(async () => ({
       totalCount: 1,
       likedCount: 1,
@@ -102,7 +102,7 @@ describe("Like component relay transport", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
-  it("deduplicates concurrent hydration and reuses the short-lived cache", async () => {
+  it('deduplicates concurrent hydration and reuses the short-lived cache', async () => {
     const getLikeState = vi.fn(async () => ({
       totalCount: 0,
       likedCount: 0,
@@ -128,7 +128,7 @@ describe("Like component relay transport", () => {
     expect(getLikeState).toHaveBeenCalledOnce();
   });
 
-  it("bounds concurrent timeline hydration requests", async () => {
+  it('bounds concurrent timeline hydration requests', async () => {
     let active = 0;
     let maximumActive = 0;
     const getLikeState = vi.fn(async () => {
@@ -164,7 +164,7 @@ describe("Like component relay transport", () => {
     expect(maximumActive).toBe(4);
   });
 
-  it("settles queued hydrations without resetting active concurrency", async () => {
+  it('settles queued hydrations without resetting active concurrency', async () => {
     const resolvers: Array<
       (value: {
         totalCount: number;
@@ -199,16 +199,16 @@ describe("Like component relay transport", () => {
       ),
     );
     const queued = fetchLikeStateForUrl(
-      "https://x.com/alokdangre/status/299",
+      'https://x.com/alokdangre/status/299',
       RELAYS,
     );
     expect(getLikeState).toHaveBeenCalledTimes(4);
 
     invalidateLikeStateCache();
-    await expect(queued).rejects.toThrow("hydration was canceled");
+    await expect(queued).rejects.toThrow('hydration was canceled');
 
     const afterReset = fetchLikeStateForUrl(
-      "https://x.com/alokdangre/status/300",
+      'https://x.com/alokdangre/status/300',
       RELAYS,
     );
     expect(getLikeState).toHaveBeenCalledTimes(4);
@@ -228,44 +228,44 @@ describe("Like component relay transport", () => {
     await expect(afterReset).resolves.toMatchObject(emptyState);
   });
 
-  it("canonicalizes published tags and user-state queries", async () => {
-    const nonCanonicalUrl = "http://mobile.x.com/alokdangre//status/42/";
+  it('canonicalizes published tags and user-state queries', async () => {
+    const nonCanonicalUrl = 'http://mobile.x.com/alokdangre//status/42/';
     const query = vi.fn(async () => []);
     Object.assign(globalThis, {
       __nostrComponentsRelayTransport: { query: query, publish: vi.fn() },
     });
 
-    expect(createReactionEvent(nonCanonicalUrl, "+").tags).toContainEqual([
-      "i",
+    expect(createReactionEvent(nonCanonicalUrl, '+').tags).toContainEqual([
+      'i',
       STATUS_URL,
     ]);
-    await hasUserLiked(nonCanonicalUrl, "a".repeat(64), RELAYS);
+    await hasUserLiked(nonCanonicalUrl, 'a'.repeat(64), RELAYS);
 
     expect(query).toHaveBeenCalledWith(RELAYS, {
       kinds: [17],
-      authors: ["a".repeat(64)],
-      "#k": ["web"],
-      "#i": [STATUS_URL],
+      authors: ['a'.repeat(64)],
+      '#k': ['web'],
+      '#i': [STATUS_URL],
       limit: 1,
     });
   });
 
-  it("selects the newest user reaction across relay responses", async () => {
+  it('selects the newest user reaction across relay responses', async () => {
     const query = vi.fn(async () => [
-      { id: "1".repeat(64), created_at: 10, content: "+" },
-      { id: "2".repeat(64), created_at: 11, content: "-" },
+      { id: '1'.repeat(64), created_at: 10, content: '+' },
+      { id: '2'.repeat(64), created_at: 11, content: '-' },
     ]);
     Object.assign(globalThis, {
       __nostrComponentsRelayTransport: { query: query, publish: vi.fn() },
     });
 
     await expect(
-      hasUserLiked(STATUS_URL, "a".repeat(64), RELAYS),
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
     ).resolves.toBe(false);
   });
 
-  it("publishes signed reactions through the transport without invoking NDK", async () => {
-    const signedEvent = { id: "1".repeat(64), kind: 17, content: "+" };
+  it('publishes signed reactions through the transport without invoking NDK', async () => {
+    const signedEvent = { id: '1'.repeat(64), kind: 17, content: '+' };
     const publish = vi.fn(async () => {});
     const ndkFallback = vi.fn(async () => {});
     Object.assign(globalThis, {
