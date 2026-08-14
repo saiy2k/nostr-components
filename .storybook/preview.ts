@@ -1,4 +1,57 @@
 import type { Preview } from '@storybook/web-components-vite';
+import { assetUrl, getStorybookBundleMode } from '../stories/common/bundle';
+
+function loadStylesheet(href: string): Promise<void> {
+  const existing = document.querySelector<HTMLLinkElement>('link[data-nc-bundle="themes"]');
+  if (existing) {
+    const current = existing.getAttribute('href') || '';
+    if (current === href || existing.href.endsWith(href) || existing.href === href) {
+      return Promise.resolve();
+    }
+    existing.remove();
+  }
+
+  return new Promise((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.dataset.ncBundle = 'themes';
+    link.onload = () => resolve();
+    link.onerror = () => reject(new Error(`Failed to load stylesheet: ${href}`));
+    document.head.appendChild(link);
+  });
+}
+
+function loadModuleScript(src: string): Promise<void> {
+  const existing = document.querySelector<HTMLScriptElement>('script[data-nc-bundle="components"]');
+  if (existing) {
+    const current = existing.getAttribute('src') || '';
+    if (current === src || existing.src.endsWith(src) || existing.src === src) {
+      return Promise.resolve();
+    }
+    existing.remove();
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = src;
+    script.dataset.ncBundle = 'components';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load module: ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+try {
+  await loadStylesheet(assetUrl('themes.css'));
+  await loadModuleScript(assetUrl('nostr-components.es.js'));
+} catch (error) {
+  console.error(
+    `[nostr-components] Storybook asset load failed in "${getStorybookBundleMode()}" mode:`,
+    error
+  );
+}
 
 const preview: Preview = {
   parameters: {
@@ -9,7 +62,7 @@ const preview: Preview = {
       },
     },
     options: {
-      brandTitle: 'Nostr Components',
+      brandTitle: `Nostr Components (${getStorybookBundleMode()})`,
       brandUrl: 'https://nostr-components.web.app/',
     },
   },

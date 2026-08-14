@@ -17,6 +17,7 @@
 
 import { ParameterDefinition, getBooleanAttributeMode } from './parameters';
 import { escapeHtml } from '../../src/common/utils';
+import { assetUrl, CDN_BASE } from './bundle';
 
 export interface CodeGeneratorConfig {
   componentName: string;
@@ -41,18 +42,21 @@ export interface GenerateDashboardOptions {
   parameters: ParameterDefinition[];
 }
 
-/** Latest published production assets on jsDelivr (matches README CDN guidance). */
-export const CDN_BASE =
-  'https://cdn.jsdelivr.net/npm/nostr-components@latest/dist';
+/** Re-export for callers that still import CDN_BASE from this module. */
+export { CDN_BASE };
 
-// Shared constants
-export const BUNDLE_SCRIPT = `<script type="module" src="${CDN_BASE}/nostr-components.es.js"></script>`;
+/** Full bundle script; path follows STORYBOOK_BUNDLE (local|cdn). */
+export const getBundleScript = (): string =>
+  `<script type="module" src="${assetUrl('nostr-components.es.js')}"></script>`;
+
+/** @deprecated Prefer getBundleScript() so mode is read at call time. */
+export const BUNDLE_SCRIPT = getBundleScript();
 
 /**
- * Generates component-specific bundle script
+ * Generates component-specific bundle script (follows STORYBOOK_BUNDLE).
  */
 export const generateBundleScript = (componentName: string): string => {
-  return `<script type="module" src="${CDN_BASE}/components/${componentName}.es.js"></script>`;
+  return `<script type="module" src="${assetUrl(`components/${componentName}.es.js`)}"></script>`;
 };
 
 const serializeAttribute = (

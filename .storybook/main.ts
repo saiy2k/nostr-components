@@ -1,5 +1,7 @@
 import type { StorybookConfig } from '@storybook/web-components-vite';
 
+const bundleMode = process.env.STORYBOOK_BUNDLE === 'cdn' ? 'cdn' : 'local';
+
 const getStories = () => {
   if (process.env.STORYBOOK_ENV === 'production') {
     return [
@@ -39,7 +41,24 @@ const config: StorybookConfig = {
     options: {},
   },
 
-  // Components load from jsDelivr in preview-head.html; only local images are served here.
-  staticDirs: [{ from: '../images', to: '/images' }],
+  // Expose STORYBOOK_BUNDLE to preview + story code (snippets).
+  env: (config) => ({
+    ...config,
+    STORYBOOK_BUNDLE: bundleMode,
+  }),
+
+  // local: serve this branch's dist. cdn: only images; bundles load from jsDelivr.
+  staticDirs:
+    bundleMode === 'local'
+      ? ['../dist', { from: '../images', to: '/images' }]
+      : [{ from: '../images', to: '/images' }],
+
+  // Allow top-level await in preview.ts for ordered bundle loading.
+  async viteFinal(config) {
+    config.build = config.build || {};
+    config.build.target = 'esnext';
+    return config;
+  },
 };
+
 export default config;
