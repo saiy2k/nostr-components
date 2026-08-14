@@ -3,33 +3,11 @@
 import { SimplePool } from 'nostr-tools';
 import { normalizeURL } from 'nostr-tools/utils';
 import { ensureInitialized, getPublicKey, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
+import { getRelayTransport } from '../common/relay-transport';
 import { netLikesByPubkey } from './like-netting';
 import type { LikeCountResult, LikeDetails } from './like-netting';
 
 export type { LikeCountResult, LikeDetails };
-
-export interface NostrRelayTransport {
-  query(relays: string[], filter: Record<string, unknown>): Promise<any[]>;
-  publish(relays: string[], event: any): Promise<void>;
-}
-
-/** Optional host transport used when page CSP prevents direct relay sockets. */
-export function getRelayTransport(): NostrRelayTransport | null {
-  const transport = (
-    globalThis as typeof globalThis & {
-      __nostrComponentsRelayTransport?: Partial<NostrRelayTransport>;
-    }
-  ).__nostrComponentsRelayTransport;
-
-  if (
-    !transport ||
-    typeof transport.query !== 'function' ||
-    typeof transport.publish !== 'function'
-  ) {
-    return null;
-  }
-  return transport as NostrRelayTransport;
-}
 
 /**
  * Fetch likes for a URL using NIP-25 kind 17 events.

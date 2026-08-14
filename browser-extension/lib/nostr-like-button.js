@@ -19931,10 +19931,23 @@
     }
   });
 
+  // src/common/relay-transport.ts
+  function getRelayTransport() {
+    const transport = globalThis.__nostrComponentsRelayTransport;
+    if (!transport || typeof transport.query !== "function" || typeof transport.publish !== "function") {
+      return null;
+    }
+    return transport;
+  }
+  var init_relay_transport = __esm({
+    "src/common/relay-transport.ts"() {
+      "use strict";
+    }
+  });
+
   // src/common/nostr-login-service.ts
   function hasHostRelayTransport() {
-    const transport = globalThis.__nostrComponentsRelayTransport;
-    return !!transport;
+    return getRelayTransport() !== null;
   }
   function getCachedPublicKey() {
     if (typeof window === "undefined") return null;
@@ -20077,6 +20090,7 @@
   var init_nostr_login_service = __esm({
     "src/common/nostr-login-service.ts"() {
       "use strict";
+      init_relay_transport();
       WINDOW_NOSTR_JS_SRC = "https://cdn.jsdelivr.net/npm/window.nostr.js@0.7.1/dist/window.nostr.min.js";
       WINDOW_NOSTR_JS_SRI = "sha384-NXQunbmQGIyNl1fc21WUnd+bnTzHy9PcJxhzI8MeUG6kJsaWL9Ok72zo9RCZOKd7";
       PUBLIC_KEY_SESSION_KEY = "nostr-components:public-key";
@@ -23515,6 +23529,7 @@ ${url}`;
   // src/nostr-like-button/like-utils.ts
   init_esm2();
   init_nostr_login_service();
+  init_relay_transport();
 
   // src/nostr-like-button/like-netting.ts
   function isLikeContent(content) {
@@ -23558,13 +23573,6 @@ ${url}`;
   }
 
   // src/nostr-like-button/like-utils.ts
-  function getRelayTransport() {
-    const transport = globalThis.__nostrComponentsRelayTransport;
-    if (!transport || typeof transport.query !== "function" || typeof transport.publish !== "function") {
-      return null;
-    }
-    return transport;
-  }
   async function fetchLikesForUrl(url, relays) {
     const normalizedUrl = normalizeURL2(url);
     const pool = new SimplePool();
@@ -24036,6 +24044,9 @@ ${url}`;
       activeOnboardingPromise = null;
     }
   }
+
+  // src/nostr-like-button/nostr-like.ts
+  init_relay_transport();
 
   // src/nostr-like-button/optimistic-state.ts
   function clampLikeCount(nextCount) {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { NostrEvent, UnsignedEvent } from 'nostr-tools';
+import { getRelayTransport } from './relay-transport';
 
 /**
  * WindowNostrService
@@ -23,12 +24,7 @@ let inMemoryPublicKey: string | null = null;
 
 /** Host transports run in the page's MAIN world, where storage is page-readable. */
 function hasHostRelayTransport(): boolean {
-  const transport = (
-    globalThis as typeof globalThis & {
-      __nostrComponentsRelayTransport?: unknown;
-    }
-  ).__nostrComponentsRelayTransport;
-  return !!transport;
+  return getRelayTransport() !== null;
 }
 
 /** Read a validated public key shared by component instances in this tab. */
