@@ -177,6 +177,97 @@ describe('X action placement', function () {
     expect(unrelatedGroup.inserted).toBeUndefined();
   });
 
+  it('places the action after aria-label Like rows on logged-out X', function () {
+    const viewsContainer = { name: 'views' };
+    const actionBar = {
+      children: { length: 5 },
+      querySelector(selector) {
+        if (String(selector).includes('data-testid')) return null;
+        return null;
+      },
+      querySelectorAll(selector) {
+        return selector === 'button'
+          ? [replyButton, repostButton, likeButton]
+          : [];
+      },
+      insertBefore(slot, sibling) {
+        this.inserted = { slot: slot, sibling: sibling };
+      }
+    };
+    const likeContainer = {
+      parentElement: actionBar,
+      nextSibling: viewsContainer
+    };
+    const likeButton = {
+      getAttribute(name) {
+        return name === 'aria-label' ? 'Like' : null;
+      },
+      parentElement: likeContainer,
+      closest() {
+        return null;
+      }
+    };
+    const replyButton = {
+      getAttribute(name) {
+        return name === 'aria-label' ? 'Reply' : null;
+      }
+    };
+    const repostButton = {
+      getAttribute(name) {
+        return name === 'aria-label' ? 'Repost' : null;
+      }
+    };
+    likeContainer.contains = function (node) {
+      return node === likeButton;
+    };
+    const article = {
+      querySelector() {
+        return null;
+      },
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [quotedLink, ownLink];
+        if (selector === 'button') return [replyButton, repostButton, likeButton];
+        return [];
+      }
+    };
+    const quotedLink = {
+      getAttribute() {
+        return '/gregisenberg/status/111';
+      },
+      parentElement: { parentElement: { parentElement: article } }
+    };
+    const ownLink = {
+      getAttribute() {
+        return '/jack/status/2082355452583526840';
+      },
+      parentElement: { parentElement: article }
+    };
+    likeButton.parentElement = likeContainer;
+    likeContainer.parentElement = actionBar;
+    actionBar.parentElement = article;
+    replyButton.parentElement = actionBar;
+    repostButton.parentElement = actionBar;
+
+    globalThis.window = {
+      location: {
+        href: 'https://x.com/jack/status/2082355452583526840',
+        origin: 'https://x.com'
+      }
+    };
+
+    const tweetInfo = extension.dom.getTweetInfo(article);
+    const selectedActionBar = extension.dom.findActionBar(article);
+    extension.dom.insertAfterNativeLike(selectedActionBar, { name: 'nostr' });
+
+    expect(tweetInfo.statusId).toBe('2082355452583526840');
+    expect(tweetInfo.username).toBe('jack');
+    expect(selectedActionBar).toBe(actionBar);
+    expect(actionBar.inserted).toEqual({
+      slot: { name: 'nostr' },
+      sibling: viewsContainer
+    });
+  });
+
   it('contains clicks inside the complete Nostr action slot', function () {
     const listeners = {};
     class FakeElement {

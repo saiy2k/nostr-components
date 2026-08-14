@@ -69,8 +69,13 @@
     void loadDirectoryIdentity(action.slot, tweetInfo.username);
   }
 
+  function queryTweetArticles() {
+    const tagged = document.querySelectorAll('article[data-testid="tweet"]');
+    return tagged.length ? tagged : document.querySelectorAll('article');
+  }
+
   function processTweets() {
-    const articles = document.querySelectorAll('article[data-testid="tweet"]');
+    const articles = queryTweetArticles();
     articles.forEach(function (article) {
       try {
         injectIntoArticle(article);
