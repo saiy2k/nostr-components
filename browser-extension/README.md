@@ -1,43 +1,36 @@
 <!-- SPDX-License-Identifier: MIT -->
 
-# X Nostr Like browser extension
+# Nostr Like for X
 
-Load this directory as an unpacked Manifest V3 extension in Chromium. The Like
-button is injected for every X/Twitter status, while author identity metadata is
-looked up through the `lookupDirectoryHandle` Firebase HTTPS function.
+Adds Nostr Like buttons next to posts on X. Clicking one publishes a Nostr
+kind-17 reaction using your existing signer (Alby, nos2x, or any other NIP-07
+extension).
 
-The extension registers the repository's real `nostr-like-button` component in
-X's MAIN world, where it can use the page-owned NIP-07 signer. X's restrictive
-`connect-src` policy blocks relay WebSockets there, so a narrow message bridge
-routes only validated kind-17 queries and signed reaction publishes through the
-extension's isolated world. Rebuild the URL helper, relay client, and component
-bundles whenever their source changes:
+## Load the extension
+
+1. Install a Nostr signer extension and unlock it.
+2. In Chromium, open `chrome://extensions`, enable Developer mode, and load this
+   directory as an unpacked extension.
+3. Open a post on [x.com](https://x.com). A Nostr Like control appears in the
+   action row, after X's own Like button.
+
+Author identities are looked up in the background and cached on the device. If
+lookup is temporarily unavailable, the last cached result may still be used.
+Likes still work when identity metadata is missing.
+
+## Develop
+
+This folder ships the same `<nostr-like-button>` used on the web. On X it runs
+in the page so it can reach `window.nostr`. X blocks relay WebSockets from the
+page, so query and publish go through a narrow extension bridge instead.
+
+Signer public keys stay in memory for the current tab. They are not written to
+`sessionStorage`, which X's page can read. Scrolling therefore does not re-prompt
+the signer on every post.
+
+Rebuild the URL helper, relay client, and component bundles after source
+changes:
 
 ```bash
 npm run build:browser-extension
 ```
-
-The function reads only `nostrDirectoryHandles/twitter:{normalized-handle}` from
-Firestore and returns a sanitized active identity. It never exposes pending
-claims, evidence arrays, rejection tombstones, or Firestore credentials. The
-extension caches directory results in `chrome.storage.local` and reuses a stale
-cache if Firestore is temporarily unavailable.
-
-Deploy the read-only lookup function to `gr-prod`:
-
-```bash
-npm --prefix functions install
-npm --prefix functions test
-firebase deploy --only functions:lookupDirectoryHandle --project gr-prod
-```
-
-After deployment, verify that this URL returns a sanitized result:
-
-```text
-https://us-central1-gr-prod.cloudfunctions.net/lookupDirectoryHandle?platform=twitter&handle=jack
-```
-
-The component uses the library's shared Nostr service and Like relay pool rather
-than duplicating reaction logic inside the extension. Signer public keys are
-cached in `sessionStorage` for the current tab so scrolling does not repeat the
-read-public-key prompt for every rendered post.

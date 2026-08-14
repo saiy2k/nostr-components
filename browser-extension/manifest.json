@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Nostr Competency Test - X Like Button",
-  "version": "0.2.0",
-  "description": "Adds Firestore-backed Nostr identity metadata and Nostr Like reactions to X posts.",
+  "name": "Nostr Like for X",
+  "version": "0.7.0",
+  "description": "Adds Nostr Like buttons to posts on X.",
   "permissions": ["scripting", "storage"],
   "host_permissions": [
     "https://x.com/*",
