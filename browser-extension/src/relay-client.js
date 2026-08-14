@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import { SimplePool, verifyEvent } from "nostr-tools";
-import { normalizeURL } from "nostr-tools/utils";
+import { SimplePool, verifyEvent } from 'nostr-tools';
+import { normalizeURL } from 'nostr-tools/utils';
 
 (function () {
-  const extension = (globalThis.NostrLikeExtension =
-    globalThis.NostrLikeExtension || {});
-  const REQUEST_SOURCE = "nostr-components-relay-main";
-  const RESPONSE_SOURCE = "nostr-components-relay-extension";
+  const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
+  const REQUEST_SOURCE = 'nostr-components-relay-main';
+  const RESPONSE_SOURCE = 'nostr-components-relay-extension';
   const CHANNEL_PATTERN = /^[0-9a-f]{64}$/;
   const REQUEST_ID_PATTERN = /^[0-9a-f]{32}$/;
   const HEX_64_PATTERN = /^[0-9a-f]{64}$/i;
@@ -18,37 +17,34 @@ import { normalizeURL } from "nostr-tools/utils";
   const RELAY_HEALTH_TTL_MS = 5 * 60 * 1000;
   const RECENT_REACTION_TTL_MS = 2 * 60 * 1000;
   const INITIAL_RELAY_ORDER = [
-    "wss://relay.damus.io/",
-    "wss://relay.getalby.com/",
-    "wss://relay.primal.net/",
-    "wss://nostr.wine/",
-    "wss://relay.nostr.net/",
-    "wss://nos.lol/",
-    "wss://nostr-pub.wellorder.net/",
-    "wss://relay.nostr.band/",
+    'wss://relay.damus.io/',
+    'wss://relay.getalby.com/',
+    'wss://relay.primal.net/',
+    'wss://nostr.wine/',
+    'wss://relay.nostr.net/',
+    'wss://nos.lol/',
+    'wss://nostr-pub.wellorder.net/',
+    'wss://relay.nostr.band/'
   ];
   const ALLOWED_RELAY_URLS = new Set(
     [
-      "wss://relay.damus.io",
-      "wss://nostr.wine",
-      "wss://relay.nostr.net",
-      "wss://relay.nostr.band",
-      "wss://nos.lol",
-      "wss://nostr-pub.wellorder.net",
-      "wss://relay.getalby.com",
-      "wss://relay.primal.net",
-    ].map(normalizeURL),
+      'wss://relay.damus.io',
+      'wss://nostr.wine',
+      'wss://relay.nostr.net',
+      'wss://relay.nostr.band',
+      'wss://nos.lol',
+      'wss://nostr-pub.wellorder.net',
+      'wss://relay.getalby.com',
+      'wss://relay.primal.net'
+    ].map(normalizeURL)
   );
 
   let activeSession = null;
   const relayHealth = new Map();
   const recentReactionsByUrl = new Map();
 
-  /** Preserve acknowledged local writes while relay read replicas converge. */
   function rememberRecentReaction(event) {
-    const identifierTag = event.tags.find(
-      (tag) => Array.isArray(tag) && tag[0] === "i",
-    );
+    const identifierTag = event.tags.find((tag) => Array.isArray(tag) && tag[0] === 'i');
     const url = identifierTag?.[1];
     if (!url) return;
     let reactionsByPubkey = recentReactionsByUrl.get(url);
@@ -58,11 +54,10 @@ import { normalizeURL } from "nostr-tools/utils";
     }
     reactionsByPubkey.set(event.pubkey, {
       event: event,
-      expiresAt: Date.now() + RECENT_REACTION_TTL_MS,
+      expiresAt: Date.now() + RECENT_REACTION_TTL_MS
     });
   }
 
-  /** Return unexpired acknowledged reactions for one status URL. */
   function getRecentReactions(url) {
     const reactionsByPubkey = recentReactionsByUrl.get(url);
     if (!reactionsByPubkey) return [];
@@ -83,15 +78,11 @@ import { normalizeURL } from "nostr-tools/utils";
     }
     if (health) relayHealth.delete(relay);
     const initialRank = INITIAL_RELAY_ORDER.indexOf(relay);
-    return (
-      (initialRank === -1 ? INITIAL_RELAY_ORDER.length : initialRank) * 100
-    );
+    return (initialRank === -1 ? INITIAL_RELAY_ORDER.length : initialRank) * 100;
   }
 
   function selectQueryRelays(relays) {
-    return [...relays]
-      .sort((left, right) => relayScore(left) - relayScore(right))
-      .slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
+    return [...relays].sort((left, right) => relayScore(left) - relayScore(right)).slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
   }
 
   function summarizeReactionEvents(events) {
@@ -111,13 +102,12 @@ import { normalizeURL } from "nostr-tools/utils";
     let likedCount = 0;
     let dislikedCount = 0;
     for (const event of latestByPubkey.values()) {
-      if (event.content === "-") dislikedCount += 1;
-      else if (event.content === "+" || event.content === "") likedCount += 1;
+      if (event.content === '-') dislikedCount += 1;
+      else if (event.content === '+' || event.content === '') likedCount += 1;
     }
     return { totalCount: likedCount, likedCount, dislikedCount };
   }
 
-  /** Query only the healthiest relay quorum and stop at a strict UI deadline. */
   function queryWithFastQuorum(pool, relays, filters) {
     const selectedRelays = selectQueryRelays(relays);
     const filterList = Array.isArray(filters) ? filters : [filters];
@@ -128,10 +118,7 @@ import { normalizeURL } from "nostr-tools/utils";
       let successfulResponses = 0;
       let finished = false;
       const completedRelays = new Set();
-      const requiredResponses = Math.min(
-        QUERY_RESPONSE_QUORUM,
-        selectedRelays.length,
-      );
+      const requiredResponses = Math.min(QUERY_RESPONSE_QUORUM, selectedRelays.length);
 
       function finish(penalizePending = true) {
         if (finished) return;
@@ -144,7 +131,7 @@ import { normalizeURL } from "nostr-tools/utils";
             relayHealth.set(relay, {
               latencyMs: QUERY_DEADLINE_MS,
               failures: (previous?.failures || 0) + 1,
-              recordedAt: Date.now(),
+              recordedAt: Date.now()
             });
           }
         }
@@ -166,7 +153,7 @@ import { normalizeURL } from "nostr-tools/utils";
           relayHealth.set(relay, {
             latencyMs: Date.now() - relayStartedAt,
             failures: succeeded ? 0 : (previous?.failures || 0) + 1,
-            recordedAt: Date.now(),
+            recordedAt: Date.now()
           });
           if (succeeded) successfulResponses += 1;
           if (
@@ -186,7 +173,7 @@ import { normalizeURL } from "nostr-tools/utils";
           },
           onclose() {
             settleRelay(false);
-          },
+          }
         };
         try {
           const closer =
@@ -203,26 +190,24 @@ import { normalizeURL } from "nostr-tools/utils";
     });
   }
 
-  /** Accept only canonical X/Twitter status URLs as NIP-25 identifiers. */
   function isAllowedStatusUrl(value) {
     try {
       const url = new URL(value);
       return (
-        url.protocol === "https:" &&
-        (url.hostname === "x.com" || url.hostname === "twitter.com") &&
+        url.protocol === 'https:' &&
+        (url.hostname === 'x.com' || url.hostname === 'twitter.com') &&
         /^\/[^/]+\/status\/\d+\/?$/.test(url.pathname) &&
-        url.port === "" &&
-        url.username === "" &&
-        url.password === "" &&
-        url.search === "" &&
-        url.hash === ""
+        url.port === '' &&
+        url.username === '' &&
+        url.password === '' &&
+        url.search === '' &&
+        url.hash === ''
       );
     } catch (_error) {
       return false;
     }
   }
 
-  /** Normalize a bounded relay list and reject relays outside the allowlist. */
   function validateRelays(value) {
     if (!Array.isArray(value) || value.length === 0 || value.length > 8) {
       return null;
@@ -230,7 +215,7 @@ import { normalizeURL } from "nostr-tools/utils";
 
     const normalized = [];
     for (const relay of value) {
-      if (typeof relay !== "string") return null;
+      if (typeof relay !== 'string') return null;
       let relayUrl;
       try {
         relayUrl = normalizeURL(relay);
@@ -245,13 +230,12 @@ import { normalizeURL } from "nostr-tools/utils";
     return normalized;
   }
 
-  /** Reduce a page query to the supported kind-17 filter shape. */
   function validateFilter(value) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return null;
     }
 
-    const allowedKeys = new Set(["kinds", "#k", "#i", "authors", "limit"]);
+    const allowedKeys = new Set(['kinds', '#k', '#i', 'authors', 'limit']);
     if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
       return null;
     }
@@ -259,12 +243,12 @@ import { normalizeURL } from "nostr-tools/utils";
       !Array.isArray(value.kinds) ||
       value.kinds.length !== 1 ||
       value.kinds[0] !== 17 ||
-      !Array.isArray(value["#k"]) ||
-      value["#k"].length !== 1 ||
-      value["#k"][0] !== "web" ||
-      !Array.isArray(value["#i"]) ||
-      value["#i"].length !== 1 ||
-      !isAllowedStatusUrl(value["#i"][0]) ||
+      !Array.isArray(value['#k']) ||
+      value['#k'].length !== 1 ||
+      value['#k'][0] !== 'web' ||
+      !Array.isArray(value['#i']) ||
+      value['#i'].length !== 1 ||
+      !isAllowedStatusUrl(value['#i'][0]) ||
       !Number.isInteger(value.limit) ||
       value.limit < 1 ||
       value.limit > 1000
@@ -283,25 +267,24 @@ import { normalizeURL } from "nostr-tools/utils";
 
     return {
       kinds: [17],
-      "#k": ["web"],
-      "#i": [value["#i"][0]],
+      '#k': ['web'],
+      '#i': [value['#i'][0]],
       ...(value.authors ? { authors: [value.authors[0].toLowerCase()] } : {}),
-      limit: value.limit,
+      limit: value.limit
     };
   }
 
-  /** Verify a signed like/unlike event before forwarding it to relays. */
   function validateReactionEvent(event) {
     if (
       !event ||
-      typeof event !== "object" ||
+      typeof event !== 'object' ||
       event.kind !== 17 ||
-      (event.content !== "+" && event.content !== "-") ||
+      (event.content !== '+' && event.content !== '-') ||
       !Number.isInteger(event.created_at) ||
       event.created_at <= 0 ||
-      !HEX_64_PATTERN.test(String(event.id || "")) ||
-      !HEX_64_PATTERN.test(String(event.pubkey || "")) ||
-      !HEX_128_PATTERN.test(String(event.sig || "")) ||
+      !HEX_64_PATTERN.test(String(event.id || '')) ||
+      !HEX_64_PATTERN.test(String(event.pubkey || '')) ||
+      !HEX_128_PATTERN.test(String(event.sig || '')) ||
       !Array.isArray(event.tags) ||
       event.tags.length !== 2
     ) {
@@ -309,14 +292,14 @@ import { normalizeURL } from "nostr-tools/utils";
     }
 
     const kindTags = event.tags.filter(
-      (tag) => Array.isArray(tag) && tag.length === 2 && tag[0] === "k",
+      (tag) => Array.isArray(tag) && tag.length === 2 && tag[0] === 'k'
     );
     const identifierTags = event.tags.filter(
-      (tag) => Array.isArray(tag) && tag.length === 2 && tag[0] === "i",
+      (tag) => Array.isArray(tag) && tag.length === 2 && tag[0] === 'i'
     );
     if (
       kindTags.length !== 1 ||
-      kindTags[0][1] !== "web" ||
+      kindTags[0][1] !== 'web' ||
       identifierTags.length !== 1 ||
       !isAllowedStatusUrl(identifierTags[0][1]) ||
       !verifyEvent(event)
@@ -327,110 +310,100 @@ import { normalizeURL } from "nostr-tools/utils";
     return event;
   }
 
-  /** Restrict bridge messages to an HTTPS X/Twitter page origin. */
   function isAllowedPageOrigin(origin) {
     try {
       const url = new URL(origin);
       return (
-        url.protocol === "https:" &&
-        url.port === "" &&
-        (url.hostname === "x.com" || url.hostname === "twitter.com")
+        url.protocol === 'https:' &&
+        url.port === '' &&
+        (url.hostname === 'x.com' || url.hostname === 'twitter.com')
       );
     } catch (_error) {
       return false;
     }
   }
 
-  /** Execute one validated relay operation inside the isolated extension world. */
   async function handleRequest(pool, message) {
     const payload = message.payload;
     const relays = validateRelays(payload && payload.relays);
     if (!relays) {
-      throw new Error("Relay request contains an unsupported relay list");
+      throw new Error('Relay request contains an unsupported relay list');
     }
 
-    if (message.operation === "getLikeState") {
+    if (message.operation === 'getLikeState') {
       if (
         !payload ||
-        Object.keys(payload).some((key) => key !== "relays" && key !== "url") ||
+        Object.keys(payload).some((key) => key !== 'relays' && key !== 'url') ||
         !isAllowedStatusUrl(payload.url)
       ) {
-        throw new Error("Known-reaction request contains unexpected data");
+        throw new Error('Known-reaction request contains unexpected data');
       }
 
       const publicKey = await extension.storage.getKnownPubkey();
       const countFilter = {
         kinds: [17],
-        "#k": ["web"],
-        "#i": [payload.url],
-        limit: 1000,
+        '#k': ['web'],
+        '#i': [payload.url],
+        limit: 1000
       };
       const filters = [countFilter];
       if (publicKey) {
         filters.push({
           kinds: [17],
           authors: [publicKey],
-          "#k": ["web"],
-          "#i": [payload.url],
-          limit: 1,
+          '#k': ['web'],
+          '#i': [payload.url],
+          limit: 1
         });
       }
       const queriedEvents = await queryWithFastQuorum(pool, relays, filters);
       const eventsById = new Map(
-        [...queriedEvents, ...getRecentReactions(payload.url)].map((event) => [
-          event.id,
-          event,
-        ]),
+        [...queriedEvents, ...getRecentReactions(payload.url)].map((event) => [event.id, event])
       );
       const events = Array.from(eventsById.values());
-      const ownEvents = publicKey
-        ? events.filter((event) => event.pubkey === publicKey)
-        : [];
+      const ownEvents = publicKey ? events.filter((event) => event.pubkey === publicKey) : [];
       const latest = [...ownEvents].sort(
-        (a, b) =>
-          b.created_at - a.created_at ||
-          (a.id === b.id ? 0 : a.id > b.id ? -1 : 1),
+        (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
       )[0];
       return {
         ...summarizeReactionEvents(events),
-        isLiked: latest?.content === "+" || latest?.content === "",
+        isLiked: latest?.content === '+' || latest?.content === ''
       };
     }
 
-    if (message.operation === "query") {
+    if (message.operation === 'query') {
       const filter = validateFilter(payload.filter);
       if (!filter) {
-        throw new Error("Relay request contains an unsupported filter");
+        throw new Error('Relay request contains an unsupported filter');
       }
       return queryWithFastQuorum(pool, relays, filter);
     }
 
-    if (message.operation === "publish") {
+    if (message.operation === 'publish') {
       const event = validateReactionEvent(payload.event);
       if (!event) {
-        throw new Error("Relay request contains an invalid reaction event");
+        throw new Error('Relay request contains an invalid reaction event');
       }
       const publishes = pool.publish(relays, event);
       if (!Array.isArray(publishes) || publishes.length === 0) {
-        throw new Error("No relay accepted the reaction event");
+        throw new Error('No relay accepted the reaction event');
       }
       try {
         await Promise.any(publishes);
       } catch (_error) {
-        throw new Error("No relay acknowledged the reaction event");
+        throw new Error('No relay acknowledged the reaction event');
       }
       await extension.storage.setKnownPubkey(event.pubkey);
       rememberRecentReaction(event);
       return null;
     }
 
-    throw new Error("Unsupported relay operation");
+    throw new Error('Unsupported relay operation');
   }
 
-  /** Install one authenticated page-message listener in the isolated world. */
   function configure(channel, options) {
-    if (!CHANNEL_PATTERN.test(String(channel || ""))) {
-      throw new Error("Invalid relay bridge channel");
+    if (!CHANNEL_PATTERN.test(String(channel || ''))) {
+      throw new Error('Invalid relay bridge channel');
     }
     if (activeSession && activeSession.channel === channel) {
       return activeSession;
@@ -442,7 +415,6 @@ import { normalizeURL } from "nostr-tools/utils";
     const pool = (options && options.pool) || new SimplePool();
     const pageWindow = (options && options.window) || window;
 
-    /** Authenticate, execute, and correlate one page bridge message. */
     async function onMessage(event) {
       const message = event.data;
       if (
@@ -452,7 +424,7 @@ import { normalizeURL } from "nostr-tools/utils";
         !message ||
         message.source !== REQUEST_SOURCE ||
         message.channel !== channel ||
-        !REQUEST_ID_PATTERN.test(String(message.requestId || ""))
+        !REQUEST_ID_PATTERN.test(String(message.requestId || ''))
       ) {
         return;
       }
@@ -465,9 +437,9 @@ import { normalizeURL } from "nostr-tools/utils";
             channel: channel,
             requestId: message.requestId,
             ok: true,
-            result: result,
+            result: result
           },
-          event.origin,
+          event.origin
         );
       } catch (error) {
         pageWindow.postMessage(
@@ -476,24 +448,23 @@ import { normalizeURL } from "nostr-tools/utils";
             channel: channel,
             requestId: message.requestId,
             ok: false,
-            error:
-              error instanceof Error ? error.message : "Relay request failed",
+            error: error instanceof Error ? error.message : 'Relay request failed'
           },
-          event.origin,
+          event.origin
         );
       }
     }
 
-    pageWindow.addEventListener("message", onMessage);
+    pageWindow.addEventListener('message', onMessage);
     activeSession = {
       channel: channel,
       dispose: function () {
-        pageWindow.removeEventListener("message", onMessage);
-        if (typeof pool.destroy === "function") pool.destroy();
+        pageWindow.removeEventListener('message', onMessage);
+        if (typeof pool.destroy === 'function') pool.destroy();
         if (activeSession && activeSession.channel === channel) {
           activeSession = null;
         }
-      },
+      }
     };
     return activeSession;
   }
@@ -504,6 +475,6 @@ import { normalizeURL } from "nostr-tools/utils";
     isAllowedStatusUrl: isAllowedStatusUrl,
     validateFilter: validateFilter,
     validateReactionEvent: validateReactionEvent,
-    validateRelays: validateRelays,
+    validateRelays: validateRelays
   };
 })();

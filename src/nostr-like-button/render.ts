@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { escapeHtml } from "../common/utils";
-import { IRenderOptions } from "../base/render-options";
+import { escapeHtml } from '../common/utils';
+import { IRenderOptions } from '../base/render-options';
 
 export interface RenderLikeButtonOptions extends IRenderOptions {
   buttonText: string;
@@ -9,7 +9,7 @@ export interface RenderLikeButtonOptions extends IRenderOptions {
   likeCount: number;
   hasLikes?: boolean;
   isCountLoading?: boolean;
-  theme?: "light" | "dark";
+  theme?: 'light' | 'dark';
   compact?: boolean;
 }
 
@@ -37,16 +37,16 @@ export function renderLikeButton({
   likeCount,
   hasLikes = false,
   isCountLoading = false,
-  theme = "light",
+  theme = 'light',
   compact = false,
 }: RenderLikeButtonOptions): string {
   if (isError && !compact) {
-    return renderError(errorMessage || "");
+    return renderError(errorMessage || '');
   }
 
   const iconContent = getThumbsUpIcon(isLiked, theme);
   const textContent = compact
-    ? ""
+    ? ''
     : isLiked
       ? `<span>Liked</span>`
       : `<span>${escapeHtml(buttonText)}</span>`;
@@ -67,14 +67,11 @@ export function renderLikeButton({
 function renderError(errorMessage: string): string {
   return renderErrorContainer(
     '<div class="error-icon">&#9888;</div>',
-    escapeHtml(errorMessage),
+    escapeHtml(errorMessage)
   );
 }
 
-function renderErrorContainer(
-  leftContent: string,
-  rightContent: string,
-): string {
+function renderErrorContainer(leftContent: string, rightContent: string): string {
   return `
     <div class="nostr-like-button-container">
       <div class="nostr-like-button-left-container">
@@ -98,25 +95,25 @@ function renderContainer(
   compact: boolean = false,
   isError: boolean = false,
 ): string {
-  let countHtml = "";
+  let countHtml = '';
   if (isCountLoading) {
     countHtml = '<span class="like-count skeleton"></span>';
   } else if (likeCount > 0) {
-    const label = likeCount === 1 ? "like" : "likes";
+    const label = likeCount === 1 ? 'like' : 'likes';
     const countText = compact ? String(likeCount) : `${likeCount} ${label}`;
     const canOpenLikers = hasLikes && !compact;
-    countHtml = `<span class="like-count${canOpenLikers ? " clickable" : ""}"${canOpenLikers ? ' role="button" tabindex="0" aria-label="View likers"' : ""}>${countText}</span>`;
+    countHtml = `<span class="like-count${canOpenLikers ? ' clickable' : ''}"${canOpenLikers ? ' role="button" tabindex="0" aria-label="View likers"' : ''}>${countText}</span>`;
   }
 
-  const buttonClass = isLiked ? "nostr-like-button liked" : "nostr-like-button";
-  const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : "";
+  const buttonClass = isLiked ? 'nostr-like-button liked' : 'nostr-like-button';
+  const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : '';
   const actionLabel = isError
-    ? "Nostr Like failed. Select to retry."
+    ? 'Nostr Like failed. Select to retry.'
     : isLiked
-      ? "Unlike this post with Nostr"
-      : "Like this post with Nostr";
+      ? 'Unlike this post with Nostr'
+      : 'Like this post with Nostr';
   const helpIconHtml = compact
-    ? ""
+    ? ''
     : `<button type="button" class="help-icon" aria-label="What is a like?" title="What is a like?">?</button>`;
 
   return `
@@ -124,20 +121,17 @@ function renderContainer(
       <button type="button" class="${buttonClass}" aria-label="${actionLabel}" title="${actionLabel}"${disabledAttrs}${isLiked ? ' aria-pressed="true"' : ' aria-pressed="false"'}>
         ${iconContent}
         ${isLoading && !compact ? '<span class="button-text-skeleton"></span>' : textContent}
-        ${compact ? countHtml : ""}
+        ${compact ? countHtml : ''}
       </button>
-      ${compact ? "" : countHtml} ${helpIconHtml}
+      ${compact ? '' : countHtml} ${helpIconHtml}
     </div>
   `;
 }
 
-function getThumbsUpIcon(
-  isLiked: boolean,
-  theme: "light" | "dark" = "light",
-): string {
+function getThumbsUpIcon(isLiked: boolean, theme: 'light' | 'dark' = 'light'): string {
   // Determine colors based on theme
-  const likedColor = theme === "dark" ? "#8ab4f8" : "#1877f2"; // Light blue for dark theme, blue for light theme
-  const outlineColor = theme === "dark" ? "#e0e7ff" : "#0d46a1"; // Light color for dark theme, dark blue for light theme
+  const likedColor = theme === 'dark' ? '#8ab4f8' : '#1877f2'; // Light blue for dark theme, blue for light theme
+  const outlineColor = theme === 'dark' ? '#e0e7ff' : '#0d46a1'; // Light color for dark theme, dark blue for light theme
 
   if (isLiked) {
     // Filled thumbs up

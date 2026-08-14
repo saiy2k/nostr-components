@@ -1,48 +1,41 @@
 // SPDX-License-Identifier: MIT
 
 (function () {
-  const extension = (globalThis.NostrLikeExtension =
-    globalThis.NostrLikeExtension || {});
+  const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
   const VERIFIED_TTL_MS = 24 * 60 * 60 * 1000;
   const MISS_TTL_MS = 60 * 60 * 1000;
   const DEGRADED_MEMORY_TTL_MS = 5 * 60 * 1000;
   const memoryCache = new Map();
 
-  /** Resolve the browser runtime messaging API. */
   function getRuntime() {
-    if (typeof browser !== "undefined" && browser.runtime) {
-      return { kind: "browser", runtime: browser.runtime };
+    if (typeof browser !== 'undefined' && browser.runtime) {
+      return { kind: 'browser', runtime: browser.runtime };
     }
-    if (typeof chrome !== "undefined" && chrome.runtime) {
-      return { kind: "chrome", runtime: chrome.runtime };
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      return { kind: 'chrome', runtime: chrome.runtime };
     }
     return null;
   }
 
-  /** Normalize and validate an X handle for directory lookup. */
   function normalizeHandle(value) {
-    const handle = String(value || "")
-      .trim()
-      .replace(/^@/, "")
-      .toLowerCase();
+    const handle = String(value || '').trim().replace(/^@/, '').toLowerCase();
     return /^[a-z0-9_]{1,15}$/.test(handle) ? handle : null;
   }
 
-  /** Ask the background service worker to query the Firestore lookup endpoint. */
   async function sendLookupRequest(handle) {
     const runtime = getRuntime();
     if (!runtime) {
-      throw new Error("Browser runtime API is not available");
+      throw new Error('Browser runtime API is not available');
     }
 
     const message = {
-      type: "LOOKUP_DIRECTORY_HANDLE",
-      platform: "twitter",
-      handle: handle,
+      type: 'LOOKUP_DIRECTORY_HANDLE',
+      platform: 'twitter',
+      handle: handle
     };
 
     let response;
-    if (runtime.kind === "browser") {
+    if (runtime.kind === 'browser') {
       response = await runtime.runtime.sendMessage(message);
     } else {
       response = await new Promise(function (resolve, reject) {
@@ -58,14 +51,11 @@
     }
 
     if (!response || response.ok !== true) {
-      throw new Error(
-        (response && response.error) || "Directory lookup failed",
-      );
+      throw new Error((response && response.error) || 'Directory lookup failed');
     }
     return response.result;
   }
 
-  /** Return a valid memory entry and discard it after its expiry. */
   function getMemoryEntry(handle) {
     const cached = memoryCache.get(handle);
     if (!cached) {
@@ -78,12 +68,10 @@
     return cached.value;
   }
 
-  /** Store one memory entry with the same bounded lifetime as its source. */
   function setMemoryEntry(handle, value, expiresAt) {
     memoryCache.set(handle, { value: value, expiresAt: expiresAt });
   }
 
-  /** Resolve author metadata through memory, extension storage, then Firestore. */
   async function lookup(value) {
     const handle = normalizeHandle(value);
     if (!handle) {
@@ -96,7 +84,7 @@
     }
 
     const cached = await extension.storage.getDirectoryEntry(handle, {
-      includeExpiry: true,
+      includeExpiry: true
     });
     if (cached && cached.value) {
       setMemoryEntry(handle, cached.value, cached.expiresAt);
@@ -105,7 +93,7 @@
 
     try {
       const result = await sendLookupRequest(handle);
-      const valueToCache = { ...result, source: "firestore" };
+      const valueToCache = { ...result, source: 'firestore' };
       const ttlMs = valueToCache.verified ? VERIFIED_TTL_MS : MISS_TTL_MS;
       const expiresAt = Date.now() + ttlMs;
       setMemoryEntry(handle, valueToCache, expiresAt);
@@ -114,10 +102,10 @@
     } catch (_error) {
       const stale = await extension.storage.getDirectoryEntry(handle, {
         allowExpired: true,
-        includeExpiry: true,
+        includeExpiry: true
       });
       if (stale && stale.value) {
-        const staleValue = { ...stale.value, source: "stale-cache" };
+        const staleValue = { ...stale.value, source: 'stale-cache' };
         setMemoryEntry(handle, staleValue, Date.now() + DEGRADED_MEMORY_TTL_MS);
         return staleValue;
       }
@@ -125,9 +113,9 @@
       const miss = {
         found: false,
         verified: false,
-        platform: "twitter",
+        platform: 'twitter',
         handle: handle,
-        source: "unavailable",
+        source: 'unavailable'
       };
       setMemoryEntry(handle, miss, Date.now() + DEGRADED_MEMORY_TTL_MS);
       return miss;
@@ -136,6 +124,6 @@
 
   extension.directory = {
     lookup: lookup,
-    normalizeHandle: normalizeHandle,
+    normalizeHandle: normalizeHandle
   };
 })();

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-import { SimplePool } from "nostr-tools";
-import { normalizeURL } from "../common/utils";
+import { SimplePool } from 'nostr-tools';
+import { normalizeURL } from '../common/utils';
 import {
   ensureInitialized,
   getCachedPublicKey,
   getPublicKey,
   signEvent as signEventWithNostrLogin,
-} from "../common/nostr-login-service";
-import { netLikesByPubkey } from "./like-netting";
-import type { LikeCountResult, LikeDetails } from "./like-netting";
+} from '../common/nostr-login-service';
+import { netLikesByPubkey } from './like-netting';
+import type { LikeCountResult, LikeDetails } from './like-netting';
 
 export type { LikeCountResult, LikeDetails };
 
@@ -19,7 +19,7 @@ export interface NostrRelayTransport {
   getLikeState?(
     relays: string[],
     url: string,
-  ): Promise<Omit<LikeStateResult, "likeDetails">>;
+  ): Promise<Omit<LikeStateResult, 'likeDetails'>>;
 }
 
 export interface LikeStateResult extends LikeCountResult {
@@ -36,8 +36,8 @@ export function getRelayTransport(): NostrRelayTransport | null {
 
   if (
     !transport ||
-    typeof transport.query !== "function" ||
-    typeof transport.publish !== "function"
+    typeof transport.query !== 'function' ||
+    typeof transport.publish !== 'function'
   ) {
     return null;
   }
@@ -62,7 +62,7 @@ const hydrationQueue: HydrationQueueEntry[] = [];
 let activeHydrations = 0;
 
 function likeStateCacheKey(url: string, relays: string[]): string {
-  return `${normalizeURL(url)}\n${[...new Set(relays)].sort().join(",")}`;
+  return `${normalizeURL(url)}\n${[...new Set(relays)].sort().join(',')}`;
 }
 
 function runNextHydration(): void {
@@ -91,7 +91,7 @@ function scheduleHydration<T>(operation: () => Promise<T>): Promise<T> {
     const cancel = () => {
       if (startedOrCanceled) return;
       startedOrCanceled = true;
-      reject(new Error("Like-state hydration was canceled"));
+      reject(new Error('Like-state hydration was canceled'));
     };
     hydrationQueue.push({ start, cancel });
     runNextHydration();
@@ -123,7 +123,7 @@ export function invalidateLikeStateCache(
  */
 export async function fetchLikesForUrl(
   url: string,
-  relays: string[],
+  relays: string[]
 ): Promise<LikeCountResult> {
   // Normalize URL at the beginning for consistent comparison with tags
   const normalizedUrl = normalizeURL(url);
@@ -132,8 +132,8 @@ export async function fetchLikesForUrl(
     // Query kind 17 events (both likes and unlikes)
     const filter = {
       kinds: [17],
-      "#k": ["web"],
-      "#i": [normalizedUrl],
+      '#k': ['web'],
+      '#i': [normalizedUrl],
       limit: 1000,
     };
     const transport = getRelayTransport();
@@ -173,7 +173,7 @@ export async function fetchLikeStateForUrl(
     let result: LikeCountResult;
     let isLiked: boolean;
 
-    if (transport && typeof transport.getLikeState === "function") {
+    if (transport && typeof transport.getLikeState === 'function') {
       const state = await transport.getLikeState(relays, normalizedUrl);
       result = { ...state, likeDetails: [] };
       isLiked = state.isLiked;
@@ -188,7 +188,7 @@ export async function fetchLikeStateForUrl(
             (detail) => detail.authorPubkey.toLowerCase() === userPublicKey,
           )
         : undefined;
-      isLiked = ownReaction?.content === "+" || ownReaction?.content === "";
+      isLiked = ownReaction?.content === '+' || ownReaction?.content === '';
     }
 
     const value = { ...result, isLiked };
@@ -215,14 +215,14 @@ export async function fetchLikeStateForUrl(
  * @param url - URL to react to
  * @param content - '+' for like, '-' for unlike
  */
-export function createReactionEvent(url: string, content: "+" | "-"): any {
+export function createReactionEvent(url: string, content: '+' | '-'): any {
   const normalizedUrl = normalizeURL(url);
   return {
     kind: 17,
     content,
     tags: [
-      ["k", "web"],
-      ["i", normalizedUrl],
+      ['k', 'web'],
+      ['i', normalizedUrl],
     ],
     created_at: Math.floor(Date.now() / 1000),
   };
@@ -233,7 +233,7 @@ export function createReactionEvent(url: string, content: "+" | "-"): any {
  * @deprecated Use createReactionEvent(url, '+') instead
  */
 export function createLikeEvent(url: string): any {
-  return createReactionEvent(url, "+");
+  return createReactionEvent(url, '+');
 }
 
 /**
@@ -241,7 +241,7 @@ export function createLikeEvent(url: string): any {
  * @deprecated Use createReactionEvent(url, '-') instead
  */
 export function createUnlikeEvent(url: string): any {
-  return createReactionEvent(url, "-");
+  return createReactionEvent(url, '-');
 }
 
 /**
@@ -250,7 +250,7 @@ export function createUnlikeEvent(url: string): any {
 export async function hasUserLiked(
   url: string,
   userPubkey: string,
-  relays: string[],
+  relays: string[]
 ): Promise<boolean> {
   const normalizedUrl = normalizeURL(url);
 
@@ -259,8 +259,8 @@ export async function hasUserLiked(
     const filter = {
       kinds: [17],
       authors: [userPubkey],
-      "#k": ["web"],
-      "#i": [normalizedUrl],
+      '#k': ['web'],
+      '#i': [normalizedUrl],
       limit: 1,
     };
     const transport = getRelayTransport();
@@ -276,12 +276,9 @@ export async function hasUserLiked(
         b.created_at - a.created_at ||
         (a.id === b.id ? 0 : a.id > b.id ? -1 : 1),
     )[0];
-    return latest.content === "+" || latest.content === "";
+    return latest.content === '+' || latest.content === '';
   } catch (error) {
-    console.error(
-      "Nostr-Components: Like button: Error checking user like status",
-      error,
-    );
+    console.error('Nostr-Components: Like button: Error checking user like status', error);
     return false;
   }
 }
@@ -308,10 +305,7 @@ export async function getUserPubkey(): Promise<string | null> {
     await ensureInitialized();
     return await getPublicKey();
   } catch (error) {
-    console.error(
-      "Nostr-Components: Like button: Error getting user pubkey",
-      error,
-    );
+    console.error('Nostr-Components: Like button: Error getting user pubkey', error);
     return null;
   }
 }
@@ -324,7 +318,7 @@ export async function signEvent(event: any): Promise<any> {
     await ensureInitialized();
     return await signEventWithNostrLogin(event);
   } catch (error) {
-    console.error("Nostr-Components: Like button: Error signing event", error);
+    console.error('Nostr-Components: Like button: Error signing event', error);
     throw error;
   }
 }
