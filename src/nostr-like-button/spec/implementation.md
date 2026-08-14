@@ -41,7 +41,7 @@ This document contains the technical implementation details for the `nostr-like-
 ### Internal Dependencies
 - NostrBaseComponent: Base class with relay and status management
 - NostrService: Relay connection management
-- Nostr Login Service: Uses an existing NIP-07 signer when present, otherwise lazy-loads `window.nostr.js`; it caches the validated public key for the browser session and signs events through the active signer
+- Nostr Login Service: Uses an existing NIP-07 signer when present, otherwise lazy-loads `window.nostr.js`; it caches the validated public key for the current tab and signs events through the active signer. The cache uses `sessionStorage` unless a host relay transport is present, in which case it stays in memory so page script cannot read it.
 - getComponentStyles(): Utility for CSS injection
 - Common Utils: `formatRelativeTime()`
 - Zap Utils: `getBatchedProfileMetadata()` (reused for profile fetching)
@@ -163,7 +163,7 @@ hasUserLiked(url, userPubkey, relays):
 ### Caching Strategy
 - Cache like count for component lifetime
 - Refresh after successful like/unlike
-- Cache the validated signer public key in `sessionStorage` to avoid repeated NIP-07 permission prompts as components mount
+- Cache the validated signer public key for the tab so additional components do not re-prompt NIP-07. Use `sessionStorage` for normal embeds; keep it in memory (and clear `sessionStorage`) when a host relay transport is present, because MAIN-world storage is page-readable.
 - Do not persist reaction counts; relay data remains fresh
 
 ### Compact Rendering

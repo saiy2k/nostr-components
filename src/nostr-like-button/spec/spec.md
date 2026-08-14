@@ -258,7 +258,7 @@ Each reaction entry shows:
 - All data stored on Nostr relays
 
 **Requirement:**
-Requires a connected signer via `window.nostr.js` (for example an extension-backed NIP-07 signer or a NIP-46 remote signer) to sign and publish likes. The validated public key is cached in `sessionStorage` so additional components in the same tab do not repeatedly request it from the signer. Event signing still goes through the connected signer.
+Requires a connected signer via `window.nostr.js` (for example an extension-backed NIP-07 signer or a NIP-46 remote signer) to sign and publish likes. The validated public key is cached for the current tab so additional components do not repeatedly request it from the signer. By default that cache lives in `sessionStorage`. When a host relay transport is present (for example the X extension), it stays in memory only so the embedding page cannot read it. Event signing still goes through the connected signer.
 
 ## NIP-25 Event Structure
 
