@@ -83,6 +83,9 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:directory": "vite --config directory-site/vite.config.ts",
+    "build:directory": "vite build --config directory-site/vite.config.ts",
+    "preview:directory": "vite preview --config directory-site/vite.config.ts",
     "build:esm": "vite build --config vite.config.esm.ts",
     "build:umd": "vite build --config vite.config.umd.ts",
     "build:themes": "node scripts/build-themes.js",
