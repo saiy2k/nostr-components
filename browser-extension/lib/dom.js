@@ -161,6 +161,24 @@
     component.setAttribute('compact', '');
     component.setAttribute('data-theme', slot.dataset.theme || 'light');
     slot.appendChild(component);
+    syncZapComponent(slot);
+    return component;
+  }
+
+  function syncZapComponent(slot) {
+    let component = slot.querySelector('nostr-zap-button');
+    const npub = slot.dataset.zapRecipientNpub;
+    if (!extension.url.isValidNpub(npub)) {
+      component?.remove();
+      return null;
+    }
+    const shouldAppend = !component;
+    if (!component) component = document.createElement('nostr-zap-button');
+    component.setAttribute('npub', npub);
+    component.setAttribute('url', slot.dataset.statusUrl);
+    component.setAttribute('compact', '');
+    component.setAttribute('data-theme', slot.dataset.theme || 'light');
+    if (shouldAppend) slot.appendChild(component);
     return component;
   }
 
@@ -169,6 +187,10 @@
     const component = slot.querySelector('nostr-like-button');
     if (component && component.getAttribute('data-theme') !== theme) {
       component.setAttribute('data-theme', theme);
+    }
+    const zapComponent = slot.querySelector('nostr-zap-button');
+    if (zapComponent && zapComponent.getAttribute('data-theme') !== theme) {
+      zapComponent.setAttribute('data-theme', theme);
     }
   }
 
@@ -195,6 +217,8 @@
   function applyDirectoryIdentity(slot, identity) {
     if (!identity) {
       slot.dataset.directoryStatus = 'invalid';
+      delete slot.dataset.zapRecipientNpub;
+      if (slot.querySelector('nostr-like-button')) syncZapComponent(slot);
       return;
     }
     slot.dataset.directoryStatus = identity.verified
@@ -206,6 +230,17 @@
     if (identity.activeIdentity && identity.activeIdentity.npub) {
       slot.dataset.authorNpub = identity.activeIdentity.npub;
     }
+    const activeIdentity = identity.activeIdentity;
+    if (
+      identity.verified === true &&
+      activeIdentity?.zappable === true &&
+      extension.url.isValidNpub(activeIdentity.npub)
+    ) {
+      slot.dataset.zapRecipientNpub = activeIdentity.npub;
+    } else {
+      delete slot.dataset.zapRecipientNpub;
+    }
+    if (slot.querySelector('nostr-like-button')) syncZapComponent(slot);
   }
 
   extension.dom = {

@@ -10,6 +10,7 @@ export interface RenderZapButtonOptions extends IRenderOptions {
   buttonText: string;
   totalZapAmount: number | null;
   hasZaps?: boolean;
+  compact?: boolean;
 }
 
 export function renderZapButton({
@@ -21,34 +22,60 @@ export function renderZapButton({
   totalZapAmount,
   isAmountLoading,
   hasZaps = false,
+  compact = false,
 }: RenderZapButtonOptions): string {
 
   if (isError) {
+    if (compact) {
+      return renderContainer(
+        getLightningIcon(),
+        '',
+        null,
+        false,
+        false,
+        true,
+        true,
+        errorMessage || 'Zap unavailable'
+      );
+    }
     return renderError(errorMessage || '');
   }
 
   if (isLoading) {
-    return renderLoading(isAmountLoading);
+    return renderLoading(isAmountLoading, compact);
   }
 
   const iconContent = isSuccess
     ? getSuccessAnimation('light')
     : getLightningIcon();
-  const textContent = isSuccess
+  const textContent = compact
+    ? ''
+    : isSuccess
     ? `<span>Zapped</span>`
     : `<span>${escapeHtml(buttonText)}</span>`;
 
-  return renderContainer(iconContent, textContent, totalZapAmount, isAmountLoading, hasZaps, false);
+  return renderContainer(
+    iconContent,
+    textContent,
+    totalZapAmount,
+    isAmountLoading,
+    hasZaps,
+    false,
+    compact,
+    buttonText
+  );
 }
 
-function renderLoading(isAmountLoading: boolean): string {
+function renderLoading(isAmountLoading: boolean, compact: boolean): string {
   return renderContainer(
     getLightningIcon(),
-    '<span class="button-text-skeleton"></span>',
+    compact ? '' : '<span class="button-text-skeleton"></span>',
     null,
     isAmountLoading,
     false,
-    true
+    true,
+    compact,
+    'Loading zap'
   );
 }
 
@@ -78,18 +105,23 @@ function renderContainer(
   totalZapAmount: number | null,
   isAmountLoading: boolean,
   hasZaps: boolean = false,
-  isButtonLoading: boolean = false
+  isButtonLoading: boolean = false,
+  compact: boolean = false,
+  buttonLabel: string = 'Zap'
 ): string {
   const zapAmountHtml = isAmountLoading 
-    ? `<span class="total-zap-amount skeleton"></span>` 
-    : (totalZapAmount !== null ? `<span class="total-zap-amount${hasZaps ? ' clickable' : ''}"${hasZaps ? ' role="button" tabindex="0" aria-label="View zappers"' : ''}>${totalZapAmount.toLocaleString()} ⚡ sats received</span>` : '');
+    ? (compact ? '' : `<span class="total-zap-amount skeleton"></span>`)
+    : (totalZapAmount !== null ? `<span class="total-zap-amount${compact ? ' compact-zap-count' : ''}${hasZaps ? ' clickable' : ''}"${hasZaps ? ' role="button" tabindex="0" aria-label="View zappers"' : ''}>${totalZapAmount.toLocaleString()}${compact ? '' : ' ⚡ sats received'}</span>` : '');
   
   const disabledAttrs = isButtonLoading ? ' disabled aria-busy="true"' : '';
-  const helpIconHtml = `<button type="button" class="help-icon" aria-label="What is a zap?" title="What is a zap?">?</button>`;
+  const accessibleAttrs = compact
+    ? ` aria-label="${escapeHtml(buttonLabel)}" title="${escapeHtml(buttonLabel)}"`
+    : '';
+  const helpIconHtml = compact ? '' : `<button type="button" class="help-icon" aria-label="What is a zap?" title="What is a zap?">?</button>`;
   
   return `
-    <div class="nostr-zap-button-container">
-      <button type="button" class="nostr-zap-button"${disabledAttrs}>
+    <div class="nostr-zap-button-container${compact ? ' compact' : ''}">
+      <button type="button" class="nostr-zap-button"${accessibleAttrs}${disabledAttrs}>
         ${iconContent}
         ${textContent}
       </button>

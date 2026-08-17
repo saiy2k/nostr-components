@@ -10,8 +10,12 @@ import NDK, {
 import { DEFAULT_RELAYS } from './constants';
 import { DEFAULT_PROFILE_IMAGE } from './constants';
 import { normalizeURL } from 'nostr-tools/utils';
-import { getZapProviderInfo } from '../nostr-zap-button/zap-utils';
+import {
+  getProfileMetadata,
+  getZapProviderInfo,
+} from '../nostr-zap-button/zap-utils';
 import { validateZapReceipt } from '../nostr-zap-button/zap-receipt';
+import { getRelayTransport } from './relay-transport';
 
 /** How long to keep polling the relay pool for a first connection. */
 const CONNECT_GRACE_MS = 5000;
@@ -187,6 +191,21 @@ export class NostrService {
 
   public async getProfile(user: NDKUser | null): Promise<NDKUserProfile | null> {
     if (!user) return null;
+
+    const transport = getRelayTransport();
+    if (transport) {
+      const event = await getProfileMetadata(user.pubkey, [...DEFAULT_RELAYS]);
+      if (!event) return null;
+      try {
+        const profile = JSON.parse(event.content || '{}') as NDKUserProfile;
+        if (profile.picture === undefined || profile.picture === null) {
+          profile.picture = DEFAULT_PROFILE_IMAGE;
+        }
+        return profile;
+      } catch {
+        return null;
+      }
+    }
 
     await user.fetchProfile();
 

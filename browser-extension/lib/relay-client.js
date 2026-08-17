@@ -2374,7 +2374,7 @@
   var sha2562 = wrapConstructor2(() => new SHA2562());
   var sha224 = wrapConstructor2(() => new SHA224());
 
-  // node_modules/nostr-tools/node_modules/@scure/base/lib/esm/index.js
+  // node_modules/@scure/base/lib/esm/index.js
   function assertNumber(n) {
     if (!Number.isSafeInteger(n))
       throw new Error(`Wrong integer: ${n}`);
@@ -6758,9 +6758,7 @@
     const relayHealth = /* @__PURE__ */ new Map();
     const recentReactionsByUrl = /* @__PURE__ */ new Map();
     function rememberRecentReaction(event) {
-      const identifierTag = event.tags.find(
-        (tag) => Array.isArray(tag) && tag[0] === "i"
-      );
+      const identifierTag = event.tags.find((tag) => Array.isArray(tag) && tag[0] === "i");
       const url = identifierTag?.[1];
       if (!url) return;
       let reactionsByPubkey = recentReactionsByUrl.get(url);
@@ -6823,10 +6821,7 @@
         let successfulResponses = 0;
         let finished = false;
         const completedRelays = /* @__PURE__ */ new Set();
-        const requiredResponses = Math.min(
-          QUERY_RESPONSE_QUORUM,
-          selectedRelays.length
-        );
+        const requiredResponses = Math.min(QUERY_RESPONSE_QUORUM, selectedRelays.length);
         function finish(penalizePending = true) {
           if (finished) return;
           finished = true;
@@ -6889,14 +6884,25 @@
         }
       });
     }
-    function isAllowedStatusUrl(value) {
+    function isAllowedContentUrl(value) {
       try {
         const url = new URL(value);
-        return url.protocol === "https:" && (url.hostname === "x.com" || url.hostname === "twitter.com") && /^\/[^/]+\/status\/\d+\/?$/.test(url.pathname) && url.port === "" && url.username === "" && url.password === "" && url.search === "" && url.hash === "";
+        if (url.protocol !== "https:" || url.port !== "" || url.username !== "" || url.password !== "" || url.hash !== "") {
+          return false;
+        }
+        if (url.hostname === "x.com" || url.hostname === "twitter.com") {
+          return /^\/[^/]+\/status\/\d+\/?$/.test(url.pathname) && url.search === "";
+        }
+        if (url.hostname !== "www.youtube.com" || url.pathname !== "/watch") {
+          return false;
+        }
+        const keys = Array.from(url.searchParams.keys());
+        return keys.length === 1 && keys[0] === "v" && /^[A-Za-z0-9_-]{11}$/.test(url.searchParams.get("v") || "");
       } catch (_error) {
         return false;
       }
     }
+    const isAllowedStatusUrl = isAllowedContentUrl;
     function validateRelays(value) {
       if (!Array.isArray(value) || value.length === 0 || value.length > 8) {
         return null;
@@ -6921,11 +6927,47 @@
       if (!value || typeof value !== "object" || Array.isArray(value)) {
         return null;
       }
+      if (!Array.isArray(value.kinds) || value.kinds.length !== 1) {
+        return null;
+      }
+      if (value.kinds[0] === 0) {
+        const allowedKeys2 = /* @__PURE__ */ new Set(["kinds", "authors", "limit"]);
+        if (Object.keys(value).some((key) => !allowedKeys2.has(key)) || !Array.isArray(value.authors) || value.authors.length < 1 || value.authors.length > 50 || value.authors.some((author) => !HEX_64_PATTERN.test(String(author))) || new Set(value.authors.map((author) => String(author).toLowerCase())).size !== value.authors.length || !Number.isInteger(value.limit) || value.limit < 1 || value.limit > 50) {
+          return null;
+        }
+        return {
+          kinds: [0],
+          authors: value.authors.map((author) => String(author).toLowerCase()),
+          limit: value.limit
+        };
+      }
+      if (value.kinds[0] === 9735) {
+        const allowedKeys2 = /* @__PURE__ */ new Set(["kinds", "#p", "#a", "since", "limit"]);
+        if (Object.keys(value).some((key) => !allowedKeys2.has(key)) || !Array.isArray(value["#p"]) || value["#p"].length !== 1 || !HEX_64_PATTERN.test(String(value["#p"][0])) || !Number.isInteger(value.limit) || value.limit < 1 || value.limit > 1e3 || value.since !== void 0 && (!Number.isInteger(value.since) || value.since < 0)) {
+          return null;
+        }
+        const pubkey = String(value["#p"][0]).toLowerCase();
+        if (value["#a"] !== void 0) {
+          if (!Array.isArray(value["#a"]) || value["#a"].length !== 1) return null;
+          const prefix = "39735:" + pubkey + ":";
+          const aTag = String(value["#a"][0]);
+          if (!aTag.startsWith(prefix) || !isAllowedContentUrl(aTag.slice(prefix.length))) {
+            return null;
+          }
+        }
+        return {
+          kinds: [9735],
+          "#p": [pubkey],
+          ...value["#a"] ? { "#a": [String(value["#a"][0])] } : {},
+          ...value.since !== void 0 ? { since: value.since } : {},
+          limit: value.limit
+        };
+      }
       const allowedKeys = /* @__PURE__ */ new Set(["kinds", "#k", "#i", "authors", "limit"]);
       if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
         return null;
       }
-      if (!Array.isArray(value.kinds) || value.kinds.length !== 1 || value.kinds[0] !== 17 || !Array.isArray(value["#k"]) || value["#k"].length !== 1 || value["#k"][0] !== "web" || !Array.isArray(value["#i"]) || value["#i"].length !== 1 || !isAllowedStatusUrl(value["#i"][0]) || !Number.isInteger(value.limit) || value.limit < 1 || value.limit > 1e3) {
+      if (value.kinds[0] !== 17 || !Array.isArray(value["#k"]) || value["#k"].length !== 1 || value["#k"][0] !== "web" || !Array.isArray(value["#i"]) || value["#i"].length !== 1 || !isAllowedContentUrl(value["#i"][0]) || !Number.isInteger(value.limit) || value.limit < 1 || value.limit > 1e3) {
         return null;
       }
       if (value.authors !== void 0 && (!Array.isArray(value.authors) || value.authors.length !== 1 || !HEX_64_PATTERN.test(String(value.authors[0])))) {
@@ -6949,7 +6991,7 @@
       const identifierTags = event.tags.filter(
         (tag) => Array.isArray(tag) && tag.length === 2 && tag[0] === "i"
       );
-      if (kindTags.length !== 1 || kindTags[0][1] !== "web" || identifierTags.length !== 1 || !isAllowedStatusUrl(identifierTags[0][1]) || !verifyEvent(event)) {
+      if (kindTags.length !== 1 || kindTags[0][1] !== "web" || identifierTags.length !== 1 || !isAllowedContentUrl(identifierTags[0][1]) || !verifyEvent(event)) {
         return null;
       }
       return event;
@@ -6957,7 +6999,13 @@
     function isAllowedPageOrigin(origin) {
       try {
         const url = new URL(origin);
-        return url.protocol === "https:" && url.port === "" && (url.hostname === "x.com" || url.hostname === "twitter.com");
+        return url.protocol === "https:" && url.port === "" && [
+          "x.com",
+          "twitter.com",
+          "www.youtube.com",
+          "m.youtube.com",
+          "youtube.com"
+        ].includes(url.hostname);
       } catch (_error) {
         return false;
       }
@@ -6969,7 +7017,7 @@
         throw new Error("Relay request contains an unsupported relay list");
       }
       if (message.operation === "getLikeState") {
-        if (!payload || Object.keys(payload).some((key) => key !== "relays" && key !== "url") || !isAllowedStatusUrl(payload.url)) {
+        if (!payload || Object.keys(payload).some((key) => key !== "relays" && key !== "url") || !isAllowedContentUrl(payload.url)) {
           throw new Error("Known-reaction request contains unexpected data");
         }
         const publicKey = await extension.storage.getKnownPubkey();
@@ -6991,10 +7039,7 @@
         }
         const queriedEvents = await queryWithFastQuorum(pool, relays, filters);
         const eventsById = new Map(
-          [...queriedEvents, ...getRecentReactions(payload.url)].map((event) => [
-            event.id,
-            event
-          ])
+          [...queriedEvents, ...getRecentReactions(payload.url)].map((event) => [event.id, event])
         );
         const events = Array.from(eventsById.values());
         const ownEvents = publicKey ? events.filter((event) => event.pubkey === publicKey) : [];
@@ -7091,6 +7136,7 @@
     extension.relayClient = {
       configure,
       queryWithFastQuorum,
+      isAllowedContentUrl,
       isAllowedStatusUrl,
       validateFilter,
       validateReactionEvent,

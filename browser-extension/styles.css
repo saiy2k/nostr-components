@@ -16,6 +16,31 @@
   cursor: pointer;
 }
 
+.nostr-youtube-action-slot {
+  align-items: center;
+  align-self: stretch;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  justify-content: center;
+  min-height: 36px;
+  position: relative;
+  z-index: 1;
+}
+
+.nostr-competency-action-slot {
+  gap: 2px;
+}
+
+.nostr-youtube-action-slot nostr-like-button,
+.nostr-youtube-action-slot nostr-zap-button,
+.nostr-competency-action-slot nostr-like-button,
+.nostr-competency-action-slot nostr-zap-button {
+  display: inline-flex;
+  position: relative;
+  z-index: 2;
+}
+
 .nostr-competency-action-slot > nostr-like-button {
   display: flex;
   flex: 1 1 0;

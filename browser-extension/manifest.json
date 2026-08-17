@@ -1,13 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Nostr Like for X",
+  "name": "Nostr Like & Zap",
   "version": "0.7.1",
-  "description": "Adds Nostr Like buttons to posts on X.",
+  "description": "Adds Nostr Like and Zap actions to posts on X and YouTube.",
   "incognito": "split",
   "permissions": ["scripting", "storage"],
   "host_permissions": [
     "https://x.com/*",
     "https://twitter.com/*",
+    "https://www.youtube.com/*",
+    "https://m.youtube.com/*",
+    "https://youtube.com/*",
     "https://us-central1-gr-prod.cloudfunctions.net/*",
     "wss://relay.damus.io/*",
     "wss://nostr.wine/*",
@@ -23,7 +26,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*",
+        "https://youtube.com/*"
+      ],
       "js": [
         "lib/url.js",
         "lib/storage.js",
@@ -31,6 +40,7 @@
         "lib/relay-client.js",
         "lib/component-loader.js",
         "lib/dom.js",
+        "lib/youtube-dom.js",
         "content.js"
       ],
       "css": ["styles.css"],

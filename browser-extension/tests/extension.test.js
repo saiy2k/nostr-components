@@ -2,13 +2,14 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { finalizeEvent } from 'nostr-tools';
+import { finalizeEvent, nip19 } from 'nostr-tools';
 
 await import('../lib/url.js');
 await import('../lib/storage.js');
 await import('../lib/directory.js');
 await import('../lib/relay-client.js');
 await import('../lib/dom.js');
+await import('../lib/youtube-dom.js');
 
 const extension = globalThis.NostrLikeExtension;
 
@@ -43,6 +44,148 @@ describe('URL normalization', function () {
 
   it('rejects status-shaped URLs from unsupported hosts', function () {
     expect(extension.url.parseTweetUrl('https://example.com/Jack/status/1234567890')).toBeNull();
+  });
+
+  it('canonicalizes YouTube watch and Shorts URLs to one video identifier', function () {
+    expect(
+      extension.url.parseYouTubeUrl(
+        'https://www.youtube.com/shorts/dQw4w9WgXcQ?feature=share#comments'
+      )
+    ).toEqual({
+      videoId: 'dQw4w9WgXcQ',
+      canonicalUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    });
+    expect(
+      extension.url.parseYouTubeUrl('https://youtu.be/dQw4w9WgXcQ?t=42')
+    ).toEqual({
+      videoId: 'dQw4w9WgXcQ',
+      canonicalUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    });
+  });
+
+  it('rejects malformed YouTube video identifiers', function () {
+    expect(extension.url.parseYouTubeUrl('https://www.youtube.com/watch?v=too-short')).toBeNull();
+  });
+});
+
+describe('Zap action integration', function () {
+  const recipientNpub = nip19.npubEncode('1'.repeat(64));
+
+  class FakeElement {
+    constructor(tagName = 'div') {
+      this.tagName = tagName.toLowerCase();
+      this.children = [];
+      this.dataset = {};
+      this.attributes = {};
+      this.className = '';
+      this.parentElement = null;
+      this.nextSibling = null;
+      this.textContent = '';
+    }
+
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+      if (name.startsWith('data-')) {
+        const key = name.slice(5).replace(/-([a-z])/g, function (_match, letter) {
+          return letter.toUpperCase();
+        });
+        this.dataset[key] = String(value);
+      }
+    }
+
+    getAttribute(name) {
+      return this.attributes[name] ?? null;
+    }
+
+    appendChild(child) {
+      child.parentElement = this;
+      this.children.push(child);
+      return child;
+    }
+
+    remove() {
+      if (!this.parentElement) return;
+      this.parentElement.children = this.parentElement.children.filter((child) => child !== this);
+    }
+
+    addEventListener() {}
+
+    querySelector(selector) {
+      if (selector === 'nostr-like-button' || selector === 'nostr-zap-button') {
+        return this.children.find((child) => child.tagName === selector) ?? null;
+      }
+      return null;
+    }
+  }
+
+  beforeEach(function () {
+    globalThis.document = {
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      }
+    };
+  });
+
+  it('adds X Zap only for a verified zappable directory identity', function () {
+    const action = extension.dom.createNostrAction(
+      {
+        canonicalUrl: 'https://x.com/alokdangre/status/42',
+        statusId: '42',
+        username: 'alokdangre'
+      },
+      'dark'
+    );
+
+    extension.dom.hydrateNostrAction(action.slot);
+    extension.dom.applyDirectoryIdentity(action.slot, {
+      found: true,
+      verified: true,
+      activeIdentity: { npub: recipientNpub, zappable: true }
+    });
+
+    const zap = action.slot.querySelector('nostr-zap-button');
+    expect(zap).not.toBeNull();
+    expect(zap.getAttribute('npub')).toBe(recipientNpub);
+    expect(zap.getAttribute('url')).toBe('https://x.com/alokdangre/status/42');
+    expect(zap.getAttribute('compact')).toBe('');
+
+    extension.dom.applyDirectoryIdentity(action.slot, {
+      found: true,
+      verified: false,
+      activeIdentity: { npub: recipientNpub, zappable: true }
+    });
+    expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
+  });
+
+  it('adds YouTube Like unconditionally and Zap for an explicitly declared valid npub', function () {
+    const action = extension.youtubeDom.createNostrAction(
+      {
+        videoId: 'dQw4w9WgXcQ',
+        canonicalUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+      },
+      'light',
+      recipientNpub
+    );
+
+    extension.youtubeDom.hydrateNostrAction(action.slot);
+
+    expect(action.slot.querySelector('nostr-like-button').getAttribute('url')).toBe(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    );
+    expect(action.slot.querySelector('nostr-zap-button').getAttribute('npub')).toBe(recipientNpub);
+  });
+
+  it('extracts only checksum-valid npubs from YouTube page metadata', function () {
+    const root = {
+      querySelectorAll() {
+        return [
+          { textContent: 'fake npub1' + 'q'.repeat(58), getAttribute: () => null },
+          { textContent: 'Support me on Nostr: ' + recipientNpub, getAttribute: () => null }
+        ];
+      }
+    };
+
+    expect(extension.youtubeDom.extractDeclaredNpub(root)).toBe(recipientNpub);
   });
 });
 
@@ -358,7 +501,12 @@ describe('CSP-safe component and relay integration', function () {
       scripts.indexOf('lib/component-loader.js')
     );
     expect(scripts).not.toContain('lib/nostr-like-button.js');
+    expect(scripts).not.toContain('lib/nostr-zap-button.js');
+    expect(scripts).not.toContain('lib/nostr-extension-components.js');
     expect(scripts).not.toContain('lib/signer-adapter.js');
+    expect(manifest.content_scripts[0].matches).toEqual(
+      expect.arrayContaining(['https://www.youtube.com/*', 'https://m.youtube.com/*'])
+    );
     expect(manifest.host_permissions).toEqual(
       expect.arrayContaining([
         'wss://relay.damus.io/*',
@@ -371,9 +519,16 @@ describe('CSP-safe component and relay integration', function () {
         'wss://relay.primal.net/*'
       ])
     );
+
+    const componentBundle = readFileSync(
+      new URL('../lib/nostr-extension-components.js', import.meta.url),
+      'utf8'
+    );
+    expect(componentBundle).toContain('customElements.define("nostr-like-button"');
+    expect(componentBundle).toContain('customElements.define("nostr-zap-button"');
   });
 
-  it("injects the transport before the real component in X's MAIN world", async function () {
+  it("injects the transport before the real components in X's MAIN world", async function () {
     let runtimeListener;
     const executeScript = vi.fn(async function () {
       return [];
@@ -394,7 +549,7 @@ describe('CSP-safe component and relay integration', function () {
     const response = await new Promise(function (resolve) {
       const staysOpen = runtimeListener(
         {
-          type: 'INJECT_NOSTR_LIKE_COMPONENT',
+          type: 'INJECT_NOSTR_COMPONENTS',
           channel: 'a'.repeat(64)
         },
         { tab: { id: 87 }, frameId: 0, url: 'https://x.com/home' },
@@ -414,8 +569,37 @@ describe('CSP-safe component and relay integration', function () {
     expect(executeScript.mock.calls[1][0]).toEqual({
       target: { tabId: 87, frameIds: [0] },
       world: 'MAIN',
-      files: ['lib/nostr-like-button.js']
+      files: ['lib/nostr-extension-components.js']
     });
+  });
+
+  it("allows component injection in YouTube's validated top-level frame", async function () {
+    let runtimeListener;
+    const executeScript = vi.fn(async function () {
+      return [];
+    });
+    globalThis.chrome = {
+      runtime: {
+        onMessage: {
+          addListener(listener) {
+            runtimeListener = listener;
+          }
+        }
+      },
+      scripting: { executeScript: executeScript }
+    };
+
+    await import('../background.js?youtube-injection');
+    const response = await new Promise(function (resolve) {
+      runtimeListener(
+        { type: 'INJECT_NOSTR_COMPONENTS', channel: 'c'.repeat(64) },
+        { tab: { id: 88 }, frameId: 0, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+        resolve
+      );
+    });
+
+    expect(response).toEqual({ ok: true, result: true });
+    expect(executeScript).toHaveBeenCalledTimes(2);
   });
 
   it('rejects injection when the sender frame cannot be validated', async function () {
@@ -437,7 +621,7 @@ describe('CSP-safe component and relay integration', function () {
     const response = await new Promise(function (resolve) {
       runtimeListener(
         {
-          type: 'INJECT_NOSTR_LIKE_COMPONENT',
+          type: 'INJECT_NOSTR_COMPONENTS',
           channel: 'a'.repeat(64)
         },
         { tab: { id: 87 }, url: 'https://x.com/home' },
@@ -447,7 +631,7 @@ describe('CSP-safe component and relay integration', function () {
 
     expect(response).toEqual({
       ok: false,
-      error: 'Like component injection requires a validated sender frame'
+      error: 'Nostr component injection requires a validated sender frame'
     });
     expect(executeScript).not.toHaveBeenCalled();
   });
@@ -597,6 +781,45 @@ describe('CSP-safe component and relay integration', function () {
     session.dispose();
     extension.storage.getKnownPubkey = originalGetKnownPubkey;
     extension.storage.setKnownPubkey = originalSetKnownPubkey;
+  });
+
+  it('accepts scoped YouTube reactions, profiles, and URL zap receipt filters', function () {
+    const pubkey = 'a'.repeat(64);
+    const youtubeUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+
+    expect(extension.relayClient.isAllowedContentUrl(youtubeUrl)).toBe(true);
+    expect(
+      extension.relayClient.validateFilter({
+        kinds: [17],
+        '#k': ['web'],
+        '#i': [youtubeUrl],
+        limit: 1000
+      })
+    ).not.toBeNull();
+    expect(
+      extension.relayClient.validateFilter({
+        kinds: [0],
+        authors: [pubkey],
+        limit: 1
+      })
+    ).toEqual({ kinds: [0], authors: [pubkey], limit: 1 });
+    expect(
+      extension.relayClient.validateFilter({
+        kinds: [9735],
+        '#p': [pubkey],
+        '#a': ['39735:' + pubkey + ':' + youtubeUrl],
+        since: 123,
+        limit: 100
+      })
+    ).not.toBeNull();
+    expect(
+      extension.relayClient.validateFilter({
+        kinds: [9735],
+        '#p': [pubkey],
+        '#a': ['39735:' + 'b'.repeat(64) + ':' + youtubeUrl],
+        limit: 100
+      })
+    ).toBeNull();
   });
 
   it('queries a health-ranked relay quorum instead of waiting for all eight', async function () {
@@ -928,5 +1151,148 @@ describe('timeline component integration', function () {
     } finally {
       extension.directory.lookup = originalDirectoryLookup;
     }
+  });
+});
+
+describe('YouTube component integration', function () {
+  it('injects lazy Like and Zap actions beside the native video Like control', async function () {
+    const recipientNpub = nip19.npubEncode('4'.repeat(64));
+    const scheduledCallbacks = [];
+    const intersectionCallbacks = [];
+
+    class FakeElement {
+      constructor(tagName = 'div') {
+        this.tagName = tagName.toLowerCase();
+        this.children = [];
+        this.dataset = {};
+        this.attributes = {};
+        this.parentElement = null;
+        this.nextSibling = null;
+        this.className = '';
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+        if (name.startsWith('data-')) {
+          const key = name.slice(5).replace(/-([a-z])/g, function (_match, letter) {
+            return letter.toUpperCase();
+          });
+          this.dataset[key] = String(value);
+        }
+      }
+
+      getAttribute(name) {
+        return this.attributes[name] ?? null;
+      }
+
+      appendChild(child) {
+        child.parentElement = this;
+        this.children.push(child);
+        return child;
+      }
+
+      insertBefore(child, sibling) {
+        child.parentElement = this;
+        const index = this.children.indexOf(sibling);
+        if (index === -1) this.children.push(child);
+        else this.children.splice(index, 0, child);
+      }
+
+      addEventListener() {}
+
+      querySelector(selector) {
+        if (selector === 'nostr-like-button' || selector === 'nostr-zap-button') {
+          return this.children.find((child) => child.tagName === selector) ?? null;
+        }
+        if (selector.startsWith('[data-nostr-youtube-action=')) {
+          const id = selector.match(/data-video-id="([^"]+)"/)?.[1];
+          return this.children.find(
+            (child) => child.dataset.nostrYoutubeAction === 'true' && child.dataset.videoId === id
+          ) ?? null;
+        }
+        if (selector.includes('like-button-view-model')) return nativeLike;
+        return null;
+      }
+
+      querySelectorAll(selector) {
+        if (selector === '[data-nostr-youtube-action="true"]') {
+          return this.children.filter((child) => child.dataset.nostrYoutubeAction === 'true');
+        }
+        return [];
+      }
+    }
+
+    const actionBar = new FakeElement();
+    const likeContainer = new FakeElement();
+    const followingAction = new FakeElement();
+    const nativeLike = new FakeElement('button');
+    actionBar.appendChild(likeContainer);
+    actionBar.appendChild(followingAction);
+    likeContainer.nextSibling = followingAction;
+    likeContainer.appendChild(nativeLike);
+
+    globalThis.document = {
+      body: {},
+      documentElement: {},
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      },
+      querySelector(selector) {
+        return selector === '#actions-inner #top-level-buttons-computed' ? actionBar : null;
+      },
+      querySelectorAll(selector) {
+        if (selector.includes('meta[name="description"]')) {
+          return [{ getAttribute: () => null, textContent: 'Nostr: ' + recipientNpub }];
+        }
+        return [];
+      }
+    };
+    globalThis.MutationObserver = class {
+      constructor() {}
+      observe() {}
+    };
+    globalThis.IntersectionObserver = class {
+      constructor(callback) {
+        intersectionCallbacks.push(callback);
+      }
+      observe(target) {
+        this.target = target;
+      }
+      unobserve() {}
+    };
+    globalThis.window = {
+      location: {
+        href: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        hostname: 'www.youtube.com',
+        origin: 'https://www.youtube.com'
+      },
+      getComputedStyle() {
+        return { colorScheme: 'light' };
+      },
+      setTimeout(callback) {
+        scheduledCallbacks.push(callback);
+        return scheduledCallbacks.length;
+      },
+      requestAnimationFrame(callback) {
+        callback();
+      },
+      addEventListener() {}
+    };
+    extension.componentLoader = { ready: Promise.resolve() };
+
+    await import('../content.js?youtube-content');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    scheduledCallbacks.shift()();
+
+    const slot = actionBar.children[1];
+    expect(slot.dataset.videoId).toBe('dQw4w9WgXcQ');
+    expect(slot.querySelector('nostr-like-button')).toBeNull();
+    expect(slot.querySelector('nostr-zap-button')).toBeNull();
+
+    intersectionCallbacks[0]([{ target: slot, isIntersecting: true }]);
+    expect(slot.querySelector('nostr-like-button').getAttribute('url')).toBe(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    );
+    expect(slot.querySelector('nostr-zap-button').getAttribute('npub')).toBe(recipientNpub);
   });
 });

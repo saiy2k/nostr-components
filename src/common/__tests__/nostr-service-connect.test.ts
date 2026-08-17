@@ -95,8 +95,40 @@ describe('NostrService.connectToNostr concurrency', () => {
   });
 
   afterEach(() => {
+    delete (
+      globalThis as typeof globalThis & {
+        __nostrComponentsRelayTransport?: unknown;
+      }
+    ).__nostrComponentsRelayTransport;
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it('loads profiles through the host transport without a direct NDK fetch', async () => {
+    const { service } = await freshService();
+    const fetchProfile = vi.fn();
+    const pubkey = '9'.repeat(64);
+    const query = vi.fn().mockResolvedValue([
+      {
+        pubkey,
+        created_at: 10,
+        kind: 0,
+        content: JSON.stringify({ name: 'YouTube creator' }),
+      },
+    ]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn() },
+    });
+
+    await expect(service.getProfile({ pubkey, fetchProfile } as any)).resolves.toMatchObject({
+      name: 'YouTube creator',
+    });
+    expect(fetchProfile).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledWith(expect.any(Array), {
+      kinds: [0],
+      authors: [pubkey],
+      limit: 1,
+    });
   });
 
   it('shares a single connection attempt across concurrent callers', async () => {

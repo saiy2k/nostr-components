@@ -8,7 +8,11 @@
     ? new IntersectionObserver(function (entries) {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          extension.dom.hydrateNostrAction(entry.target);
+          if (entry.target.dataset.nostrYoutubeAction === 'true') {
+            extension.youtubeDom.hydrateNostrAction(entry.target);
+          } else {
+            extension.dom.hydrateNostrAction(entry.target);
+          }
           hydrationObserver.unobserve(entry.target);
         }
       }, { rootMargin: '600px 0px' })
@@ -85,12 +89,46 @@
     });
   }
 
+  function processYouTubeVideo() {
+    const videoInfo = extension.youtubeDom.getVideoInfo();
+    if (!videoInfo) return;
+    const actionBar = extension.youtubeDom.findActionBar(document);
+    if (!actionBar) return;
+
+    extension.youtubeDom.removeStaleActions(actionBar, videoInfo.videoId);
+    const theme = getPageTheme();
+    const recipientNpub = extension.youtubeDom.extractDeclaredNpub(document);
+    const existingAction = extension.youtubeDom.findAction(actionBar, videoInfo.videoId);
+    if (existingAction) {
+      extension.youtubeDom.updateActionTheme(existingAction, theme);
+      extension.youtubeDom.updateRecipient(existingAction, recipientNpub);
+      return;
+    }
+
+    const action = extension.youtubeDom.createNostrAction(
+      videoInfo,
+      theme,
+      recipientNpub
+    );
+    extension.youtubeDom.insertAfterNativeLike(actionBar, action.slot);
+    if (hydrationObserver) hydrationObserver.observe(action.slot);
+    else extension.youtubeDom.hydrateNostrAction(action.slot);
+  }
+
+  function processCurrentPage() {
+    if (/(^|\.)youtube\.com$/.test(window.location.hostname)) {
+      processYouTubeVideo();
+    } else {
+      processTweets();
+    }
+  }
+
   function scheduleInjection() {
     if (injectionScheduled) return;
     injectionScheduled = true;
     window.setTimeout(function () {
       injectionScheduled = false;
-      processTweets();
+      processCurrentPage();
     }, INJECT_DELAY_MS);
   }
 

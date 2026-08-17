@@ -5,7 +5,7 @@ const DIRECTORY_LOOKUP_ENDPOINT =
 const LOOKUP_TIMEOUT_MS = 5000;
 const RELAY_CHANNEL_PATTERN = /^[0-9a-f]{64}$/;
 
-function getXExecutionTarget(sender) {
+function getExecutionTarget(sender) {
   if (
     !sender ||
     !sender.tab ||
@@ -13,20 +13,26 @@ function getXExecutionTarget(sender) {
     !chrome.scripting ||
     typeof chrome.scripting.executeScript !== 'function'
   ) {
-    throw new Error('Like component injection is unavailable');
+    throw new Error('Nostr component injection is unavailable');
   }
 
   if (typeof sender.url !== 'string' || !Number.isInteger(sender.frameId)) {
-    throw new Error('Like component injection requires a validated sender frame');
+    throw new Error('Nostr component injection requires a validated sender frame');
   }
 
   const senderUrl = new URL(sender.url);
   if (
     senderUrl.protocol !== 'https:' ||
     senderUrl.port !== '' ||
-    (senderUrl.hostname !== 'x.com' && senderUrl.hostname !== 'twitter.com')
+    ![
+      'x.com',
+      'twitter.com',
+      'www.youtube.com',
+      'm.youtube.com',
+      'youtube.com'
+    ].includes(senderUrl.hostname)
   ) {
-    throw new Error('Like component injection is restricted to X/Twitter');
+    throw new Error('Nostr component injection is restricted to supported sites');
   }
 
   return { tabId: sender.tab.id, frameIds: [sender.frameId] };
@@ -126,12 +132,12 @@ function installRelayTransport(channel) {
   });
 }
 
-async function injectLikeComponent(message, sender) {
+async function injectComponents(message, sender) {
   if (!RELAY_CHANNEL_PATTERN.test(String(message.channel || ''))) {
     throw new Error('Invalid relay bridge channel');
   }
 
-  const target = getXExecutionTarget(sender);
+  const target = getExecutionTarget(sender);
   await chrome.scripting.executeScript({
     target: target,
     func: installRelayTransport,
@@ -140,7 +146,7 @@ async function injectLikeComponent(message, sender) {
   });
   await chrome.scripting.executeScript({
     target: target,
-    files: ['lib/nostr-like-button.js'],
+    files: ['lib/nostr-extension-components.js'],
     world: 'MAIN'
   });
   return true;
@@ -195,8 +201,8 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   let operation;
   if (message.type === 'LOOKUP_DIRECTORY_HANDLE') {
     operation = lookupDirectoryHandle(message);
-  } else if (message.type === 'INJECT_NOSTR_LIKE_COMPONENT') {
-    operation = injectLikeComponent(message, sender);
+  } else if (message.type === 'INJECT_NOSTR_COMPONENTS') {
+    operation = injectComponents(message, sender);
   } else {
     return false;
   }

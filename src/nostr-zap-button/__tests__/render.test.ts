@@ -37,4 +37,24 @@ describe('renderZapButton', () => {
     expect(html).not.toContain('aria-busy');
     expect(html).toContain('>Zap</span>');
   });
+
+  it('renders an icon-only compact action with an accessible label and count', () => {
+    const html = renderZapButton({
+      isLoading: false,
+      isError: false,
+      isSuccess: false,
+      errorMessage: '',
+      buttonText: 'Zap',
+      totalZapAmount: 21,
+      isAmountLoading: false,
+      hasZaps: true,
+      compact: true,
+    });
+
+    expect(html).toContain('class="nostr-zap-button-container compact"');
+    expect(html).toContain('aria-label="Zap"');
+    expect(html).toContain('>21</span>');
+    expect(html).not.toContain('What is a zap?');
+    expect(html).not.toContain('>Zap</span>');
+  });
 });

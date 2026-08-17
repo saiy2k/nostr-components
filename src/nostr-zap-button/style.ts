@@ -58,6 +58,35 @@ export function getZapButtonStyles(): string {
       width: fit-content;
     }
 
+    :host([compact]) {
+      --nostrc-icon-height: 20px;
+      --nostrc-icon-width: 20px;
+      --nostrc-zap-btn-border: 0;
+      --nostrc-zap-btn-hover-border: 0;
+      --nostrc-zap-btn-min-height: 34px;
+      --nostrc-zap-btn-padding: 7px;
+      --nostrc-zap-btn-bg: transparent;
+      --nostrc-zap-btn-hover-bg: rgba(255, 200, 0, 0.12);
+      gap: 0;
+    }
+
+    :host([compact]) .nostr-zap-button-container.compact {
+      gap: 1px;
+    }
+
+    :host([compact]) .nostr-zap-button {
+      border-radius: 9999px;
+      box-sizing: border-box;
+      justify-content: center;
+      min-width: 34px;
+    }
+
+    :host([compact]) .compact-zap-count {
+      font-size: 13px;
+      line-height: 20px;
+      padding-right: 2px;
+    }
+
     .nostr-zap-button-left-container {
       display: flex;
       align-items: center;
@@ -219,4 +248,3 @@ export function getZapButtonStyles(): string {
   
   return getComponentStyles(customStyles);
 }
-

@@ -13,7 +13,7 @@
 
   async function sendInjectionRequest(channel) {
     const message = {
-      type: 'INJECT_NOSTR_LIKE_COMPONENT',
+      type: 'INJECT_NOSTR_COMPONENTS',
       channel: channel
     };
 
@@ -36,7 +36,7 @@
     }
 
     if (!response || response.ok !== true) {
-      throw new Error((response && response.error) || 'Like component injection failed');
+      throw new Error((response && response.error) || 'Nostr component injection failed');
     }
   }
 
