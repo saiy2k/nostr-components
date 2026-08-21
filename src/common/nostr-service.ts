@@ -6,6 +6,7 @@ import NDK, {
   NDKUserProfile,
   NDKEvent,
   NDKRelayStatus,
+  profileFromEvent,
 } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from './constants';
 import { DEFAULT_PROFILE_IMAGE } from './constants';
@@ -194,10 +195,10 @@ export class NostrService {
 
     const transport = getRelayTransport();
     if (transport) {
-      const event = await getProfileMetadata(user.pubkey, [...DEFAULT_RELAYS]);
+      const event = await getProfileMetadata(user.pubkey, this.getRelays());
       if (!event) return null;
       try {
-        const profile = JSON.parse(event.content || '{}') as NDKUserProfile;
+        const profile = profileFromEvent(new NDKEvent(this.ndk, event));
         if (profile.picture === undefined || profile.picture === null) {
           profile.picture = DEFAULT_PROFILE_IMAGE;
         }

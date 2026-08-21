@@ -93,4 +93,31 @@ describe('Zap component relay transport', () => {
     await vi.advanceTimersByTimeAsync(6000);
     expect(query).toHaveBeenCalledTimes(1);
   });
+
+  it('stops transport receipt polling after the payment-attempt deadline', async () => {
+    vi.useFakeTimers();
+    const query = vi.fn().mockResolvedValue([]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn() },
+    });
+
+    listenForZapReceipt({
+      relays: RELAYS,
+      receiversPubKey: 'c'.repeat(64),
+      invoice: 'lnbc-expiring',
+      provider: {
+        lnurl: 'https://example.com/.well-known/lnurlp/creator',
+        callback: 'https://example.com/callback',
+        nostrPubkey: 'd'.repeat(64),
+      },
+      onSuccess: vi.fn(),
+    });
+
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 3000);
+    const callsAtDeadline = query.mock.calls.length;
+    expect(callsAtDeadline).toBeGreaterThan(1);
+
+    await vi.advanceTimersByTimeAsync(60 * 1000);
+    expect(query).toHaveBeenCalledTimes(callsAtDeadline);
+  });
 });

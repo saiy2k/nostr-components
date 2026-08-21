@@ -66,6 +66,12 @@ describe('URL normalization', function () {
   it('rejects malformed YouTube video identifiers', function () {
     expect(extension.url.parseYouTubeUrl('https://www.youtube.com/watch?v=too-short')).toBeNull();
   });
+
+  it('accepts only canonical lowercase npubs', function () {
+    const npub = nip19.npubEncode('2'.repeat(64));
+    expect(extension.url.isValidNpub(npub)).toBe(true);
+    expect(extension.url.isValidNpub(npub.toUpperCase())).toBe(false);
+  });
 });
 
 describe('Zap action integration', function () {
@@ -175,9 +181,11 @@ describe('Zap action integration', function () {
     expect(action.slot.querySelector('nostr-zap-button').getAttribute('npub')).toBe(recipientNpub);
   });
 
-  it('extracts only checksum-valid npubs from YouTube page metadata', function () {
+  it('extracts checksum-valid npubs only from the creator identity area', function () {
+    const queriedSelectors = [];
     const root = {
-      querySelectorAll() {
+      querySelectorAll(selector) {
+        queriedSelectors.push(selector);
         return [
           { textContent: 'fake npub1' + 'q'.repeat(58), getAttribute: () => null },
           { textContent: 'Support me on Nostr: ' + recipientNpub, getAttribute: () => null }
@@ -186,6 +194,21 @@ describe('Zap action integration', function () {
     };
 
     expect(extension.youtubeDom.extractDeclaredNpub(root)).toBe(recipientNpub);
+    expect(queriedSelectors[0]).toContain('ytd-video-owner-renderer');
+    expect(queriedSelectors[0]).not.toContain('meta');
+    expect(queriedSelectors[0]).not.toContain('#description');
+  });
+
+  it('ignores npubs declared only in YouTube video content', function () {
+    const root = {
+      querySelectorAll(selector) {
+        return selector.includes('description')
+          ? [{ textContent: 'Send funds to ' + recipientNpub, getAttribute: () => null }]
+          : [];
+      }
+    };
+
+    expect(extension.youtubeDom.extractDeclaredNpub(root)).toBeNull();
   });
 });
 
@@ -483,10 +506,13 @@ describe('X action placement', function () {
   it('stretches the action slot so standalone rows can vertically center the control', function () {
     const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
     const slotRule = css.match(/\.nostr-competency-action-slot\s*\{[^}]+\}/);
+    const standaloneRules = css.match(/^\.nostr-competency-action-slot\s*\{/gm) || [];
 
     expect(slotRule).not.toBeNull();
     expect(slotRule[0]).toMatch(/align-self:\s*stretch/);
+    expect(slotRule[0]).toMatch(/gap:\s*2px/);
     expect(slotRule[0]).not.toMatch(/(?:^|[^-])height:\s*34px/m);
+    expect(standaloneRules).toHaveLength(1);
   });
 });
 
@@ -1241,7 +1267,7 @@ describe('YouTube component integration', function () {
         return selector === '#actions-inner #top-level-buttons-computed' ? actionBar : null;
       },
       querySelectorAll(selector) {
-        if (selector.includes('meta[name="description"]')) {
+        if (selector.includes('ytd-video-owner-renderer')) {
           return [{ getAttribute: () => null, textContent: 'Nostr: ' + recipientNpub }];
         }
         return [];

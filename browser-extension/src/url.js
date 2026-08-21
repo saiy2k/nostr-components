@@ -83,10 +83,10 @@ import { normalizeURL } from 'nostr-tools/utils';
 
   function isValidNpub(value) {
     const original = String(value || '');
-    if (original !== original.toLowerCase() && original !== original.toUpperCase()) {
+    if (original !== original.toLowerCase()) {
       return false;
     }
-    const normalized = original.toLowerCase();
+    const normalized = original;
     if (!/^npub1[023456789acdefghjklmnpqrstuvwxyz]{58}$/.test(normalized)) {
       return false;
     }

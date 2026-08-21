@@ -31,13 +31,12 @@
 
   function extractDeclaredNpub(root) {
     const candidates = root.querySelectorAll([
-      'meta[name="description"]',
-      'meta[property="og:description"]',
-      'meta[itemprop="description"]',
-      '#description-inline-expander',
-      '#description',
-      'ytd-channel-name',
-      '#owner'
+      '#owner ytd-channel-name',
+      '#owner #channel-name',
+      '#owner a[href^="nostr:npub1"]',
+      'ytd-video-owner-renderer ytd-channel-name',
+      'ytd-video-owner-renderer a[href^="nostr:npub1"]',
+      'ytm-slim-owner-renderer'
     ].join(','));
     for (const candidate of candidates) {
       const text = String(
@@ -48,7 +47,7 @@
       );
       const matches = text.match(NPUB_PATTERN) || [];
       for (const match of matches) {
-        if (extension.url.isValidNpub(match)) return match.toLowerCase();
+        if (extension.url.isValidNpub(match)) return match;
       }
     }
     return null;

@@ -20305,7 +20305,7 @@
       return null;
     }
   }
-  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, zapProviderCache, getProfileMetadata, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
+  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, getProfileMetadata, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
   var init_zap_utils = __esm({
     "src/nostr-zap-button/zap-utils.ts"() {
       "use strict";
@@ -20318,6 +20318,7 @@
       profileCache = {};
       ZAP_PROVIDER_CACHE_TTL_MS = 5 * 60 * 1e3;
       ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1e3;
+      ZAP_RECEIPT_POLL_TIMEOUT_MS = 10 * 60 * 1e3;
       zapProviderCache = {};
       getProfileMetadata = async (authorId, relays) => {
         if (profileCache[authorId]) return profileCache[authorId];
@@ -20573,8 +20574,12 @@
         if (transport) {
           let stopped = false;
           let timeoutId = null;
+          const deadlineAt = Date.now() + ZAP_RECEIPT_POLL_TIMEOUT_MS;
           const poll = async () => {
-            if (stopped) return;
+            if (stopped || Date.now() >= deadlineAt) {
+              stopped = true;
+              return;
+            }
             try {
               const events = await transport.query(normalizedRelays, {
                 kinds: [9735],
@@ -20596,7 +20601,12 @@
               }
             } catch {
             }
-            if (!stopped) timeoutId = setTimeout(poll, 3e3);
+            const remainingMs = deadlineAt - Date.now();
+            if (!stopped && remainingMs > 0) {
+              timeoutId = setTimeout(poll, Math.min(3e3, remainingMs));
+            } else {
+              stopped = true;
+            }
           };
           void poll();
           return () => {
@@ -24605,10 +24615,10 @@
       if (!user) return null;
       const transport = getRelayTransport();
       if (transport) {
-        const event = await getProfileMetadata(user.pubkey, [...DEFAULT_RELAYS]);
+        const event = await getProfileMetadata(user.pubkey, this.getRelays());
         if (!event) return null;
         try {
-          const profile2 = JSON.parse(event.content || "{}");
+          const profile2 = profileFromEvent(new NDKEvent(this.ndk, event));
           if (profile2.picture === void 0 || profile2.picture === null) {
             profile2.picture = DEFAULT_PROFILE_IMAGE;
           }

@@ -27,6 +27,7 @@ import {
 const profileCache: Record<string, any> = {};
 const ZAP_PROVIDER_CACHE_TTL_MS = 5 * 60 * 1000;
 const ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1000;
+const ZAP_RECEIPT_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 const zapProviderCache: Record<
   string,
   { value: ZapProviderInfo | null; expiresAt: number }
@@ -438,9 +439,13 @@ export const listenForZapReceipt = ({
   if (transport) {
     let stopped = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const deadlineAt = Date.now() + ZAP_RECEIPT_POLL_TIMEOUT_MS;
 
     const poll = async () => {
-      if (stopped) return;
+      if (stopped || Date.now() >= deadlineAt) {
+        stopped = true;
+        return;
+      }
       try {
         const events = await transport.query(normalizedRelays, {
           kinds: [9735],
@@ -463,7 +468,12 @@ export const listenForZapReceipt = ({
       } catch {
         // A relay quorum may be temporarily unavailable while the wallet is open.
       }
-      if (!stopped) timeoutId = setTimeout(poll, 3000);
+      const remainingMs = deadlineAt - Date.now();
+      if (!stopped && remainingMs > 0) {
+        timeoutId = setTimeout(poll, Math.min(3000, remainingMs));
+      } else {
+        stopped = true;
+      }
     };
 
     void poll();

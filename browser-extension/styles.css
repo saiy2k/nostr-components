@@ -14,6 +14,7 @@
   position: relative;
   z-index: 1;
   cursor: pointer;
+  gap: 2px;
 }
 
 .nostr-youtube-action-slot {
@@ -26,10 +27,6 @@
   min-height: 36px;
   position: relative;
   z-index: 1;
-}
-
-.nostr-competency-action-slot {
-  gap: 2px;
 }
 
 .nostr-youtube-action-slot nostr-like-button,

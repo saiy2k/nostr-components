@@ -63,12 +63,35 @@ class FakeNDK {
   }
 }
 
+class FakeNDKEvent {
+  content = '';
+  created_at = 0;
+
+  constructor(_ndk?: FakeNDK, event: Record<string, any> = {}) {
+    Object.assign(this, event);
+  }
+
+  rawEvent() {
+    return { ...this };
+  }
+}
+
 vi.mock('@nostr-dev-kit/ndk', () => ({
   default: FakeNDK,
   NDKRelayStatus: { CONNECTED },
   NDKKind: {},
   NDKUser: class {},
-  NDKEvent: class {},
+  NDKEvent: FakeNDKEvent,
+  profileFromEvent(event: FakeNDKEvent) {
+    const payload = JSON.parse(event.content || '{}');
+    return {
+      ...payload,
+      displayName: payload.display_name,
+      picture: payload.picture || payload.image,
+      image: payload.picture || payload.image,
+      created_at: event.created_at,
+    };
+  },
 }));
 
 const RELAYS = [
@@ -108,12 +131,17 @@ describe('NostrService.connectToNostr concurrency', () => {
     const { service } = await freshService();
     const fetchProfile = vi.fn();
     const pubkey = '9'.repeat(64);
+    const customRelays = ['wss://profiles.example'];
+    vi.spyOn(service, 'getRelays').mockReturnValue(customRelays);
     const query = vi.fn().mockResolvedValue([
       {
         pubkey,
         created_at: 10,
         kind: 0,
-        content: JSON.stringify({ name: 'YouTube creator' }),
+        content: JSON.stringify({
+          display_name: 'YouTube creator',
+          picture: 'https://example.com/creator.png',
+        }),
       },
     ]);
     Object.assign(globalThis, {
@@ -121,10 +149,12 @@ describe('NostrService.connectToNostr concurrency', () => {
     });
 
     await expect(service.getProfile({ pubkey, fetchProfile } as any)).resolves.toMatchObject({
-      name: 'YouTube creator',
+      displayName: 'YouTube creator',
+      image: 'https://example.com/creator.png',
+      picture: 'https://example.com/creator.png',
     });
     expect(fetchProfile).not.toHaveBeenCalled();
-    expect(query).toHaveBeenCalledWith(expect.any(Array), {
+    expect(query).toHaveBeenCalledWith(customRelays, {
       kinds: [0],
       authors: [pubkey],
       limit: 1,
