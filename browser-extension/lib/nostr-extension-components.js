@@ -20270,18 +20270,37 @@
   });
 
   // src/common/trusted-html.ts
+  function getRealmPolicyCache(root) {
+    const existing = root[POLICY_CACHE_KEY];
+    if (existing instanceof WeakMap) {
+      return existing;
+    }
+    const cache = /* @__PURE__ */ new WeakMap();
+    Object.defineProperty(root, POLICY_CACHE_KEY, {
+      configurable: false,
+      enumerable: false,
+      value: cache,
+      writable: false
+    });
+    return cache;
+  }
+  function getTrustedHTMLPolicy(root, factory) {
+    const cache = getRealmPolicyCache(root);
+    const cached = cache.get(factory);
+    if (cached) return cached;
+    const policy = factory.createPolicy(POLICY_NAME, {
+      createHTML(value) {
+        return value;
+      }
+    });
+    cache.set(factory, policy);
+    return policy;
+  }
   function toTrustedHTML(markup) {
     const root = globalThis;
     const factory = root.trustedTypes;
     if (!factory?.createPolicy) return markup;
-    if (!trustedHTMLPolicy) {
-      trustedHTMLPolicy = factory.createPolicy(POLICY_NAME, {
-        createHTML(value) {
-          return value;
-        }
-      });
-    }
-    return trustedHTMLPolicy.createHTML(markup);
+    return getTrustedHTMLPolicy(root, factory).createHTML(markup);
   }
   function setTrustedInnerHTML(target, markup) {
     Reflect.set(target, "innerHTML", toTrustedHTML(markup));
@@ -20289,11 +20308,12 @@
   function setTrustedOuterHTML(target, markup) {
     Reflect.set(target, "outerHTML", toTrustedHTML(markup));
   }
-  var POLICY_NAME, trustedHTMLPolicy;
+  var POLICY_NAME, POLICY_CACHE_KEY;
   var init_trusted_html = __esm({
     "src/common/trusted-html.ts"() {
       "use strict";
       POLICY_NAME = "nostr-components";
+      POLICY_CACHE_KEY = Symbol.for("nostr-components.trusted-html-policy-cache");
     }
   });
 
