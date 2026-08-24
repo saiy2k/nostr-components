@@ -7,6 +7,7 @@ import {
   SimplePool,
 } from 'nostr-tools';
 import type { Filter, Event } from 'nostr-tools';
+import { normalizeURL as normalizeRelayURL } from 'nostr-tools/utils';
 import { normalizeURL } from '../common/utils';
 import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 import { DEFAULT_RELAYS } from '../common/constants';
@@ -24,7 +25,7 @@ import {
  */
 
 // Basic in-memory cache – sufficient for component lifetime.
-const profileCache: Record<string, any> = {};
+const profileCache = new Map<string, Event>();
 const ZAP_PROVIDER_CACHE_TTL_MS = 5 * 60 * 1000;
 const ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1000;
 const ZAP_RECEIPT_POLL_TIMEOUT_MS = 10 * 60 * 1000;
@@ -33,10 +34,27 @@ const zapProviderCache: Record<
   { value: ZapProviderInfo | null; expiresAt: number }
 > = {};
 
-export const getProfileMetadata = async (authorId: string, relays?: string[]) => {
-  if (profileCache[authorId]) return profileCache[authorId];
+const profileCacheKey = (authorId: string, relays: string[]) => {
+  const normalizedRelays = Array.from(
+    new Set(
+      relays.map(relay => {
+        try {
+          return normalizeRelayURL(relay);
+        } catch {
+          return relay;
+        }
+      }),
+    ),
+  ).sort();
+  return `${authorId.toLowerCase()}|${normalizedRelays.join(',')}`;
+};
 
+export const getProfileMetadata = async (authorId: string, relays?: string[]) => {
   const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+  const cacheKey = profileCacheKey(authorId, relayList);
+  const cached = profileCache.get(cacheKey);
+  if (cached) return cached;
+
   const transport = getRelayTransport();
   if (transport) {
     const events = await transport.query(relayList, {
@@ -45,7 +63,7 @@ export const getProfileMetadata = async (authorId: string, relays?: string[]) =>
       limit: 1,
     });
     const event = [...events].sort((left, right) => right.created_at - left.created_at)[0] || null;
-    if (event) profileCache[authorId] = event;
+    if (event) profileCache.set(cacheKey, event);
     return event;
   }
 
@@ -55,7 +73,7 @@ export const getProfileMetadata = async (authorId: string, relays?: string[]) =>
       authors: [authorId],
       kinds: [0],
     });
-    profileCache[authorId] = event;
+    if (event) profileCache.set(cacheKey, event);
     return event;
   } finally {
     pool.close(relayList);
@@ -63,15 +81,20 @@ export const getProfileMetadata = async (authorId: string, relays?: string[]) =>
 };
 
 export const getBatchedProfileMetadata = async (authorIds: string[], relays?: string[]) => {
+  const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
   // Filter out already cached profiles
-  const uncachedIds = authorIds.filter(id => !profileCache[id]);
+  const uncachedIds = authorIds.filter(
+    id => !profileCache.has(profileCacheKey(id, relayList)),
+  );
 
   // If all profiles are cached, return them
   if (uncachedIds.length === 0) {
-    return authorIds.map(id => ({ id, profile: profileCache[id] }));
+    return authorIds.map(id => ({
+      id,
+      profile: profileCache.get(profileCacheKey(id, relayList)) || null,
+    }));
   }
 
-  const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
   const transport = getRelayTransport();
   if (transport) {
     const events = await transport.query(relayList, {
@@ -80,14 +103,15 @@ export const getBatchedProfileMetadata = async (authorIds: string[], relays?: st
       limit: Math.min(uncachedIds.length, 50),
     });
     events.forEach(event => {
-      const cached = profileCache[event.pubkey];
+      const cacheKey = profileCacheKey(event.pubkey, relayList);
+      const cached = profileCache.get(cacheKey);
       if (!cached || event.created_at > cached.created_at) {
-        profileCache[event.pubkey] = event;
+        profileCache.set(cacheKey, event);
       }
     });
     return authorIds.map(id => ({
       id,
-      profile: profileCache[id] || null,
+      profile: profileCache.get(profileCacheKey(id, relayList)) || null,
     }));
   }
 
@@ -102,13 +126,13 @@ export const getBatchedProfileMetadata = async (authorIds: string[], relays?: st
 
     // Cache the fetched profiles
     events.forEach(event => {
-      profileCache[event.pubkey] = event;
+      profileCache.set(profileCacheKey(event.pubkey, relayList), event);
     });
 
     // Combine cached and newly fetched profiles
     const allProfiles = authorIds.map(id => ({
       id,
-      profile: profileCache[id] || null
+      profile: profileCache.get(profileCacheKey(id, relayList)) || null
     }));
 
     return allProfiles;
@@ -453,6 +477,10 @@ export const listenForZapReceipt = ({
           since,
           limit: 100,
         });
+        if (stopped || Date.now() >= deadlineAt) {
+          stopped = true;
+          return;
+        }
         for (const event of events) {
           const tags = event.tags as [string, string][];
           if (!tags.some(t => t[0] === 'bolt11' && t[1] === invoice)) continue;

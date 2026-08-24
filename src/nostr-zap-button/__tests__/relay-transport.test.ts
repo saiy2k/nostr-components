@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as zapReceiptModule from '../zap-receipt';
 import {
   getBatchedProfileMetadata,
   getProfileMetadata,
@@ -15,6 +16,7 @@ afterEach(() => {
       __nostrComponentsRelayTransport?: unknown;
     }
   ).__nostrComponentsRelayTransport;
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -41,6 +43,39 @@ describe('Zap component relay transport', () => {
       kinds: [0],
       limit: 1,
     });
+  });
+
+  it('scopes cached profiles by normalized relay set', async () => {
+    const pubkey = '9'.repeat(64);
+    const relayA = ['wss://profiles-a.example'];
+    const relayB = ['wss://profiles-b.example'];
+    const profileA = {
+      id: 'a'.repeat(64),
+      pubkey,
+      created_at: 10,
+      kind: 0,
+      content: JSON.stringify({ name: 'Relay A' }),
+      tags: [],
+      sig: '1'.repeat(128),
+    };
+    const profileB = {
+      ...profileA,
+      id: 'b'.repeat(64),
+      content: JSON.stringify({ name: 'Relay B' }),
+    };
+    const query = vi.fn(async (relays: string[]) =>
+      relays === relayA ? [profileA] : [profileB],
+    );
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn() },
+    });
+
+    await expect(getProfileMetadata(pubkey, relayA)).resolves.toBe(profileA);
+    await expect(getProfileMetadata(pubkey, relayB)).resolves.toBe(profileB);
+    await expect(
+      getProfileMetadata(pubkey, ['wss://profiles-a.example/']),
+    ).resolves.toBe(profileA);
+    expect(query).toHaveBeenCalledTimes(2);
   });
 
   it('batches zapper profiles into one bounded host query', async () => {
@@ -92,6 +127,47 @@ describe('Zap component relay transport', () => {
     cleanup();
     await vi.advanceTimersByTimeAsync(6000);
     expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a pending transport result after cleanup', async () => {
+    vi.useFakeTimers();
+    let resolveQuery: ((events: any[]) => void) | undefined;
+    const query = vi.fn(
+      () => new Promise<any[]>((resolve) => {
+        resolveQuery = resolve;
+      }),
+    );
+    const validateReceipt = vi
+      .spyOn(zapReceiptModule, 'validateZapReceipt')
+      .mockReturnValue({
+        ok: true,
+        amountMsats: 1000,
+        zapRequest: {} as any,
+      });
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn() },
+    });
+    const onSuccess = vi.fn();
+
+    const cleanup = listenForZapReceipt({
+      relays: RELAYS,
+      receiversPubKey: 'e'.repeat(64),
+      invoice: 'lnbc-cleanup',
+      provider: {
+        lnurl: 'https://example.com/.well-known/lnurlp/creator',
+        callback: 'https://example.com/callback',
+        nostrPubkey: 'f'.repeat(64),
+      },
+      onSuccess,
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    cleanup();
+    resolveQuery?.([{ tags: [['bolt11', 'lnbc-cleanup']] }]);
+    await Promise.resolve();
+
+    expect(validateReceipt).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 
   it('stops transport receipt polling after the payment-attempt deadline', async () => {

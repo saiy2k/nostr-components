@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-const POLICY_KEY = '__nostrComponentsTrustedHTMLPolicy';
 const POLICY_NAME = 'nostr-components';
 
 type TrustedHTMLPolicy = {
@@ -16,23 +15,24 @@ type TrustedTypesFactory = {
 
 type TrustedTypesGlobal = typeof globalThis & {
   trustedTypes?: TrustedTypesFactory;
-  [POLICY_KEY]?: TrustedHTMLPolicy;
 };
+
+let trustedHTMLPolicy: TrustedHTMLPolicy | undefined;
 
 function toTrustedHTML(markup: string): string | unknown {
   const root = globalThis as TrustedTypesGlobal;
   const factory = root.trustedTypes;
   if (!factory?.createPolicy) return markup;
 
-  if (!root[POLICY_KEY]) {
-    root[POLICY_KEY] = factory.createPolicy(POLICY_NAME, {
+  if (!trustedHTMLPolicy) {
+    trustedHTMLPolicy = factory.createPolicy(POLICY_NAME, {
       createHTML(value) {
         return value;
       },
     });
   }
 
-  return root[POLICY_KEY]!.createHTML(markup);
+  return trustedHTMLPolicy.createHTML(markup);
 }
 
 /** Assign library-rendered markup through a scoped Trusted Types policy. */

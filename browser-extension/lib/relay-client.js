@@ -6771,7 +6771,10 @@
         expiresAt: Date.now() + RECENT_REACTION_TTL_MS
       });
       if (typeof extension.storage.setRecentReaction === "function") {
-        await extension.storage.setRecentReaction(event, RECENT_REACTION_TTL_MS);
+        try {
+          await extension.storage.setRecentReaction(event, RECENT_REACTION_TTL_MS);
+        } catch (_error) {
+        }
       }
     }
     function getInMemoryRecentReactions(url) {

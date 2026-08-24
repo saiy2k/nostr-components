@@ -53,7 +53,7 @@
           if (!entries2 || entries2.length === 0) return false;
           for (const entry of entries2.slice()) {
             if (entry.once) this.removeEntry(event, entry);
-            Reflect.apply(entry.listener, void 0, args);
+            Reflect.apply(entry.listener, this, args);
           }
           return true;
         }
@@ -19112,6 +19112,28 @@
     }
   });
 
+  // node_modules/nostr-tools/lib/esm/utils.js
+  function normalizeURL2(url) {
+    if (url.indexOf("://") === -1)
+      url = "wss://" + url;
+    let p = new URL(url);
+    p.pathname = p.pathname.replace(/\/+/g, "/");
+    if (p.pathname.endsWith("/"))
+      p.pathname = p.pathname.slice(0, -1);
+    if (p.port === "80" && p.protocol === "ws:" || p.port === "443" && p.protocol === "wss:")
+      p.port = "";
+    p.searchParams.sort();
+    p.hash = "";
+    return p.toString();
+  }
+  var utf8Decoder2, utf8Encoder2;
+  var init_utils7 = __esm({
+    "node_modules/nostr-tools/lib/esm/utils.js"() {
+      utf8Decoder2 = new TextDecoder("utf-8");
+      utf8Encoder2 = new TextEncoder();
+    }
+  });
+
   // src/common/utils.ts
   function hexToNpub(hex2) {
     if (!hex2 || !isValidHex(hex2)) return "";
@@ -19245,7 +19267,7 @@
     }
   }
   var decodeNpub;
-  var init_utils7 = __esm({
+  var init_utils8 = __esm({
     "src/common/utils.ts"() {
       "use strict";
       init_dist();
@@ -19615,24 +19637,41 @@
       return null;
     }
   }
-  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, getProfileMetadata, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
+  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, profileCacheKey, getProfileMetadata, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
   var init_zap_utils = __esm({
     "src/nostr-zap-button/zap-utils.ts"() {
       "use strict";
       init_esm2();
       init_utils7();
+      init_utils8();
       init_nostr_login_service();
       init_constants();
       init_relay_transport();
       init_zap_receipt();
-      profileCache = {};
+      profileCache = /* @__PURE__ */ new Map();
       ZAP_PROVIDER_CACHE_TTL_MS = 5 * 60 * 1e3;
       ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1e3;
       ZAP_RECEIPT_POLL_TIMEOUT_MS = 10 * 60 * 1e3;
       zapProviderCache = {};
+      profileCacheKey = (authorId, relays) => {
+        const normalizedRelays = Array.from(
+          new Set(
+            relays.map((relay) => {
+              try {
+                return normalizeURL2(relay);
+              } catch {
+                return relay;
+              }
+            })
+          )
+        ).sort();
+        return `${authorId.toLowerCase()}|${normalizedRelays.join(",")}`;
+      };
       getProfileMetadata = async (authorId, relays) => {
-        if (profileCache[authorId]) return profileCache[authorId];
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+        const cacheKey = profileCacheKey(authorId, relayList);
+        const cached = profileCache.get(cacheKey);
+        if (cached) return cached;
         const transport2 = getRelayTransport();
         if (transport2) {
           const events = await transport2.query(relayList, {
@@ -19641,7 +19680,7 @@
             limit: 1
           });
           const event = [...events].sort((left, right) => right.created_at - left.created_at)[0] || null;
-          if (event) profileCache[authorId] = event;
+          if (event) profileCache.set(cacheKey, event);
           return event;
         }
         const pool = new SimplePool();
@@ -19650,18 +19689,23 @@
             authors: [authorId],
             kinds: [0]
           });
-          profileCache[authorId] = event;
+          if (event) profileCache.set(cacheKey, event);
           return event;
         } finally {
           pool.close(relayList);
         }
       };
       getBatchedProfileMetadata = async (authorIds, relays) => {
-        const uncachedIds = authorIds.filter((id) => !profileCache[id]);
-        if (uncachedIds.length === 0) {
-          return authorIds.map((id) => ({ id, profile: profileCache[id] }));
-        }
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+        const uncachedIds = authorIds.filter(
+          (id) => !profileCache.has(profileCacheKey(id, relayList))
+        );
+        if (uncachedIds.length === 0) {
+          return authorIds.map((id) => ({
+            id,
+            profile: profileCache.get(profileCacheKey(id, relayList)) || null
+          }));
+        }
         const transport2 = getRelayTransport();
         if (transport2) {
           const events = await transport2.query(relayList, {
@@ -19670,14 +19714,15 @@
             limit: Math.min(uncachedIds.length, 50)
           });
           events.forEach((event) => {
-            const cached = profileCache[event.pubkey];
+            const cacheKey = profileCacheKey(event.pubkey, relayList);
+            const cached = profileCache.get(cacheKey);
             if (!cached || event.created_at > cached.created_at) {
-              profileCache[event.pubkey] = event;
+              profileCache.set(cacheKey, event);
             }
           });
           return authorIds.map((id) => ({
             id,
-            profile: profileCache[id] || null
+            profile: profileCache.get(profileCacheKey(id, relayList)) || null
           }));
         }
         const pool = new SimplePool();
@@ -19688,11 +19733,11 @@
             limit: Math.min(uncachedIds.length, 50)
           });
           events.forEach((event) => {
-            profileCache[event.pubkey] = event;
+            profileCache.set(profileCacheKey(event.pubkey, relayList), event);
           });
           const allProfiles = authorIds.map((id) => ({
             id,
-            profile: profileCache[id] || null
+            profile: profileCache.get(profileCacheKey(id, relayList)) || null
           }));
           return allProfiles;
         } finally {
@@ -19897,6 +19942,10 @@
                 since,
                 limit: 100
               });
+              if (stopped || Date.now() >= deadlineAt) {
+                stopped = true;
+                return;
+              }
               for (const event of events) {
                 const tags = event.tags;
                 if (!tags.some((t) => t[0] === "bolt11" && t[1] === invoice)) continue;
@@ -20225,14 +20274,14 @@
     const root = globalThis;
     const factory = root.trustedTypes;
     if (!factory?.createPolicy) return markup;
-    if (!root[POLICY_KEY]) {
-      root[POLICY_KEY] = factory.createPolicy(POLICY_NAME, {
+    if (!trustedHTMLPolicy) {
+      trustedHTMLPolicy = factory.createPolicy(POLICY_NAME, {
         createHTML(value) {
           return value;
         }
       });
     }
-    return root[POLICY_KEY].createHTML(markup);
+    return trustedHTMLPolicy.createHTML(markup);
   }
   function setTrustedInnerHTML(target, markup) {
     Reflect.set(target, "innerHTML", toTrustedHTML(markup));
@@ -20240,11 +20289,10 @@
   function setTrustedOuterHTML(target, markup) {
     Reflect.set(target, "outerHTML", toTrustedHTML(markup));
   }
-  var POLICY_KEY, POLICY_NAME;
+  var POLICY_NAME, trustedHTMLPolicy;
   var init_trusted_html = __esm({
     "src/common/trusted-html.ts"() {
       "use strict";
-      POLICY_KEY = "__nostrComponentsTrustedHTMLPolicy";
       POLICY_NAME = "nostr-components";
     }
   });
@@ -21449,7 +21497,7 @@
     "src/common/sanitize.ts"() {
       "use strict";
       init_purify_es();
-      init_utils7();
+      init_utils8();
     }
   });
 
@@ -21707,7 +21755,7 @@
       init_dialog_component();
       init_dialog_likers_style();
       init_zap_utils();
-      init_utils7();
+      init_utils8();
       init_sanitize();
       init_trusted_html();
       injectLikersDialogStyles = (theme = "light") => {
@@ -23805,25 +23853,7 @@
   init_dist();
   init_constants();
   init_constants();
-
-  // node_modules/nostr-tools/lib/esm/utils.js
-  var utf8Decoder2 = new TextDecoder("utf-8");
-  var utf8Encoder2 = new TextEncoder();
-  function normalizeURL2(url) {
-    if (url.indexOf("://") === -1)
-      url = "wss://" + url;
-    let p = new URL(url);
-    p.pathname = p.pathname.replace(/\/+/g, "/");
-    if (p.pathname.endsWith("/"))
-      p.pathname = p.pathname.slice(0, -1);
-    if (p.port === "80" && p.protocol === "ws:" || p.port === "443" && p.protocol === "wss:")
-      p.port = "";
-    p.searchParams.sort();
-    p.hash = "";
-    return p.toString();
-  }
-
-  // src/common/nostr-service.ts
+  init_utils7();
   init_zap_utils();
   init_zap_receipt();
   init_relay_transport();
@@ -24090,7 +24120,7 @@ ${url}`;
   };
 
   // src/base/base-component/nostr-base-component.ts
-  init_utils7();
+  init_utils8();
   var NCStatus = /* @__PURE__ */ ((NCStatus2) => {
     NCStatus2[NCStatus2["Idle"] = 0] = "Idle";
     NCStatus2[NCStatus2["Loading"] = 1] = "Loading";
@@ -24388,7 +24418,7 @@ ${url}`;
   init_dist();
 
   // src/nostr-like-button/render.ts
-  init_utils7();
+  init_utils8();
   function shouldDisableLikeButton({
     compact,
     actionLoading,
@@ -25116,10 +25146,11 @@ ${url}`;
   };
 
   // src/nostr-like-button/nostr-like.ts
-  init_utils7();
+  init_utils8();
 
   // src/nostr-like-button/like-utils.ts
   init_esm2();
+  init_utils7();
   init_nostr_login_service();
   init_relay_transport();
 
@@ -25655,6 +25686,7 @@ ${url}`;
 
   // src/nostr-like-button/nostr-like.ts
   init_relay_transport();
+  init_utils7();
   init_trusted_html();
 
   // src/nostr-like-button/optimistic-state.ts
@@ -26093,7 +26125,7 @@ ${url}`;
   }
 
   // src/base/resolvers/user-resolver.ts
-  init_utils7();
+  init_utils8();
   var UserResolver = class {
     constructor(nostrService) {
       this.nostrService = nostrService;
@@ -26395,7 +26427,7 @@ ${url}`;
   };
 
   // src/nostr-zap-button/dialog-zap.ts
-  init_utils7();
+  init_utils8();
   init_trusted_html();
   init_zap_utils();
   var QRCode = __toESM(require_browser2(), 1);
@@ -27022,10 +27054,10 @@ ${url}`;
 
   // src/nostr-zap-button/dialog-zappers.ts
   init_zap_utils();
-  init_utils7();
+  init_utils8();
 
   // src/nostr-zap-button/render-zap-entry.ts
-  init_utils7();
+  init_utils8();
   init_sanitize();
   function renderZapEntry(zap, index) {
     const authorNameSafe = escapeHtml(zap.authorName || "Unknown zapper");
@@ -27339,7 +27371,7 @@ ${url}`;
   }
 
   // src/nostr-zap-button/render.ts
-  init_utils7();
+  init_utils8();
   function renderZapButton({
     isLoading,
     isError,
@@ -27730,7 +27762,7 @@ ${url}`;
 
   // src/nostr-zap-button/nostr-zap.ts
   init_zap_utils();
-  init_utils7();
+  init_utils8();
   init_relay_transport();
   init_trusted_html();
   var NostrZap = class extends NostrUserComponent {

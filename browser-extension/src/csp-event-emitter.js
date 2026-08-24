@@ -25,7 +25,7 @@ export class EventEmitter {
 
     for (const entry of entries.slice()) {
       if (entry.once) this.removeEntry(event, entry);
-      Reflect.apply(entry.listener, undefined, args);
+      Reflect.apply(entry.listener, this, args);
     }
     return true;
   }

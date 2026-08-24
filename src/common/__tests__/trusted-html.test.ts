@@ -41,5 +41,6 @@ describe('Trusted Types HTML rendering', () => {
     expect(createPolicy).toHaveBeenCalledOnce();
     expect(assignedInner).toEqual({ trustedHTML: '<button>Like</button>' });
     expect(assignedOuter).toEqual({ trustedHTML: '<article>Profile</article>' });
+    expect((globalThis as Record<string, unknown>)[POLICY_KEY]).toBeUndefined();
   });
 });
