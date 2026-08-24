@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { renderZapButton } from '../render';
+import { getZapButtonStyles } from '../style';
 
 describe('renderZapButton', () => {
   it('disables the button and sets aria-busy while loading', () => {
@@ -56,5 +57,16 @@ describe('renderZapButton', () => {
     expect(html).toContain('>21</span>');
     expect(html).not.toContain('What is a zap?');
     expect(html).not.toContain('>Zap</span>');
+  });
+
+  it('uses a native-sized YouTube action surface in compact mode', () => {
+    const styles = getZapButtonStyles();
+
+    expect(styles).toMatch(
+      /:host\(\[compact\]\[data-surface="youtube"\]\)\s*\{[^}]*height: 40px/s,
+    );
+    expect(styles).toMatch(
+      /:host\(\[compact\]\[data-surface="youtube"\]\) \.nostr-zap-button\s*\{[^}]*min-width: 40px/s,
+    );
   });
 });

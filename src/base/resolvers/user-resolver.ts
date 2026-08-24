@@ -17,11 +17,21 @@ export class UserResolver {
     return null;
   }
 
-  async resolveUser({ npub, pubkey, nip05 }: { npub?: string | null; pubkey?: string | null; nip05?: string | null }): Promise<{ user: NDKUser, profile: NDKUserProfile | null }> {
+  async resolveUser({
+    npub,
+    pubkey,
+    nip05,
+    relays,
+  }: {
+    npub?: string | null;
+    pubkey?: string | null;
+    nip05?: string | null;
+    relays?: string[];
+  }): Promise<{ user: NDKUser, profile: NDKUserProfile | null }> {
     const user = await this.nostrService.resolveNDKUser({ npub, pubkey, nip05 });
     if (!user) throw new Error("Unable to resolve user from provided identifier");
 
-    const profile = await this.nostrService.getProfile(user);
+    const profile = await this.nostrService.getProfile(user, relays);
 
     return { user, profile: profile ?? null };
   }

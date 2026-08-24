@@ -18,8 +18,20 @@ other NIP-07 extension).
 Author identities are looked up in the background and cached on the device. If
 lookup is temporarily unavailable, the last cached result may still be used.
 Likes still work when identity metadata is missing. X Zaps appear only for a
-verified, zappable directory identity. YouTube Zaps appear only when the page's
-creator metadata or description explicitly contains a checksum-valid `npub`.
+verified, zappable directory identity. YouTube Zaps appear only when the
+creator-owned channel identity area explicitly contains a checksum-valid
+lowercase `npub`; video titles, metadata, and descriptions are never treated as
+payment-recipient declarations. The extension also carries two auditable demo
+channel mappings so the complete YouTube flow can be tested without changing a
+third-party channel profile:
+
+| YouTube creator | Test video | X identity | Zap recipient |
+| --- | --- | --- | --- |
+| Blockstream | [Open video](https://www.youtube.com/watch?v=p1UInbcK2cM) | [`@Blockstream`](https://x.com/Blockstream) | `npub1jg552aulj07skd6e7y2hu0vl5g8nl5jvfw8jhn6jpjk0vjd0waksvl6n8n` |
+| BTC Sessions | [Open video](https://www.youtube.com/watch?v=yfDihfLSuFY) | [`@BTCSessions`](https://x.com/BTCSessions) | `npub1rxysxnjkhrmqd3ey73dp9n5y5yvyzcs64acc9g0k2epcpwwyya4spvhnp8` |
+
+The mapping is selected only from the video owner/channel link. An `npub` in a
+video title, metadata field, or description cannot change the Zap recipient.
 
 ## Develop
 

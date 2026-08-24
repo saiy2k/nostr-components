@@ -118,6 +118,56 @@ export function getLikeButtonStyles(): string {
       margin: 0;
     }
 
+    /* YouTube uses 40px circular actions/pills rather than X's 34px row cells. */
+    :host([compact][data-surface="youtube"]) {
+      --nostrc-icon-height: 22px;
+      --nostrc-icon-width: 22px;
+      --nostrc-like-btn-padding: 0 9px;
+      --nostrc-like-btn-min-height: 40px;
+      --nostrc-like-btn-width: auto;
+      --nostrc-like-btn-bg: rgba(0, 0, 0, 0.05);
+      --nostrc-like-btn-color: #0f0f0f;
+      --nostrc-like-btn-hover-bg: rgba(0, 0, 0, 0.1);
+      --nostrc-like-btn-hover-color: #0f0f0f;
+      --nostrc-like-btn-liked-bg: rgba(6, 95, 212, 0.12);
+      --nostrc-like-btn-liked-color: #065fd4;
+      --nostrc-like-btn-liked-border: transparent;
+      --nostrc-like-btn-liked-hover-bg: rgba(6, 95, 212, 0.2);
+      display: inline-flex;
+      flex: 0 0 auto;
+      width: auto;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) {
+      --nostrc-like-btn-bg: rgba(255, 255, 255, 0.1);
+      --nostrc-like-btn-color: #f1f1f1;
+      --nostrc-like-btn-hover-bg: rgba(255, 255, 255, 0.2);
+      --nostrc-like-btn-hover-color: #f1f1f1;
+      --nostrc-like-btn-liked-bg: rgba(62, 166, 255, 0.16);
+      --nostrc-like-btn-liked-color: #3ea6ff;
+      --nostrc-like-btn-liked-hover-bg: rgba(62, 166, 255, 0.24);
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-like-button-container {
+      flex: 0 0 auto;
+      gap: 0;
+      width: auto;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-like-button {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 40px;
+      height: 40px;
+      gap: 6px;
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-like-button.liked {
+      border: 0;
+    }
+
     /* Focus state for accessibility */
     .nostr-like-button:focus-visible,
     .help-icon:focus-visible,

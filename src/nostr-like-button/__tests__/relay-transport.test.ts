@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  fetchCachedLikeStateForUrl,
   fetchLikesForUrl,
   hasUserLiked,
   publishSignedReaction,
@@ -19,6 +20,51 @@ afterEach(() => {
 });
 
 describe('Like component relay transport', () => {
+  it('reads the recent extension cache before relay revalidation', async () => {
+    const getCachedLikeState = vi.fn().mockResolvedValue({
+      found: true,
+      isLiked: true,
+    });
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        getCachedLikeState: getCachedLikeState,
+        query: vi.fn(),
+        publish: vi.fn(),
+      },
+    });
+
+    await expect(
+      fetchCachedLikeStateForUrl(STATUS_URL, RELAYS),
+    ).resolves.toBe(true);
+    expect(getCachedLikeState).toHaveBeenCalledWith(RELAYS, STATUS_URL);
+  });
+
+  it('uses the host like-state request so a persisted active-user reaction is restored', async () => {
+    const getLikeState = vi.fn().mockResolvedValue({
+      totalCount: 4,
+      likedCount: 4,
+      dislikedCount: 1,
+      isLiked: true,
+    });
+    const query = vi.fn();
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        getLikeState: getLikeState,
+        query: query,
+        publish: vi.fn(),
+      },
+    });
+
+    await expect(fetchLikesForUrl(STATUS_URL, RELAYS)).resolves.toMatchObject({
+      totalCount: 4,
+      likedCount: 4,
+      dislikedCount: 1,
+      isLiked: true,
+    });
+    expect(getLikeState).toHaveBeenCalledWith(RELAYS, STATUS_URL);
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it('routes count and active-user queries through the host transport', async () => {
     const query = vi
       .fn()

@@ -12,6 +12,7 @@ import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { ensureSignerForAction } from '../common/auth-onboarding';
 import { getRelayTransport } from '../common/relay-transport';
+import { setTrustedInnerHTML } from '../common/trusted-html';
 
 /**
  * <nostr-zap-button>
@@ -330,10 +331,10 @@ export default class NostrZap extends NostrUserComponent {
       compact: this.hasAttribute('compact'),
     };
 
-    this.shadowRoot!.innerHTML = `
+    setTrustedInnerHTML(this.shadowRoot!, `
       ${getZapButtonStyles()}
       ${renderZapButton(renderOptions)}
-    `;
+    `);
   }
 }
 

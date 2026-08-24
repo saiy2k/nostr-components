@@ -2,6 +2,7 @@
 
 (function () {
   const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
+  const HYDRATION_EVENT_PREFIX = 'nostr-components-hydrate:';
 
   function createChannel() {
     const bytes = new Uint8Array(32);
@@ -41,9 +42,20 @@
   }
 
   const channel = createChannel();
+  const hydrationEventName = HYDRATION_EVENT_PREFIX + channel;
+
+  function hydrate(slot) {
+    slot.dispatchEvent(new Event(hydrationEventName, { bubbles: true }));
+    if (!slot.querySelector('nostr-like-button')) {
+      throw new Error('MAIN-world component hydrator did not create Nostr Like');
+    }
+    return true;
+  }
+
   extension.relayClient.configure(channel);
   extension.componentLoader = {
     channel: channel,
-    ready: sendInjectionRequest(channel)
+    ready: sendInjectionRequest(channel),
+    hydrate: hydrate
   };
 })();

@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { finalizeEvent, nip19 } from 'nostr-tools';
 
+import { EventEmitter as CspEventEmitter } from '../src/csp-event-emitter.js';
+import { hydrateActionSlot } from '../src/component-hydrator.js';
+
 await import('../lib/url.js');
 await import('../lib/storage.js');
 await import('../lib/directory.js');
@@ -71,6 +74,49 @@ describe('URL normalization', function () {
     const npub = nip19.npubEncode('2'.repeat(64));
     expect(extension.url.isValidNpub(npub)).toBe(true);
     expect(extension.url.isValidNpub(npub.toUpperCase())).toBe(false);
+  });
+});
+
+describe('Recent reaction storage', function () {
+  it('restores a recent YouTube reaction from extension storage after page memory is lost', async function () {
+    const values = {};
+    globalThis.chrome = {
+      runtime: {},
+      storage: {
+        local: {
+          get(keys, callback) {
+            const requested = Array.isArray(keys) ? keys : [keys];
+            callback(Object.fromEntries(
+              requested
+                .filter((key) => Object.hasOwn(values, key))
+                .map((key) => [key, values[key]])
+            ));
+          },
+          set(nextValues, callback) {
+            Object.assign(values, nextValues);
+            callback();
+          }
+        }
+      }
+    };
+    const videoUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    const reaction = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [
+          ['k', 'web'],
+          ['i', videoUrl]
+        ],
+        created_at: 1234567890
+      },
+      new Uint8Array(32).fill(9)
+    );
+
+    await extension.storage.setRecentReaction(reaction, 120_000);
+
+    expect(await extension.storage.getRecentReactions(videoUrl)).toEqual([reaction]);
+    expect(JSON.stringify(values)).toContain(reaction.id);
   });
 });
 
@@ -178,7 +224,29 @@ describe('Zap action integration', function () {
     expect(action.slot.querySelector('nostr-like-button').getAttribute('url')).toBe(
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
     );
+    expect(action.slot.querySelector('nostr-like-button').getAttribute('data-surface')).toBe(
+      'youtube'
+    );
     expect(action.slot.querySelector('nostr-zap-button').getAttribute('npub')).toBe(recipientNpub);
+    expect(action.slot.querySelector('nostr-zap-button').getAttribute('data-surface')).toBe(
+      'youtube'
+    );
+  });
+
+  it('adds YouTube Like without a creator npub or Zap recipient', function () {
+    const action = extension.youtubeDom.createNostrAction(
+      {
+        videoId: 'dQw4w9WgXcQ',
+        canonicalUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+      },
+      'light',
+      null
+    );
+
+    extension.youtubeDom.hydrateNostrAction(action.slot);
+
+    expect(action.slot.querySelector('nostr-like-button')).not.toBeNull();
+    expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
   });
 
   it('extracts checksum-valid npubs only from the creator identity area', function () {
@@ -209,6 +277,54 @@ describe('Zap action integration', function () {
     };
 
     expect(extension.youtubeDom.extractDeclaredNpub(root)).toBeNull();
+  });
+
+  it.each([
+    [
+      '/@Blockstream',
+      'npub1jg552aulj07skd6e7y2hu0vl5g8nl5jvfw8jhn6jpjk0vjd0waksvl6n8n'
+    ],
+    [
+      'https://www.youtube.com/channel/UChzLnWVsl3puKQwc5PoO6Zg',
+      'npub1rxysxnjkhrmqd3ey73dp9n5y5yvyzcs64acc9g0k2epcpwwyya4spvhnp8'
+    ]
+  ])('resolves the known creator channel %s to its zappable npub', function (href, npub) {
+    const root = {
+      querySelectorAll(selector) {
+        if (selector.includes('ytd-video-owner-renderer a[href]')) {
+          return [{ getAttribute: (name) => name === 'href' ? href : null }];
+        }
+        return [];
+      }
+    };
+
+    expect(extension.youtubeDom.resolveRecipientNpub(root)).toBe(npub);
+  });
+
+  it('does not map an unknown creator channel to a zap recipient', function () {
+    const root = {
+      querySelectorAll(selector) {
+        if (selector.includes('ytd-video-owner-renderer a[href]')) {
+          return [{ getAttribute: () => '/@unknown-creator' }];
+        }
+        return [];
+      }
+    };
+
+    expect(extension.youtubeDom.resolveRecipientNpub(root)).toBeNull();
+  });
+
+  it('matches stable YouTube channel IDs case-sensitively', function () {
+    const root = {
+      querySelectorAll(selector) {
+        if (selector.includes('ytd-video-owner-renderer a[href]')) {
+          return [{ getAttribute: () => '/channel/uchzlnwvsl3pukqwc5poo6zg' }];
+        }
+        return [];
+      }
+    };
+
+    expect(extension.youtubeDom.resolveRecipientNpub(root)).toBeNull();
   });
 });
 
@@ -514,9 +630,43 @@ describe('X action placement', function () {
     expect(slotRule[0]).not.toMatch(/(?:^|[^-])height:\s*34px/m);
     expect(standaloneRules).toHaveLength(1);
   });
+
+  it('gives YouTube actions native-sized 40px controls instead of X timeline geometry', function () {
+    const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+    const slotRule = css.match(/\.nostr-youtube-action-slot\s*\{[^}]+\}/);
+
+    expect(slotRule).not.toBeNull();
+    expect(slotRule[0]).toMatch(/align-self:\s*center/);
+    expect(slotRule[0]).toMatch(/min-height:\s*40px/);
+    expect(slotRule[0]).toMatch(/margin-left:\s*4px/);
+  });
 });
 
 describe('CSP-safe component and relay integration', function () {
+  it('dispatches multiple and one-time NDK listeners without dynamic code generation', function () {
+    const emitter = new CspEventEmitter();
+    const calls = [];
+    emitter.on('event', function (value) {
+      calls.push('first:' + value);
+    });
+    emitter.once('event', function (value) {
+      calls.push('once:' + value);
+    });
+    emitter.on('event', function (value) {
+      calls.push('last:' + value);
+    });
+
+    expect(emitter.emit('event', 1)).toBe(true);
+    expect(emitter.emit('event', 2)).toBe(true);
+    expect(calls).toEqual([
+      'first:1',
+      'once:1',
+      'last:1',
+      'first:2',
+      'last:2'
+    ]);
+  });
+
   it('loads the relay client and MAIN-world component loader in order', function () {
     const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
     const scripts = manifest.content_scripts[0].js;
@@ -550,8 +700,18 @@ describe('CSP-safe component and relay integration', function () {
       new URL('../lib/nostr-extension-components.js', import.meta.url),
       'utf8'
     );
+    const componentLoader = readFileSync(
+      new URL('../lib/component-loader.js', import.meta.url),
+      'utf8'
+    );
     expect(componentBundle).toContain('customElements.define("nostr-like-button"');
     expect(componentBundle).toContain('customElements.define("nostr-zap-button"');
+    expect(componentBundle).toContain('nostr-components-hydrate:');
+    expect(componentBundle).toContain('new ComponentConstructor()');
+    expect(componentBundle).toContain('__nostrComponentsTrustedHTMLPolicy');
+    expect(componentBundle).toContain('factory.createPolicy(POLICY_NAME');
+    expect(componentLoader).toContain('nostr-components-hydrate:');
+    expect(componentBundle).not.toMatch(/\beval\s*\(/);
   });
 
   it("injects the transport before the real components in X's MAIN world", async function () {
@@ -846,6 +1006,77 @@ describe('CSP-safe component and relay integration', function () {
         limit: 100
       })
     ).toBeNull();
+  });
+
+  it('returns a persisted YouTube reaction before starting a relay query', async function () {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: 'https://www.youtube.com' },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message) {
+        responses.push(message);
+      }
+    };
+    const videoUrl = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
+    const reaction = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [
+          ['k', 'web'],
+          ['i', videoUrl]
+        ],
+        created_at: 1234567890
+      },
+      new Uint8Array(32).fill(11)
+    );
+    const originalGetKnownPubkey = extension.storage.getKnownPubkey;
+    const originalGetRecentReactions = extension.storage.getRecentReactions;
+    extension.storage.getKnownPubkey = vi.fn(async function () {
+      return reaction.pubkey;
+    });
+    extension.storage.getRecentReactions = vi.fn(async function () {
+      return [reaction];
+    });
+    const pool = {
+      subscribeMany: vi.fn(),
+      destroy: vi.fn()
+    };
+    const channel = '9'.repeat(64);
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow
+    });
+
+    await listeners.get('message')({
+      source: pageWindow,
+      origin: 'https://www.youtube.com',
+      data: {
+        source: 'nostr-components-relay-main',
+        channel: channel,
+        requestId: '8'.repeat(32),
+        operation: 'getCachedLikeState',
+        payload: {
+          relays: ['wss://relay.damus.io'],
+          url: videoUrl
+        }
+      }
+    });
+
+    expect(responses[0]).toMatchObject({
+      ok: true,
+      result: { found: true, isLiked: true }
+    });
+    expect(pool.subscribeMany).not.toHaveBeenCalled();
+    session.dispose();
+    extension.storage.getKnownPubkey = originalGetKnownPubkey;
+    extension.storage.getRecentReactions = originalGetRecentReactions;
   });
 
   it('queries a health-ranked relay quorum instead of waiting for all eight', async function () {
@@ -1171,8 +1402,8 @@ describe('timeline component integration', function () {
       expect(component.getAttribute('data-theme')).toBe('dark');
       expect(observerOptions).toEqual([
         { childList: true, subtree: true },
-        { attributes: true, attributeFilter: ['class', 'style'] },
-        { attributes: true, attributeFilter: ['class', 'style'] }
+        { attributes: true, attributeFilter: ['class', 'style', 'dark'] },
+        { attributes: true, attributeFilter: ['class', 'style', 'dark'] }
       ]);
     } finally {
       extension.directory.lookup = originalDirectoryLookup;
@@ -1181,10 +1412,8 @@ describe('timeline component integration', function () {
 });
 
 describe('YouTube component integration', function () {
-  it('injects lazy Like and Zap actions beside the native video Like control', async function () {
-    const recipientNpub = nip19.npubEncode('4'.repeat(64));
+  it('uses YouTube dark mode even when computed colorScheme incorrectly reports light', async function () {
     const scheduledCallbacks = [];
-    const intersectionCallbacks = [];
 
     class FakeElement {
       constructor(tagName = 'div') {
@@ -1215,6 +1444,13 @@ describe('YouTube component integration', function () {
         child.parentElement = this;
         this.children.push(child);
         return child;
+      }
+
+      remove() {
+        if (!this.parentElement) return;
+        this.parentElement.children = this.parentElement.children.filter(
+          (child) => child !== this
+        );
       }
 
       insertBefore(child, sibling) {
@@ -1259,16 +1495,25 @@ describe('YouTube component integration', function () {
 
     globalThis.document = {
       body: {},
-      documentElement: {},
+      documentElement: {
+        hasAttribute(name) {
+          return name === 'dark';
+        }
+      },
       createElement(tagName) {
+        if (tagName === 'nostr-like-button' || tagName === 'nostr-zap-button') {
+          throw new TypeError(
+            'Class constructor ' + tagName + ' cannot be invoked without \'new\''
+          );
+        }
         return new FakeElement(tagName);
       },
       querySelector(selector) {
         return selector === '#actions-inner #top-level-buttons-computed' ? actionBar : null;
       },
       querySelectorAll(selector) {
-        if (selector.includes('ytd-video-owner-renderer')) {
-          return [{ getAttribute: () => null, textContent: 'Nostr: ' + recipientNpub }];
+        if (selector.includes('ytd-video-owner-renderer a[href]')) {
+          return [{ getAttribute: () => '/@Blockstream', textContent: 'Blockstream' }];
         }
         return [];
       }
@@ -1278,11 +1523,8 @@ describe('YouTube component integration', function () {
       observe() {}
     };
     globalThis.IntersectionObserver = class {
-      constructor(callback) {
-        intersectionCallbacks.push(callback);
-      }
-      observe(target) {
-        this.target = target;
+      observe() {
+        throw new Error('YouTube actions must not wait for intersection');
       }
       unobserve() {}
     };
@@ -1304,7 +1546,28 @@ describe('YouTube component integration', function () {
       },
       addEventListener() {}
     };
-    extension.componentLoader = { ready: Promise.resolve() };
+    class RegisteredLike extends FakeElement {
+      constructor() {
+        super('nostr-like-button');
+      }
+    }
+    class RegisteredZap extends FakeElement {
+      constructor() {
+        super('nostr-zap-button');
+      }
+    }
+    const registry = new Map([
+      ['nostr-like-button', RegisteredLike],
+      ['nostr-zap-button', RegisteredZap]
+    ]);
+    const hydrate = vi.fn(function (slot) {
+      return hydrateActionSlot(slot, {
+        get(tagName) {
+          return registry.get(tagName);
+        }
+      });
+    });
+    extension.componentLoader = { ready: Promise.resolve(), hydrate: hydrate };
 
     await import('../content.js?youtube-content');
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1312,13 +1575,13 @@ describe('YouTube component integration', function () {
 
     const slot = actionBar.children[1];
     expect(slot.dataset.videoId).toBe('dQw4w9WgXcQ');
-    expect(slot.querySelector('nostr-like-button')).toBeNull();
-    expect(slot.querySelector('nostr-zap-button')).toBeNull();
-
-    intersectionCallbacks[0]([{ target: slot, isIntersecting: true }]);
     expect(slot.querySelector('nostr-like-button').getAttribute('url')).toBe(
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
     );
-    expect(slot.querySelector('nostr-zap-button').getAttribute('npub')).toBe(recipientNpub);
+    expect(slot.querySelector('nostr-like-button').getAttribute('data-theme')).toBe('dark');
+    expect(slot.querySelector('nostr-zap-button').getAttribute('npub')).toBe(
+      'npub1jg552aulj07skd6e7y2hu0vl5g8nl5jvfw8jhn6jpjk0vjd0waksvl6n8n'
+    );
+    expect(hydrate).toHaveBeenCalledWith(slot);
   });
 });

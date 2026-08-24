@@ -8,6 +8,7 @@ import { getLikeButtonStyles } from './style';
 import { showHelpDialog } from './dialog-help';
 import { isValidUrl } from '../common/utils';
 import { 
+  fetchCachedLikeStateForUrl,
   fetchLikesForUrl, 
   createLikeEvent,
   createUnlikeEvent,
@@ -19,6 +20,7 @@ import {
 import { ensureSignerForAction } from '../common/auth-onboarding';
 import { getRelayTransport } from '../common/relay-transport';
 import { normalizeURL } from 'nostr-tools/utils';
+import { setTrustedInnerHTML } from '../common/trusted-html';
 import {
   applyOptimisticLike,
   applyOptimisticUnlike,
@@ -179,10 +181,29 @@ export default class NostrLike extends NostrBaseComponent {
       this.currentUrl = normalizeURL(this.getAttribute('url') || window.location.href);
       this.likeListStatus.set(NCStatus.Loading);
       this.render();
+
+      // Extension storage is local and fast: restore the user's recent state
+      // before the bounded relay query revalidates the count in the background.
+      try {
+        const cachedIsLiked = await fetchCachedLikeStateForUrl(
+          this.currentUrl,
+          this.getRelays(),
+        );
+        if (seq !== this.loadSeq) return;
+        if (cachedIsLiked !== null) {
+          this.isLiked = cachedIsLiked;
+          this.render();
+        }
+      } catch (cacheError) {
+        console.warn('[NostrLike] Failed to restore cached like state:', cacheError);
+      }
      
       const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
       if (seq !== this.loadSeq) return; // stale
       this.likeCount = clampLikeCount(result.totalCount);
+      if (typeof result.isLiked === 'boolean') {
+        this.isLiked = result.isLiked;
+      }
       this.cachedLikeDetails = result;
       this.likeListStatus.set(NCStatus.Ready);
     } catch (error) {
@@ -520,10 +541,10 @@ export default class NostrLike extends NostrBaseComponent {
       compact,
     };
 
-    this.shadowRoot!.innerHTML = `
+    setTrustedInnerHTML(this.shadowRoot!, `
       ${getLikeButtonStyles()}
       ${renderLikeButton(renderOptions)}
-    `;
+    `);
   }
 }
 

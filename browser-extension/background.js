@@ -115,6 +115,9 @@ function installRelayTransport(channel) {
     query: function (relays, filter) {
       return request('query', { relays: relays, filter: filter });
     },
+    getCachedLikeState: function (relays, url) {
+      return request('getCachedLikeState', { relays: relays, url: url });
+    },
     getLikeState: function (relays, url) {
       return request('getLikeState', { relays: relays, url: url });
     },

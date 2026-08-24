@@ -3,6 +3,20 @@
 (function () {
   const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
   const NPUB_PATTERN = /npub1[023456789acdefghjklmnpqrstuvwxyz]{58}/gi;
+  const KNOWN_CHANNEL_RECIPIENTS = Object.freeze({
+    '/@blockstream':
+      'npub1jg552aulj07skd6e7y2hu0vl5g8nl5jvfw8jhn6jpjk0vjd0waksvl6n8n',
+    '/blockstream':
+      'npub1jg552aulj07skd6e7y2hu0vl5g8nl5jvfw8jhn6jpjk0vjd0waksvl6n8n',
+    '/channel/UCZNt3fZazX9cwWcC9vjDJ4Q':
+      'npub1jg552aulj07skd6e7y2hu0vl5g8nl5jvfw8jhn6jpjk0vjd0waksvl6n8n',
+    '/@btcsessions':
+      'npub1rxysxnjkhrmqd3ey73dp9n5y5yvyzcs64acc9g0k2epcpwwyya4spvhnp8',
+    '/c/btcsessions':
+      'npub1rxysxnjkhrmqd3ey73dp9n5y5yvyzcs64acc9g0k2epcpwwyya4spvhnp8',
+    '/channel/UChzLnWVsl3puKQwc5PoO6Zg':
+      'npub1rxysxnjkhrmqd3ey73dp9n5y5yvyzcs64acc9g0k2epcpwwyya4spvhnp8'
+  });
 
   function getVideoInfo() {
     return extension.url.parseYouTubeUrl(
@@ -53,6 +67,35 @@
     return null;
   }
 
+  function normalizeChannelPath(value) {
+    try {
+      const url = new URL(String(value || ''), 'https://www.youtube.com');
+      if (!/(^|\.)youtube\.com$/i.test(url.hostname)) return null;
+      const path = url.pathname.replace(/\/$/, '');
+      return path.startsWith('/channel/') ? path : path.toLowerCase();
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function extractKnownChannelNpub(root) {
+    const channelLinks = root.querySelectorAll([
+      '#owner a[href]',
+      'ytd-video-owner-renderer a[href]',
+      'ytm-slim-owner-renderer a[href]'
+    ].join(','));
+    for (const link of channelLinks) {
+      const channelPath = normalizeChannelPath(link.getAttribute?.('href'));
+      const npub = channelPath ? KNOWN_CHANNEL_RECIPIENTS[channelPath] : null;
+      if (extension.url.isValidNpub(npub)) return npub;
+    }
+    return null;
+  }
+
+  function resolveRecipientNpub(root) {
+    return extractDeclaredNpub(root) || extractKnownChannelNpub(root);
+  }
+
   function stopActionNavigation(slot) {
     slot.addEventListener('click', function (event) {
       event.stopPropagation();
@@ -77,12 +120,18 @@
     const component = document.createElement('nostr-like-button');
     component.setAttribute('url', slot.dataset.statusUrl);
     component.setAttribute('compact', '');
+    component.setAttribute('data-surface', 'youtube');
     component.setAttribute('data-theme', slot.dataset.theme || 'light');
     slot.appendChild(component);
     return component;
   }
 
   function syncZapComponent(slot) {
+    if (typeof extension.componentLoader?.hydrate === 'function') {
+      extension.componentLoader.hydrate(slot);
+      return slot.querySelector('nostr-zap-button');
+    }
+
     let component = slot.querySelector('nostr-zap-button');
     const npub = slot.dataset.recipientNpub;
     if (!extension.url.isValidNpub(npub)) {
@@ -94,12 +143,18 @@
     component.setAttribute('npub', npub);
     component.setAttribute('url', slot.dataset.statusUrl);
     component.setAttribute('compact', '');
+    component.setAttribute('data-surface', 'youtube');
     component.setAttribute('data-theme', slot.dataset.theme || 'light');
     if (shouldAppend) slot.appendChild(component);
     return component;
   }
 
   function hydrateNostrAction(slot) {
+    if (typeof extension.componentLoader?.hydrate === 'function') {
+      extension.componentLoader.hydrate(slot);
+      return slot.querySelector('nostr-like-button');
+    }
+
     const like = slot.querySelector('nostr-like-button') || createLikeComponent(slot);
     syncZapComponent(slot);
     return like;
@@ -165,6 +220,8 @@
     findActionBar,
     findAction,
     extractDeclaredNpub,
+    extractKnownChannelNpub,
+    resolveRecipientNpub,
     createNostrAction,
     hydrateNostrAction,
     updateActionTheme,

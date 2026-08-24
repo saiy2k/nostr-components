@@ -11,6 +11,10 @@ import {
 import { escapeHtml, formatRelativeTime, hexToNpub } from '../common/utils';
 import { LikeDetails } from './like-utils';
 import { sanitizeHttpUrl } from '../common/sanitize';
+import {
+  setTrustedInnerHTML,
+  setTrustedOuterHTML,
+} from '../common/trusted-html';
 
 /**
  * Modal dialog for displaying individual like details (likers).
@@ -149,7 +153,7 @@ export async function openLikersDialog(
 
   // Initial content with skeleton loaders showing npubs
   const initialContent = await renderInitialContent(likeDetails);
-  dialogComponent.innerHTML = initialContent;
+  setTrustedInnerHTML(dialogComponent, initialContent);
 
   // Show the dialog (this will create and append the actual dialog element)
   dialogComponent.showModal();
@@ -284,7 +288,7 @@ async function enhanceLikeDetailsProgressively(
       );
       if (skeletonEntry) {
         const enhancedEntry = renderLikeEntry(enhanced, index);
-        skeletonEntry.outerHTML = enhancedEntry;
+        setTrustedOuterHTML(skeletonEntry, enhancedEntry);
       }
     }
 
@@ -397,7 +401,7 @@ async function enhanceLikeDetailsIndividually(
       );
       if (skeletonEntry) {
         const enhancedEntry = renderLikeEntry(enhanced, index);
-        skeletonEntry.outerHTML = enhancedEntry;
+        setTrustedOuterHTML(skeletonEntry, enhancedEntry);
       }
     } catch (error) {
       console.error(

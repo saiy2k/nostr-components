@@ -154,6 +154,11 @@
   }
 
   function hydrateNostrAction(slot) {
+    if (typeof extension.componentLoader?.hydrate === 'function') {
+      extension.componentLoader.hydrate(slot);
+      return slot.querySelector('nostr-like-button');
+    }
+
     const existing = slot.querySelector('nostr-like-button');
     if (existing) return existing;
     const component = document.createElement('nostr-like-button');
@@ -166,6 +171,11 @@
   }
 
   function syncZapComponent(slot) {
+    if (typeof extension.componentLoader?.hydrate === 'function') {
+      extension.componentLoader.hydrate(slot);
+      return slot.querySelector('nostr-zap-button');
+    }
+
     let component = slot.querySelector('nostr-zap-button');
     const npub = slot.dataset.zapRecipientNpub;
     if (!extension.url.isValidNpub(npub)) {

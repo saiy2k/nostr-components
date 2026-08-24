@@ -5,6 +5,7 @@ import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getDialogStyles } from './dialog-zap-style';
 import { decodeNpub } from '../common/utils';
+import { setTrustedInnerHTML } from '../common/trusted-html';
 
 /**
  * Modal dialog helper for <nostr-zap> component.
@@ -299,7 +300,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
 
   const hideAmountUI = typeof fixedAmount === 'number' && fixedAmount > 0;
 
-  dialogComponent.innerHTML = `
+  setTrustedInnerHTML(dialogComponent, `
       <div class="zap-dialog-content">
         ${hideAmountUI ? '' : `<div class="amount-buttons">${amountButtonsHtml}</div>`}
         ${hideAmountUI ? `<p class="zapping-amount">Zapping ${fixedAmount} sats</p>` : ''}
@@ -318,7 +319,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
         <div class="loading-overlay"><div class="loader"></div></div>
         <div class="success-overlay">⚡ Thank you!</div>
       </div>
-  `;
+  `);
 
   // Show the dialog (this will create and append the actual dialog element)
   dialogComponent.showModal();

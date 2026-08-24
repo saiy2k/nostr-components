@@ -2,6 +2,22 @@
 
 export interface NostrRelayTransport {
   query(relays: string[], filter: Record<string, unknown>): Promise<any[]>;
+  getCachedLikeState?(
+    relays: string[],
+    url: string,
+  ): Promise<{
+    found: boolean;
+    isLiked: boolean;
+  }>;
+  getLikeState?(
+    relays: string[],
+    url: string,
+  ): Promise<{
+    totalCount: number;
+    likedCount: number;
+    dislikedCount: number;
+    isLiked: boolean;
+  }>;
   publish(relays: string[], event: any): Promise<void>;
 }
 

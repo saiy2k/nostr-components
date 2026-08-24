@@ -146,7 +146,10 @@ export class NostrService {
   }
 
   public getRelays(): string[] {
-    return this.ndk.explicitRelayUrls || DEFAULT_RELAYS;
+    const explicitRelays = this.ndk.explicitRelayUrls;
+    return explicitRelays && explicitRelays.length > 0
+      ? explicitRelays
+      : [...DEFAULT_RELAYS];
   }
 
   public async resolveNDKUser(identifier: {
@@ -190,12 +193,15 @@ export class NostrService {
     return user ? this.fetchZaps(user) : 0;
   }
 
-  public async getProfile(user: NDKUser | null): Promise<NDKUserProfile | null> {
+  public async getProfile(
+    user: NDKUser | null,
+    relays: string[] = this.getRelays(),
+  ): Promise<NDKUserProfile | null> {
     if (!user) return null;
 
     const transport = getRelayTransport();
     if (transport) {
-      const event = await getProfileMetadata(user.pubkey, this.getRelays());
+      const event = await getProfileMetadata(user.pubkey, relays);
       if (!event) return null;
       try {
         const profile = profileFromEvent(new NDKEvent(this.ndk, event));

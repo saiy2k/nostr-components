@@ -6757,7 +6757,7 @@
     let activeSession = null;
     const relayHealth = /* @__PURE__ */ new Map();
     const recentReactionsByUrl = /* @__PURE__ */ new Map();
-    function rememberRecentReaction(event) {
+    async function rememberRecentReaction(event) {
       const identifierTag = event.tags.find((tag) => Array.isArray(tag) && tag[0] === "i");
       const url = identifierTag?.[1];
       if (!url) return;
@@ -6770,8 +6770,11 @@
         event,
         expiresAt: Date.now() + RECENT_REACTION_TTL_MS
       });
+      if (typeof extension.storage.setRecentReaction === "function") {
+        await extension.storage.setRecentReaction(event, RECENT_REACTION_TTL_MS);
+      }
     }
-    function getRecentReactions(url) {
+    function getInMemoryRecentReactions(url) {
       const reactionsByPubkey = recentReactionsByUrl.get(url);
       if (!reactionsByPubkey) return [];
       const now2 = Date.now();
@@ -6782,6 +6785,19 @@
       }
       if (reactionsByPubkey.size === 0) recentReactionsByUrl.delete(url);
       return events;
+    }
+    async function getRecentReactions(url) {
+      const storedEvents = typeof extension.storage.getRecentReactions === "function" ? await extension.storage.getRecentReactions(url) : [];
+      const eventsById = /* @__PURE__ */ new Map();
+      for (const event of [...getInMemoryRecentReactions(url), ...storedEvents]) {
+        const validated = validateReactionEvent(event);
+        if (!validated) continue;
+        const identifierTag = validated.tags.find(
+          (tag) => Array.isArray(tag) && tag[0] === "i"
+        );
+        if (identifierTag?.[1] === url) eventsById.set(validated.id, validated);
+      }
+      return Array.from(eventsById.values());
     }
     function relayScore(relay) {
       const health = relayHealth.get(relay);
@@ -6811,6 +6827,12 @@
         else if (event.content === "+" || event.content === "") likedCount += 1;
       }
       return { totalCount: likedCount, likedCount, dislikedCount };
+    }
+    function findLatestReaction(events, publicKey) {
+      if (!publicKey) return void 0;
+      return events.filter((event) => event.pubkey === publicKey).sort(
+        (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
+      )[0];
     }
     function queryWithFastQuorum(pool, relays, filters) {
       const selectedRelays = selectQueryRelays(relays);
@@ -7016,11 +7038,19 @@
       if (!relays) {
         throw new Error("Relay request contains an unsupported relay list");
       }
-      if (message.operation === "getLikeState") {
+      if (message.operation === "getCachedLikeState" || message.operation === "getLikeState") {
         if (!payload || Object.keys(payload).some((key) => key !== "relays" && key !== "url") || !isAllowedContentUrl(payload.url)) {
           throw new Error("Known-reaction request contains unexpected data");
         }
         const publicKey = await extension.storage.getKnownPubkey();
+        if (message.operation === "getCachedLikeState") {
+          const cachedEvents = await getRecentReactions(payload.url);
+          const latest2 = findLatestReaction(cachedEvents, publicKey);
+          return {
+            found: Boolean(latest2),
+            isLiked: latest2?.content === "+" || latest2?.content === ""
+          };
+        }
         const countFilter = {
           kinds: [17],
           "#k": ["web"],
@@ -7038,14 +7068,12 @@
           });
         }
         const queriedEvents = await queryWithFastQuorum(pool, relays, filters);
+        const recentEvents = await getRecentReactions(payload.url);
         const eventsById = new Map(
-          [...queriedEvents, ...getRecentReactions(payload.url)].map((event) => [event.id, event])
+          [...queriedEvents, ...recentEvents].map((event) => [event.id, event])
         );
         const events = Array.from(eventsById.values());
-        const ownEvents = publicKey ? events.filter((event) => event.pubkey === publicKey) : [];
-        const latest = [...ownEvents].sort(
-          (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
-        )[0];
+        const latest = findLatestReaction(events, publicKey);
         return {
           ...summarizeReactionEvents(events),
           isLiked: latest?.content === "+" || latest?.content === ""
@@ -7073,7 +7101,7 @@
           throw new Error("No relay acknowledged the reaction event");
         }
         await extension.storage.setKnownPubkey(event.pubkey);
-        rememberRecentReaction(event);
+        await rememberRecentReaction(event);
         return null;
       }
       throw new Error("Unsupported relay operation");

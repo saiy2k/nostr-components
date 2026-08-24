@@ -132,7 +132,6 @@ describe('NostrService.connectToNostr concurrency', () => {
     const fetchProfile = vi.fn();
     const pubkey = '9'.repeat(64);
     const customRelays = ['wss://profiles.example'];
-    vi.spyOn(service, 'getRelays').mockReturnValue(customRelays);
     const query = vi.fn().mockResolvedValue([
       {
         pubkey,
@@ -148,7 +147,9 @@ describe('NostrService.connectToNostr concurrency', () => {
       __nostrComponentsRelayTransport: { query, publish: vi.fn() },
     });
 
-    await expect(service.getProfile({ pubkey, fetchProfile } as any)).resolves.toMatchObject({
+    await expect(
+      service.getProfile({ pubkey, fetchProfile } as any, customRelays),
+    ).resolves.toMatchObject({
       displayName: 'YouTube creator',
       image: 'https://example.com/creator.png',
       picture: 'https://example.com/creator.png',
