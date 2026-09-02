@@ -1,0 +1,88 @@
+Test ID,Module,Test Case Name,Preconditions,Test Steps,Test Data,Expected Result,Priority,Test Type,Pass/Fail,Notes
+TC-AUTH-054,Onboarding Dialog,First-time Like click shows onboarding before signer,No connected signer; Like button on page with url attribute,"1. Click Like
+2. Observe modals
+3. Do not interact with signer yet","Like action, light theme",nostr-components onboarding dialog appears with like-specific title/copy; window.nostr.js widget does NOT open yet,P0,Positive,,Covers auth-onboarding.ts show-before-signer; maps to auth-onboarding.test.ts onboarding order
+TC-AUTH-055,Onboarding Dialog,Action-specific copy for Zap and Follow,No connected signer; Zap and Follow buttons on same page,"1. Dismiss any open dialog
+2. Click Zap → read copy
+3. Dismiss
+4. Click Follow → read copy",Zap + Follow actions,Each action shows distinct eyebrow/title/description (Lightning tips vs follow vs likes); links to nstart.me and getalby.com present,P1,Positive,,getAuthOnboardingContent() per action
+TC-AUTH-056,Onboarding Dialog,Maybe later dismisses without signer call,No connected signer; onboarding visible after Like click,"1. Click Like
+2. Click Maybe later
+3. Observe network/DOM
+4. Retry Like",N/A,Dialog closes; Like button resets quietly; no window.nostr.js widget; no getPublicKey call; second click shows onboarding again,P0,Negative,,status: dismissed in ensureSignerForAction
+TC-AUTH-057,Onboarding Dialog,ESC and backdrop dismiss same as Maybe later,Onboarding dialog open,"1. Open onboarding via Zap
+2. Press ESC
+3. Re-open via Follow
+4. Click backdrop/outside if supported",Zap then Follow,Both dismiss paths yield dismissed status; no signer initialized; no error toast,P1,Negative,,dialog-component close handler
+TC-AUTH-058,Onboarding Dialog,Connect Nostr closes onboarding then opens signer widget,No connected signer,"1. Click Follow
+2. Click Connect Nostr
+3. Observe modal stack timing",Follow action,Onboarding closes first; then window.nostr.js connect UI opens; modals never stacked,P0,Positive,,Critical UX contract in auth-onboarding.ts
+TC-AUTH-059,Onboarding Dialog,Quick setup guide opens nstart.me in new tab,Onboarding open,"1. Click Quick setup guide
+2. Check new tab URL
+3. Return to page",https://nstart.me/,New tab opens nstart.me; onboarding stays open; neutral status message shown,P2,Positive,,getAuthOnboardingLinks()
+TC-AUTH-060,Onboarding Dialog,Parallel clicks show only one onboarding dialog,No connected signer,"1. Rapidly double-click Like
+2. Count visible dialogs",N/A,Single onboarding dialog; activeOnboardingPromise dedupes concurrent requests,P1,Negative,,Race/concurrency
+TC-AUTH-061,Onboarding Dialog,Dark theme renders onboarding correctly,"Page embeds component with theme=""dark""; no signer","1. Click Like
+2. Inspect dialog colors/contrast",theme=dark,Dialog uses dark theme (data-theme=dark); text readable; buttons visible,P2,Positive,,normalizeOnboardingTheme()
+TC-AUTH-062,NIP-07 Extension,Extension present skips onboarding for returning permission,"Alby or nos2x installed, unlocked, site already authorized","1. Click Like
+2. Observe flow",Authorized extension,Onboarding skipped; status already-connected; like flow proceeds (may show extension prompt if needed),P0,Positive,,hasConnectedSigner() NIP-07 path
+TC-AUTH-063,NIP-07 Extension,Extension present skips window.nostr.js CDN injection,NIP-07 extension installed; DevTools Network open,"1. Clear cache
+2. Click Zap
+3. Complete/connect if prompted
+4. Inspect network for cdn.jsdelivr.net/window.nostr.js",Extension-only,No window.nostr.js script request; window.nostr remains extension-owned (no isWnj shim),P0,Security,,nostr-login-service ensureInitialized skip path
+TC-AUTH-064,NIP-07 Extension,Extension permission denied shows unavailable message,Extension installed; site NOT authorized,"1. Click Follow
+2. Deny extension permission",Deny in extension popup,Follow shows unavailable/error; message mentions connecting a Nostr signer; no partial follow state,P0,Negative,,getSignerUnavailableMessage(follow)
+TC-AUTH-065,NIP-07 Extension,Account switch in extension refreshes pubkey,Extension connected; pubkey A cached from prior action,"1. Switch to pubkey B in extension
+2. Click Like
+3. Compare displayed/cached identity",Two known pubkeys,getPublicKey returns pubkey B; stale pubkey A not reused for signing,P1,Positive,,nostr-login-service-session.test.ts account switch
+TC-AUTH-066,Session Detection,wnj:bunkerPointer skips onboarding on reload,Prior successful nsec or bunker login via window.nostr.js,"1. Complete login once
+2. Reload page
+3. Click Like without re-auth UI",localStorage wnj:bunkerPointer set,hasConnectedSigner true; onboarding skipped; same pubkey used,P0,Positive,,TC-AUTH-001 overlap but tied to Like entry
+TC-AUTH-067,Session Detection,window.nostr.js shim without session is not treated as connected,window.nostr.js loaded but no wnj:bunkerPointer; no extension,"1. Load page fresh
+2. Inspect hasConnectedSigner behavior via first Like click","isWnj=true, no storage",First click shows onboarding; getPublicKey not called before user chooses Connect,P0,Negative,,Prevents accidental widget probe
+TC-AUTH-068,Session Detection,Blocked localStorage forces onboarding every time,Browser/privacy mode blocks storage OR sandboxed iframe,"1. Click Like
+2. Complete login
+3. Reload
+4. Click Like again",Storage throws/blocked,Each session treated as first-time; onboarding shown again; no false already-connected,P1,Negative,,auth-onboarding.test.ts storage blocked
+TC-AUTH-069,Script Loading,window.nostr.js loads with SRI on first connect,No NIP-07 extension; DevTools open,"1. Click Like → Connect Nostr
+2. Inspect injected script tag",CDN 0.7.1,Script src is cdn.jsdelivr.net/.../window.nostr.js@0.7.1; integrity attribute present; crossorigin=anonymous,P1,Security,,WINDOW_NOSTR_JS_SRI in nostr-login-service.ts
+TC-AUTH-070,Script Loading,CDN blocked yields unavailable not hung UI,Block cdn.jsdelivr.net via network filter; no extension,"1. Click Zap → Connect Nostr
+2. Wait for outcome",CDN blocked,Action ends unavailable with zap-specific message; button not stuck loading forever,P0,Negative,,init failure path
+TC-AUTH-071,Script Loading,CSP allowlist page still works with extension only,Strict CSP page blocking external scripts; NIP-07 installed,"1. Click Follow
+2. Complete in extension",CSP + extension,No CDN injection attempted or blocked silently; extension auth succeeds,P1,Positive,,README CSP note for embeds
+TC-AUTH-072,Pubkey Cache,Pubkey cached in sessionStorage for normal embed,Logged in via any method on standard website,"1. Complete auth
+2. Inspect sessionStorage
+3. Trigger second component action",Key: nostr-components:public-key,Only hex pubkey stored (64 chars); never nsec; second action reuses cache with single getPublicKey call,P1,Security,,nostr-login-service-session.test.ts
+TC-AUTH-073,Pubkey Cache,Signer failure clears stale pubkey cache,Cached pubkey present; extension locked or signer throws,"1. Lock signer
+2. Click Like
+3. Inspect sessionStorage",Locked extension,getPublicKey returns null; nostr-components:public-key removed; user prompted to reconnect,P1,Negative,,clearCachedPublicKey on error
+TC-AUTH-074,Browser Extension Embed,X extension keeps pubkey in memory only,nostr-components browser extension active on x.com; relay transport injected,"1. Authenticate
+2. Inspect sessionStorage/localStorage
+3. Post a reaction",X.com embed,Pubkey not written to sessionStorage; signing still works via in-memory cache,P1,Security,,browser-extension README + nostr-login-service
+TC-AUTH-075,Post-Auth Like,Like publishes kind-17 after successful auth,Signer connected via any method,"1. Click Like
+2. Approve sign if prompted
+3. Verify UI and relay",Page URL as like target,Like count increments; kind-17 event published with correct tags; button shows liked state,P0,Positive,,E2E like-utils publish
+TC-AUTH-076,Post-Auth Like,Unlike requires confirmation then publishes,User already liked page,"1. Click Unlike
+2. Confirm dialog
+3. Cancel once then confirm",Existing like,Confirm required; unlike kind-17 published; count decrements,P1,Positive,,spec/testing.md unlike flow
+TC-AUTH-077,Post-Auth Follow,Follow succeeds after onboarding connect,No prior follow; signer available,"1. Click Follow → Connect if needed
+2. Approve
+3. Check follow state",Target npub,Follow state toggles to following; contact list event published,P0,Positive,,nostr-follow-button
+TC-AUTH-078,Post-Auth Zap,Zap modal opens after auth; Lightning QR is payment not login,Signer connected; zap target has LNURL,"1. Click Zap
+2. Select amount
+3. Observe QR",Valid zap profile,"Zap modal opens post-auth; QR encodes Lightning invoice (lnbc...), NOT nostrconnect://; auth QR and payment QR visually distinct",P0,Positive,,Disambiguates TC-AUTH-036+ from zap dialog-zap.ts
+TC-AUTH-079,Post-Auth Zap,User backs out of signer after onboarding shows zap unavailable,No signer; onboarding shown,"1. Click Zap → Connect Nostr
+2. Close window.nostr.js without completing
+3. Observe zap button",Dismiss signer widget,Status unavailable; message: Connect a Nostr signer to send a zap.; zap modal does not open,P0,Negative,,ensureSignerForAction unavailable path
+TC-AUTH-080,Disconnect Ownership,Disconnect via window.nostr.js clears wnj:bunkerPointer,Logged in via nsec or bunker through widget,"1. Use widget logout/disconnect if exposed
+2. Inspect localStorage
+3. Click Like",wnj:bunkerPointer,Pointer removed; onboarding shown again; TC-AUTH-002/014/030 executed at widget layer,P0,Positive,,Clarifies logout is widget-owned not nostr-components UI
+TC-AUTH-081,Disconnect Ownership,nostr-components has no standalone logout control,Authenticated user on embed page,"1. Search UI for logout/disconnect in Like/Zap/Follow components
+2. Document finding",N/A,No logout button in nostr-components; session clearing only via widget or manual storage clear,P2,Documentation,,Prevents false-fail on TC-AUTH-002 if tester looks in wrong place
+TC-AUTH-082,Security,localStorage nostr_nsec does NOT satisfy hasSigner for Like/Zap/Follow,Legacy nostr_nsec key manually set in localStorage; no extension,"1. Set localStorage nostr_nsec
+2. Click Like",Raw nsec in nostr_nsec key,Onboarding still shown; legacy key ignored by hasSigner/hasConnectedSigner,P1,Security,,nostr-service-has-signer.test.ts
+TC-AUTH-083,Security,Referrer and history never contain secrets after auth,"Complete nsec, bunker URI, and NIP-46 QR login separately","1. After each method inspect location.href, history, document.referrer
+2. Check for nsec1/bunker secrets",All three methods,"No private keys or bunker secrets in URL bar, history entries, or referrer headers",P0,Security,,Extends TC-AUTH-053
+TC-AUTH-084,Accessibility,Onboarding dialog keyboard and screen reader basics,Onboarding open; keyboard only,"1. Tab through controls
+2. Activate Connect with Enter
+3. Check aria-live status region",Keyboard + SR optional,Focus trapped in dialog; buttons reachable; status region present (aria-live=polite),P2,Positive,,dialog-component a11y
