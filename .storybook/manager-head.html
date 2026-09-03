@@ -1,0 +1,49 @@
+<base href="/" />
+<script>
+(function () {
+  try {
+    var origAssign = Object.assign;
+    var staticRe =
+      /^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|favicon|project\.json|nunito-sans)/;
+    var slug = function (s) {
+      return String(s)
+        .toLowerCase()
+        .replace(/[ ’–—―′¿'`‘“”"″′‘’']/g, '-')
+        .replace(/&/g, 'and')
+        .replace(/[^\w-]/g, '-')
+        .replace(/--+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    };
+    var pathFromPathname = function (pathname) {
+      if (!pathname || staticRe.test(pathname)) return null;
+      if (pathname === '/') return '/docs/nostr-components--docs';
+      if ((pathname.split('/').pop() || '').indexOf('.') !== -1) return null;
+      var segs = pathname.split('/').filter(Boolean).map(slug).filter(Boolean);
+      if (!segs.length) return null;
+      if (segs.length === 1) return '/docs/' + segs[0] + '--docs';
+      return '/story/' + segs.slice(0, -1).join('-') + '--' + segs[segs.length - 1];
+    };
+    Object.assign = function (target) {
+      var result = origAssign.apply(this, arguments);
+      try {
+        if (
+          result &&
+          typeof result.pathname === 'string' &&
+          typeof result.search === 'string' &&
+          typeof result.hash === 'string' &&
+          typeof result.key === 'string' &&
+          'state' in result &&
+          result.search.indexOf('path=') === -1
+        ) {
+          var p = pathFromPathname(result.pathname);
+          if (p) {
+            var rest = result.search.charAt(0) === '?' ? result.search.slice(1) : result.search;
+            result.search = '?path=' + p + (rest ? '&' + rest : '');
+          }
+        }
+      } catch (e) {}
+      return result;
+    };
+  } catch (e) {}
+})();
+</script>

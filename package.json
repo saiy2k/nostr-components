@@ -91,7 +91,7 @@
     "build": "npm run build:esm && npm run build:umd && npm run build:themes && npm run build:assets",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes",
+    "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes && node scripts/patch-storybook-base.js",
     "test": "vitest run",
     "test:browser-extension": "npm run build:browser-extension && vitest run browser-extension/tests",
     "test:functions": "npm --prefix functions test",

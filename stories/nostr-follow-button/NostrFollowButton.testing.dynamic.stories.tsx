@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { BOOLEAN_ATTRIBUTE_MODES, DEFAULT_WIDTH, DYNAMIC_TEST_TAGS, generateCode, getArgTypes, getTestingParameters } from "./utils";
+import { BOOLEAN_ATTRIBUTE_MODES, DEFAULT_WIDTH, generateCode, getArgTypes, getTestingParameters } from "./utils";
 import { PROFILE_DATA } from '../profile-data';
 import { INVALID_TEST_CASES } from './test-cases-invalid';
 import { createPrimaryAttributeChangesPlay } from '../common/primary-attribute-changes';
@@ -8,7 +8,7 @@ import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta: Meta = {
   title: 'Follow Button/Testing/Dynamic',
-  tags: [...DYNAMIC_TEST_TAGS],
+  tags: ['test', 'dynamic'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
