@@ -100,4 +100,15 @@ describe('renderLikeButton', () => {
     );
     expect(styles).not.toContain('pointer-events: none');
   });
+
+  it('overrides X compact geometry with a native-sized YouTube pill', () => {
+    const styles = getLikeButtonStyles();
+
+    expect(styles).toMatch(
+      /:host\(\[compact\]\[data-surface="youtube"\]\)\s*\{[^}]*height: 40px/s,
+    );
+    expect(styles).toMatch(
+      /:host\(\[compact\]\[data-surface="youtube"\]\) \.nostr-like-button\s*\{[^}]*min-width: 40px/s,
+    );
+  });
 });

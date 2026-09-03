@@ -4,6 +4,7 @@
 import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getHelpDialogStyles } from './dialog-help-style';
+import { setTrustedInnerHTML } from '../common/trusted-html';
 
 const YOUTUBE_URL = "https://www.youtube.com/shorts/PDnrh8pkF3g";
 
@@ -31,7 +32,7 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
   }
   
   // Set dialog content
-  dialogComponent.innerHTML = `
+  setTrustedInnerHTML(dialogComponent, `
     <div class="help-content">
       <p>Send instant tips to support content creators! Zaps are small Bitcoin Lightning payments that go directly to creators—no middleman.</p>
       <ul>
@@ -44,7 +45,7 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
         Watch Tutorial
       </a>
     </div>
-  `;
+  `);
   
   dialogComponent.showModal();
 };

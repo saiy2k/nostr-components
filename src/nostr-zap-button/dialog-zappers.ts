@@ -11,6 +11,10 @@ import {
 } from './zap-utils';
 import { escapeHtml, formatRelativeTime, hexToNpub } from '../common/utils';
 import { renderZapEntry, type EnhancedZapDetails } from './render-zap-entry';
+import {
+  setTrustedInnerHTML,
+  setTrustedOuterHTML,
+} from '../common/trusted-html';
 
 /**
  * Modal dialog for displaying individual zap details (zappers).
@@ -100,7 +104,7 @@ export async function openZappersDialog(
 
   // Initial content with skeleton loaders showing npubs
   const initialContent = await renderInitialContent(zapDetails);
-  dialogComponent.innerHTML = initialContent;
+  setTrustedInnerHTML(dialogComponent, initialContent);
 
   // Show the dialog (this will create and append the actual dialog element)
   dialogComponent.showModal();
@@ -235,7 +239,7 @@ async function enhanceZapDetailsProgressively(
       );
       if (skeletonEntry) {
         const enhancedEntry = renderZapEntry(enhanced, index);
-        skeletonEntry.outerHTML = enhancedEntry;
+        setTrustedOuterHTML(skeletonEntry, enhancedEntry);
       }
     }
 
@@ -346,7 +350,7 @@ async function enhanceZapDetailsIndividually(
       );
       if (skeletonEntry) {
         const enhancedEntry = renderZapEntry(enhanced, index);
-        skeletonEntry.outerHTML = enhancedEntry;
+        setTrustedOuterHTML(skeletonEntry, enhancedEntry);
       }
     } catch (error) {
       console.error(

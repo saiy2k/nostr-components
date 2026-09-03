@@ -133,6 +133,7 @@ export class NostrUserComponent extends NostrBaseComponent {
         npub: this.getAttribute('npub'),
         pubkey: this.getAttribute('pubkey'),
         nip05: this.getAttribute('nip05'),
+        relays: this.getRelays(),
       });
 
       // stale call check

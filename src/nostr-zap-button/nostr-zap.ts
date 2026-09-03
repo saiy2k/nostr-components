@@ -11,6 +11,8 @@ import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
 import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { ensureSignerForAction } from '../common/auth-onboarding';
+import { getRelayTransport } from '../common/relay-transport';
+import { setTrustedInnerHTML } from '../common/trusted-html';
 
 /**
  * <nostr-zap-button>
@@ -22,6 +24,7 @@ import { ensureSignerForAction } from '../common/auth-onboarding';
  *   - amount          (optional) : pre-defined zap amount in sats
  *   - default-amount  (optional) : default zap amount in sats (default 21)
  *   - url             (optional) : URL to send zap to (enables URL-based zaps)
+ *   - compact         (optional) : icon-only action for host action bars
  * 
  *  TODO: Doesn't yet support dynamic updates of attributes.
  */
@@ -53,7 +56,8 @@ export default class NostrZap extends NostrUserComponent {
       'text',
       'amount',
       'default-amount',
-      'url'
+      'url',
+      'compact'
     ];
   }
 
@@ -65,6 +69,7 @@ export default class NostrZap extends NostrUserComponent {
   }
 
   disconnectedCallback() {
+    super.disconnectedCallback?.();
     if (
       this.cachedAmountDialog &&
       typeof this.cachedAmountDialog.close === "function"
@@ -81,6 +86,22 @@ export default class NostrZap extends NostrUserComponent {
   protected onUserReady(_user: any, _profile: any) {
     this.render();
     this.updateZapCount();
+  }
+
+  /** A host relay transport replaces only networking, not the component UI/signer. */
+  protected async connectToNostr() {
+    if (!getRelayTransport()) {
+      await super.connectToNostr();
+      return;
+    }
+
+    this.conn.set(NCStatus.Ready);
+    this.nostrReadyResolve?.();
+    try {
+      this.onNostrRelaysConnected();
+    } catch (hookError) {
+      console.error('Error in onNostrRelaysConnected hook:', hookError);
+    }
   }
 
   /** Protected methods */
@@ -307,12 +328,13 @@ export default class NostrZap extends NostrUserComponent {
       buttonText: buttonText,
       totalZapAmount: this.totalZapAmount,
       hasZaps: this.cachedZapDetails.length > 0,
+      compact: this.hasAttribute('compact'),
     };
 
-    this.shadowRoot!.innerHTML = `
+    setTrustedInnerHTML(this.shadowRoot!, `
       ${getZapButtonStyles()}
       ${renderZapButton(renderOptions)}
-    `;
+    `);
   }
 }
 

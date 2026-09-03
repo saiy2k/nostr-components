@@ -34,827 +34,137 @@
     mod3
   ));
 
-  // node_modules/tseep/lib/types.js
-  var require_types = __commonJS({
-    "node_modules/tseep/lib/types.js"(exports2) {
+  // browser-extension/src/csp-event-emitter.js
+  var EventEmitter;
+  var init_csp_event_emitter = __esm({
+    "browser-extension/src/csp-event-emitter.js"() {
       "use strict";
-      Object.defineProperty(exports2, "__esModule", { value: true });
-    }
-  });
-
-  // node_modules/tseep/lib/task-collection/utils.js
-  var require_utils = __commonJS({
-    "node_modules/tseep/lib/task-collection/utils.js"(exports2) {
-      "use strict";
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      exports2._fast_remove_single = void 0;
-      function _fast_remove_single(arr, index) {
-        if (index === -1)
-          return;
-        if (index === 0)
-          arr.shift();
-        else if (index === arr.length - 1)
-          arr.length = arr.length - 1;
-        else
-          arr.splice(index, 1);
-      }
-      exports2._fast_remove_single = _fast_remove_single;
-    }
-  });
-
-  // node_modules/tseep/lib/task-collection/bake-collection.js
-  var require_bake_collection = __commonJS({
-    "node_modules/tseep/lib/task-collection/bake-collection.js"(exports, module) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.bakeCollectionVariadic = exports.bakeCollectionAwait = exports.bakeCollection = exports.BAKED_EMPTY_FUNC = void 0;
-      exports.BAKED_EMPTY_FUNC = function() {
-      };
-      var FORLOOP_FALLBACK = 1500;
-      function generateArgsDefCode(numArgs) {
-        var argsDefCode2 = "";
-        if (numArgs === 0)
-          return argsDefCode2;
-        for (var i2 = 0; i2 < numArgs - 1; ++i2) {
-          argsDefCode2 += "arg" + String(i2) + ", ";
-        }
-        argsDefCode2 += "arg" + String(numArgs - 1);
-        return argsDefCode2;
-      }
-      function generateBodyPartsCode(argsDefCode2, collectionLength) {
-        var funcDefCode2 = "", funcCallCode2 = "";
-        for (var i2 = 0; i2 < collectionLength; ++i2) {
-          funcDefCode2 += "var f".concat(i2, " = collection[").concat(i2, "];\n");
-          funcCallCode2 += "f".concat(i2, "(").concat(argsDefCode2, ")\n");
-        }
-        return { funcDefCode: funcDefCode2, funcCallCode: funcCallCode2 };
-      }
-      function generateBodyPartsVariadicCode(collectionLength) {
-        var funcDefCode2 = "", funcCallCode2 = "";
-        for (var i2 = 0; i2 < collectionLength; ++i2) {
-          funcDefCode2 += "var f".concat(i2, " = collection[").concat(i2, "];\n");
-          funcCallCode2 += "f".concat(i2, ".apply(undefined, arguments)\n");
-        }
-        return { funcDefCode: funcDefCode2, funcCallCode: funcCallCode2 };
-      }
-      function bakeCollection(collection, fixedArgsNum) {
-        if (collection.length === 0)
-          return exports.BAKED_EMPTY_FUNC;
-        else if (collection.length === 1)
-          return collection[0];
-        var funcFactoryCode;
-        if (collection.length < FORLOOP_FALLBACK) {
-          var argsDefCode = generateArgsDefCode(fixedArgsNum);
-          var _a = generateBodyPartsCode(argsDefCode, collection.length), funcDefCode = _a.funcDefCode, funcCallCode = _a.funcCallCode;
-          funcFactoryCode = "(function(collection) {\n            ".concat(funcDefCode, "\n            collection = undefined;\n            return (function(").concat(argsDefCode, ") {\n                ").concat(funcCallCode, "\n            });\n        })");
-        } else {
-          var argsDefCode = generateArgsDefCode(fixedArgsNum);
-          if (collection.length % 10 === 0) {
-            funcFactoryCode = "(function(collection) {\n                return (function(".concat(argsDefCode, ") {\n                    for (var i = 0; i < collection.length; i += 10) {\n                        collection[i](").concat(argsDefCode, ");\n                        collection[i+1](").concat(argsDefCode, ");\n                        collection[i+2](").concat(argsDefCode, ");\n                        collection[i+3](").concat(argsDefCode, ");\n                        collection[i+4](").concat(argsDefCode, ");\n                        collection[i+5](").concat(argsDefCode, ");\n                        collection[i+6](").concat(argsDefCode, ");\n                        collection[i+7](").concat(argsDefCode, ");\n                        collection[i+8](").concat(argsDefCode, ");\n                        collection[i+9](").concat(argsDefCode, ");\n                    }\n                });\n            })");
-          } else if (collection.length % 4 === 0) {
-            funcFactoryCode = "(function(collection) {\n                return (function(".concat(argsDefCode, ") {\n                    for (var i = 0; i < collection.length; i += 4) {\n                        collection[i](").concat(argsDefCode, ");\n                        collection[i+1](").concat(argsDefCode, ");\n                        collection[i+2](").concat(argsDefCode, ");\n                        collection[i+3](").concat(argsDefCode, ");\n                    }\n                });\n            })");
-          } else if (collection.length % 3 === 0) {
-            funcFactoryCode = "(function(collection) {\n                return (function(".concat(argsDefCode, ") {\n                    for (var i = 0; i < collection.length; i += 3) {\n                        collection[i](").concat(argsDefCode, ");\n                        collection[i+1](").concat(argsDefCode, ");\n                        collection[i+2](").concat(argsDefCode, ");\n                    }\n                });\n            })");
-          } else {
-            funcFactoryCode = "(function(collection) {\n                return (function(".concat(argsDefCode, ") {\n                    for (var i = 0; i < collection.length; ++i) {\n                        collection[i](").concat(argsDefCode, ");\n                    }\n                });\n            })");
-          }
-        }
-        {
-          var bakeCollection_1 = void 0;
-          var fixedArgsNum_1 = void 0;
-          var bakeCollectionVariadic_1 = void 0;
-          var bakeCollectionAwait_1 = void 0;
-          var funcFactory = eval(funcFactoryCode);
-          return funcFactory(collection);
-        }
-      }
-      exports.bakeCollection = bakeCollection;
-      function bakeCollectionAwait(collection, fixedArgsNum) {
-        if (collection.length === 0)
-          return exports.BAKED_EMPTY_FUNC;
-        else if (collection.length === 1)
-          return collection[0];
-        var funcFactoryCode;
-        if (collection.length < FORLOOP_FALLBACK) {
-          var argsDefCode = generateArgsDefCode(fixedArgsNum);
-          var _a = generateBodyPartsCode(argsDefCode, collection.length), funcDefCode = _a.funcDefCode, funcCallCode = _a.funcCallCode;
-          funcFactoryCode = "(function(collection) {\n            ".concat(funcDefCode, "\n            collection = undefined;\n            return (function(").concat(argsDefCode, ") {\n                return Promise.all([ ").concat(funcCallCode, " ]);\n            });\n        })");
-        } else {
-          var argsDefCode = generateArgsDefCode(fixedArgsNum);
-          funcFactoryCode = "(function(collection) {\n            return (function(".concat(argsDefCode, ") {\n                var promises = Array(collection.length);\n                for (var i = 0; i < collection.length; ++i) {\n                    promises[i] = collection[i](").concat(argsDefCode, ");\n                }\n                return Promise.all(promises);\n            });\n        })");
-        }
-        {
-          var bakeCollection_2 = void 0;
-          var fixedArgsNum_2 = void 0;
-          var bakeCollectionVariadic_2 = void 0;
-          var bakeCollectionAwait_2 = void 0;
-          var funcFactory = eval(funcFactoryCode);
-          return funcFactory(collection);
-        }
-      }
-      exports.bakeCollectionAwait = bakeCollectionAwait;
-      function bakeCollectionVariadic(collection) {
-        if (collection.length === 0)
-          return exports.BAKED_EMPTY_FUNC;
-        else if (collection.length === 1)
-          return collection[0];
-        var funcFactoryCode;
-        if (collection.length < FORLOOP_FALLBACK) {
-          var _a = generateBodyPartsVariadicCode(collection.length), funcDefCode = _a.funcDefCode, funcCallCode = _a.funcCallCode;
-          funcFactoryCode = "(function(collection) {\n            ".concat(funcDefCode, "\n            collection = undefined;\n            return (function() {\n                ").concat(funcCallCode, "\n            });\n        })");
-        } else {
-          funcFactoryCode = "(function(collection) {\n            return (function() {\n                for (var i = 0; i < collection.length; ++i) {\n                    collection[i].apply(undefined, arguments);\n                }\n            });\n        })";
-        }
-        {
-          var bakeCollection_3 = void 0;
-          var fixedArgsNum = void 0;
-          var bakeCollectionVariadic_3 = void 0;
-          var bakeCollectionAwait_3 = void 0;
-          var funcFactory = eval(funcFactoryCode);
-          return funcFactory(collection);
-        }
-      }
-      exports.bakeCollectionVariadic = bakeCollectionVariadic;
-    }
-  });
-
-  // node_modules/tseep/lib/task-collection/task-collection.js
-  var require_task_collection = __commonJS({
-    "node_modules/tseep/lib/task-collection/task-collection.js"(exports2) {
-      "use strict";
-      var __spreadArray = exports2 && exports2.__spreadArray || function(to, from, pack) {
-        if (pack || arguments.length === 2) for (var i2 = 0, l = from.length, ar; i2 < l; i2++) {
-          if (ar || !(i2 in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i2);
-            ar[i2] = from[i2];
-          }
-        }
-        return to.concat(ar || Array.prototype.slice.call(from));
-      };
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      exports2.TaskCollection = void 0;
-      var utils_1 = require_utils();
-      var bake_collection_1 = require_bake_collection();
-      function push_norebuild(a, b) {
-        var len = this.length;
-        if (len > 1) {
-          if (b) {
-            var _a2;
-            (_a2 = this._tasks).push.apply(_a2, arguments);
-            this.length += arguments.length;
-          } else {
-            this._tasks.push(a);
-            this.length++;
-          }
-        } else {
-          if (b) {
-            if (len === 1) {
-              var newAr = Array(1 + arguments.length);
-              newAr.push(newAr);
-              newAr.push.apply(newAr, arguments);
-              this._tasks = newAr;
-            } else {
-              var newAr = Array(arguments.length);
-              newAr.push.apply(newAr, arguments);
-              this._tasks = newAr;
-            }
-            this.length += arguments.length;
-          } else {
-            if (len === 1)
-              this._tasks = [this._tasks, a];
-            else
-              this._tasks = a;
-            this.length++;
-          }
-        }
-      }
-      function push_rebuild(a, b) {
-        var len = this.length;
-        if (len > 1) {
-          if (b) {
-            var _a2;
-            (_a2 = this._tasks).push.apply(_a2, arguments);
-            this.length += arguments.length;
-          } else {
-            this._tasks.push(a);
-            this.length++;
-          }
-        } else {
-          if (b) {
-            if (len === 1) {
-              var newAr = Array(1 + arguments.length);
-              newAr.push(newAr);
-              newAr.push.apply(newAr, arguments);
-              this._tasks = newAr;
-            } else {
-              var newAr = Array(arguments.length);
-              newAr.push.apply(newAr, arguments);
-              this._tasks = newAr;
-            }
-            this.length += arguments.length;
-          } else {
-            if (len === 1)
-              this._tasks = [this._tasks, a];
-            else
-              this._tasks = a;
-            this.length++;
-          }
-        }
-        if (this.firstEmitBuildStrategy)
-          this.call = rebuild_on_first_call;
-        else
-          this.rebuild();
-      }
-      function removeLast_norebuild(a) {
-        if (this.length === 0)
-          return;
-        if (this.length === 1) {
-          if (this._tasks === a) {
-            this.length = 0;
-          }
-        } else {
-          (0, utils_1._fast_remove_single)(this._tasks, this._tasks.lastIndexOf(a));
-          if (this._tasks.length === 1) {
-            this._tasks = this._tasks[0];
-            this.length = 1;
-          } else
-            this.length = this._tasks.length;
-        }
-      }
-      function removeLast_rebuild(a) {
-        if (this.length === 0)
-          return;
-        if (this.length === 1) {
-          if (this._tasks === a) {
-            this.length = 0;
-          }
-          if (this.firstEmitBuildStrategy) {
-            this.call = bake_collection_1.BAKED_EMPTY_FUNC;
-            return;
-          } else {
-            this.rebuild();
-            return;
-          }
-        } else {
-          (0, utils_1._fast_remove_single)(this._tasks, this._tasks.lastIndexOf(a));
-          if (this._tasks.length === 1) {
-            this._tasks = this._tasks[0];
-            this.length = 1;
-          } else
-            this.length = this._tasks.length;
-        }
-        if (this.firstEmitBuildStrategy)
-          this.call = rebuild_on_first_call;
-        else
-          this.rebuild();
-      }
-      function insert_norebuild(index) {
-        var _b;
-        var func = [];
-        for (var _i = 1; _i < arguments.length; _i++) {
-          func[_i - 1] = arguments[_i];
-        }
-        if (this.length === 0) {
-          this._tasks = func;
-          this.length = 1;
-        } else if (this.length === 1) {
-          func.unshift(this._tasks);
-          this._tasks = func;
-          this.length = this._tasks.length;
-        } else {
-          (_b = this._tasks).splice.apply(_b, __spreadArray([index, 0], func, false));
-          this.length = this._tasks.length;
-        }
-      }
-      function insert_rebuild(index) {
-        var _b;
-        var func = [];
-        for (var _i = 1; _i < arguments.length; _i++) {
-          func[_i - 1] = arguments[_i];
-        }
-        if (this.length === 0) {
-          this._tasks = func;
-          this.length = 1;
-        } else if (this.length === 1) {
-          func.unshift(this._tasks);
-          this._tasks = func;
-          this.length = this._tasks.length;
-        } else {
-          (_b = this._tasks).splice.apply(_b, __spreadArray([index, 0], func, false));
-          this.length = this._tasks.length;
-        }
-        if (this.firstEmitBuildStrategy)
-          this.call = rebuild_on_first_call;
-        else
-          this.rebuild();
-      }
-      function rebuild_noawait() {
-        if (this.length === 0)
-          this.call = bake_collection_1.BAKED_EMPTY_FUNC;
-        else if (this.length === 1)
-          this.call = this._tasks;
-        else
-          this.call = (0, bake_collection_1.bakeCollection)(this._tasks, this.argsNum);
-      }
-      function rebuild_await() {
-        if (this.length === 0)
-          this.call = bake_collection_1.BAKED_EMPTY_FUNC;
-        else if (this.length === 1)
-          this.call = this._tasks;
-        else
-          this.call = (0, bake_collection_1.bakeCollectionAwait)(this._tasks, this.argsNum);
-      }
-      function rebuild_on_first_call() {
-        this.rebuild();
-        this.call.apply(void 0, arguments);
-      }
-      var TaskCollection = (
-        /** @class */
-        /* @__PURE__ */ function() {
-          function TaskCollection2(argsNum, autoRebuild, initialTasks, awaitTasks) {
-            if (autoRebuild === void 0) {
-              autoRebuild = true;
-            }
-            if (initialTasks === void 0) {
-              initialTasks = null;
-            }
-            if (awaitTasks === void 0) {
-              awaitTasks = false;
-            }
-            this.awaitTasks = awaitTasks;
-            this.call = bake_collection_1.BAKED_EMPTY_FUNC;
-            this.argsNum = argsNum;
-            this.firstEmitBuildStrategy = true;
-            if (awaitTasks)
-              this.rebuild = rebuild_await.bind(this);
-            else
-              this.rebuild = rebuild_noawait.bind(this);
-            this.setAutoRebuild(autoRebuild);
-            if (initialTasks) {
-              if (typeof initialTasks === "function") {
-                this._tasks = initialTasks;
-                this.length = 1;
-              } else {
-                this._tasks = initialTasks;
-                this.length = initialTasks.length;
-              }
-            } else {
-              this._tasks = null;
-              this.length = 0;
-            }
-            if (autoRebuild)
-              this.rebuild();
-          }
-          return TaskCollection2;
-        }()
-      );
-      exports2.TaskCollection = TaskCollection;
-      function fastClear() {
-        this._tasks = null;
-        this.length = 0;
-        this.call = bake_collection_1.BAKED_EMPTY_FUNC;
-      }
-      function clear() {
-        this._tasks = null;
-        this.length = 0;
-        this.call = bake_collection_1.BAKED_EMPTY_FUNC;
-      }
-      function growArgsNum(argsNum) {
-        if (this.argsNum < argsNum) {
-          this.argsNum = argsNum;
-          if (this.firstEmitBuildStrategy)
-            this.call = rebuild_on_first_call;
-          else
-            this.rebuild();
-        }
-      }
-      function setAutoRebuild(newVal) {
-        if (newVal) {
-          this.push = push_rebuild.bind(this);
-          this.insert = insert_rebuild.bind(this);
-          this.removeLast = removeLast_rebuild.bind(this);
-        } else {
-          this.push = push_norebuild.bind(this);
-          this.insert = insert_norebuild.bind(this);
-          this.removeLast = removeLast_norebuild.bind(this);
-        }
-      }
-      function tasksAsArray() {
-        if (this.length === 0)
-          return [];
-        if (this.length === 1)
-          return [this._tasks];
-        return this._tasks;
-      }
-      function setTasks(tasks) {
-        if (tasks.length === 0) {
-          this.length = 0;
-          this.call = bake_collection_1.BAKED_EMPTY_FUNC;
-        } else if (tasks.length === 1) {
-          this.length = 1;
-          this.call = tasks[0];
-          this._tasks = tasks[0];
-        } else {
-          this.length = tasks.length;
-          this._tasks = tasks;
-          if (this.firstEmitBuildStrategy)
-            this.call = rebuild_on_first_call;
-          else
-            this.rebuild();
-        }
-      }
-      TaskCollection.prototype.fastClear = fastClear;
-      TaskCollection.prototype.clear = clear;
-      TaskCollection.prototype.growArgsNum = growArgsNum;
-      TaskCollection.prototype.setAutoRebuild = setAutoRebuild;
-      TaskCollection.prototype.tasksAsArray = tasksAsArray;
-      TaskCollection.prototype.setTasks = setTasks;
-    }
-  });
-
-  // node_modules/tseep/lib/task-collection/index.js
-  var require_task_collection2 = __commonJS({
-    "node_modules/tseep/lib/task-collection/index.js"(exports2) {
-      "use strict";
-      var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
-        if (k2 === void 0) k2 = k;
-        var desc = Object.getOwnPropertyDescriptor(m, k);
-        if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = { enumerable: true, get: function() {
-            return m[k];
-          } };
-        }
-        Object.defineProperty(o, k2, desc);
-      } : function(o, m, k, k2) {
-        if (k2 === void 0) k2 = k;
-        o[k2] = m[k];
-      });
-      var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
-        for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
-      };
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      __exportStar(require_task_collection(), exports2);
-    }
-  });
-
-  // node_modules/tseep/lib/utils.js
-  var require_utils2 = __commonJS({
-    "node_modules/tseep/lib/utils.js"(exports2) {
-      "use strict";
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      exports2.nullObj = void 0;
-      function nullObj() {
-        var x = {};
-        x.__proto__ = null;
-        return x;
-      }
-      exports2.nullObj = nullObj;
-    }
-  });
-
-  // node_modules/tseep/lib/ee.js
-  var require_ee = __commonJS({
-    "node_modules/tseep/lib/ee.js"(exports2) {
-      "use strict";
-      var __spreadArray = exports2 && exports2.__spreadArray || function(to, from, pack) {
-        if (pack || arguments.length === 2) for (var i2 = 0, l = from.length, ar; i2 < l; i2++) {
-          if (ar || !(i2 in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i2);
-            ar[i2] = from[i2];
-          }
-        }
-        return to.concat(ar || Array.prototype.slice.call(from));
-      };
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      exports2.EventEmitter = void 0;
-      var task_collection_1 = require_task_collection2();
-      var utils_1 = require_utils();
-      var utils_2 = require_utils2();
-      function emit(event, a, b, c, d4, e) {
-        var ev = this.events[event];
-        if (ev) {
-          if (ev.length === 0)
-            return false;
-          if (ev.argsNum < 6) {
-            ev.call(a, b, c, d4, e);
-          } else {
-            var arr = new Array(ev.argsNum);
-            for (var i2 = 0, len = arr.length; i2 < len; ++i2) {
-              arr[i2] = arguments[i2 + 1];
-            }
-            ev.call.apply(void 0, arr);
-          }
-          return true;
-        }
-        return false;
-      }
-      function emitHasOnce(event, a, b, c, d4, e) {
-        var ev = this.events[event];
-        var argsArr;
-        if (ev !== void 0) {
-          if (ev.length === 0)
-            return false;
-          if (ev.argsNum < 6) {
-            ev.call(a, b, c, d4, e);
-          } else {
-            argsArr = new Array(ev.argsNum);
-            for (var i2 = 0, len = argsArr.length; i2 < len; ++i2) {
-              argsArr[i2] = arguments[i2 + 1];
-            }
-            ev.call.apply(void 0, argsArr);
-          }
-        }
-        var oev = this.onceEvents[event];
-        if (oev) {
-          if (typeof oev === "function") {
-            this.onceEvents[event] = void 0;
-            if (arguments.length < 6) {
-              oev(a, b, c, d4, e);
-            } else {
-              if (argsArr === void 0) {
-                argsArr = new Array(arguments.length - 1);
-                for (var i2 = 0, len = argsArr.length; i2 < len; ++i2) {
-                  argsArr[i2] = arguments[i2 + 1];
-                }
-              }
-              oev.apply(void 0, argsArr);
-            }
-          } else {
-            var fncs = oev;
-            this.onceEvents[event] = void 0;
-            if (arguments.length < 6) {
-              for (var i2 = 0; i2 < fncs.length; ++i2) {
-                fncs[i2](a, b, c, d4, e);
-              }
-            } else {
-              if (argsArr === void 0) {
-                argsArr = new Array(arguments.length - 1);
-                for (var i2 = 0, len = argsArr.length; i2 < len; ++i2) {
-                  argsArr[i2] = arguments[i2 + 1];
-                }
-              }
-              for (var i2 = 0; i2 < fncs.length; ++i2) {
-                fncs[i2].apply(void 0, argsArr);
-              }
-            }
-          }
-          return true;
-        }
-        return ev !== void 0;
-      }
-      var EventEmitter10 = (
-        /** @class */
-        function() {
-          function EventEmitter11() {
-            this.events = (0, utils_2.nullObj)();
-            this.onceEvents = (0, utils_2.nullObj)();
-            this._symbolKeys = /* @__PURE__ */ new Set();
-            this.maxListeners = Infinity;
-          }
-          Object.defineProperty(EventEmitter11.prototype, "_eventsCount", {
-            get: function() {
-              return this.eventNames().length;
-            },
-            enumerable: false,
-            configurable: true
-          });
-          return EventEmitter11;
-        }()
-      );
-      exports2.EventEmitter = EventEmitter10;
-      function once(event, listener) {
-        if (this.emit === emit) {
-          this.emit = emitHasOnce;
-        }
-        switch (typeof this.onceEvents[event]) {
-          case "undefined":
-            this.onceEvents[event] = listener;
-            if (typeof event === "symbol")
-              this._symbolKeys.add(event);
-            break;
-          case "function":
-            this.onceEvents[event] = [this.onceEvents[event], listener];
-            break;
-          case "object":
-            this.onceEvents[event].push(listener);
-        }
-        return this;
-      }
-      function addListener(event, listener, argsNum) {
-        if (argsNum === void 0) {
-          argsNum = listener.length;
-        }
-        if (typeof listener !== "function")
-          throw new TypeError("The listener must be a function");
-        var evtmap = this.events[event];
-        if (!evtmap) {
-          this.events[event] = new task_collection_1.TaskCollection(argsNum, true, listener, false);
-          if (typeof event === "symbol")
-            this._symbolKeys.add(event);
-        } else {
-          evtmap.push(listener);
-          evtmap.growArgsNum(argsNum);
-          if (this.maxListeners !== Infinity && this.maxListeners <= evtmap.length)
-            console.warn('Maximum event listeners for "'.concat(String(event), '" event!'));
-        }
-        return this;
-      }
-      function removeListener(event, listener) {
-        var evt = this.events[event];
-        if (evt) {
-          evt.removeLast(listener);
-        }
-        var evto = this.onceEvents[event];
-        if (evto) {
-          if (typeof evto === "function") {
-            this.onceEvents[event] = void 0;
-          } else if (typeof evto === "object") {
-            if (evto.length === 1 && evto[0] === listener) {
-              this.onceEvents[event] = void 0;
-            } else {
-              (0, utils_1._fast_remove_single)(evto, evto.lastIndexOf(listener));
-            }
-          }
-        }
-        return this;
-      }
-      function addListenerBound(event, listener, bindTo, argsNum) {
-        if (bindTo === void 0) {
-          bindTo = this;
-        }
-        if (argsNum === void 0) {
-          argsNum = listener.length;
-        }
-        if (!this.boundFuncs)
+      EventEmitter = class {
+        constructor() {
+          this.events = /* @__PURE__ */ new Map();
           this.boundFuncs = /* @__PURE__ */ new Map();
-        var bound = listener.bind(bindTo);
-        this.boundFuncs.set(listener, bound);
-        return this.addListener(event, bound, argsNum);
-      }
-      function removeListenerBound(event, listener) {
-        var _a2, _b;
-        var bound = (_a2 = this.boundFuncs) === null || _a2 === void 0 ? void 0 : _a2.get(listener);
-        (_b = this.boundFuncs) === null || _b === void 0 ? void 0 : _b.delete(listener);
-        return this.removeListener(event, bound);
-      }
-      function hasListeners(event) {
-        return this.events[event] && !!this.events[event].length;
-      }
-      function prependListener(event, listener, argsNum) {
-        if (argsNum === void 0) {
-          argsNum = listener.length;
+          this.maxListeners = Infinity;
         }
-        if (typeof listener !== "function")
-          throw new TypeError("The listener must be a function");
-        var evtmap = this.events[event];
-        if (!evtmap || !(evtmap instanceof task_collection_1.TaskCollection)) {
-          evtmap = this.events[event] = new task_collection_1.TaskCollection(argsNum, true, listener, false);
-          if (typeof event === "symbol")
-            this._symbolKeys.add(event);
-        } else {
-          evtmap.insert(0, listener);
-          evtmap.growArgsNum(argsNum);
-          if (this.maxListeners !== Infinity && this.maxListeners <= evtmap.length)
-            console.warn('Maximum event listeners for "'.concat(String(event), '" event!'));
+        get _eventsCount() {
+          return this.events.size;
         }
-        return this;
-      }
-      function prependOnceListener(event, listener) {
-        if (this.emit === emit) {
-          this.emit = emitHasOnce;
-        }
-        var evtmap = this.onceEvents[event];
-        if (!evtmap) {
-          this.onceEvents[event] = [listener];
-          if (typeof event === "symbol")
-            this._symbolKeys.add(event);
-        } else if (typeof evtmap !== "object") {
-          this.onceEvents[event] = [listener, evtmap];
-          if (typeof event === "symbol")
-            this._symbolKeys.add(event);
-        } else {
-          evtmap.unshift(listener);
-          if (this.maxListeners !== Infinity && this.maxListeners <= evtmap.length) {
-            console.warn('Maximum event listeners for "'.concat(String(event), '" once event!'));
+        emit(event, ...args) {
+          const entries2 = this.events.get(event);
+          if (!entries2 || entries2.length === 0) return false;
+          for (const entry of entries2.slice()) {
+            if (entry.once) this.removeEntry(event, entry);
+            Reflect.apply(entry.listener, this, args);
           }
+          return true;
         }
-        return this;
-      }
-      function removeAllListeners(event) {
-        if (event === void 0) {
-          this.events = (0, utils_2.nullObj)();
-          this.onceEvents = (0, utils_2.nullObj)();
-          this._symbolKeys = /* @__PURE__ */ new Set();
-        } else {
-          this.events[event] = void 0;
-          this.onceEvents[event] = void 0;
-          if (typeof event === "symbol")
-            this._symbolKeys.delete(event);
+        on(event, listener) {
+          return this.addListener(event, listener);
         }
-        return this;
-      }
-      function setMaxListeners(n) {
-        this.maxListeners = n;
-        return this;
-      }
-      function getMaxListeners() {
-        return this.maxListeners;
-      }
-      function listeners(event) {
-        if (this.emit === emit)
-          return this.events[event] ? this.events[event].tasksAsArray().slice() : [];
-        else {
-          if (this.events[event] && this.onceEvents[event]) {
-            return __spreadArray(__spreadArray([], this.events[event].tasksAsArray(), true), typeof this.onceEvents[event] === "function" ? [this.onceEvents[event]] : this.onceEvents[event], true);
-          } else if (this.events[event])
-            return this.events[event].tasksAsArray();
-          else if (this.onceEvents[event])
-            return typeof this.onceEvents[event] === "function" ? [this.onceEvents[event]] : this.onceEvents[event];
-          else
-            return [];
+        addListener(event, listener) {
+          return this.addEntry(event, listener, false, false);
         }
-      }
-      function eventNames() {
-        var _this = this;
-        if (this.emit === emit) {
-          var keys = Object.keys(this.events);
-          return __spreadArray(__spreadArray([], keys, true), Array.from(this._symbolKeys), true).filter(function(x) {
-            return x in _this.events && _this.events[x] && _this.events[x].length;
+        once(event, listener) {
+          return this.addEntry(event, listener, true, false);
+        }
+        prependListener(event, listener) {
+          return this.addEntry(event, listener, false, true);
+        }
+        prependOnceListener(event, listener) {
+          return this.addEntry(event, listener, true, true);
+        }
+        addListenerBound(event, listener, bindTo = this) {
+          const bound = listener.bind(bindTo);
+          this.boundFuncs.set(listener, bound);
+          return this.addListener(event, bound);
+        }
+        removeListenerBound(event, listener) {
+          const bound = this.boundFuncs.get(listener);
+          this.boundFuncs.delete(listener);
+          return bound ? this.removeListener(event, bound) : this;
+        }
+        off(event, listener) {
+          return this.removeListener(event, listener);
+        }
+        removeListener(event, listener) {
+          const entries2 = this.events.get(event);
+          if (!entries2) return this;
+          for (let index = entries2.length - 1; index >= 0; index -= 1) {
+            if (entries2[index].listener === listener) {
+              entries2.splice(index, 1);
+              break;
+            }
+          }
+          if (entries2.length === 0) this.events.delete(event);
+          return this;
+        }
+        removeAllListeners(event) {
+          if (event === void 0) {
+            this.events.clear();
+            this.boundFuncs.clear();
+          } else {
+            this.events.delete(event);
+          }
+          return this;
+        }
+        setMaxListeners(count) {
+          this.maxListeners = count;
+          return this;
+        }
+        getMaxListeners() {
+          return this.maxListeners;
+        }
+        hasListeners(event) {
+          return this.listenerCount(event) > 0;
+        }
+        listeners(event) {
+          return (this.events.get(event) || []).map(function(entry) {
+            return entry.listener;
           });
-        } else {
-          var keys = Object.keys(this.events).filter(function(x) {
-            return _this.events[x] && _this.events[x].length;
-          });
-          var keysO = Object.keys(this.onceEvents).filter(function(x) {
-            return _this.onceEvents[x] && _this.onceEvents[x].length;
-          });
-          return __spreadArray(__spreadArray(__spreadArray([], keys, true), keysO, true), Array.from(this._symbolKeys).filter(function(x) {
-            return x in _this.events && _this.events[x] && _this.events[x].length || x in _this.onceEvents && _this.onceEvents[x] && _this.onceEvents[x].length;
-          }), true);
         }
-      }
-      function listenerCount(type) {
-        if (this.emit === emit)
-          return this.events[type] && this.events[type].length || 0;
-        else
-          return (this.events[type] && this.events[type].length || 0) + (this.onceEvents[type] && this.onceEvents[type].length || 0);
-      }
-      EventEmitter10.prototype.emit = emit;
-      EventEmitter10.prototype.on = addListener;
-      EventEmitter10.prototype.once = once;
-      EventEmitter10.prototype.addListener = addListener;
-      EventEmitter10.prototype.removeListener = removeListener;
-      EventEmitter10.prototype.addListenerBound = addListenerBound;
-      EventEmitter10.prototype.removeListenerBound = removeListenerBound;
-      EventEmitter10.prototype.hasListeners = hasListeners;
-      EventEmitter10.prototype.prependListener = prependListener;
-      EventEmitter10.prototype.prependOnceListener = prependOnceListener;
-      EventEmitter10.prototype.off = removeListener;
-      EventEmitter10.prototype.removeAllListeners = removeAllListeners;
-      EventEmitter10.prototype.setMaxListeners = setMaxListeners;
-      EventEmitter10.prototype.getMaxListeners = getMaxListeners;
-      EventEmitter10.prototype.listeners = listeners;
-      EventEmitter10.prototype.eventNames = eventNames;
-      EventEmitter10.prototype.listenerCount = listenerCount;
-    }
-  });
-
-  // node_modules/tseep/lib/index.js
-  var require_lib = __commonJS({
-    "node_modules/tseep/lib/index.js"(exports2) {
-      "use strict";
-      var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
-        if (k2 === void 0) k2 = k;
-        var desc = Object.getOwnPropertyDescriptor(m, k);
-        if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-          desc = { enumerable: true, get: function() {
-            return m[k];
-          } };
+        rawListeners(event) {
+          return this.listeners(event);
         }
-        Object.defineProperty(o, k2, desc);
-      } : function(o, m, k, k2) {
-        if (k2 === void 0) k2 = k;
-        o[k2] = m[k];
-      });
-      var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
-        for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
+        eventNames() {
+          return Array.from(this.events.keys());
+        }
+        listenerCount(event) {
+          return this.events.get(event)?.length || 0;
+        }
+        addEntry(event, listener, once, prepend) {
+          if (typeof listener !== "function") {
+            throw new TypeError("The listener must be a function");
+          }
+          const entries2 = this.events.get(event) || [];
+          const entry = { listener, once };
+          if (prepend) entries2.unshift(entry);
+          else entries2.push(entry);
+          this.events.set(event, entries2);
+          if (this.maxListeners !== Infinity && entries2.length >= this.maxListeners) {
+            console.warn('Maximum event listeners for "' + String(event) + '" event!');
+          }
+          return this;
+        }
+        removeEntry(event, entry) {
+          const entries2 = this.events.get(event);
+          if (!entries2) return;
+          const index = entries2.indexOf(entry);
+          if (index !== -1) entries2.splice(index, 1);
+          if (entries2.length === 0) this.events.delete(event);
+        }
       };
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      __exportStar(require_types(), exports2);
-      __exportStar(require_ee(), exports2);
     }
   });
 
   // node_modules/ms/index.js
   var require_ms = __commonJS({
-    "node_modules/ms/index.js"(exports2, module2) {
+    "node_modules/ms/index.js"(exports, module) {
       var s = 1e3;
       var m = s * 60;
       var h = m * 60;
       var d4 = h * 24;
       var w = d4 * 7;
       var y = d4 * 365.25;
-      module2.exports = function(val, options) {
+      module.exports = function(val, options) {
         options = options || {};
         var type = typeof val;
         if (type === "string" && val.length > 0) {
@@ -963,7 +273,7 @@
 
   // node_modules/debug/src/common.js
   var require_common = __commonJS({
-    "node_modules/debug/src/common.js"(exports2, module2) {
+    "node_modules/debug/src/common.js"(exports, module) {
       function setup(env) {
         createDebug6.debug = createDebug6;
         createDebug6.default = createDebug6;
@@ -1064,7 +374,7 @@
           createDebug6.namespaces = namespaces;
           createDebug6.names = [];
           createDebug6.skips = [];
-          const split = (typeof namespaces === "string" ? namespaces : "").trim().replace(/\s+/g, ",").split(",").filter(Boolean);
+          const split = (typeof namespaces === "string" ? namespaces : "").trim().replace(" ", ",").split(",").filter(Boolean);
           for (const ns of split) {
             if (ns[0] === "-") {
               createDebug6.skips.push(ns.slice(1));
@@ -1134,19 +444,19 @@
         createDebug6.enable(createDebug6.load());
         return createDebug6;
       }
-      module2.exports = setup;
+      module.exports = setup;
     }
   });
 
   // node_modules/debug/src/browser.js
   var require_browser = __commonJS({
-    "node_modules/debug/src/browser.js"(exports2, module2) {
-      exports2.formatArgs = formatArgs;
-      exports2.save = save;
-      exports2.load = load;
-      exports2.useColors = useColors;
-      exports2.storage = localstorage();
-      exports2.destroy = /* @__PURE__ */ (() => {
+    "node_modules/debug/src/browser.js"(exports, module) {
+      exports.formatArgs = formatArgs;
+      exports.save = save;
+      exports.load = load;
+      exports.useColors = useColors;
+      exports.storage = localstorage();
+      exports.destroy = /* @__PURE__ */ (() => {
         let warned = false;
         return () => {
           if (!warned) {
@@ -1155,7 +465,7 @@
           }
         };
       })();
-      exports2.colors = [
+      exports.colors = [
         "#0000CC",
         "#0000FF",
         "#0033CC",
@@ -1248,7 +558,7 @@
         typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
       }
       function formatArgs(args) {
-        args[0] = (this.useColors ? "%c" : "") + this.namespace + (this.useColors ? " %c" : " ") + args[0] + (this.useColors ? "%c " : " ") + "+" + module2.exports.humanize(this.diff);
+        args[0] = (this.useColors ? "%c" : "") + this.namespace + (this.useColors ? " %c" : " ") + args[0] + (this.useColors ? "%c " : " ") + "+" + module.exports.humanize(this.diff);
         if (!this.useColors) {
           return;
         }
@@ -1267,14 +577,14 @@
         });
         args.splice(lastC, 0, c);
       }
-      exports2.log = console.debug || console.log || (() => {
+      exports.log = console.debug || console.log || (() => {
       });
       function save(namespaces) {
         try {
           if (namespaces) {
-            exports2.storage.setItem("debug", namespaces);
+            exports.storage.setItem("debug", namespaces);
           } else {
-            exports2.storage.removeItem("debug");
+            exports.storage.removeItem("debug");
           }
         } catch (error) {
         }
@@ -1282,7 +592,7 @@
       function load() {
         let r;
         try {
-          r = exports2.storage.getItem("debug") || exports2.storage.getItem("DEBUG");
+          r = exports.storage.getItem("debug");
         } catch (error) {
         }
         if (!r && typeof process !== "undefined" && "env" in process) {
@@ -1296,8 +606,8 @@
         } catch (error) {
         }
       }
-      module2.exports = require_common()(exports2);
-      var { formatters } = module2.exports;
+      module.exports = require_common()(exports);
+      var { formatters } = module.exports;
       formatters.j = function(v) {
         try {
           return JSON.stringify(v);
@@ -10557,10 +9867,10 @@
 
   // node_modules/typescript-lru-cache/dist/LRUCacheNode.js
   var require_LRUCacheNode = __commonJS({
-    "node_modules/typescript-lru-cache/dist/LRUCacheNode.js"(exports2) {
+    "node_modules/typescript-lru-cache/dist/LRUCacheNode.js"(exports) {
       "use strict";
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      exports2.LRUCacheNode = void 0;
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.LRUCacheNode = void 0;
       var LRUCacheNode = class {
         constructor(key, value, options) {
           const { entryExpirationTimeInMS = null, next = null, prev = null, onEntryEvicted, onEntryMarkedAsMostRecentlyUsed, clone: clone2, cloneFn } = options !== null && options !== void 0 ? options : {};
@@ -10603,16 +9913,16 @@
           return JSON.parse(JSON.stringify(value));
         }
       };
-      exports2.LRUCacheNode = LRUCacheNode;
+      exports.LRUCacheNode = LRUCacheNode;
     }
   });
 
   // node_modules/typescript-lru-cache/dist/LRUCache.js
   var require_LRUCache = __commonJS({
-    "node_modules/typescript-lru-cache/dist/LRUCache.js"(exports2) {
+    "node_modules/typescript-lru-cache/dist/LRUCache.js"(exports) {
       "use strict";
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      exports2.LRUCache = void 0;
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.LRUCache = void 0;
       var LRUCacheNode_1 = require_LRUCacheNode();
       var LRUCache3 = class {
         /**
@@ -11254,15 +10564,15 @@
           expiredNodes.forEach((node) => this.removeNodeFromListAndLookupTable(node));
         }
       };
-      exports2.LRUCache = LRUCache3;
+      exports.LRUCache = LRUCache3;
     }
   });
 
   // node_modules/typescript-lru-cache/dist/index.js
   var require_dist = __commonJS({
-    "node_modules/typescript-lru-cache/dist/index.js"(exports2) {
+    "node_modules/typescript-lru-cache/dist/index.js"(exports) {
       "use strict";
-      var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+      var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
         if (k2 === void 0) k2 = k;
         var desc = Object.getOwnPropertyDescriptor(m, k);
         if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -11275,25 +10585,25 @@
         if (k2 === void 0) k2 = k;
         o[k2] = m[k];
       });
-      var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
-        for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
+      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+        for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
       };
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      __exportStar(require_LRUCache(), exports2);
+      Object.defineProperty(exports, "__esModule", { value: true });
+      __exportStar(require_LRUCache(), exports);
     }
   });
 
   // node_modules/@scure/base/lib/index.js
-  var require_lib2 = __commonJS({
-    "node_modules/@scure/base/lib/index.js"(exports2) {
+  var require_lib = __commonJS({
+    "node_modules/@scure/base/lib/index.js"(exports) {
       "use strict";
-      Object.defineProperty(exports2, "__esModule", { value: true });
-      exports2.bytes = exports2.stringToBytes = exports2.str = exports2.bytesToString = exports2.hex = exports2.utf8 = exports2.bech32m = exports2.bech32 = exports2.base58check = exports2.base58xmr = exports2.base58xrp = exports2.base58flickr = exports2.base58 = exports2.base64url = exports2.base64 = exports2.base32crockford = exports2.base32hex = exports2.base32 = exports2.base16 = exports2.utils = exports2.assertNumber = void 0;
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.bytes = exports.stringToBytes = exports.str = exports.bytesToString = exports.hex = exports.utf8 = exports.bech32m = exports.bech32 = exports.base58check = exports.base58xmr = exports.base58xrp = exports.base58flickr = exports.base58 = exports.base64url = exports.base64 = exports.base32crockford = exports.base32hex = exports.base32 = exports.base16 = exports.utils = exports.assertNumber = void 0;
       function assertNumber2(n) {
         if (!Number.isSafeInteger(n))
           throw new Error(`Wrong integer: ${n}`);
       }
-      exports2.assertNumber = assertNumber2;
+      exports.assertNumber = assertNumber2;
       function chain2(...args) {
         const wrap = (a, b) => (c) => a(b(c));
         const encode2 = Array.from(args).reverse().reduce((acc, i2) => acc ? wrap(acc, i2.encode) : i2.encode, void 0);
@@ -11535,24 +10845,24 @@
           }
         };
       }
-      exports2.utils = { alphabet: alphabet2, chain: chain2, checksum, radix: radix3, radix2: radix22, join: join2, padding: padding2 };
-      exports2.base16 = chain2(radix22(4), alphabet2("0123456789ABCDEF"), join2(""));
-      exports2.base32 = chain2(radix22(5), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"), padding2(5), join2(""));
-      exports2.base32hex = chain2(radix22(5), alphabet2("0123456789ABCDEFGHIJKLMNOPQRSTUV"), padding2(5), join2(""));
-      exports2.base32crockford = chain2(radix22(5), alphabet2("0123456789ABCDEFGHJKMNPQRSTVWXYZ"), join2(""), normalize3((s) => s.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1")));
-      exports2.base64 = chain2(radix22(6), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"), padding2(6), join2(""));
-      exports2.base64url = chain2(radix22(6), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), padding2(6), join2(""));
+      exports.utils = { alphabet: alphabet2, chain: chain2, checksum, radix: radix3, radix2: radix22, join: join2, padding: padding2 };
+      exports.base16 = chain2(radix22(4), alphabet2("0123456789ABCDEF"), join2(""));
+      exports.base32 = chain2(radix22(5), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"), padding2(5), join2(""));
+      exports.base32hex = chain2(radix22(5), alphabet2("0123456789ABCDEFGHIJKLMNOPQRSTUV"), padding2(5), join2(""));
+      exports.base32crockford = chain2(radix22(5), alphabet2("0123456789ABCDEFGHJKMNPQRSTVWXYZ"), join2(""), normalize3((s) => s.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1")));
+      exports.base64 = chain2(radix22(6), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"), padding2(6), join2(""));
+      exports.base64url = chain2(radix22(6), alphabet2("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), padding2(6), join2(""));
       var genBase582 = (abc) => chain2(radix3(58), alphabet2(abc), join2(""));
-      exports2.base58 = genBase582("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
-      exports2.base58flickr = genBase582("123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ");
-      exports2.base58xrp = genBase582("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz");
+      exports.base58 = genBase582("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
+      exports.base58flickr = genBase582("123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ");
+      exports.base58xrp = genBase582("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz");
       var XMR_BLOCK_LEN2 = [0, 2, 3, 5, 6, 7, 9, 10, 11];
-      exports2.base58xmr = {
+      exports.base58xmr = {
         encode(data) {
           let res = "";
           for (let i2 = 0; i2 < data.length; i2 += 8) {
             const block = data.subarray(i2, i2 + 8);
-            res += exports2.base58.encode(block).padStart(XMR_BLOCK_LEN2[block.length], "1");
+            res += exports.base58.encode(block).padStart(XMR_BLOCK_LEN2[block.length], "1");
           }
           return res;
         },
@@ -11561,7 +10871,7 @@
           for (let i2 = 0; i2 < str.length; i2 += 11) {
             const slice = str.slice(i2, i2 + 11);
             const blockLen = XMR_BLOCK_LEN2.indexOf(slice.length);
-            const block = exports2.base58.decode(slice);
+            const block = exports.base58.decode(slice);
             for (let j = 0; j < block.length - blockLen; j++) {
               if (block[j] !== 0)
                 throw new Error("base58xmr: wrong padding");
@@ -11571,8 +10881,8 @@
           return Uint8Array.from(res);
         }
       };
-      var base58check = (sha2564) => chain2(checksum(4, (data) => sha2564(sha2564(data))), exports2.base58);
-      exports2.base58check = base58check;
+      var base58check = (sha2564) => chain2(checksum(4, (data) => sha2564(sha2564(data))), exports.base58);
+      exports.base58check = base58check;
       var BECH_ALPHABET2 = chain2(alphabet2("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), join2(""));
       var POLYMOD_GENERATORS2 = [996825010, 642813549, 513874426, 1027748829, 705979059];
       function bech32Polymod2(pre) {
@@ -11649,26 +10959,26 @@
         }
         return { encode: encode2, decode: decode3, decodeToBytes, decodeUnsafe, fromWords, fromWordsUnsafe, toWords };
       }
-      exports2.bech32 = genBech322("bech32");
-      exports2.bech32m = genBech322("bech32m");
-      exports2.utf8 = {
+      exports.bech32 = genBech322("bech32");
+      exports.bech32m = genBech322("bech32m");
+      exports.utf8 = {
         encode: (data) => new TextDecoder().decode(data),
         decode: (str) => new TextEncoder().encode(str)
       };
-      exports2.hex = chain2(radix22(4), alphabet2("0123456789abcdef"), join2(""), normalize3((s) => {
+      exports.hex = chain2(radix22(4), alphabet2("0123456789abcdef"), join2(""), normalize3((s) => {
         if (typeof s !== "string" || s.length % 2)
           throw new TypeError(`hex.decode: expected string, got ${typeof s} with length ${s.length}`);
         return s.toLowerCase();
       }));
       var CODERS2 = {
-        utf8: exports2.utf8,
-        hex: exports2.hex,
-        base16: exports2.base16,
-        base32: exports2.base32,
-        base64: exports2.base64,
-        base64url: exports2.base64url,
-        base58: exports2.base58,
-        base58xmr: exports2.base58xmr
+        utf8: exports.utf8,
+        hex: exports.hex,
+        base16: exports.base16,
+        base32: exports.base32,
+        base64: exports.base64,
+        base64url: exports.base64url,
+        base58: exports.base58,
+        base58xmr: exports.base58xmr
       };
       var coderTypeError2 = `Invalid encoding type. Available types: ${Object.keys(CODERS2).join(", ")}`;
       var bytesToString = (type, bytes4) => {
@@ -11678,8 +10988,8 @@
           throw new TypeError("bytesToString() expects Uint8Array");
         return CODERS2[type].encode(bytes4);
       };
-      exports2.bytesToString = bytesToString;
-      exports2.str = exports2.bytesToString;
+      exports.bytesToString = bytesToString;
+      exports.str = exports.bytesToString;
       var stringToBytes = (type, str) => {
         if (!CODERS2.hasOwnProperty(type))
           throw new TypeError(coderTypeError2);
@@ -11687,15 +10997,15 @@
           throw new TypeError("stringToBytes() expects string");
         return CODERS2[type].decode(str);
       };
-      exports2.stringToBytes = stringToBytes;
-      exports2.bytes = exports2.stringToBytes;
+      exports.stringToBytes = stringToBytes;
+      exports.bytes = exports.stringToBytes;
     }
   });
 
   // node_modules/light-bolt11-decoder/bolt11.js
   var require_bolt11 = __commonJS({
-    "node_modules/light-bolt11-decoder/bolt11.js"(exports2, module2) {
-      var { bech32: bech322, hex: hex2, utf8: utf82 } = require_lib2();
+    "node_modules/light-bolt11-decoder/bolt11.js"(exports, module) {
+      var { bech32: bech322, hex: hex2, utf8: utf82 } = require_lib();
       var DEFAULTNETWORK = {
         // default network is bitcoin
         bech32: "bc",
@@ -12017,7 +11327,7 @@
           return section ? section.value : void 0;
         }
       }
-      module2.exports = {
+      module.exports = {
         decode: decode3,
         hrpToMillisat
       };
@@ -13535,22 +12845,22 @@
         return fallbackFetchPromise;
     }
   }
-  var import_tseep, import_debug, import_debug2, import_tseep2, import_typescript_lru_cache, import_tseep3, import_tseep4, import_debug3, import_debug4, import_debug5, import_debug6, import_debug7, import_tseep5, import_tseep6, import_debug8, import_tseep7, import_tseep8, import_typescript_lru_cache2, import_debug9, import_light_bolt11_decoder, import_debug10, import_tseep9, import_debug11, NDKKind, DATA_URL_DEFAULT_MIME_TYPE, DATA_URL_DEFAULT_CHARSET, testParameter, supportedProtocols, hasCustomProtocol, normalizeDataURL, MAX_RECONNECT_ATTEMPTS, FLAPPING_THRESHOLD_MS, NDKRelayConnectivity, NDKRelayPublisher, NDKRelaySubscription, NDKRelaySubscriptionManager, NDKRelayStatus, NDKRelay, NDKPublishError, NDKRelaySet, d, hashtagRegex, nip22RootTags, nip22ReplyTags, DEFAULT_RELAY_COUNT, worker, processingQueue, PUBKEY_REGEX, verifiedSignatures, skipClientTagOnKinds, NDKEvent, untrackedUnpublishedEvents, NDKPool, NDKCashuMintList, NDKArticle, NDKCashuToken, NDKHighlight, NDKImage, NDKList, lists_default, NDKNutzap, NDKSimpleGroupMemberList, NDKSimpleGroupMetadata, NDKStorySticker, NDKStory, coordinates, dimension, possibleIntervalFrequencies, NDKSubscriptionTier, NDKVideo, NDKWiki, NIP33_A_REGEX, BECH32_REGEX2, defaultOpts, NDKSubscription, kindIsEphemeral, NIP05_REGEX2, NDKUser, READ_MARKER, WRITE_MARKER, NDKRelayList, NDKPrivateKeySigner, NDKRelayAuthPolicies, NDKNip07Signer, NDKNostrRpc, signerRegistry, NDKNip46Signer, OutboxItem, OutboxTracker, NDKSubscriptionManager, debug6, Queue2, DEFAULT_OUTBOX_RELAYS, DEFAULT_BLACKLISTED_RELAYS, NDK, d2, d3;
+  var import_debug, import_debug2, import_typescript_lru_cache, import_debug3, import_debug4, import_debug5, import_debug6, import_debug7, import_debug8, import_typescript_lru_cache2, import_debug9, import_light_bolt11_decoder, import_debug10, import_debug11, NDKKind, DATA_URL_DEFAULT_MIME_TYPE, DATA_URL_DEFAULT_CHARSET, testParameter, supportedProtocols, hasCustomProtocol, normalizeDataURL, MAX_RECONNECT_ATTEMPTS, FLAPPING_THRESHOLD_MS, NDKRelayConnectivity, NDKRelayPublisher, NDKRelaySubscription, NDKRelaySubscriptionManager, NDKRelayStatus, NDKRelay, NDKPublishError, NDKRelaySet, d, hashtagRegex, nip22RootTags, nip22ReplyTags, DEFAULT_RELAY_COUNT, worker, processingQueue, PUBKEY_REGEX, verifiedSignatures, skipClientTagOnKinds, NDKEvent, untrackedUnpublishedEvents, NDKPool, NDKCashuMintList, NDKArticle, NDKCashuToken, NDKHighlight, NDKImage, NDKList, lists_default, NDKNutzap, NDKSimpleGroupMemberList, NDKSimpleGroupMetadata, NDKStorySticker, NDKStory, coordinates, dimension, possibleIntervalFrequencies, NDKSubscriptionTier, NDKVideo, NDKWiki, NIP33_A_REGEX, BECH32_REGEX2, defaultOpts, NDKSubscription, kindIsEphemeral, NIP05_REGEX2, NDKUser, READ_MARKER, WRITE_MARKER, NDKRelayList, NDKPrivateKeySigner, NDKRelayAuthPolicies, NDKNip07Signer, NDKNostrRpc, signerRegistry, NDKNip46Signer, OutboxItem, OutboxTracker, NDKSubscriptionManager, debug6, Queue2, DEFAULT_OUTBOX_RELAYS, DEFAULT_BLACKLISTED_RELAYS, NDK, d2, d3;
   var init_dist = __esm({
     "node_modules/@nostr-dev-kit/ndk/dist/index.mjs"() {
-      import_tseep = __toESM(require_lib(), 1);
+      init_csp_event_emitter();
       import_debug = __toESM(require_browser(), 1);
       import_debug2 = __toESM(require_browser(), 1);
-      import_tseep2 = __toESM(require_lib(), 1);
+      init_csp_event_emitter();
       init_esm2();
       init_esm2();
       init_secp256k12();
       init_sha2563();
       init_utils5();
       import_typescript_lru_cache = __toESM(require_dist(), 1);
-      import_tseep3 = __toESM(require_lib(), 1);
+      init_csp_event_emitter();
       init_esm2();
-      import_tseep4 = __toESM(require_lib(), 1);
+      init_csp_event_emitter();
       init_esm2();
       import_debug3 = __toESM(require_browser(), 1);
       init_esm2();
@@ -13561,18 +12871,18 @@
       init_esm2();
       import_debug6 = __toESM(require_browser(), 1);
       import_debug7 = __toESM(require_browser(), 1);
-      import_tseep5 = __toESM(require_lib(), 1);
-      import_tseep6 = __toESM(require_lib(), 1);
+      init_csp_event_emitter();
+      init_csp_event_emitter();
       import_debug8 = __toESM(require_browser(), 1);
-      import_tseep7 = __toESM(require_lib(), 1);
-      import_tseep8 = __toESM(require_lib(), 1);
+      init_csp_event_emitter();
+      init_csp_event_emitter();
       import_typescript_lru_cache2 = __toESM(require_dist(), 1);
       init_esm2();
       import_debug9 = __toESM(require_browser(), 1);
       init_esm2();
       import_light_bolt11_decoder = __toESM(require_bolt11(), 1);
       import_debug10 = __toESM(require_browser(), 1);
-      import_tseep9 = __toESM(require_lib(), 1);
+      init_csp_event_emitter();
       import_debug11 = __toESM(require_browser(), 1);
       NDKKind = /* @__PURE__ */ ((NDKKind2) => {
         NDKKind2[NDKKind2["Metadata"] = 0] = "Metadata";
@@ -14704,7 +14014,7 @@
         NDKRelayStatus2[NDKRelayStatus2["AUTHENTICATED"] = 8] = "AUTHENTICATED";
         return NDKRelayStatus2;
       })(NDKRelayStatus || {});
-      NDKRelay = class _NDKRelay extends import_tseep2.EventEmitter {
+      NDKRelay = class _NDKRelay extends EventEmitter {
         url;
         scores;
         connectivity;
@@ -15053,7 +14363,7 @@
         5
         /* EventDeletion */
       ]);
-      NDKEvent = class _NDKEvent extends import_tseep.EventEmitter {
+      NDKEvent = class _NDKEvent extends EventEmitter {
         ndk;
         created_at;
         content = "";
@@ -15827,7 +15137,7 @@
         23195
         /* NostrWalletConnectRes */
       ]);
-      NDKPool = class extends import_tseep3.EventEmitter {
+      NDKPool = class extends EventEmitter {
         // TODO: This should probably be an LRU cache
         _relays = /* @__PURE__ */ new Map();
         status = "idle";
@@ -17605,7 +16915,7 @@
         groupableDelayType: "at-most",
         cacheUnconstrainFilter: ["limit", "since", "until"]
       };
-      NDKSubscription = class extends import_tseep4.EventEmitter {
+      NDKSubscription = class extends EventEmitter {
         subId;
         filters;
         opts;
@@ -18686,7 +17996,7 @@
           return new _NDKNip07Signer(void 0, ndk);
         }
       };
-      NDKNostrRpc = class extends import_tseep5.EventEmitter {
+      NDKNostrRpc = class extends EventEmitter {
         ndk;
         signer;
         relaySet;
@@ -18827,7 +18137,7 @@
       signerRegistry.set("private-key", NDKPrivateKeySigner);
       signerRegistry.set("nip07", NDKNip07Signer);
       signerRegistry.set("nip46", NDKNip46Signer);
-      NDKNip46Signer = class _NDKNip46Signer extends import_tseep6.EventEmitter {
+      NDKNip46Signer = class _NDKNip46Signer extends EventEmitter {
         ndk;
         _user;
         /**
@@ -19116,7 +18426,7 @@
           this.writeRelays = /* @__PURE__ */ new Set();
         }
       };
-      OutboxTracker = class extends import_tseep8.EventEmitter {
+      OutboxTracker = class extends EventEmitter {
         data;
         ndk;
         debug;
@@ -19322,7 +18632,7 @@
         // Don't try to read from this relay since it's a write-only relay
         // "wss://purplepag.es/", // This is a hack, since this is a mostly read-only relay, but not fully. Once we have relay routing this can be removed so it only receives the supported kinds
       ];
-      NDK = class extends import_tseep7.EventEmitter {
+      NDK = class extends EventEmitter {
         _explicitRelayUrls;
         blacklistRelayUrls;
         pool;
@@ -19802,6 +19112,28 @@
     }
   });
 
+  // node_modules/nostr-tools/lib/esm/utils.js
+  function normalizeURL2(url) {
+    if (url.indexOf("://") === -1)
+      url = "wss://" + url;
+    let p = new URL(url);
+    p.pathname = p.pathname.replace(/\/+/g, "/");
+    if (p.pathname.endsWith("/"))
+      p.pathname = p.pathname.slice(0, -1);
+    if (p.port === "80" && p.protocol === "ws:" || p.port === "443" && p.protocol === "wss:")
+      p.port = "";
+    p.searchParams.sort();
+    p.hash = "";
+    return p.toString();
+  }
+  var utf8Decoder2, utf8Encoder2;
+  var init_utils7 = __esm({
+    "node_modules/nostr-tools/lib/esm/utils.js"() {
+      utf8Decoder2 = new TextDecoder("utf-8");
+      utf8Encoder2 = new TextEncoder();
+    }
+  });
+
   // src/common/utils.ts
   function hexToNpub(hex2) {
     if (!hex2 || !isValidHex(hex2)) return "";
@@ -19890,6 +19222,18 @@
   function isValidHex(hex2) {
     return /^[0-9a-fA-F]+$/.test(hex2) && hex2.length === 64;
   }
+  function validateNpub(npub2) {
+    try {
+      const { type } = nip19_exports.decode(npub2);
+      return type === "npub";
+    } catch (e) {
+      return false;
+    }
+  }
+  function validateNip05(nip05) {
+    const nip05Regex = /^[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+\.[a-zA-Z]{2,}$/;
+    return nip05Regex.test(nip05);
+  }
   function formatRelativeTime(ts) {
     try {
       const now2 = Date.now();
@@ -19922,22 +19266,37 @@
       return "unknown";
     }
   }
-  var init_utils7 = __esm({
+  var decodeNpub;
+  var init_utils8 = __esm({
     "src/common/utils.ts"() {
       "use strict";
       init_dist();
       init_esm2();
       init_constants();
+      decodeNpub = (npub2) => {
+        if (typeof npub2 !== "string" || !npub2.startsWith("npub1")) {
+          return "";
+        }
+        try {
+          const decoded = nip19_exports.decode(npub2);
+          if (decoded && typeof decoded.data === "string") {
+            return decoded.data;
+          }
+        } catch (error) {
+          console.error("Failed to decode npub:", error);
+        }
+        return "";
+      };
     }
   });
 
   // src/common/relay-transport.ts
   function getRelayTransport() {
-    const transport = globalThis.__nostrComponentsRelayTransport;
-    if (!transport || typeof transport.query !== "function" || typeof transport.publish !== "function") {
+    const transport2 = globalThis.__nostrComponentsRelayTransport;
+    if (!transport2 || typeof transport2.query !== "function" || typeof transport2.publish !== "function") {
       return null;
     }
-    return transport;
+    return transport2;
   }
   var init_relay_transport = __esm({
     "src/common/relay-transport.ts"() {
@@ -20278,52 +19637,107 @@
       return null;
     }
   }
-  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, zapProviderCache, getProfileMetadata, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
+  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, profileCacheKey, getProfileMetadata, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
   var init_zap_utils = __esm({
     "src/nostr-zap-button/zap-utils.ts"() {
       "use strict";
       init_esm2();
       init_utils7();
+      init_utils8();
       init_nostr_login_service();
       init_constants();
+      init_relay_transport();
       init_zap_receipt();
-      profileCache = {};
+      profileCache = /* @__PURE__ */ new Map();
       ZAP_PROVIDER_CACHE_TTL_MS = 5 * 60 * 1e3;
       ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1e3;
+      ZAP_RECEIPT_POLL_TIMEOUT_MS = 10 * 60 * 1e3;
       zapProviderCache = {};
+      profileCacheKey = (authorId, relays) => {
+        const normalizedRelays = Array.from(
+          new Set(
+            relays.map((relay) => {
+              try {
+                return normalizeURL2(relay);
+              } catch {
+                return relay;
+              }
+            })
+          )
+        ).sort();
+        return `${authorId.toLowerCase()}|${normalizedRelays.join(",")}`;
+      };
       getProfileMetadata = async (authorId, relays) => {
-        if (profileCache[authorId]) return profileCache[authorId];
-        const pool = new SimplePool();
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+        const cacheKey = profileCacheKey(authorId, relayList);
+        const cached = profileCache.get(cacheKey);
+        if (cached) return cached;
+        const transport2 = getRelayTransport();
+        if (transport2) {
+          const events = await transport2.query(relayList, {
+            authors: [authorId],
+            kinds: [0],
+            limit: 1
+          });
+          const event = [...events].sort((left, right) => right.created_at - left.created_at)[0] || null;
+          if (event) profileCache.set(cacheKey, event);
+          return event;
+        }
+        const pool = new SimplePool();
         try {
           const event = await pool.get(relayList, {
             authors: [authorId],
             kinds: [0]
           });
-          profileCache[authorId] = event;
+          if (event) profileCache.set(cacheKey, event);
           return event;
         } finally {
           pool.close(relayList);
         }
       };
       getBatchedProfileMetadata = async (authorIds, relays) => {
-        const uncachedIds = authorIds.filter((id) => !profileCache[id]);
+        const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+        const uncachedIds = authorIds.filter(
+          (id) => !profileCache.has(profileCacheKey(id, relayList))
+        );
         if (uncachedIds.length === 0) {
-          return authorIds.map((id) => ({ id, profile: profileCache[id] }));
+          return authorIds.map((id) => ({
+            id,
+            profile: profileCache.get(profileCacheKey(id, relayList)) || null
+          }));
+        }
+        const transport2 = getRelayTransport();
+        if (transport2) {
+          const events = await transport2.query(relayList, {
+            authors: uncachedIds.slice(0, 50),
+            kinds: [0],
+            limit: Math.min(uncachedIds.length, 50)
+          });
+          events.forEach((event) => {
+            const cacheKey = profileCacheKey(event.pubkey, relayList);
+            const cached = profileCache.get(cacheKey);
+            if (!cached || event.created_at > cached.created_at) {
+              profileCache.set(cacheKey, event);
+            }
+          });
+          return authorIds.map((id) => ({
+            id,
+            profile: profileCache.get(profileCacheKey(id, relayList)) || null
+          }));
         }
         const pool = new SimplePool();
-        const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
         try {
           const events = await pool.querySync(relayList, {
             authors: uncachedIds,
-            kinds: [0]
+            kinds: [0],
+            limit: Math.min(uncachedIds.length, 50)
           });
           events.forEach((event) => {
-            profileCache[event.pubkey] = event;
+            profileCache.set(profileCacheKey(event.pubkey, relayList), event);
           });
           const allProfiles = authorIds.map((id) => ({
             id,
-            profile: profileCache[id] || null
+            profile: profileCache.get(profileCacheKey(id, relayList)) || null
           }));
           return allProfiles;
         } finally {
@@ -20453,7 +19867,8 @@
         relays,
         url
       }) => {
-        const pool = new SimplePool();
+        const transport2 = getRelayTransport();
+        const pool = transport2 ? null : new SimplePool();
         let totalAmount = 0;
         const zapDetails = [];
         try {
@@ -20473,7 +19888,7 @@
           if (url) {
             filter["#a"] = [buildUrlATag(pubkey, url)];
           }
-          const events = await pool.querySync(relays, filter);
+          const events = transport2 ? await transport2.query(relays, filter) : await pool.querySync(relays, filter);
           for (const event of events) {
             const validated = validateZapReceipt(event, {
               recipientPubkey: pubkey,
@@ -20492,7 +19907,7 @@
         } catch (error) {
           console.error("Nostr-Components: Zap button: Error fetching zap receipts", error);
         } finally {
-          pool.close(relays);
+          pool?.close(relays);
         }
         zapDetails.sort((a, b) => b.date.getTime() - a.date.getTime());
         return {
@@ -20508,9 +19923,57 @@
         provider,
         onSuccess
       }) => {
-        const pool = new SimplePool();
         const normalizedRelays = Array.from(new Set(relays));
         const since = Math.floor((Date.now() - 24 * 60 * 60 * 1e3) / 1e3);
+        const transport2 = getRelayTransport();
+        if (transport2) {
+          let stopped = false;
+          let timeoutId = null;
+          const deadlineAt = Date.now() + ZAP_RECEIPT_POLL_TIMEOUT_MS;
+          const poll = async () => {
+            if (stopped || Date.now() >= deadlineAt) {
+              stopped = true;
+              return;
+            }
+            try {
+              const events = await transport2.query(normalizedRelays, {
+                kinds: [9735],
+                "#p": [receiversPubKey],
+                since,
+                limit: 100
+              });
+              if (stopped || Date.now() >= deadlineAt) {
+                stopped = true;
+                return;
+              }
+              for (const event of events) {
+                const tags = event.tags;
+                if (!tags.some((t) => t[0] === "bolt11" && t[1] === invoice)) continue;
+                const validated = validateZapReceipt(event, {
+                  recipientPubkey: receiversPubKey,
+                  provider
+                });
+                if (!validated.ok) continue;
+                stopped = true;
+                onSuccess();
+                return;
+              }
+            } catch {
+            }
+            const remainingMs = deadlineAt - Date.now();
+            if (!stopped && remainingMs > 0) {
+              timeoutId = setTimeout(poll, Math.min(3e3, remainingMs));
+            } else {
+              stopped = true;
+            }
+          };
+          void poll();
+          return () => {
+            stopped = true;
+            if (timeoutId) clearTimeout(timeoutId);
+          };
+        }
+        const pool = new SimplePool();
         pool.subscribe(
           normalizedRelays,
           {
@@ -20806,6 +20269,54 @@
     }
   });
 
+  // src/common/trusted-html.ts
+  function getRealmPolicyCache(root) {
+    const existing = root[POLICY_CACHE_KEY];
+    if (existing instanceof WeakMap) {
+      return existing;
+    }
+    const cache = /* @__PURE__ */ new WeakMap();
+    Object.defineProperty(root, POLICY_CACHE_KEY, {
+      configurable: false,
+      enumerable: false,
+      value: cache,
+      writable: false
+    });
+    return cache;
+  }
+  function getTrustedHTMLPolicy(root, factory) {
+    const cache = getRealmPolicyCache(root);
+    const cached = cache.get(factory);
+    if (cached) return cached;
+    const policy = factory.createPolicy(POLICY_NAME, {
+      createHTML(value) {
+        return value;
+      }
+    });
+    cache.set(factory, policy);
+    return policy;
+  }
+  function toTrustedHTML(markup) {
+    const root = globalThis;
+    const factory = root.trustedTypes;
+    if (!factory?.createPolicy) return markup;
+    return getTrustedHTMLPolicy(root, factory).createHTML(markup);
+  }
+  function setTrustedInnerHTML(target, markup) {
+    Reflect.set(target, "innerHTML", toTrustedHTML(markup));
+  }
+  function setTrustedOuterHTML(target, markup) {
+    Reflect.set(target, "outerHTML", toTrustedHTML(markup));
+  }
+  var POLICY_NAME, POLICY_CACHE_KEY;
+  var init_trusted_html = __esm({
+    "src/common/trusted-html.ts"() {
+      "use strict";
+      POLICY_NAME = "nostr-components";
+      POLICY_CACHE_KEY = Symbol.for("nostr-components.trusted-html-policy-cache");
+    }
+  });
+
   // src/nostr-like-button/dialog-likers-style.ts
   function getLikersDialogStyles(theme = "light") {
     const isDark = theme === "dark";
@@ -20926,9 +20437,9 @@
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: linear-gradient(90deg, 
-        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%, 
-        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%, 
+      background: linear-gradient(90deg,
+        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%,
+        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%,
         ${isDark ? "#3a3a3a" : "#f0f0f0"} 75%
       );
       background-size: 200% 100%;
@@ -20939,9 +20450,9 @@
     .skeleton-name {
       width: 120px;
       height: 14px;
-      background: linear-gradient(90deg, 
-        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%, 
-        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%, 
+      background: linear-gradient(90deg,
+        ${isDark ? "#3a3a3a" : "#f0f0f0"} 25%,
+        ${isDark ? "#4a4a4a" : "#e0e0e0"} 50%,
         ${isDark ? "#3a3a3a" : "#f0f0f0"} 75%
       );
       background-size: 200% 100%;
@@ -21999,11 +21510,14 @@
   function sanitizeHttpUrl(url) {
     return sanitizeUrl(url);
   }
+  function sanitizeMultilineText(text2) {
+    return escapeHtml(text2 || "").replace(/\r\n|\r|\n/g, "<br />");
+  }
   var init_sanitize = __esm({
     "src/common/sanitize.ts"() {
       "use strict";
       init_purify_es();
-      init_utils7();
+      init_utils8();
     }
   });
 
@@ -22076,7 +21590,7 @@
       dialogComponent.setAttribute("data-theme", params.theme);
     }
     const initialContent = await renderInitialContent(likeDetails);
-    dialogComponent.innerHTML = initialContent;
+    setTrustedInnerHTML(dialogComponent, initialContent);
     dialogComponent.showModal();
     const dialogElement = dialogComponent.querySelector(".nostr-base-dialog") || dialogComponent.shadowRoot?.querySelector(".nostr-base-dialog") || document.body.querySelector(".nostr-base-dialog");
     if (!dialogElement) {
@@ -22162,7 +21676,7 @@
         );
         if (skeletonEntry) {
           const enhancedEntry = renderLikeEntry(enhanced, index);
-          skeletonEntry.outerHTML = enhancedEntry;
+          setTrustedOuterHTML(skeletonEntry, enhancedEntry);
         }
       }
       console.log(
@@ -22244,7 +21758,7 @@
         );
         if (skeletonEntry) {
           const enhancedEntry = renderLikeEntry(enhanced, index);
-          skeletonEntry.outerHTML = enhancedEntry;
+          setTrustedOuterHTML(skeletonEntry, enhancedEntry);
         }
       } catch (error) {
         console.error(
@@ -22261,8 +21775,9 @@
       init_dialog_component();
       init_dialog_likers_style();
       init_zap_utils();
-      init_utils7();
+      init_utils8();
       init_sanitize();
+      init_trusted_html();
       injectLikersDialogStyles = (theme = "light") => {
         const existingStyles = document.querySelectorAll(
           "style[data-likers-dialog-styles]"
@@ -22276,31 +21791,2092 @@
     }
   });
 
+  // node_modules/qrcode/lib/can-promise.js
+  var require_can_promise = __commonJS({
+    "node_modules/qrcode/lib/can-promise.js"(exports, module) {
+      module.exports = function() {
+        return typeof Promise === "function" && Promise.prototype && Promise.prototype.then;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/utils.js
+  var require_utils = __commonJS({
+    "node_modules/qrcode/lib/core/utils.js"(exports) {
+      var toSJISFunction;
+      var CODEWORDS_COUNT = [
+        0,
+        // Not used
+        26,
+        44,
+        70,
+        100,
+        134,
+        172,
+        196,
+        242,
+        292,
+        346,
+        404,
+        466,
+        532,
+        581,
+        655,
+        733,
+        815,
+        901,
+        991,
+        1085,
+        1156,
+        1258,
+        1364,
+        1474,
+        1588,
+        1706,
+        1828,
+        1921,
+        2051,
+        2185,
+        2323,
+        2465,
+        2611,
+        2761,
+        2876,
+        3034,
+        3196,
+        3362,
+        3532,
+        3706
+      ];
+      exports.getSymbolSize = function getSymbolSize(version) {
+        if (!version) throw new Error('"version" cannot be null or undefined');
+        if (version < 1 || version > 40) throw new Error('"version" should be in range from 1 to 40');
+        return version * 4 + 17;
+      };
+      exports.getSymbolTotalCodewords = function getSymbolTotalCodewords(version) {
+        return CODEWORDS_COUNT[version];
+      };
+      exports.getBCHDigit = function(data) {
+        let digit = 0;
+        while (data !== 0) {
+          digit++;
+          data >>>= 1;
+        }
+        return digit;
+      };
+      exports.setToSJISFunction = function setToSJISFunction(f) {
+        if (typeof f !== "function") {
+          throw new Error('"toSJISFunc" is not a valid function.');
+        }
+        toSJISFunction = f;
+      };
+      exports.isKanjiModeEnabled = function() {
+        return typeof toSJISFunction !== "undefined";
+      };
+      exports.toSJIS = function toSJIS(kanji) {
+        return toSJISFunction(kanji);
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/error-correction-level.js
+  var require_error_correction_level = __commonJS({
+    "node_modules/qrcode/lib/core/error-correction-level.js"(exports) {
+      exports.L = { bit: 1 };
+      exports.M = { bit: 0 };
+      exports.Q = { bit: 3 };
+      exports.H = { bit: 2 };
+      function fromString(string) {
+        if (typeof string !== "string") {
+          throw new Error("Param is not a string");
+        }
+        const lcStr = string.toLowerCase();
+        switch (lcStr) {
+          case "l":
+          case "low":
+            return exports.L;
+          case "m":
+          case "medium":
+            return exports.M;
+          case "q":
+          case "quartile":
+            return exports.Q;
+          case "h":
+          case "high":
+            return exports.H;
+          default:
+            throw new Error("Unknown EC Level: " + string);
+        }
+      }
+      exports.isValid = function isValid2(level) {
+        return level && typeof level.bit !== "undefined" && level.bit >= 0 && level.bit < 4;
+      };
+      exports.from = function from(value, defaultValue) {
+        if (exports.isValid(value)) {
+          return value;
+        }
+        try {
+          return fromString(value);
+        } catch (e) {
+          return defaultValue;
+        }
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/bit-buffer.js
+  var require_bit_buffer = __commonJS({
+    "node_modules/qrcode/lib/core/bit-buffer.js"(exports, module) {
+      function BitBuffer() {
+        this.buffer = [];
+        this.length = 0;
+      }
+      BitBuffer.prototype = {
+        get: function(index) {
+          const bufIndex = Math.floor(index / 8);
+          return (this.buffer[bufIndex] >>> 7 - index % 8 & 1) === 1;
+        },
+        put: function(num2, length) {
+          for (let i2 = 0; i2 < length; i2++) {
+            this.putBit((num2 >>> length - i2 - 1 & 1) === 1);
+          }
+        },
+        getLengthInBits: function() {
+          return this.length;
+        },
+        putBit: function(bit) {
+          const bufIndex = Math.floor(this.length / 8);
+          if (this.buffer.length <= bufIndex) {
+            this.buffer.push(0);
+          }
+          if (bit) {
+            this.buffer[bufIndex] |= 128 >>> this.length % 8;
+          }
+          this.length++;
+        }
+      };
+      module.exports = BitBuffer;
+    }
+  });
+
+  // node_modules/qrcode/lib/core/bit-matrix.js
+  var require_bit_matrix = __commonJS({
+    "node_modules/qrcode/lib/core/bit-matrix.js"(exports, module) {
+      function BitMatrix(size) {
+        if (!size || size < 1) {
+          throw new Error("BitMatrix size must be defined and greater than 0");
+        }
+        this.size = size;
+        this.data = new Uint8Array(size * size);
+        this.reservedBit = new Uint8Array(size * size);
+      }
+      BitMatrix.prototype.set = function(row, col, value, reserved) {
+        const index = row * this.size + col;
+        this.data[index] = value;
+        if (reserved) this.reservedBit[index] = true;
+      };
+      BitMatrix.prototype.get = function(row, col) {
+        return this.data[row * this.size + col];
+      };
+      BitMatrix.prototype.xor = function(row, col, value) {
+        this.data[row * this.size + col] ^= value;
+      };
+      BitMatrix.prototype.isReserved = function(row, col) {
+        return this.reservedBit[row * this.size + col];
+      };
+      module.exports = BitMatrix;
+    }
+  });
+
+  // node_modules/qrcode/lib/core/alignment-pattern.js
+  var require_alignment_pattern = __commonJS({
+    "node_modules/qrcode/lib/core/alignment-pattern.js"(exports) {
+      var getSymbolSize = require_utils().getSymbolSize;
+      exports.getRowColCoords = function getRowColCoords(version) {
+        if (version === 1) return [];
+        const posCount = Math.floor(version / 7) + 2;
+        const size = getSymbolSize(version);
+        const intervals = size === 145 ? 26 : Math.ceil((size - 13) / (2 * posCount - 2)) * 2;
+        const positions = [size - 7];
+        for (let i2 = 1; i2 < posCount - 1; i2++) {
+          positions[i2] = positions[i2 - 1] - intervals;
+        }
+        positions.push(6);
+        return positions.reverse();
+      };
+      exports.getPositions = function getPositions(version) {
+        const coords = [];
+        const pos = exports.getRowColCoords(version);
+        const posLength = pos.length;
+        for (let i2 = 0; i2 < posLength; i2++) {
+          for (let j = 0; j < posLength; j++) {
+            if (i2 === 0 && j === 0 || // top-left
+            i2 === 0 && j === posLength - 1 || // bottom-left
+            i2 === posLength - 1 && j === 0) {
+              continue;
+            }
+            coords.push([pos[i2], pos[j]]);
+          }
+        }
+        return coords;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/finder-pattern.js
+  var require_finder_pattern = __commonJS({
+    "node_modules/qrcode/lib/core/finder-pattern.js"(exports) {
+      var getSymbolSize = require_utils().getSymbolSize;
+      var FINDER_PATTERN_SIZE = 7;
+      exports.getPositions = function getPositions(version) {
+        const size = getSymbolSize(version);
+        return [
+          // top-left
+          [0, 0],
+          // top-right
+          [size - FINDER_PATTERN_SIZE, 0],
+          // bottom-left
+          [0, size - FINDER_PATTERN_SIZE]
+        ];
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/mask-pattern.js
+  var require_mask_pattern = __commonJS({
+    "node_modules/qrcode/lib/core/mask-pattern.js"(exports) {
+      exports.Patterns = {
+        PATTERN000: 0,
+        PATTERN001: 1,
+        PATTERN010: 2,
+        PATTERN011: 3,
+        PATTERN100: 4,
+        PATTERN101: 5,
+        PATTERN110: 6,
+        PATTERN111: 7
+      };
+      var PenaltyScores = {
+        N1: 3,
+        N2: 3,
+        N3: 40,
+        N4: 10
+      };
+      exports.isValid = function isValid2(mask) {
+        return mask != null && mask !== "" && !isNaN(mask) && mask >= 0 && mask <= 7;
+      };
+      exports.from = function from(value) {
+        return exports.isValid(value) ? parseInt(value, 10) : void 0;
+      };
+      exports.getPenaltyN1 = function getPenaltyN1(data) {
+        const size = data.size;
+        let points = 0;
+        let sameCountCol = 0;
+        let sameCountRow = 0;
+        let lastCol = null;
+        let lastRow = null;
+        for (let row = 0; row < size; row++) {
+          sameCountCol = sameCountRow = 0;
+          lastCol = lastRow = null;
+          for (let col = 0; col < size; col++) {
+            let module2 = data.get(row, col);
+            if (module2 === lastCol) {
+              sameCountCol++;
+            } else {
+              if (sameCountCol >= 5) points += PenaltyScores.N1 + (sameCountCol - 5);
+              lastCol = module2;
+              sameCountCol = 1;
+            }
+            module2 = data.get(col, row);
+            if (module2 === lastRow) {
+              sameCountRow++;
+            } else {
+              if (sameCountRow >= 5) points += PenaltyScores.N1 + (sameCountRow - 5);
+              lastRow = module2;
+              sameCountRow = 1;
+            }
+          }
+          if (sameCountCol >= 5) points += PenaltyScores.N1 + (sameCountCol - 5);
+          if (sameCountRow >= 5) points += PenaltyScores.N1 + (sameCountRow - 5);
+        }
+        return points;
+      };
+      exports.getPenaltyN2 = function getPenaltyN2(data) {
+        const size = data.size;
+        let points = 0;
+        for (let row = 0; row < size - 1; row++) {
+          for (let col = 0; col < size - 1; col++) {
+            const last = data.get(row, col) + data.get(row, col + 1) + data.get(row + 1, col) + data.get(row + 1, col + 1);
+            if (last === 4 || last === 0) points++;
+          }
+        }
+        return points * PenaltyScores.N2;
+      };
+      exports.getPenaltyN3 = function getPenaltyN3(data) {
+        const size = data.size;
+        let points = 0;
+        let bitsCol = 0;
+        let bitsRow = 0;
+        for (let row = 0; row < size; row++) {
+          bitsCol = bitsRow = 0;
+          for (let col = 0; col < size; col++) {
+            bitsCol = bitsCol << 1 & 2047 | data.get(row, col);
+            if (col >= 10 && (bitsCol === 1488 || bitsCol === 93)) points++;
+            bitsRow = bitsRow << 1 & 2047 | data.get(col, row);
+            if (col >= 10 && (bitsRow === 1488 || bitsRow === 93)) points++;
+          }
+        }
+        return points * PenaltyScores.N3;
+      };
+      exports.getPenaltyN4 = function getPenaltyN4(data) {
+        let darkCount = 0;
+        const modulesCount = data.data.length;
+        for (let i2 = 0; i2 < modulesCount; i2++) darkCount += data.data[i2];
+        const k = Math.abs(Math.ceil(darkCount * 100 / modulesCount / 5) - 10);
+        return k * PenaltyScores.N4;
+      };
+      function getMaskAt(maskPattern, i2, j) {
+        switch (maskPattern) {
+          case exports.Patterns.PATTERN000:
+            return (i2 + j) % 2 === 0;
+          case exports.Patterns.PATTERN001:
+            return i2 % 2 === 0;
+          case exports.Patterns.PATTERN010:
+            return j % 3 === 0;
+          case exports.Patterns.PATTERN011:
+            return (i2 + j) % 3 === 0;
+          case exports.Patterns.PATTERN100:
+            return (Math.floor(i2 / 2) + Math.floor(j / 3)) % 2 === 0;
+          case exports.Patterns.PATTERN101:
+            return i2 * j % 2 + i2 * j % 3 === 0;
+          case exports.Patterns.PATTERN110:
+            return (i2 * j % 2 + i2 * j % 3) % 2 === 0;
+          case exports.Patterns.PATTERN111:
+            return (i2 * j % 3 + (i2 + j) % 2) % 2 === 0;
+          default:
+            throw new Error("bad maskPattern:" + maskPattern);
+        }
+      }
+      exports.applyMask = function applyMask(pattern, data) {
+        const size = data.size;
+        for (let col = 0; col < size; col++) {
+          for (let row = 0; row < size; row++) {
+            if (data.isReserved(row, col)) continue;
+            data.xor(row, col, getMaskAt(pattern, row, col));
+          }
+        }
+      };
+      exports.getBestMask = function getBestMask(data, setupFormatFunc) {
+        const numPatterns = Object.keys(exports.Patterns).length;
+        let bestPattern = 0;
+        let lowerPenalty = Infinity;
+        for (let p = 0; p < numPatterns; p++) {
+          setupFormatFunc(p);
+          exports.applyMask(p, data);
+          const penalty = exports.getPenaltyN1(data) + exports.getPenaltyN2(data) + exports.getPenaltyN3(data) + exports.getPenaltyN4(data);
+          exports.applyMask(p, data);
+          if (penalty < lowerPenalty) {
+            lowerPenalty = penalty;
+            bestPattern = p;
+          }
+        }
+        return bestPattern;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/error-correction-code.js
+  var require_error_correction_code = __commonJS({
+    "node_modules/qrcode/lib/core/error-correction-code.js"(exports) {
+      var ECLevel = require_error_correction_level();
+      var EC_BLOCKS_TABLE = [
+        // L  M  Q  H
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        1,
+        2,
+        2,
+        4,
+        1,
+        2,
+        4,
+        4,
+        2,
+        4,
+        4,
+        4,
+        2,
+        4,
+        6,
+        5,
+        2,
+        4,
+        6,
+        6,
+        2,
+        5,
+        8,
+        8,
+        4,
+        5,
+        8,
+        8,
+        4,
+        5,
+        8,
+        11,
+        4,
+        8,
+        10,
+        11,
+        4,
+        9,
+        12,
+        16,
+        4,
+        9,
+        16,
+        16,
+        6,
+        10,
+        12,
+        18,
+        6,
+        10,
+        17,
+        16,
+        6,
+        11,
+        16,
+        19,
+        6,
+        13,
+        18,
+        21,
+        7,
+        14,
+        21,
+        25,
+        8,
+        16,
+        20,
+        25,
+        8,
+        17,
+        23,
+        25,
+        9,
+        17,
+        23,
+        34,
+        9,
+        18,
+        25,
+        30,
+        10,
+        20,
+        27,
+        32,
+        12,
+        21,
+        29,
+        35,
+        12,
+        23,
+        34,
+        37,
+        12,
+        25,
+        34,
+        40,
+        13,
+        26,
+        35,
+        42,
+        14,
+        28,
+        38,
+        45,
+        15,
+        29,
+        40,
+        48,
+        16,
+        31,
+        43,
+        51,
+        17,
+        33,
+        45,
+        54,
+        18,
+        35,
+        48,
+        57,
+        19,
+        37,
+        51,
+        60,
+        19,
+        38,
+        53,
+        63,
+        20,
+        40,
+        56,
+        66,
+        21,
+        43,
+        59,
+        70,
+        22,
+        45,
+        62,
+        74,
+        24,
+        47,
+        65,
+        77,
+        25,
+        49,
+        68,
+        81
+      ];
+      var EC_CODEWORDS_TABLE = [
+        // L  M  Q  H
+        7,
+        10,
+        13,
+        17,
+        10,
+        16,
+        22,
+        28,
+        15,
+        26,
+        36,
+        44,
+        20,
+        36,
+        52,
+        64,
+        26,
+        48,
+        72,
+        88,
+        36,
+        64,
+        96,
+        112,
+        40,
+        72,
+        108,
+        130,
+        48,
+        88,
+        132,
+        156,
+        60,
+        110,
+        160,
+        192,
+        72,
+        130,
+        192,
+        224,
+        80,
+        150,
+        224,
+        264,
+        96,
+        176,
+        260,
+        308,
+        104,
+        198,
+        288,
+        352,
+        120,
+        216,
+        320,
+        384,
+        132,
+        240,
+        360,
+        432,
+        144,
+        280,
+        408,
+        480,
+        168,
+        308,
+        448,
+        532,
+        180,
+        338,
+        504,
+        588,
+        196,
+        364,
+        546,
+        650,
+        224,
+        416,
+        600,
+        700,
+        224,
+        442,
+        644,
+        750,
+        252,
+        476,
+        690,
+        816,
+        270,
+        504,
+        750,
+        900,
+        300,
+        560,
+        810,
+        960,
+        312,
+        588,
+        870,
+        1050,
+        336,
+        644,
+        952,
+        1110,
+        360,
+        700,
+        1020,
+        1200,
+        390,
+        728,
+        1050,
+        1260,
+        420,
+        784,
+        1140,
+        1350,
+        450,
+        812,
+        1200,
+        1440,
+        480,
+        868,
+        1290,
+        1530,
+        510,
+        924,
+        1350,
+        1620,
+        540,
+        980,
+        1440,
+        1710,
+        570,
+        1036,
+        1530,
+        1800,
+        570,
+        1064,
+        1590,
+        1890,
+        600,
+        1120,
+        1680,
+        1980,
+        630,
+        1204,
+        1770,
+        2100,
+        660,
+        1260,
+        1860,
+        2220,
+        720,
+        1316,
+        1950,
+        2310,
+        750,
+        1372,
+        2040,
+        2430
+      ];
+      exports.getBlocksCount = function getBlocksCount(version, errorCorrectionLevel) {
+        switch (errorCorrectionLevel) {
+          case ECLevel.L:
+            return EC_BLOCKS_TABLE[(version - 1) * 4 + 0];
+          case ECLevel.M:
+            return EC_BLOCKS_TABLE[(version - 1) * 4 + 1];
+          case ECLevel.Q:
+            return EC_BLOCKS_TABLE[(version - 1) * 4 + 2];
+          case ECLevel.H:
+            return EC_BLOCKS_TABLE[(version - 1) * 4 + 3];
+          default:
+            return void 0;
+        }
+      };
+      exports.getTotalCodewordsCount = function getTotalCodewordsCount(version, errorCorrectionLevel) {
+        switch (errorCorrectionLevel) {
+          case ECLevel.L:
+            return EC_CODEWORDS_TABLE[(version - 1) * 4 + 0];
+          case ECLevel.M:
+            return EC_CODEWORDS_TABLE[(version - 1) * 4 + 1];
+          case ECLevel.Q:
+            return EC_CODEWORDS_TABLE[(version - 1) * 4 + 2];
+          case ECLevel.H:
+            return EC_CODEWORDS_TABLE[(version - 1) * 4 + 3];
+          default:
+            return void 0;
+        }
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/galois-field.js
+  var require_galois_field = __commonJS({
+    "node_modules/qrcode/lib/core/galois-field.js"(exports) {
+      var EXP_TABLE = new Uint8Array(512);
+      var LOG_TABLE = new Uint8Array(256);
+      (function initTables() {
+        let x = 1;
+        for (let i2 = 0; i2 < 255; i2++) {
+          EXP_TABLE[i2] = x;
+          LOG_TABLE[x] = i2;
+          x <<= 1;
+          if (x & 256) {
+            x ^= 285;
+          }
+        }
+        for (let i2 = 255; i2 < 512; i2++) {
+          EXP_TABLE[i2] = EXP_TABLE[i2 - 255];
+        }
+      })();
+      exports.log = function log(n) {
+        if (n < 1) throw new Error("log(" + n + ")");
+        return LOG_TABLE[n];
+      };
+      exports.exp = function exp(n) {
+        return EXP_TABLE[n];
+      };
+      exports.mul = function mul3(x, y) {
+        if (x === 0 || y === 0) return 0;
+        return EXP_TABLE[LOG_TABLE[x] + LOG_TABLE[y]];
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/polynomial.js
+  var require_polynomial = __commonJS({
+    "node_modules/qrcode/lib/core/polynomial.js"(exports) {
+      var GF = require_galois_field();
+      exports.mul = function mul3(p1, p2) {
+        const coeff = new Uint8Array(p1.length + p2.length - 1);
+        for (let i2 = 0; i2 < p1.length; i2++) {
+          for (let j = 0; j < p2.length; j++) {
+            coeff[i2 + j] ^= GF.mul(p1[i2], p2[j]);
+          }
+        }
+        return coeff;
+      };
+      exports.mod = function mod3(divident, divisor) {
+        let result = new Uint8Array(divident);
+        while (result.length - divisor.length >= 0) {
+          const coeff = result[0];
+          for (let i2 = 0; i2 < divisor.length; i2++) {
+            result[i2] ^= GF.mul(divisor[i2], coeff);
+          }
+          let offset = 0;
+          while (offset < result.length && result[offset] === 0) offset++;
+          result = result.slice(offset);
+        }
+        return result;
+      };
+      exports.generateECPolynomial = function generateECPolynomial(degree) {
+        let poly = new Uint8Array([1]);
+        for (let i2 = 0; i2 < degree; i2++) {
+          poly = exports.mul(poly, new Uint8Array([1, GF.exp(i2)]));
+        }
+        return poly;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/reed-solomon-encoder.js
+  var require_reed_solomon_encoder = __commonJS({
+    "node_modules/qrcode/lib/core/reed-solomon-encoder.js"(exports, module) {
+      var Polynomial = require_polynomial();
+      function ReedSolomonEncoder(degree) {
+        this.genPoly = void 0;
+        this.degree = degree;
+        if (this.degree) this.initialize(this.degree);
+      }
+      ReedSolomonEncoder.prototype.initialize = function initialize(degree) {
+        this.degree = degree;
+        this.genPoly = Polynomial.generateECPolynomial(this.degree);
+      };
+      ReedSolomonEncoder.prototype.encode = function encode2(data) {
+        if (!this.genPoly) {
+          throw new Error("Encoder not initialized");
+        }
+        const paddedData = new Uint8Array(data.length + this.degree);
+        paddedData.set(data);
+        const remainder = Polynomial.mod(paddedData, this.genPoly);
+        const start = this.degree - remainder.length;
+        if (start > 0) {
+          const buff = new Uint8Array(this.degree);
+          buff.set(remainder, start);
+          return buff;
+        }
+        return remainder;
+      };
+      module.exports = ReedSolomonEncoder;
+    }
+  });
+
+  // node_modules/qrcode/lib/core/version-check.js
+  var require_version_check = __commonJS({
+    "node_modules/qrcode/lib/core/version-check.js"(exports) {
+      exports.isValid = function isValid2(version) {
+        return !isNaN(version) && version >= 1 && version <= 40;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/regex.js
+  var require_regex = __commonJS({
+    "node_modules/qrcode/lib/core/regex.js"(exports) {
+      var numeric = "[0-9]+";
+      var alphanumeric = "[A-Z $%*+\\-./:]+";
+      var kanji = "(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|[uFF00-uFFEF]|[u4E00-u9FAF]|[u2605-u2606]|[u2190-u2195]|u203B|[u2010u2015u2018u2019u2025u2026u201Cu201Du2225u2260]|[u0391-u0451]|[u00A7u00A8u00B1u00B4u00D7u00F7])+";
+      kanji = kanji.replace(/u/g, "\\u");
+      var byte = "(?:(?![A-Z0-9 $%*+\\-./:]|" + kanji + ")(?:.|[\r\n]))+";
+      exports.KANJI = new RegExp(kanji, "g");
+      exports.BYTE_KANJI = new RegExp("[^A-Z0-9 $%*+\\-./:]+", "g");
+      exports.BYTE = new RegExp(byte, "g");
+      exports.NUMERIC = new RegExp(numeric, "g");
+      exports.ALPHANUMERIC = new RegExp(alphanumeric, "g");
+      var TEST_KANJI = new RegExp("^" + kanji + "$");
+      var TEST_NUMERIC = new RegExp("^" + numeric + "$");
+      var TEST_ALPHANUMERIC = new RegExp("^[A-Z0-9 $%*+\\-./:]+$");
+      exports.testKanji = function testKanji(str) {
+        return TEST_KANJI.test(str);
+      };
+      exports.testNumeric = function testNumeric(str) {
+        return TEST_NUMERIC.test(str);
+      };
+      exports.testAlphanumeric = function testAlphanumeric(str) {
+        return TEST_ALPHANUMERIC.test(str);
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/mode.js
+  var require_mode = __commonJS({
+    "node_modules/qrcode/lib/core/mode.js"(exports) {
+      var VersionCheck = require_version_check();
+      var Regex = require_regex();
+      exports.NUMERIC = {
+        id: "Numeric",
+        bit: 1 << 0,
+        ccBits: [10, 12, 14]
+      };
+      exports.ALPHANUMERIC = {
+        id: "Alphanumeric",
+        bit: 1 << 1,
+        ccBits: [9, 11, 13]
+      };
+      exports.BYTE = {
+        id: "Byte",
+        bit: 1 << 2,
+        ccBits: [8, 16, 16]
+      };
+      exports.KANJI = {
+        id: "Kanji",
+        bit: 1 << 3,
+        ccBits: [8, 10, 12]
+      };
+      exports.MIXED = {
+        bit: -1
+      };
+      exports.getCharCountIndicator = function getCharCountIndicator(mode, version) {
+        if (!mode.ccBits) throw new Error("Invalid mode: " + mode);
+        if (!VersionCheck.isValid(version)) {
+          throw new Error("Invalid version: " + version);
+        }
+        if (version >= 1 && version < 10) return mode.ccBits[0];
+        else if (version < 27) return mode.ccBits[1];
+        return mode.ccBits[2];
+      };
+      exports.getBestModeForData = function getBestModeForData(dataStr) {
+        if (Regex.testNumeric(dataStr)) return exports.NUMERIC;
+        else if (Regex.testAlphanumeric(dataStr)) return exports.ALPHANUMERIC;
+        else if (Regex.testKanji(dataStr)) return exports.KANJI;
+        else return exports.BYTE;
+      };
+      exports.toString = function toString(mode) {
+        if (mode && mode.id) return mode.id;
+        throw new Error("Invalid mode");
+      };
+      exports.isValid = function isValid2(mode) {
+        return mode && mode.bit && mode.ccBits;
+      };
+      function fromString(string) {
+        if (typeof string !== "string") {
+          throw new Error("Param is not a string");
+        }
+        const lcStr = string.toLowerCase();
+        switch (lcStr) {
+          case "numeric":
+            return exports.NUMERIC;
+          case "alphanumeric":
+            return exports.ALPHANUMERIC;
+          case "kanji":
+            return exports.KANJI;
+          case "byte":
+            return exports.BYTE;
+          default:
+            throw new Error("Unknown mode: " + string);
+        }
+      }
+      exports.from = function from(value, defaultValue) {
+        if (exports.isValid(value)) {
+          return value;
+        }
+        try {
+          return fromString(value);
+        } catch (e) {
+          return defaultValue;
+        }
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/version.js
+  var require_version = __commonJS({
+    "node_modules/qrcode/lib/core/version.js"(exports) {
+      var Utils = require_utils();
+      var ECCode = require_error_correction_code();
+      var ECLevel = require_error_correction_level();
+      var Mode = require_mode();
+      var VersionCheck = require_version_check();
+      var G18 = 1 << 12 | 1 << 11 | 1 << 10 | 1 << 9 | 1 << 8 | 1 << 5 | 1 << 2 | 1 << 0;
+      var G18_BCH = Utils.getBCHDigit(G18);
+      function getBestVersionForDataLength(mode, length, errorCorrectionLevel) {
+        for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
+          if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, mode)) {
+            return currentVersion;
+          }
+        }
+        return void 0;
+      }
+      function getReservedBitsCount(mode, version) {
+        return Mode.getCharCountIndicator(mode, version) + 4;
+      }
+      function getTotalBitsFromDataArray(segments, version) {
+        let totalBits = 0;
+        segments.forEach(function(data) {
+          const reservedBits = getReservedBitsCount(data.mode, version);
+          totalBits += reservedBits + data.getBitsLength();
+        });
+        return totalBits;
+      }
+      function getBestVersionForMixedData(segments, errorCorrectionLevel) {
+        for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
+          const length = getTotalBitsFromDataArray(segments, currentVersion);
+          if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, Mode.MIXED)) {
+            return currentVersion;
+          }
+        }
+        return void 0;
+      }
+      exports.from = function from(value, defaultValue) {
+        if (VersionCheck.isValid(value)) {
+          return parseInt(value, 10);
+        }
+        return defaultValue;
+      };
+      exports.getCapacity = function getCapacity(version, errorCorrectionLevel, mode) {
+        if (!VersionCheck.isValid(version)) {
+          throw new Error("Invalid QR Code version");
+        }
+        if (typeof mode === "undefined") mode = Mode.BYTE;
+        const totalCodewords = Utils.getSymbolTotalCodewords(version);
+        const ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel);
+        const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8;
+        if (mode === Mode.MIXED) return dataTotalCodewordsBits;
+        const usableBits = dataTotalCodewordsBits - getReservedBitsCount(mode, version);
+        switch (mode) {
+          case Mode.NUMERIC:
+            return Math.floor(usableBits / 10 * 3);
+          case Mode.ALPHANUMERIC:
+            return Math.floor(usableBits / 11 * 2);
+          case Mode.KANJI:
+            return Math.floor(usableBits / 13);
+          case Mode.BYTE:
+          default:
+            return Math.floor(usableBits / 8);
+        }
+      };
+      exports.getBestVersionForData = function getBestVersionForData(data, errorCorrectionLevel) {
+        let seg;
+        const ecl = ECLevel.from(errorCorrectionLevel, ECLevel.M);
+        if (Array.isArray(data)) {
+          if (data.length > 1) {
+            return getBestVersionForMixedData(data, ecl);
+          }
+          if (data.length === 0) {
+            return 1;
+          }
+          seg = data[0];
+        } else {
+          seg = data;
+        }
+        return getBestVersionForDataLength(seg.mode, seg.getLength(), ecl);
+      };
+      exports.getEncodedBits = function getEncodedBits(version) {
+        if (!VersionCheck.isValid(version) || version < 7) {
+          throw new Error("Invalid QR Code version");
+        }
+        let d4 = version << 12;
+        while (Utils.getBCHDigit(d4) - G18_BCH >= 0) {
+          d4 ^= G18 << Utils.getBCHDigit(d4) - G18_BCH;
+        }
+        return version << 12 | d4;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/format-info.js
+  var require_format_info = __commonJS({
+    "node_modules/qrcode/lib/core/format-info.js"(exports) {
+      var Utils = require_utils();
+      var G15 = 1 << 10 | 1 << 8 | 1 << 5 | 1 << 4 | 1 << 2 | 1 << 1 | 1 << 0;
+      var G15_MASK = 1 << 14 | 1 << 12 | 1 << 10 | 1 << 4 | 1 << 1;
+      var G15_BCH = Utils.getBCHDigit(G15);
+      exports.getEncodedBits = function getEncodedBits(errorCorrectionLevel, mask) {
+        const data = errorCorrectionLevel.bit << 3 | mask;
+        let d4 = data << 10;
+        while (Utils.getBCHDigit(d4) - G15_BCH >= 0) {
+          d4 ^= G15 << Utils.getBCHDigit(d4) - G15_BCH;
+        }
+        return (data << 10 | d4) ^ G15_MASK;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/numeric-data.js
+  var require_numeric_data = __commonJS({
+    "node_modules/qrcode/lib/core/numeric-data.js"(exports, module) {
+      var Mode = require_mode();
+      function NumericData(data) {
+        this.mode = Mode.NUMERIC;
+        this.data = data.toString();
+      }
+      NumericData.getBitsLength = function getBitsLength(length) {
+        return 10 * Math.floor(length / 3) + (length % 3 ? length % 3 * 3 + 1 : 0);
+      };
+      NumericData.prototype.getLength = function getLength() {
+        return this.data.length;
+      };
+      NumericData.prototype.getBitsLength = function getBitsLength() {
+        return NumericData.getBitsLength(this.data.length);
+      };
+      NumericData.prototype.write = function write(bitBuffer) {
+        let i2, group, value;
+        for (i2 = 0; i2 + 3 <= this.data.length; i2 += 3) {
+          group = this.data.substr(i2, 3);
+          value = parseInt(group, 10);
+          bitBuffer.put(value, 10);
+        }
+        const remainingNum = this.data.length - i2;
+        if (remainingNum > 0) {
+          group = this.data.substr(i2);
+          value = parseInt(group, 10);
+          bitBuffer.put(value, remainingNum * 3 + 1);
+        }
+      };
+      module.exports = NumericData;
+    }
+  });
+
+  // node_modules/qrcode/lib/core/alphanumeric-data.js
+  var require_alphanumeric_data = __commonJS({
+    "node_modules/qrcode/lib/core/alphanumeric-data.js"(exports, module) {
+      var Mode = require_mode();
+      var ALPHA_NUM_CHARS = [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z",
+        " ",
+        "$",
+        "%",
+        "*",
+        "+",
+        "-",
+        ".",
+        "/",
+        ":"
+      ];
+      function AlphanumericData(data) {
+        this.mode = Mode.ALPHANUMERIC;
+        this.data = data;
+      }
+      AlphanumericData.getBitsLength = function getBitsLength(length) {
+        return 11 * Math.floor(length / 2) + 6 * (length % 2);
+      };
+      AlphanumericData.prototype.getLength = function getLength() {
+        return this.data.length;
+      };
+      AlphanumericData.prototype.getBitsLength = function getBitsLength() {
+        return AlphanumericData.getBitsLength(this.data.length);
+      };
+      AlphanumericData.prototype.write = function write(bitBuffer) {
+        let i2;
+        for (i2 = 0; i2 + 2 <= this.data.length; i2 += 2) {
+          let value = ALPHA_NUM_CHARS.indexOf(this.data[i2]) * 45;
+          value += ALPHA_NUM_CHARS.indexOf(this.data[i2 + 1]);
+          bitBuffer.put(value, 11);
+        }
+        if (this.data.length % 2) {
+          bitBuffer.put(ALPHA_NUM_CHARS.indexOf(this.data[i2]), 6);
+        }
+      };
+      module.exports = AlphanumericData;
+    }
+  });
+
+  // node_modules/qrcode/lib/core/byte-data.js
+  var require_byte_data = __commonJS({
+    "node_modules/qrcode/lib/core/byte-data.js"(exports, module) {
+      var Mode = require_mode();
+      function ByteData(data) {
+        this.mode = Mode.BYTE;
+        if (typeof data === "string") {
+          this.data = new TextEncoder().encode(data);
+        } else {
+          this.data = new Uint8Array(data);
+        }
+      }
+      ByteData.getBitsLength = function getBitsLength(length) {
+        return length * 8;
+      };
+      ByteData.prototype.getLength = function getLength() {
+        return this.data.length;
+      };
+      ByteData.prototype.getBitsLength = function getBitsLength() {
+        return ByteData.getBitsLength(this.data.length);
+      };
+      ByteData.prototype.write = function(bitBuffer) {
+        for (let i2 = 0, l = this.data.length; i2 < l; i2++) {
+          bitBuffer.put(this.data[i2], 8);
+        }
+      };
+      module.exports = ByteData;
+    }
+  });
+
+  // node_modules/qrcode/lib/core/kanji-data.js
+  var require_kanji_data = __commonJS({
+    "node_modules/qrcode/lib/core/kanji-data.js"(exports, module) {
+      var Mode = require_mode();
+      var Utils = require_utils();
+      function KanjiData(data) {
+        this.mode = Mode.KANJI;
+        this.data = data;
+      }
+      KanjiData.getBitsLength = function getBitsLength(length) {
+        return length * 13;
+      };
+      KanjiData.prototype.getLength = function getLength() {
+        return this.data.length;
+      };
+      KanjiData.prototype.getBitsLength = function getBitsLength() {
+        return KanjiData.getBitsLength(this.data.length);
+      };
+      KanjiData.prototype.write = function(bitBuffer) {
+        let i2;
+        for (i2 = 0; i2 < this.data.length; i2++) {
+          let value = Utils.toSJIS(this.data[i2]);
+          if (value >= 33088 && value <= 40956) {
+            value -= 33088;
+          } else if (value >= 57408 && value <= 60351) {
+            value -= 49472;
+          } else {
+            throw new Error(
+              "Invalid SJIS character: " + this.data[i2] + "\nMake sure your charset is UTF-8"
+            );
+          }
+          value = (value >>> 8 & 255) * 192 + (value & 255);
+          bitBuffer.put(value, 13);
+        }
+      };
+      module.exports = KanjiData;
+    }
+  });
+
+  // node_modules/dijkstrajs/dijkstra.js
+  var require_dijkstra = __commonJS({
+    "node_modules/dijkstrajs/dijkstra.js"(exports, module) {
+      "use strict";
+      var dijkstra = {
+        single_source_shortest_paths: function(graph, s, d4) {
+          var predecessors = {};
+          var costs = {};
+          costs[s] = 0;
+          var open = dijkstra.PriorityQueue.make();
+          open.push(s, 0);
+          var closest, u, v, cost_of_s_to_u, adjacent_nodes, cost_of_e, cost_of_s_to_u_plus_cost_of_e, cost_of_s_to_v, first_visit;
+          while (!open.empty()) {
+            closest = open.pop();
+            u = closest.value;
+            cost_of_s_to_u = closest.cost;
+            adjacent_nodes = graph[u] || {};
+            for (v in adjacent_nodes) {
+              if (adjacent_nodes.hasOwnProperty(v)) {
+                cost_of_e = adjacent_nodes[v];
+                cost_of_s_to_u_plus_cost_of_e = cost_of_s_to_u + cost_of_e;
+                cost_of_s_to_v = costs[v];
+                first_visit = typeof costs[v] === "undefined";
+                if (first_visit || cost_of_s_to_v > cost_of_s_to_u_plus_cost_of_e) {
+                  costs[v] = cost_of_s_to_u_plus_cost_of_e;
+                  open.push(v, cost_of_s_to_u_plus_cost_of_e);
+                  predecessors[v] = u;
+                }
+              }
+            }
+          }
+          if (typeof d4 !== "undefined" && typeof costs[d4] === "undefined") {
+            var msg = ["Could not find a path from ", s, " to ", d4, "."].join("");
+            throw new Error(msg);
+          }
+          return predecessors;
+        },
+        extract_shortest_path_from_predecessor_list: function(predecessors, d4) {
+          var nodes = [];
+          var u = d4;
+          var predecessor;
+          while (u) {
+            nodes.push(u);
+            predecessor = predecessors[u];
+            u = predecessors[u];
+          }
+          nodes.reverse();
+          return nodes;
+        },
+        find_path: function(graph, s, d4) {
+          var predecessors = dijkstra.single_source_shortest_paths(graph, s, d4);
+          return dijkstra.extract_shortest_path_from_predecessor_list(
+            predecessors,
+            d4
+          );
+        },
+        /**
+         * A very naive priority queue implementation.
+         */
+        PriorityQueue: {
+          make: function(opts) {
+            var T = dijkstra.PriorityQueue, t = {}, key;
+            opts = opts || {};
+            for (key in T) {
+              if (T.hasOwnProperty(key)) {
+                t[key] = T[key];
+              }
+            }
+            t.queue = [];
+            t.sorter = opts.sorter || T.default_sorter;
+            return t;
+          },
+          default_sorter: function(a, b) {
+            return a.cost - b.cost;
+          },
+          /**
+           * Add a new item to the queue and ensure the highest priority element
+           * is at the front of the queue.
+           */
+          push: function(value, cost) {
+            var item = { value, cost };
+            this.queue.push(item);
+            this.queue.sort(this.sorter);
+          },
+          /**
+           * Return the highest priority element in the queue.
+           */
+          pop: function() {
+            return this.queue.shift();
+          },
+          empty: function() {
+            return this.queue.length === 0;
+          }
+        }
+      };
+      if (typeof module !== "undefined") {
+        module.exports = dijkstra;
+      }
+    }
+  });
+
+  // node_modules/qrcode/lib/core/segments.js
+  var require_segments = __commonJS({
+    "node_modules/qrcode/lib/core/segments.js"(exports) {
+      var Mode = require_mode();
+      var NumericData = require_numeric_data();
+      var AlphanumericData = require_alphanumeric_data();
+      var ByteData = require_byte_data();
+      var KanjiData = require_kanji_data();
+      var Regex = require_regex();
+      var Utils = require_utils();
+      var dijkstra = require_dijkstra();
+      function getStringByteLength(str) {
+        return unescape(encodeURIComponent(str)).length;
+      }
+      function getSegments(regex2, mode, str) {
+        const segments = [];
+        let result;
+        while ((result = regex2.exec(str)) !== null) {
+          segments.push({
+            data: result[0],
+            index: result.index,
+            mode,
+            length: result[0].length
+          });
+        }
+        return segments;
+      }
+      function getSegmentsFromString(dataStr) {
+        const numSegs = getSegments(Regex.NUMERIC, Mode.NUMERIC, dataStr);
+        const alphaNumSegs = getSegments(Regex.ALPHANUMERIC, Mode.ALPHANUMERIC, dataStr);
+        let byteSegs;
+        let kanjiSegs;
+        if (Utils.isKanjiModeEnabled()) {
+          byteSegs = getSegments(Regex.BYTE, Mode.BYTE, dataStr);
+          kanjiSegs = getSegments(Regex.KANJI, Mode.KANJI, dataStr);
+        } else {
+          byteSegs = getSegments(Regex.BYTE_KANJI, Mode.BYTE, dataStr);
+          kanjiSegs = [];
+        }
+        const segs = numSegs.concat(alphaNumSegs, byteSegs, kanjiSegs);
+        return segs.sort(function(s1, s2) {
+          return s1.index - s2.index;
+        }).map(function(obj) {
+          return {
+            data: obj.data,
+            mode: obj.mode,
+            length: obj.length
+          };
+        });
+      }
+      function getSegmentBitsLength(length, mode) {
+        switch (mode) {
+          case Mode.NUMERIC:
+            return NumericData.getBitsLength(length);
+          case Mode.ALPHANUMERIC:
+            return AlphanumericData.getBitsLength(length);
+          case Mode.KANJI:
+            return KanjiData.getBitsLength(length);
+          case Mode.BYTE:
+            return ByteData.getBitsLength(length);
+        }
+      }
+      function mergeSegments(segs) {
+        return segs.reduce(function(acc, curr) {
+          const prevSeg = acc.length - 1 >= 0 ? acc[acc.length - 1] : null;
+          if (prevSeg && prevSeg.mode === curr.mode) {
+            acc[acc.length - 1].data += curr.data;
+            return acc;
+          }
+          acc.push(curr);
+          return acc;
+        }, []);
+      }
+      function buildNodes(segs) {
+        const nodes = [];
+        for (let i2 = 0; i2 < segs.length; i2++) {
+          const seg = segs[i2];
+          switch (seg.mode) {
+            case Mode.NUMERIC:
+              nodes.push([
+                seg,
+                { data: seg.data, mode: Mode.ALPHANUMERIC, length: seg.length },
+                { data: seg.data, mode: Mode.BYTE, length: seg.length }
+              ]);
+              break;
+            case Mode.ALPHANUMERIC:
+              nodes.push([
+                seg,
+                { data: seg.data, mode: Mode.BYTE, length: seg.length }
+              ]);
+              break;
+            case Mode.KANJI:
+              nodes.push([
+                seg,
+                { data: seg.data, mode: Mode.BYTE, length: getStringByteLength(seg.data) }
+              ]);
+              break;
+            case Mode.BYTE:
+              nodes.push([
+                { data: seg.data, mode: Mode.BYTE, length: getStringByteLength(seg.data) }
+              ]);
+          }
+        }
+        return nodes;
+      }
+      function buildGraph(nodes, version) {
+        const table = {};
+        const graph = { start: {} };
+        let prevNodeIds = ["start"];
+        for (let i2 = 0; i2 < nodes.length; i2++) {
+          const nodeGroup = nodes[i2];
+          const currentNodeIds = [];
+          for (let j = 0; j < nodeGroup.length; j++) {
+            const node = nodeGroup[j];
+            const key = "" + i2 + j;
+            currentNodeIds.push(key);
+            table[key] = { node, lastCount: 0 };
+            graph[key] = {};
+            for (let n = 0; n < prevNodeIds.length; n++) {
+              const prevNodeId = prevNodeIds[n];
+              if (table[prevNodeId] && table[prevNodeId].node.mode === node.mode) {
+                graph[prevNodeId][key] = getSegmentBitsLength(table[prevNodeId].lastCount + node.length, node.mode) - getSegmentBitsLength(table[prevNodeId].lastCount, node.mode);
+                table[prevNodeId].lastCount += node.length;
+              } else {
+                if (table[prevNodeId]) table[prevNodeId].lastCount = node.length;
+                graph[prevNodeId][key] = getSegmentBitsLength(node.length, node.mode) + 4 + Mode.getCharCountIndicator(node.mode, version);
+              }
+            }
+          }
+          prevNodeIds = currentNodeIds;
+        }
+        for (let n = 0; n < prevNodeIds.length; n++) {
+          graph[prevNodeIds[n]].end = 0;
+        }
+        return { map: graph, table };
+      }
+      function buildSingleSegment(data, modesHint) {
+        let mode;
+        const bestMode = Mode.getBestModeForData(data);
+        mode = Mode.from(modesHint, bestMode);
+        if (mode !== Mode.BYTE && mode.bit < bestMode.bit) {
+          throw new Error('"' + data + '" cannot be encoded with mode ' + Mode.toString(mode) + ".\n Suggested mode is: " + Mode.toString(bestMode));
+        }
+        if (mode === Mode.KANJI && !Utils.isKanjiModeEnabled()) {
+          mode = Mode.BYTE;
+        }
+        switch (mode) {
+          case Mode.NUMERIC:
+            return new NumericData(data);
+          case Mode.ALPHANUMERIC:
+            return new AlphanumericData(data);
+          case Mode.KANJI:
+            return new KanjiData(data);
+          case Mode.BYTE:
+            return new ByteData(data);
+        }
+      }
+      exports.fromArray = function fromArray(array) {
+        return array.reduce(function(acc, seg) {
+          if (typeof seg === "string") {
+            acc.push(buildSingleSegment(seg, null));
+          } else if (seg.data) {
+            acc.push(buildSingleSegment(seg.data, seg.mode));
+          }
+          return acc;
+        }, []);
+      };
+      exports.fromString = function fromString(data, version) {
+        const segs = getSegmentsFromString(data, Utils.isKanjiModeEnabled());
+        const nodes = buildNodes(segs);
+        const graph = buildGraph(nodes, version);
+        const path = dijkstra.find_path(graph.map, "start", "end");
+        const optimizedSegs = [];
+        for (let i2 = 1; i2 < path.length - 1; i2++) {
+          optimizedSegs.push(graph.table[path[i2]].node);
+        }
+        return exports.fromArray(mergeSegments(optimizedSegs));
+      };
+      exports.rawSplit = function rawSplit(data) {
+        return exports.fromArray(
+          getSegmentsFromString(data, Utils.isKanjiModeEnabled())
+        );
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/core/qrcode.js
+  var require_qrcode = __commonJS({
+    "node_modules/qrcode/lib/core/qrcode.js"(exports) {
+      var Utils = require_utils();
+      var ECLevel = require_error_correction_level();
+      var BitBuffer = require_bit_buffer();
+      var BitMatrix = require_bit_matrix();
+      var AlignmentPattern = require_alignment_pattern();
+      var FinderPattern = require_finder_pattern();
+      var MaskPattern = require_mask_pattern();
+      var ECCode = require_error_correction_code();
+      var ReedSolomonEncoder = require_reed_solomon_encoder();
+      var Version = require_version();
+      var FormatInfo = require_format_info();
+      var Mode = require_mode();
+      var Segments = require_segments();
+      function setupFinderPattern(matrix, version) {
+        const size = matrix.size;
+        const pos = FinderPattern.getPositions(version);
+        for (let i2 = 0; i2 < pos.length; i2++) {
+          const row = pos[i2][0];
+          const col = pos[i2][1];
+          for (let r = -1; r <= 7; r++) {
+            if (row + r <= -1 || size <= row + r) continue;
+            for (let c = -1; c <= 7; c++) {
+              if (col + c <= -1 || size <= col + c) continue;
+              if (r >= 0 && r <= 6 && (c === 0 || c === 6) || c >= 0 && c <= 6 && (r === 0 || r === 6) || r >= 2 && r <= 4 && c >= 2 && c <= 4) {
+                matrix.set(row + r, col + c, true, true);
+              } else {
+                matrix.set(row + r, col + c, false, true);
+              }
+            }
+          }
+        }
+      }
+      function setupTimingPattern(matrix) {
+        const size = matrix.size;
+        for (let r = 8; r < size - 8; r++) {
+          const value = r % 2 === 0;
+          matrix.set(r, 6, value, true);
+          matrix.set(6, r, value, true);
+        }
+      }
+      function setupAlignmentPattern(matrix, version) {
+        const pos = AlignmentPattern.getPositions(version);
+        for (let i2 = 0; i2 < pos.length; i2++) {
+          const row = pos[i2][0];
+          const col = pos[i2][1];
+          for (let r = -2; r <= 2; r++) {
+            for (let c = -2; c <= 2; c++) {
+              if (r === -2 || r === 2 || c === -2 || c === 2 || r === 0 && c === 0) {
+                matrix.set(row + r, col + c, true, true);
+              } else {
+                matrix.set(row + r, col + c, false, true);
+              }
+            }
+          }
+        }
+      }
+      function setupVersionInfo(matrix, version) {
+        const size = matrix.size;
+        const bits = Version.getEncodedBits(version);
+        let row, col, mod3;
+        for (let i2 = 0; i2 < 18; i2++) {
+          row = Math.floor(i2 / 3);
+          col = i2 % 3 + size - 8 - 3;
+          mod3 = (bits >> i2 & 1) === 1;
+          matrix.set(row, col, mod3, true);
+          matrix.set(col, row, mod3, true);
+        }
+      }
+      function setupFormatInfo(matrix, errorCorrectionLevel, maskPattern) {
+        const size = matrix.size;
+        const bits = FormatInfo.getEncodedBits(errorCorrectionLevel, maskPattern);
+        let i2, mod3;
+        for (i2 = 0; i2 < 15; i2++) {
+          mod3 = (bits >> i2 & 1) === 1;
+          if (i2 < 6) {
+            matrix.set(i2, 8, mod3, true);
+          } else if (i2 < 8) {
+            matrix.set(i2 + 1, 8, mod3, true);
+          } else {
+            matrix.set(size - 15 + i2, 8, mod3, true);
+          }
+          if (i2 < 8) {
+            matrix.set(8, size - i2 - 1, mod3, true);
+          } else if (i2 < 9) {
+            matrix.set(8, 15 - i2 - 1 + 1, mod3, true);
+          } else {
+            matrix.set(8, 15 - i2 - 1, mod3, true);
+          }
+        }
+        matrix.set(size - 8, 8, 1, true);
+      }
+      function setupData(matrix, data) {
+        const size = matrix.size;
+        let inc = -1;
+        let row = size - 1;
+        let bitIndex = 7;
+        let byteIndex = 0;
+        for (let col = size - 1; col > 0; col -= 2) {
+          if (col === 6) col--;
+          while (true) {
+            for (let c = 0; c < 2; c++) {
+              if (!matrix.isReserved(row, col - c)) {
+                let dark = false;
+                if (byteIndex < data.length) {
+                  dark = (data[byteIndex] >>> bitIndex & 1) === 1;
+                }
+                matrix.set(row, col - c, dark);
+                bitIndex--;
+                if (bitIndex === -1) {
+                  byteIndex++;
+                  bitIndex = 7;
+                }
+              }
+            }
+            row += inc;
+            if (row < 0 || size <= row) {
+              row -= inc;
+              inc = -inc;
+              break;
+            }
+          }
+        }
+      }
+      function createData(version, errorCorrectionLevel, segments) {
+        const buffer = new BitBuffer();
+        segments.forEach(function(data) {
+          buffer.put(data.mode.bit, 4);
+          buffer.put(data.getLength(), Mode.getCharCountIndicator(data.mode, version));
+          data.write(buffer);
+        });
+        const totalCodewords = Utils.getSymbolTotalCodewords(version);
+        const ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel);
+        const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8;
+        if (buffer.getLengthInBits() + 4 <= dataTotalCodewordsBits) {
+          buffer.put(0, 4);
+        }
+        while (buffer.getLengthInBits() % 8 !== 0) {
+          buffer.putBit(0);
+        }
+        const remainingByte = (dataTotalCodewordsBits - buffer.getLengthInBits()) / 8;
+        for (let i2 = 0; i2 < remainingByte; i2++) {
+          buffer.put(i2 % 2 ? 17 : 236, 8);
+        }
+        return createCodewords(buffer, version, errorCorrectionLevel);
+      }
+      function createCodewords(bitBuffer, version, errorCorrectionLevel) {
+        const totalCodewords = Utils.getSymbolTotalCodewords(version);
+        const ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel);
+        const dataTotalCodewords = totalCodewords - ecTotalCodewords;
+        const ecTotalBlocks = ECCode.getBlocksCount(version, errorCorrectionLevel);
+        const blocksInGroup2 = totalCodewords % ecTotalBlocks;
+        const blocksInGroup1 = ecTotalBlocks - blocksInGroup2;
+        const totalCodewordsInGroup1 = Math.floor(totalCodewords / ecTotalBlocks);
+        const dataCodewordsInGroup1 = Math.floor(dataTotalCodewords / ecTotalBlocks);
+        const dataCodewordsInGroup2 = dataCodewordsInGroup1 + 1;
+        const ecCount = totalCodewordsInGroup1 - dataCodewordsInGroup1;
+        const rs = new ReedSolomonEncoder(ecCount);
+        let offset = 0;
+        const dcData = new Array(ecTotalBlocks);
+        const ecData = new Array(ecTotalBlocks);
+        let maxDataSize = 0;
+        const buffer = new Uint8Array(bitBuffer.buffer);
+        for (let b = 0; b < ecTotalBlocks; b++) {
+          const dataSize = b < blocksInGroup1 ? dataCodewordsInGroup1 : dataCodewordsInGroup2;
+          dcData[b] = buffer.slice(offset, offset + dataSize);
+          ecData[b] = rs.encode(dcData[b]);
+          offset += dataSize;
+          maxDataSize = Math.max(maxDataSize, dataSize);
+        }
+        const data = new Uint8Array(totalCodewords);
+        let index = 0;
+        let i2, r;
+        for (i2 = 0; i2 < maxDataSize; i2++) {
+          for (r = 0; r < ecTotalBlocks; r++) {
+            if (i2 < dcData[r].length) {
+              data[index++] = dcData[r][i2];
+            }
+          }
+        }
+        for (i2 = 0; i2 < ecCount; i2++) {
+          for (r = 0; r < ecTotalBlocks; r++) {
+            data[index++] = ecData[r][i2];
+          }
+        }
+        return data;
+      }
+      function createSymbol(data, version, errorCorrectionLevel, maskPattern) {
+        let segments;
+        if (Array.isArray(data)) {
+          segments = Segments.fromArray(data);
+        } else if (typeof data === "string") {
+          let estimatedVersion = version;
+          if (!estimatedVersion) {
+            const rawSegments = Segments.rawSplit(data);
+            estimatedVersion = Version.getBestVersionForData(rawSegments, errorCorrectionLevel);
+          }
+          segments = Segments.fromString(data, estimatedVersion || 40);
+        } else {
+          throw new Error("Invalid data");
+        }
+        const bestVersion = Version.getBestVersionForData(segments, errorCorrectionLevel);
+        if (!bestVersion) {
+          throw new Error("The amount of data is too big to be stored in a QR Code");
+        }
+        if (!version) {
+          version = bestVersion;
+        } else if (version < bestVersion) {
+          throw new Error(
+            "\nThe chosen QR Code version cannot contain this amount of data.\nMinimum version required to store current data is: " + bestVersion + ".\n"
+          );
+        }
+        const dataBits = createData(version, errorCorrectionLevel, segments);
+        const moduleCount = Utils.getSymbolSize(version);
+        const modules = new BitMatrix(moduleCount);
+        setupFinderPattern(modules, version);
+        setupTimingPattern(modules);
+        setupAlignmentPattern(modules, version);
+        setupFormatInfo(modules, errorCorrectionLevel, 0);
+        if (version >= 7) {
+          setupVersionInfo(modules, version);
+        }
+        setupData(modules, dataBits);
+        if (isNaN(maskPattern)) {
+          maskPattern = MaskPattern.getBestMask(
+            modules,
+            setupFormatInfo.bind(null, modules, errorCorrectionLevel)
+          );
+        }
+        MaskPattern.applyMask(maskPattern, modules);
+        setupFormatInfo(modules, errorCorrectionLevel, maskPattern);
+        return {
+          modules,
+          version,
+          errorCorrectionLevel,
+          maskPattern,
+          segments
+        };
+      }
+      exports.create = function create2(data, options) {
+        if (typeof data === "undefined" || data === "") {
+          throw new Error("No input text");
+        }
+        let errorCorrectionLevel = ECLevel.M;
+        let version;
+        let mask;
+        if (typeof options !== "undefined") {
+          errorCorrectionLevel = ECLevel.from(options.errorCorrectionLevel, ECLevel.M);
+          version = Version.from(options.version);
+          mask = MaskPattern.from(options.maskPattern);
+          if (options.toSJISFunc) {
+            Utils.setToSJISFunction(options.toSJISFunc);
+          }
+        }
+        return createSymbol(data, version, errorCorrectionLevel, mask);
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/renderer/utils.js
+  var require_utils2 = __commonJS({
+    "node_modules/qrcode/lib/renderer/utils.js"(exports) {
+      function hex2rgba(hex2) {
+        if (typeof hex2 === "number") {
+          hex2 = hex2.toString();
+        }
+        if (typeof hex2 !== "string") {
+          throw new Error("Color should be defined as hex string");
+        }
+        let hexCode = hex2.slice().replace("#", "").split("");
+        if (hexCode.length < 3 || hexCode.length === 5 || hexCode.length > 8) {
+          throw new Error("Invalid hex color: " + hex2);
+        }
+        if (hexCode.length === 3 || hexCode.length === 4) {
+          hexCode = Array.prototype.concat.apply([], hexCode.map(function(c) {
+            return [c, c];
+          }));
+        }
+        if (hexCode.length === 6) hexCode.push("F", "F");
+        const hexValue = parseInt(hexCode.join(""), 16);
+        return {
+          r: hexValue >> 24 & 255,
+          g: hexValue >> 16 & 255,
+          b: hexValue >> 8 & 255,
+          a: hexValue & 255,
+          hex: "#" + hexCode.slice(0, 6).join("")
+        };
+      }
+      exports.getOptions = function getOptions(options) {
+        if (!options) options = {};
+        if (!options.color) options.color = {};
+        const margin = typeof options.margin === "undefined" || options.margin === null || options.margin < 0 ? 4 : options.margin;
+        const width = options.width && options.width >= 21 ? options.width : void 0;
+        const scale = options.scale || 4;
+        return {
+          width,
+          scale: width ? 4 : scale,
+          margin,
+          color: {
+            dark: hex2rgba(options.color.dark || "#000000ff"),
+            light: hex2rgba(options.color.light || "#ffffffff")
+          },
+          type: options.type,
+          rendererOpts: options.rendererOpts || {}
+        };
+      };
+      exports.getScale = function getScale(qrSize, opts) {
+        return opts.width && opts.width >= qrSize + opts.margin * 2 ? opts.width / (qrSize + opts.margin * 2) : opts.scale;
+      };
+      exports.getImageWidth = function getImageWidth(qrSize, opts) {
+        const scale = exports.getScale(qrSize, opts);
+        return Math.floor((qrSize + opts.margin * 2) * scale);
+      };
+      exports.qrToImageData = function qrToImageData(imgData, qr, opts) {
+        const size = qr.modules.size;
+        const data = qr.modules.data;
+        const scale = exports.getScale(size, opts);
+        const symbolSize = Math.floor((size + opts.margin * 2) * scale);
+        const scaledMargin = opts.margin * scale;
+        const palette = [opts.color.light, opts.color.dark];
+        for (let i2 = 0; i2 < symbolSize; i2++) {
+          for (let j = 0; j < symbolSize; j++) {
+            let posDst = (i2 * symbolSize + j) * 4;
+            let pxColor = opts.color.light;
+            if (i2 >= scaledMargin && j >= scaledMargin && i2 < symbolSize - scaledMargin && j < symbolSize - scaledMargin) {
+              const iSrc = Math.floor((i2 - scaledMargin) / scale);
+              const jSrc = Math.floor((j - scaledMargin) / scale);
+              pxColor = palette[data[iSrc * size + jSrc] ? 1 : 0];
+            }
+            imgData[posDst++] = pxColor.r;
+            imgData[posDst++] = pxColor.g;
+            imgData[posDst++] = pxColor.b;
+            imgData[posDst] = pxColor.a;
+          }
+        }
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/renderer/canvas.js
+  var require_canvas = __commonJS({
+    "node_modules/qrcode/lib/renderer/canvas.js"(exports) {
+      var Utils = require_utils2();
+      function clearCanvas(ctx, canvas, size) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!canvas.style) canvas.style = {};
+        canvas.height = size;
+        canvas.width = size;
+        canvas.style.height = size + "px";
+        canvas.style.width = size + "px";
+      }
+      function getCanvasElement() {
+        try {
+          return document.createElement("canvas");
+        } catch (e) {
+          throw new Error("You need to specify a canvas element");
+        }
+      }
+      exports.render = function render(qrData, canvas, options) {
+        let opts = options;
+        let canvasEl = canvas;
+        if (typeof opts === "undefined" && (!canvas || !canvas.getContext)) {
+          opts = canvas;
+          canvas = void 0;
+        }
+        if (!canvas) {
+          canvasEl = getCanvasElement();
+        }
+        opts = Utils.getOptions(opts);
+        const size = Utils.getImageWidth(qrData.modules.size, opts);
+        const ctx = canvasEl.getContext("2d");
+        const image = ctx.createImageData(size, size);
+        Utils.qrToImageData(image.data, qrData, opts);
+        clearCanvas(ctx, canvasEl, size);
+        ctx.putImageData(image, 0, 0);
+        return canvasEl;
+      };
+      exports.renderToDataURL = function renderToDataURL(qrData, canvas, options) {
+        let opts = options;
+        if (typeof opts === "undefined" && (!canvas || !canvas.getContext)) {
+          opts = canvas;
+          canvas = void 0;
+        }
+        if (!opts) opts = {};
+        const canvasEl = exports.render(qrData, canvas, opts);
+        const type = opts.type || "image/png";
+        const rendererOpts = opts.rendererOpts || {};
+        return canvasEl.toDataURL(type, rendererOpts.quality);
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/renderer/svg-tag.js
+  var require_svg_tag = __commonJS({
+    "node_modules/qrcode/lib/renderer/svg-tag.js"(exports) {
+      var Utils = require_utils2();
+      function getColorAttrib(color, attrib) {
+        const alpha = color.a / 255;
+        const str = attrib + '="' + color.hex + '"';
+        return alpha < 1 ? str + " " + attrib + '-opacity="' + alpha.toFixed(2).slice(1) + '"' : str;
+      }
+      function svgCmd(cmd, x, y) {
+        let str = cmd + x;
+        if (typeof y !== "undefined") str += " " + y;
+        return str;
+      }
+      function qrToPath(data, size, margin) {
+        let path = "";
+        let moveBy = 0;
+        let newRow = false;
+        let lineLength = 0;
+        for (let i2 = 0; i2 < data.length; i2++) {
+          const col = Math.floor(i2 % size);
+          const row = Math.floor(i2 / size);
+          if (!col && !newRow) newRow = true;
+          if (data[i2]) {
+            lineLength++;
+            if (!(i2 > 0 && col > 0 && data[i2 - 1])) {
+              path += newRow ? svgCmd("M", col + margin, 0.5 + row + margin) : svgCmd("m", moveBy, 0);
+              moveBy = 0;
+              newRow = false;
+            }
+            if (!(col + 1 < size && data[i2 + 1])) {
+              path += svgCmd("h", lineLength);
+              lineLength = 0;
+            }
+          } else {
+            moveBy++;
+          }
+        }
+        return path;
+      }
+      exports.render = function render(qrData, options, cb) {
+        const opts = Utils.getOptions(options);
+        const size = qrData.modules.size;
+        const data = qrData.modules.data;
+        const qrcodesize = size + opts.margin * 2;
+        const bg = !opts.color.light.a ? "" : "<path " + getColorAttrib(opts.color.light, "fill") + ' d="M0 0h' + qrcodesize + "v" + qrcodesize + 'H0z"/>';
+        const path = "<path " + getColorAttrib(opts.color.dark, "stroke") + ' d="' + qrToPath(data, size, opts.margin) + '"/>';
+        const viewBox = 'viewBox="0 0 ' + qrcodesize + " " + qrcodesize + '"';
+        const width = !opts.width ? "" : 'width="' + opts.width + '" height="' + opts.width + '" ';
+        const svgTag = '<svg xmlns="http://www.w3.org/2000/svg" ' + width + viewBox + ' shape-rendering="crispEdges">' + bg + path + "</svg>\n";
+        if (typeof cb === "function") {
+          cb(null, svgTag);
+        }
+        return svgTag;
+      };
+    }
+  });
+
+  // node_modules/qrcode/lib/browser.js
+  var require_browser2 = __commonJS({
+    "node_modules/qrcode/lib/browser.js"(exports) {
+      var canPromise = require_can_promise();
+      var QRCode2 = require_qrcode();
+      var CanvasRenderer = require_canvas();
+      var SvgRenderer = require_svg_tag();
+      function renderCanvas(renderFunc, canvas, text2, opts, cb) {
+        const args = [].slice.call(arguments, 1);
+        const argsNum = args.length;
+        const isLastArgCb = typeof args[argsNum - 1] === "function";
+        if (!isLastArgCb && !canPromise()) {
+          throw new Error("Callback required as last argument");
+        }
+        if (isLastArgCb) {
+          if (argsNum < 2) {
+            throw new Error("Too few arguments provided");
+          }
+          if (argsNum === 2) {
+            cb = text2;
+            text2 = canvas;
+            canvas = opts = void 0;
+          } else if (argsNum === 3) {
+            if (canvas.getContext && typeof cb === "undefined") {
+              cb = opts;
+              opts = void 0;
+            } else {
+              cb = opts;
+              opts = text2;
+              text2 = canvas;
+              canvas = void 0;
+            }
+          }
+        } else {
+          if (argsNum < 1) {
+            throw new Error("Too few arguments provided");
+          }
+          if (argsNum === 1) {
+            text2 = canvas;
+            canvas = opts = void 0;
+          } else if (argsNum === 2 && !canvas.getContext) {
+            opts = text2;
+            text2 = canvas;
+            canvas = void 0;
+          }
+          return new Promise(function(resolve, reject) {
+            try {
+              const data = QRCode2.create(text2, opts);
+              resolve(renderFunc(data, canvas, opts));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        }
+        try {
+          const data = QRCode2.create(text2, opts);
+          cb(null, renderFunc(data, canvas, opts));
+        } catch (e) {
+          cb(e);
+        }
+      }
+      exports.create = QRCode2.create;
+      exports.toCanvas = renderCanvas.bind(null, CanvasRenderer.render);
+      exports.toDataURL = renderCanvas.bind(null, CanvasRenderer.renderToDataURL);
+      exports.toString = renderCanvas.bind(null, function(data, _, opts) {
+        return SvgRenderer.render(data, opts);
+      });
+    }
+  });
+
   // src/common/nostr-service.ts
   init_dist();
   init_constants();
   init_constants();
-
-  // node_modules/nostr-tools/lib/esm/utils.js
-  var utf8Decoder2 = new TextDecoder("utf-8");
-  var utf8Encoder2 = new TextEncoder();
-  function normalizeURL2(url) {
-    if (url.indexOf("://") === -1)
-      url = "wss://" + url;
-    let p = new URL(url);
-    p.pathname = p.pathname.replace(/\/+/g, "/");
-    if (p.pathname.endsWith("/"))
-      p.pathname = p.pathname.slice(0, -1);
-    if (p.port === "80" && p.protocol === "ws:" || p.port === "443" && p.protocol === "wss:")
-      p.port = "";
-    p.searchParams.sort();
-    p.hash = "";
-    return p.toString();
-  }
-
-  // src/common/nostr-service.ts
+  init_utils7();
   init_zap_utils();
   init_zap_receipt();
+  init_relay_transport();
   var CONNECT_GRACE_MS = 5e3;
   var CONNECT_POLL_INTERVAL_MS = 250;
   var NostrService = class _NostrService {
@@ -22397,7 +23973,8 @@
       return connected;
     }
     getRelays() {
-      return this.ndk.explicitRelayUrls || DEFAULT_RELAYS;
+      const explicitRelays = this.ndk.explicitRelayUrls;
+      return explicitRelays && explicitRelays.length > 0 ? explicitRelays : [...DEFAULT_RELAYS];
     }
     async resolveNDKUser(identifier) {
       if (identifier.npub) {
@@ -22425,8 +24002,22 @@
       const user = await this.resolveNDKUser(identifier);
       return user ? this.fetchZaps(user) : 0;
     }
-    async getProfile(user) {
+    async getProfile(user, relays = this.getRelays()) {
       if (!user) return null;
+      const transport2 = getRelayTransport();
+      if (transport2) {
+        const event = await getProfileMetadata(user.pubkey, relays);
+        if (!event) return null;
+        try {
+          const profile2 = profileFromEvent(new NDKEvent(this.ndk, event));
+          if (profile2.picture === void 0 || profile2.picture === null) {
+            profile2.picture = DEFAULT_PROFILE_IMAGE;
+          }
+          return profile2;
+        } catch {
+          return null;
+        }
+      }
       await user.fetchProfile();
       const profile = user.profile;
       if (profile && (profile.picture === void 0 || profile.picture === null)) {
@@ -22549,7 +24140,7 @@ ${url}`;
   };
 
   // src/base/base-component/nostr-base-component.ts
-  init_utils7();
+  init_utils8();
   var NCStatus = /* @__PURE__ */ ((NCStatus2) => {
     NCStatus2[NCStatus2["Idle"] = 0] = "Idle";
     NCStatus2[NCStatus2["Loading"] = 1] = "Loading";
@@ -22681,10 +24272,10 @@ ${url}`;
      * and then
      *  'user' switches to loading -> ready,
      * results in loading -> ready -> loading -> ready in profile-badge onStatusChange.
-     * 
+     *
      * To avoid this, this function is called from UserComponent constructor,
      * to set default value as 'loading' without emitting onStatusChange event.
-     * 
+     *
      * Makes sense?
      * Try commenting this function call in UserComponent()
      * and add a log in ProfileBadge :: onStatusChange. You will get it.
@@ -22762,7 +24353,7 @@ ${url}`;
     /**
      * Delegate events within shadow DOM.
      * Example: this.delegateEvent('click', '#npub-copy', (e) => this.copyNpub(e));
-     * 
+     *
      * Note: Listeners are automatically cleaned up in disconnectedCallback() to prevent memory leaks.
     */
     delegateEvent(type, selector, handler) {
@@ -22847,7 +24438,7 @@ ${url}`;
   init_dist();
 
   // src/nostr-like-button/render.ts
-  init_utils7();
+  init_utils8();
   function shouldDisableLikeButton({
     compact,
     actionLoading,
@@ -22954,7 +24545,7 @@ ${url}`;
         --nostrc-color-error-background: #ffebee;
         --nostrc-color-error-text: #d32f2f;
         --nostrc-color-error-icon: #d32f2f;
-        
+
         /* === TYPOGRAPHY === */
         --nostrc-font-family-primary: ui-sans-serif, system-ui, sans-serif;
         --nostrc-font-family-mono: monospace;
@@ -22964,38 +24555,38 @@ ${url}`;
         --nostrc-font-weight-normal: 400;
         --nostrc-font-weight-medium: 500;
         --nostrc-font-weight-bold: 700;
-        
+
         /* === SPACING === */
         --nostrc-spacing-xs: 4px;
         --nostrc-spacing-sm: 8px;
         --nostrc-spacing-md: 12px;
         --nostrc-spacing-lg: 16px;
         --nostrc-spacing-xl: 20px;
-        
+
         /* === BORDERS === */
         --nostrc-border-radius-sm: 4px;
         --nostrc-border-radius-md: 8px;
         --nostrc-border-radius-lg: 12px;
         --nostrc-border-radius-full: 50%;
         --nostrc-border-width: 1px;
-        
+
         /* === SKELETON === */
         --nostrc-skeleton-color-min: #f0f0f0;
         --nostrc-skeleton-color-max: #e0e0e0;
         --nostrc-skeleton-duration: 1.5s;
         --nostrc-skeleton-timing-function: linear;
         --nostrc-skeleton-iteration-count: infinite;
-        
+
         /* === TRANSITIONS === */
         --nostrc-transition-duration: 0.2s;
         --nostrc-transition-timing: ease;
       }
-      
+
       :host(.is-disabled) {
         opacity: 0.7;
         cursor: not-allowed;
       }
-      
+
       /* === ESSENTIAL UTILITY STYLES === */
       ${styleUtils.skeleton()}
       ${styleUtils.copyButton()}
@@ -23039,11 +24630,11 @@ ${url}`;
       height: 16px;
       margin-bottom: var(--nostrc-spacing-xs);
     }
-    
+
     .skeleton:last-child {
       margin-bottom: 0;
     }
-    
+
     @keyframes skeleton-loading {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
@@ -23066,11 +24657,11 @@ ${url}`;
       background: transparent;
       color: var(--nostrc-color-text-muted);
     }
-    
+
     .nc-copy-btn:hover {
       opacity: 1;
     }
-    
+
     .nc-copy-btn.copied {
       color: var(--nostrc-color-accent);
     }
@@ -23095,7 +24686,7 @@ ${url}`;
       gap: var(--nostrc-spacing-sm);
       font-size: var(--nostrc-font-size-base);
     }
-    
+
     .text-row.mono {
       font-family: var(--nostrc-font-family-mono);
       font-size: var(--nostrc-font-size-small);
@@ -23140,7 +24731,7 @@ ${url}`;
       --nostrc-like-btn-color: var(--nostrc-theme-text-primary, #333333);
       --nostrc-like-btn-font-family: var(--nostrc-font-family-primary);
       --nostrc-like-btn-font-size: var(--nostrc-font-size-base);
-      
+
       /* Hover state variables */
       --nostrc-like-btn-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
       --nostrc-like-btn-hover-color: var(--nostrc-theme-text-primary, #333333);
@@ -23235,6 +24826,56 @@ ${url}`;
       width: 16px;
       height: 12px;
       margin: 0;
+    }
+
+    /* YouTube uses 40px circular actions/pills rather than X's 34px row cells. */
+    :host([compact][data-surface="youtube"]) {
+      --nostrc-icon-height: 22px;
+      --nostrc-icon-width: 22px;
+      --nostrc-like-btn-padding: 0 9px;
+      --nostrc-like-btn-min-height: 40px;
+      --nostrc-like-btn-width: auto;
+      --nostrc-like-btn-bg: rgba(0, 0, 0, 0.05);
+      --nostrc-like-btn-color: #0f0f0f;
+      --nostrc-like-btn-hover-bg: rgba(0, 0, 0, 0.1);
+      --nostrc-like-btn-hover-color: #0f0f0f;
+      --nostrc-like-btn-liked-bg: rgba(6, 95, 212, 0.12);
+      --nostrc-like-btn-liked-color: #065fd4;
+      --nostrc-like-btn-liked-border: transparent;
+      --nostrc-like-btn-liked-hover-bg: rgba(6, 95, 212, 0.2);
+      display: inline-flex;
+      flex: 0 0 auto;
+      width: auto;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) {
+      --nostrc-like-btn-bg: rgba(255, 255, 255, 0.1);
+      --nostrc-like-btn-color: #f1f1f1;
+      --nostrc-like-btn-hover-bg: rgba(255, 255, 255, 0.2);
+      --nostrc-like-btn-hover-color: #f1f1f1;
+      --nostrc-like-btn-liked-bg: rgba(62, 166, 255, 0.16);
+      --nostrc-like-btn-liked-color: #3ea6ff;
+      --nostrc-like-btn-liked-hover-bg: rgba(62, 166, 255, 0.24);
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-like-button-container {
+      flex: 0 0 auto;
+      gap: 0;
+      width: auto;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-like-button {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 40px;
+      height: 40px;
+      gap: 6px;
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-like-button.liked {
+      border: 0;
     }
 
     /* Focus state for accessibility */
@@ -23380,9 +25021,9 @@ ${url}`;
 
     /* Skeleton loader for like count */
     .like-count.skeleton {
-      background: linear-gradient(90deg, 
-        var(--nostrc-skeleton-color-min) 25%, 
-        var(--nostrc-skeleton-color-max) 50%, 
+      background: linear-gradient(90deg,
+        var(--nostrc-skeleton-color-min) 25%,
+        var(--nostrc-skeleton-color-max) 50%,
         var(--nostrc-skeleton-color-min) 75%
       );
       background-size: 200% 100%;
@@ -23395,9 +25036,9 @@ ${url}`;
 
     /* Skeleton loader for button text */
     .button-text-skeleton {
-      background: linear-gradient(90deg, 
-        var(--nostrc-skeleton-color-min) 25%, 
-        var(--nostrc-skeleton-color-max) 50%, 
+      background: linear-gradient(90deg,
+        var(--nostrc-skeleton-color-min) 25%,
+        var(--nostrc-skeleton-color-max) 50%,
         var(--nostrc-skeleton-color-min) 75%
       );
       background-size: 200% 100%;
@@ -23493,6 +25134,7 @@ ${url}`;
   }
 
   // src/nostr-like-button/dialog-help.ts
+  init_trusted_html();
   var injectHelpDialogStyles = () => {
     if (document.querySelector("style[data-help-dialog-styles]")) return;
     const style = document.createElement("style");
@@ -23510,7 +25152,7 @@ ${url}`;
     if (theme) {
       dialogComponent.setAttribute("data-theme", theme);
     }
-    dialogComponent.innerHTML = `
+    setTrustedInnerHTML(dialogComponent, `
     <div class="help-content">
       <p>Like any webpage to show your appreciation! Your likes are stored on Nostr, a decentralized network you control\u2014no accounts needed.</p>
       <ul>
@@ -23519,15 +25161,16 @@ ${url}`;
         <li>Works with a browser extension like <a href="https://getalby.com" target="_blank" rel="noopener noreferrer">Alby</a> or nos2x</li>
       </ul>
     </div>
-  `;
+  `);
     dialogComponent.showModal();
   };
 
   // src/nostr-like-button/nostr-like.ts
-  init_utils7();
+  init_utils8();
 
   // src/nostr-like-button/like-utils.ts
   init_esm2();
+  init_utils7();
   init_nostr_login_service();
   init_relay_transport();
 
@@ -23573,6 +25216,12 @@ ${url}`;
   }
 
   // src/nostr-like-button/like-utils.ts
+  async function fetchCachedLikeStateForUrl(url, relays) {
+    const transport2 = getRelayTransport();
+    if (!transport2?.getCachedLikeState) return null;
+    const state = await transport2.getCachedLikeState(relays, normalizeURL2(url));
+    return state.found ? state.isLiked : null;
+  }
   async function fetchLikesForUrl(url, relays) {
     const normalizedUrl = normalizeURL2(url);
     const pool = new SimplePool();
@@ -23583,8 +25232,17 @@ ${url}`;
         "#i": [normalizedUrl],
         limit: 1e3
       };
-      const transport = getRelayTransport();
-      const events = transport ? await transport.query(relays, filter) : await pool.querySync(relays, filter);
+      const transport2 = getRelayTransport();
+      if (transport2?.getLikeState) {
+        const state = await transport2.getLikeState(relays, normalizedUrl);
+        return {
+          ...state,
+          // The extension deliberately keeps liker pubkeys out of MAIN-world
+          // state responses. Compact host actions do not open the likers dialog.
+          likeDetails: []
+        };
+      }
+      const events = transport2 ? await transport2.query(relays, filter) : await pool.querySync(relays, filter);
       return netLikesByPubkey(events);
     } catch (error) {
       throw error instanceof Error ? error : new Error(String(error));
@@ -23620,8 +25278,8 @@ ${url}`;
         "#i": [normalizedUrl],
         limit: 1
       };
-      const transport = getRelayTransport();
-      const events = transport ? await transport.query(relays, filter) : await pool.querySync(relays, filter);
+      const transport2 = getRelayTransport();
+      const events = transport2 ? await transport2.query(relays, filter) : await pool.querySync(relays, filter);
       if (events.length === 0) return false;
       const latest = events[0];
       return latest.content === "+" || latest.content === "";
@@ -23633,9 +25291,9 @@ ${url}`;
     }
   }
   async function publishSignedReaction(event, relays, publishWithNdk) {
-    const transport = getRelayTransport();
-    if (transport) {
-      await transport.publish(relays, event);
+    const transport2 = getRelayTransport();
+    if (transport2) {
+      await transport2.publish(relays, event);
       return;
     }
     await publishWithNdk();
@@ -23818,6 +25476,7 @@ ${url}`;
   }
 
   // src/common/auth-onboarding.ts
+  init_trusted_html();
   var QUICK_SETUP_URL = "https://nstart.me/";
   var SIGNER_INSTALL_URL = "https://getalby.com/";
   var WNJ_SESSION_STORAGE_KEY = "wnj:bunkerPointer";
@@ -23953,7 +25612,7 @@ ${url}`;
       );
       dialogComponent.setAttribute("header", "Start with Nostr in seconds");
       dialogComponent.setAttribute("data-theme", theme);
-      dialogComponent.innerHTML = `
+      setTrustedInnerHTML(dialogComponent, `
       <div class="auth-onboarding">
         <section class="auth-onboarding-hero">
           <div class="auth-onboarding-eyebrow">${content.eyebrow}</div>
@@ -23982,7 +25641,7 @@ ${url}`;
 
         <div class="auth-onboarding-status" aria-live="polite"></div>
       </div>
-    `;
+    `);
       dialogComponent.showModal();
       const dialog = dialogComponent.getDialogElement();
       if (!dialog) {
@@ -24047,6 +25706,8 @@ ${url}`;
 
   // src/nostr-like-button/nostr-like.ts
   init_relay_transport();
+  init_utils7();
+  init_trusted_html();
 
   // src/nostr-like-button/optimistic-state.ts
   function clampLikeCount(nextCount) {
@@ -24196,9 +25857,25 @@ ${url}`;
         this.currentUrl = normalizeURL2(this.getAttribute("url") || window.location.href);
         this.likeListStatus.set(1 /* Loading */);
         this.render();
+        try {
+          const cachedIsLiked = await fetchCachedLikeStateForUrl(
+            this.currentUrl,
+            this.getRelays()
+          );
+          if (seq !== this.loadSeq) return;
+          if (cachedIsLiked !== null) {
+            this.isLiked = cachedIsLiked;
+            this.render();
+          }
+        } catch (cacheError) {
+          console.warn("[NostrLike] Failed to restore cached like state:", cacheError);
+        }
         const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
         if (seq !== this.loadSeq) return;
         this.likeCount = clampLikeCount(result.totalCount);
+        if (typeof result.isLiked === "boolean") {
+          this.isLiked = result.isLiked;
+        }
         this.cachedLikeDetails = result;
         this.likeListStatus.set(2 /* Ready */);
       } catch (error) {
@@ -24457,14 +26134,1998 @@ ${url}`;
         theme: this.theme,
         compact
       };
-      this.shadowRoot.innerHTML = `
+      setTrustedInnerHTML(this.shadowRoot, `
       ${getLikeButtonStyles()}
       ${renderLikeButton(renderOptions)}
-    `;
+    `);
     }
   };
   if (!customElements.get("nostr-like-button")) {
     customElements.define("nostr-like-button", NostrLike);
+  }
+
+  // src/base/resolvers/user-resolver.ts
+  init_utils8();
+  var UserResolver = class {
+    constructor(nostrService) {
+      this.nostrService = nostrService;
+    }
+    validateInputs({ npub: npub2, pubkey, nip05 }) {
+      if (!npub2 && !pubkey && !nip05) {
+        return "Provide npub, nip05 or pubkey attribute";
+      }
+      if (pubkey && !isValidHex(pubkey)) return `Invalid Pubkey: ${pubkey}`;
+      if (nip05 && !validateNip05(nip05)) return `Invalid Nip05: ${nip05}`;
+      if (npub2 && !validateNpub(npub2)) return `Invalid Npub: ${npub2}`;
+      return null;
+    }
+    async resolveUser({
+      npub: npub2,
+      pubkey,
+      nip05,
+      relays
+    }) {
+      const user = await this.nostrService.resolveNDKUser({ npub: npub2, pubkey, nip05 });
+      if (!user) throw new Error("Unable to resolve user from provided identifier");
+      const profile = await this.nostrService.getProfile(user, relays);
+      return { user, profile: profile ?? null };
+    }
+  };
+
+  // src/base/user-component/nostr-user-component.ts
+  var EVT_USER = "nc:user";
+  var NostrUserComponent = class extends NostrBaseComponent {
+    user = null;
+    profile = null;
+    userStatus = this.channel("user");
+    // guard to ignore stale user fetches
+    loadSeq = 0;
+    resolver = new UserResolver(this.nostrService);
+    constructor(shadow = true) {
+      super(shadow);
+    }
+    /** Lifecycle methods */
+    static get observedAttributes() {
+      return [
+        ...super.observedAttributes,
+        "npub",
+        "pubkey",
+        "nip05"
+      ];
+    }
+    connectedCallback() {
+      super.connectedCallback?.();
+      if (this.userStatus.get() == 0 /* Idle */) {
+        this.initChannelStatus("user", 1 /* Loading */, { reflectOverall: false });
+      }
+      if (this.validateInputs()) {
+        this.resolveUserAndProfile().catch((e) => {
+          console.error("[NostrUserComponent] init failed:", e);
+        });
+      }
+    }
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (oldValue === newValue) return;
+      super.attributeChangedCallback?.(name, oldValue, newValue);
+      if (name === "npub" || name === "nip05" || name === "pubkey") {
+        if (this.validateInputs()) {
+          void this.resolveUserAndProfile();
+        }
+      }
+    }
+    /** Protected methods */
+    validateInputs() {
+      if (!super.validateInputs()) {
+        this.userStatus.set(0 /* Idle */);
+        return false;
+      }
+      const npub2 = this.getAttribute("npub");
+      const pubkey = this.getAttribute("pubkey");
+      const nip05 = this.getAttribute("nip05");
+      const tagName = this.tagName.toLowerCase();
+      const err = this.resolver.validateInputs({
+        npub: npub2,
+        pubkey,
+        nip05
+      });
+      if (err) {
+        this.userStatus.set(3 /* Error */, err);
+        console.error(`Nostr-Components: ${tagName}: ${err}`);
+        return false;
+      }
+      this.errorMessage = "";
+      return true;
+    }
+    async resolveUserAndProfile() {
+      const seq = ++this.loadSeq;
+      try {
+        await this.ensureNostrConnected();
+      } catch (e) {
+        if (seq !== this.loadSeq) return;
+        console.error("[NostrUserComponent] Relay connect failed before user/profile load:", e);
+        return;
+      }
+      this.userStatus.set(1 /* Loading */);
+      try {
+        const { user, profile } = await this.resolver.resolveUser({
+          npub: this.getAttribute("npub"),
+          pubkey: this.getAttribute("pubkey"),
+          nip05: this.getAttribute("nip05"),
+          relays: this.getRelays()
+        });
+        if (seq !== this.loadSeq) return;
+        if (profile == null) {
+          this.userStatus.set(3 /* Error */, "Profile not found");
+          return;
+        }
+        this.user = user;
+        this.profile = profile;
+        this.userStatus.set(2 /* Ready */);
+        this.dispatchEvent(new CustomEvent(EVT_USER, {
+          detail: { user: this.user, profile: this.profile },
+          bubbles: true,
+          composed: true
+        }));
+        this.onUserReady(this.user, this.profile);
+      } catch (err) {
+        if (seq !== this.loadSeq) return;
+        const msg = err instanceof Error ? err.message : "Failed to load user/profile";
+        console.error("[NostrUserComponent] " + msg, err);
+        this.userStatus.set(3 /* Error */, msg);
+      }
+    }
+    renderContent() {
+    }
+    /** Hook for subclasses to react when user/profile are ready (e.g., render). */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onUserReady(_user, _profile) {
+    }
+  };
+
+  // src/nostr-zap-button/dialog-zap.ts
+  init_dialog_component();
+
+  // src/nostr-zap-button/dialog-zap-style.ts
+  var getDialogStyles = (theme = "light") => {
+    const isDark = theme === "dark";
+    return `
+    /* === ZAP DIALOG CONTENT STYLES === */
+    .zap-dialog-content {
+      text-align: center;
+      color: ${isDark ? "#ffffff" : "#000000"};
+    }
+
+    .zap-dialog-content p {
+      margin: 4px 0;
+      word-break: break-word;
+    }
+
+    /* === AMOUNT BUTTONS === */
+    .zap-dialog-content .amount-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0 8px;
+    }
+
+    .zap-dialog-content .amount-buttons button {
+      flex: 1 1 30%;
+      min-width: 72px;
+      padding: 8px 0;
+      border: 1px solid ${isDark ? "#3a3a3a" : "#e2e8f0"};
+      border-radius: 6px;
+      background: ${isDark ? "#262626" : "#f7fafc"};
+      cursor: pointer;
+      font-size: 14px;
+      color: ${isDark ? "#ffffff" : "#000000"};
+    }
+
+    .zap-dialog-content .amount-buttons button.active {
+      background: #7f00ff;
+      color: #ffffff;
+    }
+
+    /* === ACTION BUTTONS === */
+    .zap-dialog-content .cta-btn {
+      width: 100%;
+      padding: 12px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      margin-top: 16px;
+      cursor: pointer;
+      background: #7f00ff;
+      color: #ffffff;
+    }
+
+    .zap-dialog-content .copy-btn {
+      margin-top: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      background: none;
+      border: none;
+      color: #7f00ff;
+    }
+
+    .zap-dialog-content .update-zap-btn {
+      background: #7f00ff;
+      color: #ffffff;
+    }
+
+    /* === QR CODE === */
+    .zap-dialog-content img.qr {
+      margin-top: 16px;
+      border: 1px solid ${isDark ? "#3a3a3a" : "#e2e8f0"};
+      border-radius: 8px;
+    }
+
+    /* === INPUT CONTAINERS === */
+    .zap-dialog-content .update-zap-container {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .zap-dialog-content .update-zap-container .custom-amount {
+      flex-grow: 1;
+    }
+
+    .zap-dialog-content .comment-container {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .zap-dialog-content .comment-container .comment-input {
+      flex-grow: 1;
+    }
+
+    .zap-dialog-content input {
+      background: ${isDark ? "#262626" : "#ffffff"};
+      border: 1px solid ${isDark ? "#3a3a3a" : "#e2e8f0"};
+      color: ${isDark ? "#ffffff" : "#000000"};
+    }
+
+    /* === LOADING OVERLAY === */
+    .nostr-base-dialog .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: ${isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(255, 255, 255, 0.7)"};
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 10px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .nostr-base-dialog.loading .loading-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .nostr-base-dialog .loading-overlay .loader {
+      width: 40px;
+      height: 40px;
+      border: 4px solid ${isDark ? "#3a3a3a" : "#ccc"};
+      border-top-color: #7f00ff;
+      border-radius: 50%;
+      animation: nstrc-spin 1s linear infinite;
+    }
+
+    /* === SUCCESS OVERLAY === */
+    .nostr-base-dialog .success-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #ffffff;
+      font-size: 24px;
+      border-radius: 10px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .nostr-base-dialog.success .success-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* === ANIMATIONS === */
+    @keyframes nstrc-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  `;
+  };
+
+  // src/nostr-zap-button/dialog-zap.ts
+  init_utils8();
+  init_trusted_html();
+  init_zap_utils();
+  var QRCode = __toESM(require_browser2(), 1);
+  var injectCSS = (theme = "light") => {
+    const existingStyles = document.querySelectorAll("style[data-zap-dialog-styles]");
+    existingStyles.forEach((style2) => style2.remove());
+    const style = document.createElement("style");
+    style.setAttribute("data-zap-dialog-styles", "true");
+    style.textContent = getDialogStyles(theme);
+    document.head.appendChild(style);
+  };
+  async function init(params) {
+    const { npub: npub2, relays, cachedDialogComponent, buttonColor, fixedAmount, defaultAmount, initialAmount, url } = params;
+    const npubHex = decodeNpub(npub2);
+    if (!customElements.get("dialog-component")) {
+      await customElements.whenDefined("dialog-component");
+    }
+    if (cachedDialogComponent) {
+      const cachedDialog = document.querySelector(".nostr-base-dialog");
+      if (cachedDialog) {
+        cachedDialog.classList.remove("success");
+        const controls = cachedDialog.querySelectorAll(".amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn");
+        controls.forEach((el) => {
+          if (el instanceof HTMLElement) el.style.display = "";
+        });
+        const updateZapBtn2 = cachedDialog.querySelector(".update-zap-btn");
+        if (updateZapBtn2) updateZapBtn2.style.display = "";
+        const successOverlay = cachedDialog.querySelector(".success-overlay");
+        if (successOverlay) {
+          successOverlay.style.opacity = "0";
+          successOverlay.style.pointerEvents = "none";
+        }
+        void refreshUI(cachedDialog);
+        cachedDialogComponent.showModal();
+        return cachedDialogComponent;
+      }
+    }
+    const presets = [21, 100, 1e3];
+    let selectedAmount;
+    if (typeof fixedAmount === "number" && fixedAmount > 0) {
+      selectedAmount = fixedAmount;
+    } else if (typeof defaultAmount === "number" && defaultAmount > 0) {
+      selectedAmount = defaultAmount;
+    } else if (typeof initialAmount === "number" && initialAmount > 0) {
+      selectedAmount = initialAmount;
+    } else {
+      selectedAmount = presets[0];
+    }
+    let customComment = "";
+    let currentInvoice = "";
+    let cleanupReceipt = null;
+    async function loadInvoice(amountSats, comment) {
+      const authorId = npubHex;
+      const relaysArray = relays.split(",").map((r) => r.trim()).filter(Boolean);
+      const meta = await getProfileMetadata(authorId, relaysArray);
+      if (!meta) {
+        throw new Error("Profile not found. The user may not have a profile set up on the relays.");
+      }
+      const provider = await getZapProviderInfo(meta);
+      if (!provider) {
+        throw new Error("Zap endpoint not found. The user may not have a Lightning address configured.");
+      }
+      const invoice = await fetchInvoice({
+        zapEndpoint: provider.callback,
+        amount: amountSats * 1e3,
+        // -> msats
+        comment,
+        authorId,
+        normalizedRelays: relaysArray,
+        anon: params.anon ?? false,
+        url
+      });
+      currentInvoice = invoice;
+      if (cleanupReceipt) cleanupReceipt();
+      cleanupReceipt = listenForZapReceipt({
+        relays: relaysArray,
+        receiversPubKey: npubHex,
+        invoice,
+        provider,
+        onSuccess: markSuccess
+      });
+    }
+    async function qrImgSrc(invoice) {
+      if (!invoice || invoice.trim().length === 0) {
+        console.error("Empty invoice provided to QR code generator");
+        throw new Error("Invoice is empty");
+      }
+      try {
+        const dataUrl = await QRCode.toDataURL(invoice, {
+          width: 240,
+          margin: 1,
+          color: {
+            dark: "#000000",
+            light: "#ffffff"
+          }
+        });
+        if (!dataUrl || !dataUrl.startsWith("data:image")) {
+          throw new Error("Invalid QR code data URL generated");
+        }
+        return dataUrl;
+      } catch (error) {
+        console.error("Failed to generate QR code:", error);
+        const escapedInvoice = invoice.substring(0, 20).replace(/[<>]/g, "");
+        return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 100 100">
+        <rect width="100%" height="100%" fill="white"/>
+        <text x="50%" y="50%" font-family="monospace" font-size="10" text-anchor="middle" dominant-baseline="middle" fill="black">
+          Invoice: ${escapedInvoice}...
+        </text>
+      </svg>`;
+      }
+    }
+    function setActiveAmountButtons(container, amt) {
+      container.querySelectorAll("button").forEach((btn) => {
+        if (btn.dataset["val"] === String(amt)) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+    }
+    async function refreshUI(dialog2) {
+      dialog2.classList.add("loading");
+      try {
+        await loadInvoice(selectedAmount, customComment);
+        const dialogContent = dialog2.querySelector(".dialog-content");
+        const qrImg = (dialogContent || dialog2).querySelector("img.qr");
+        if (!qrImg) {
+          console.error("QR image element not found in dialog");
+          return;
+        }
+        if (!currentInvoice || currentInvoice.trim().length === 0) {
+          console.error("Invoice is empty, cannot generate QR code");
+          qrImg.alt = "No invoice available";
+          qrImg.style.display = "none";
+          return;
+        }
+        try {
+          const src = await qrImgSrc(currentInvoice);
+          qrImg.src = src;
+          qrImg.style.display = "block";
+          qrImg.onerror = () => {
+            console.error("Failed to load QR code image");
+            qrImg.alt = "QR code failed to load";
+            qrImg.style.display = "none";
+          };
+        } catch (error) {
+          console.error("Failed to generate QR code:", error);
+          qrImg.alt = "QR code generation failed";
+          qrImg.style.display = "none";
+        }
+        const payBtn = dialog2.querySelector(".cta-btn");
+        if (payBtn) {
+          payBtn.disabled = false;
+        }
+      } catch (error) {
+        console.error("Failed to load invoice:", error);
+        const dialogContent = dialog2.querySelector(".dialog-content");
+        if (dialogContent) {
+          const errorMsg = error?.message || "Failed to load invoice";
+          const existingError = dialogContent.querySelector(".zap-error-message");
+          if (existingError) {
+            existingError.textContent = errorMsg;
+          } else {
+            const errorDiv = document.createElement("div");
+            errorDiv.className = "zap-error-message";
+            errorDiv.style.cssText = "color: #dc3545; padding: 12px; margin: 16px 0; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px;";
+            errorDiv.textContent = errorMsg;
+            const qrImg2 = dialogContent.querySelector("img.qr");
+            if (qrImg2 && qrImg2.parentNode) {
+              qrImg2.parentNode.insertBefore(errorDiv, qrImg2);
+            } else {
+              dialogContent.insertBefore(errorDiv, dialogContent.firstChild);
+            }
+          }
+        }
+        const qrImg = dialog2.querySelector("img.qr");
+        if (qrImg) {
+          qrImg.style.display = "none";
+        }
+        const payBtn = dialog2.querySelector(".cta-btn");
+        if (payBtn) {
+          payBtn.disabled = true;
+        }
+      } finally {
+        dialog2.classList.remove("loading");
+      }
+    }
+    injectCSS(params.theme || "light");
+    const dialogComponent = document.createElement("dialog-component");
+    dialogComponent.setAttribute("header", "Send a Zap");
+    if (params.theme) {
+      dialogComponent.setAttribute("data-theme", params.theme);
+    }
+    const amountButtonsHtml = presets.map((a) => `<button type="button" data-val="${a}">${a} \u26A1</button>`).join("");
+    const hideAmountUI = typeof fixedAmount === "number" && fixedAmount > 0;
+    setTrustedInnerHTML(dialogComponent, `
+      <div class="zap-dialog-content">
+        ${hideAmountUI ? "" : `<div class="amount-buttons">${amountButtonsHtml}</div>`}
+        ${hideAmountUI ? `<p class="zapping-amount">Zapping ${fixedAmount} sats</p>` : ""}
+        ${hideAmountUI ? "" : `<div class="update-zap-container">
+          <input type="number" min="1" placeholder="Custom sats" class="custom-amount" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
+          <button type="button" class="update-zap-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Update Zap</button>
+        </div>`}
+        ${hideAmountUI ? "" : `<div class="comment-container">
+          <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
+          <button type="button" class="add-comment-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Add</button>
+        </div>`}
+        <img class="qr" width="240" height="240" alt="QR Code" style="cursor:pointer;display:block;margin:0 auto;" />
+        <br />
+        <button type="button" class="copy-btn">Copy invoice</button>
+        <button type="button" class="cta-btn" disabled>Open in wallet</button>
+        <div class="loading-overlay"><div class="loader"></div></div>
+        <div class="success-overlay">\u26A1 Thank you!</div>
+      </div>
+  `);
+    dialogComponent.showModal();
+    const dialogElement = dialogComponent.querySelector(".nostr-base-dialog") || dialogComponent.shadowRoot?.querySelector(".nostr-base-dialog") || document.body.querySelector(".nostr-base-dialog");
+    if (!dialogElement) {
+      console.error("[showZapDialog] Failed to find dialog element after showModal()");
+      throw new Error("Dialog element not found. The dialog may not have been created properly.");
+    }
+    const dialog = dialogElement;
+    const amountContainer = dialog.querySelector(".amount-buttons");
+    if (amountContainer)
+      amountContainer.addEventListener("click", async (e) => {
+        const target = e.target;
+        if (target.tagName === "BUTTON") {
+          const val = Number(target.dataset["val"]);
+          if (!isNaN(val)) {
+            selectedAmount = val;
+            setActiveAmountButtons(amountContainer, val);
+            const payBtn = dialog.querySelector(".cta-btn");
+            payBtn.disabled = true;
+            await refreshUI(dialog);
+          }
+        }
+      });
+    const customAmountInput = dialog.querySelector(".custom-amount");
+    if (customAmountInput) customAmountInput.addEventListener("input", async (e) => {
+      const val = Number(e.target.value);
+      if (val > 0) {
+        selectedAmount = val;
+        if (amountContainer) setActiveAmountButtons(amountContainer, -1);
+        const payBtn = dialog.querySelector(".cta-btn");
+        payBtn.disabled = true;
+      }
+    });
+    const commentInput = dialog.querySelector(".comment-input");
+    if (commentInput) commentInput.addEventListener("input", (e) => {
+      customComment = e.target.value.slice(0, 200);
+    });
+    const copyInvoice = async () => {
+      if (!currentInvoice) return;
+      await navigator.clipboard.writeText(currentInvoice);
+      dialog.querySelector(".copy-btn").textContent = "Copied!";
+      setTimeout(() => {
+        dialog.querySelector(".copy-btn").textContent = "Copy invoice";
+      }, 1500);
+    };
+    dialog.querySelector(".copy-btn").onclick = copyInvoice;
+    dialog.querySelector("img.qr").onclick = copyInvoice;
+    const updateZapBtn = dialog.querySelector(".update-zap-btn");
+    if (updateZapBtn) updateZapBtn.addEventListener("click", async () => {
+      const val = Number(customAmountInput?.value);
+      if (!isNaN(val) && val > 0) {
+        selectedAmount = val;
+        updateZapBtn.disabled = true;
+        await refreshUI(dialog);
+        updateZapBtn.disabled = false;
+      }
+    });
+    const addCommentBtn = dialog.querySelector(".add-comment-btn");
+    if (addCommentBtn) addCommentBtn.addEventListener("click", async () => {
+      addCommentBtn.disabled = true;
+      await refreshUI(dialog);
+      addCommentBtn.disabled = false;
+    });
+    dialog.querySelector(".cta-btn").onclick = async () => {
+      if (!currentInvoice) return;
+      if (window.webln) {
+        try {
+          await window.webln.enable();
+          await window.webln.sendPayment(currentInvoice);
+          markSuccess();
+          return;
+        } catch (e) {
+          console.error("Nostr-Components: Zap button: webln payment failed", e);
+          dialog.close();
+        }
+      }
+      window.location.href = `lightning:${currentInvoice}`;
+    };
+    function markSuccess() {
+      dialog.classList.add("success");
+      const overlay = dialog.querySelector(".success-overlay");
+      overlay.style.opacity = "1";
+      overlay.style.pointerEvents = "none";
+      const controls = dialog.querySelectorAll(".amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn");
+      controls.forEach((el) => {
+        if (el instanceof HTMLElement) el.style.display = "none";
+      });
+    }
+    dialog.addEventListener("close", () => {
+      if (cleanupReceipt) cleanupReceipt();
+    });
+    if (buttonColor) {
+      const btnColor = buttonColor;
+      dialog.querySelector(".cta-btn").style.background = btnColor;
+      dialog.querySelector(".cta-btn").style.color = getContrastingTextColor(btnColor);
+    }
+    await refreshUI(dialog);
+    if (amountContainer && presets.includes(selectedAmount)) {
+      setActiveAmountButtons(amountContainer, selectedAmount);
+    } else if (!hideAmountUI) {
+      const input = dialog.querySelector(".custom-amount");
+      if (input) input.value = String(selectedAmount);
+      if (amountContainer) setActiveAmountButtons(amountContainer, -1);
+    }
+    return dialogComponent;
+  }
+  function getContrastingTextColor(hex2) {
+    hex2 = hex2.replace("#", "");
+    if (hex2.length === 3) {
+      hex2 = hex2.split("").map((ch) => ch + ch).join("");
+    }
+    const r = parseInt(hex2.slice(0, 2), 16);
+    const g = parseInt(hex2.slice(2, 4), 16);
+    const b = parseInt(hex2.slice(4, 6), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1e3;
+    return brightness > 125 ? "#000" : "#fff";
+  }
+
+  // src/nostr-zap-button/dialog-help.ts
+  init_dialog_component();
+
+  // src/nostr-zap-button/dialog-help-style.ts
+  var getHelpDialogStyles2 = () => {
+    return `
+    /* Help Dialog Content Styles */
+    .help-content {
+      padding: var(--nostrc-spacing-md, 12px);
+    }
+
+    .help-content p {
+      margin: 0 0 var(--nostrc-spacing-md, 12px) 0;
+      color: var(--nostrc-theme-text-primary, #333333);
+      line-height: 1.5;
+    }
+
+    .help-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .help-content ul {
+      margin: 0 0 var(--nostrc-spacing-md, 12px) 0;
+      padding-left: var(--nostrc-spacing-lg, 16px);
+      color: var(--nostrc-theme-text-primary, #333333);
+    }
+
+    .help-content li {
+      margin-bottom: var(--nostrc-spacing-xs, 4px);
+      line-height: 1.5;
+    }
+
+    .help-content li:last-child {
+      margin-bottom: 0;
+    }
+
+    .help-content strong {
+      font-weight: 600;
+      color: var(--nostrc-theme-text-primary, #333333);
+    }
+
+    .help-content a:not(.youtube-link) {
+      color: var(--nostrc-theme-primary, #0066cc);
+      text-decoration: underline;
+    }
+
+    .help-content a:not(.youtube-link):hover {
+      color: var(--nostrc-theme-primary-hover, #0052a3);
+    }
+
+    .youtube-link {
+      display: inline-block;
+      background: var(--nostrc-color-primary, #7f00ff);
+      color: var(--nostrc-color-text-on-primary, #ffffff);
+      padding: var(--nostrc-spacing-sm, 8px) var(--nostrc-spacing-md, 12px);
+      border-radius: var(--nostrc-border-radius-md, 6px);
+      text-decoration: none;
+      font-weight: var(--nostrc-font-weight-medium, 500);
+      margin-top: var(--nostrc-spacing-md, 12px);
+      transition: background-color 0.2s ease;
+    }
+
+    .youtube-link:hover {
+      background: var(--nostrc-color-primary-hover, #6b00d9);
+    }
+  `;
+  };
+
+  // src/nostr-zap-button/dialog-help.ts
+  init_trusted_html();
+  var YOUTUBE_URL = "https://www.youtube.com/shorts/PDnrh8pkF3g";
+  var injectHelpDialogStyles2 = () => {
+    if (document.querySelector("style[data-help-dialog-styles]")) return;
+    const style = document.createElement("style");
+    style.setAttribute("data-help-dialog-styles", "true");
+    style.textContent = getHelpDialogStyles2();
+    document.head.appendChild(style);
+  };
+  var showHelpDialog2 = async (theme) => {
+    injectHelpDialogStyles2();
+    if (!customElements.get("dialog-component")) {
+      await customElements.whenDefined("dialog-component");
+    }
+    const dialogComponent = document.createElement("dialog-component");
+    dialogComponent.setAttribute("header", "What is a Zap?");
+    if (theme) {
+      dialogComponent.setAttribute("data-theme", theme);
+    }
+    setTrustedInnerHTML(dialogComponent, `
+    <div class="help-content">
+      <p>Send instant tips to support content creators! Zaps are small Bitcoin Lightning payments that go directly to creators\u2014no middleman.</p>
+      <ul>
+        <li>Send any amount instantly</li>
+        <li>Money goes straight to the creator</li>
+        <li>Powered by Bitcoin Lightning Network</li>
+      </ul>
+      <p><strong>How it works:</strong> Click zap, choose amount, scan QR code with a Lightning wallet, done!</p>
+      <a href="${YOUTUBE_URL}" target="_blank" rel="noopener noreferrer" class="youtube-link">
+        Watch Tutorial
+      </a>
+    </div>
+  `);
+    dialogComponent.showModal();
+  };
+
+  // src/nostr-zap-button/dialog-zappers.ts
+  init_dialog_component();
+
+  // src/nostr-zap-button/dialog-zappers-style.ts
+  function getZappersDialogStyles(theme = "light") {
+    const isDark = theme === "dark";
+    const customStyles = `
+    /* === ZAPPERS DIALOG CONTENT STYLES === */
+    .zappers-dialog-content {
+      overflow: hidden;
+    }
+
+    .zappers-list {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    /* Individual zap entry */
+    .zap-entry {
+      padding: var(--nostrc-spacing-md, 16px);
+      border-bottom: 1px solid ${isDark ? "#333333" : "#f3f4f6"};
+      transition: background-color 0.2s ease;
+    }
+
+    .zap-entry:last-child {
+      border-bottom: none;
+    }
+
+    .zap-entry:hover {
+      background: ${isDark ? "#2a2a2a" : "#f9fafb"};
+    }
+
+    .zap-author-info {
+      display: flex;
+      align-items: center;
+      gap: var(--nostrc-spacing-md, 16px);
+    }
+
+    .zap-author-picture {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--nostrc-border-radius-full, 50%);
+      object-fit: cover;
+      border: 2px solid ${isDark ? "#374151" : "#e5e7eb"};
+    }
+
+    .zap-author-picture-default {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--nostrc-border-radius-full, 50%);
+      background: ${isDark ? "#374151" : "#f3f4f6"};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--nostrc-font-size-lg, 18px);
+      color: ${isDark ? "#9ca3af" : "#6b7280"};
+      border: 2px solid ${isDark ? "#4b5563" : "#d1d5db"};
+    }
+
+    .zap-author-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .zap-author-link {
+      display: block;
+      font-weight: 500;
+      color: ${isDark ? "#ffffff" : "#1a1a1a"};
+      text-decoration: none;
+      font-size: var(--nostrc-font-size-base, 16px);
+      margin-bottom: var(--nostrc-spacing-xs, 4px);
+      transition: color 0.2s ease;
+    }
+
+    .zap-author-link:hover {
+      color: var(--nostrc-color-primary, #7f00ff);
+    }
+
+    .zap-comment {
+      font-size: var(--nostrc-font-size-sm, 14px);
+      color: ${isDark ? "#d1d5db" : "#4b5563"};
+      margin: var(--nostrc-spacing-xs, 4px) 0;
+      line-height: 1.4;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .zap-amount-date {
+      font-size: var(--nostrc-font-size-sm, 14px);
+      color: ${isDark ? "#9ca3af" : "#6b7280"};
+      display: flex;
+      align-items: center;
+      gap: var(--nostrc-spacing-xs, 4px);
+    }
+
+    /* Loading skeleton with npub */
+    .skeleton-entry {
+      display: flex;
+      align-items: center;
+      gap: var(--nostrc-spacing-md, 16px);
+      padding: var(--nostrc-spacing-md, 16px);
+      border-bottom: 1px solid ${isDark ? "#333333" : "#f3f4f6"};
+    }
+
+    .skeleton-entry:last-child {
+      border-bottom: none;
+    }
+
+    .skeleton-picture {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--nostrc-border-radius-full, 50%);
+      background: linear-gradient(90deg,
+        ${isDark ? "#374151" : "#f0f0f0"} 25%,
+        ${isDark ? "#4b5563" : "#e0e0e0"} 50%,
+        ${isDark ? "#374151" : "#f0f0f0"} 75%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+    }
+
+    .skeleton-name {
+      font-size: var(--nostrc-font-size-base, 16px);
+      font-weight: 500;
+      color: ${isDark ? "#9ca3af" : "#6b7280"};
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+      word-break: break-all;
+      line-height: 1.2;
+    }
+
+    @keyframes skeleton-loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* Empty state */
+    .no-zaps {
+      text-align: center;
+      padding: var(--nostrc-spacing-xl, 32px);
+      color: ${isDark ? "#9ca3af" : "#6b7280"};
+      font-size: var(--nostrc-font-size-base, 16px);
+    }
+
+    /* Responsive design */
+    @media (max-width: 640px) {
+      .zap-author-picture,
+      .zap-author-picture-default,
+      .skeleton-picture {
+        width: 36px;
+        height: 36px;
+      }
+
+      .zap-author-link {
+        font-size: var(--nostrc-font-size-sm, 14px);
+      }
+
+      .zap-amount-date {
+        font-size: var(--nostrc-font-size-xs, 12px);
+      }
+    }
+
+    /* Scrollbar styling */
+    .zappers-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .zappers-list::-webkit-scrollbar-track {
+      background: ${isDark ? "#2a2a2a" : "#f1f5f9"};
+      border-radius: 3px;
+    }
+
+    .zappers-list::-webkit-scrollbar-thumb {
+      background: ${isDark ? "#4b5563" : "#cbd5e1"};
+      border-radius: 3px;
+    }
+
+    .zappers-list::-webkit-scrollbar-thumb:hover {
+      background: ${isDark ? "#6b7280" : "#94a3b8"};
+    }
+  `;
+    return getComponentStyles(customStyles);
+  }
+
+  // src/nostr-zap-button/dialog-zappers.ts
+  init_zap_utils();
+  init_utils8();
+
+  // src/nostr-zap-button/render-zap-entry.ts
+  init_utils8();
+  init_sanitize();
+  function renderZapEntry(zap, index) {
+    const authorNameSafe = escapeHtml(zap.authorName || "Unknown zapper");
+    const npubSafe = validateNpub(zap.authorNpub || "") ? zap.authorNpub : "";
+    const njumpUrl = npubSafe ? sanitizeHttpUrl(`https://njump.me/${npubSafe}`) : "";
+    const profilePictureSafe = sanitizeHttpUrl(zap.authorPicture);
+    const authorPubkeySafe = escapeHtml(zap.authorPubkey);
+    const profilePicture = profilePictureSafe ? `<img src="${profilePictureSafe}" alt="${authorNameSafe}" class="zap-author-picture" />` : `<div class="zap-author-picture-default">\u{1F464}</div>`;
+    const commentHtml = zap.comment ? `<div class="zap-comment">${sanitizeMultilineText(zap.comment)}</div>` : "";
+    const authorNameHtml = njumpUrl ? `<a href="${njumpUrl}" target="_blank" rel="noopener noreferrer" class="zap-author-link">
+            ${authorNameSafe}
+          </a>` : `<span class="zap-author-link">${authorNameSafe}</span>`;
+    return `
+    <div class="zap-entry" data-zap-index="${index}" data-author-pubkey="${authorPubkeySafe}">
+      <div class="zap-author-info">
+        ${profilePicture}
+        <div class="zap-author-details">
+          ${authorNameHtml}
+          ${commentHtml}
+          <div class="zap-amount-date">
+            ${zap.amount.toLocaleString()} \u26A1 \u2022 ${formatRelativeTime(Math.floor(zap.date.getTime() / 1e3))}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  }
+
+  // src/nostr-zap-button/dialog-zappers.ts
+  init_trusted_html();
+  var injectZappersDialogStyles = (theme = "light") => {
+    const existingStyles = document.querySelectorAll(
+      "style[data-zappers-dialog-styles]"
+    );
+    existingStyles.forEach((style2) => style2.remove());
+    const style = document.createElement("style");
+    style.setAttribute("data-zappers-dialog-styles", "true");
+    style.textContent = getZappersDialogStyles(theme);
+    document.head.appendChild(style);
+  };
+  function renderSkeletonZapEntry(zap, npub2, index) {
+    return `
+    <div class="zap-entry skeleton-entry" data-zap-index="${index}" data-author-pubkey="${escapeHtml(zap.authorPubkey)}">
+      <div class="zap-author-info">
+        <div class="skeleton-picture"></div>
+        <div class="zap-author-details">
+          <div class="zap-author-link skeleton-name">
+            ${escapeHtml(npub2)}
+          </div>
+          <div class="zap-amount-date">
+            ${zap.amount.toLocaleString()} \u26A1 \u2022 ${formatRelativeTime(Math.floor(zap.date.getTime() / 1e3))}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  }
+  async function openZappersDialog(params) {
+    const { zapDetails, theme = "light", relays } = params;
+    injectZappersDialogStyles(theme);
+    if (!customElements.get("dialog-component")) {
+      await customElements.whenDefined("dialog-component");
+    }
+    const dialogComponent = document.createElement(
+      "dialog-component"
+    );
+    dialogComponent.setAttribute("header", "Zappers");
+    if (params.theme) {
+      dialogComponent.setAttribute("data-theme", params.theme);
+    }
+    const initialContent = await renderInitialContent2(zapDetails);
+    setTrustedInnerHTML(dialogComponent, initialContent);
+    dialogComponent.showModal();
+    const dialogElement = dialogComponent.querySelector(".nostr-base-dialog") || dialogComponent.shadowRoot?.querySelector(".nostr-base-dialog") || document.body.querySelector(".nostr-base-dialog");
+    if (!dialogElement) {
+      console.error(
+        "[showZappersDialog] Failed to find dialog element after showModal()"
+      );
+      throw new Error(
+        "Dialog element not found. The dialog may not have been created properly."
+      );
+    }
+    const dialog = dialogElement;
+    if (dialog && zapDetails.length > 0) {
+      enhanceZapDetailsProgressively(dialog, zapDetails, relays);
+    }
+    return dialogComponent;
+  }
+  async function renderInitialContent2(zapDetails) {
+    if (zapDetails.length === 0) {
+      return `
+      <div class="zappers-dialog-content">
+        <div class="zappers-list">
+          <div class="no-zaps">No zaps received yet</div>
+        </div>
+      </div>
+    `;
+    }
+    const npubs = zapDetails.map((zap) => hexToNpub(zap.authorPubkey));
+    const skeletonEntries = zapDetails.map((zap, index) => renderSkeletonZapEntry(zap, npubs[index], index)).join("");
+    return `
+    <div class="zappers-dialog-content">
+      <div class="zappers-list">
+        ${skeletonEntries}
+      </div>
+    </div>
+  `;
+  }
+  async function enhanceZapDetailsProgressively(dialog, zapDetails, relays) {
+    const zappersList = dialog.querySelector(".zappers-list");
+    if (!zappersList) return;
+    const uniqueAuthorIds = [
+      ...new Set(zapDetails.map((zap) => zap.authorPubkey))
+    ];
+    console.log(
+      "Nostr-Components: Zappers dialog: Fetching profiles for",
+      uniqueAuthorIds.length,
+      "unique authors"
+    );
+    try {
+      const profileResults = await getBatchedProfileMetadata(
+        uniqueAuthorIds,
+        relays
+      );
+      const profileMap = /* @__PURE__ */ new Map();
+      profileResults.forEach((result) => {
+        profileMap.set(result.id, result.profile);
+      });
+      const npubMap = /* @__PURE__ */ new Map();
+      uniqueAuthorIds.forEach((pubkey) => {
+        npubMap.set(pubkey, hexToNpub(pubkey));
+      });
+      for (let index = 0; index < zapDetails.length; index++) {
+        const zap = zapDetails[index];
+        const profile = profileMap.get(zap.authorPubkey);
+        const npub2 = npubMap.get(zap.authorPubkey) || zap.authorPubkey;
+        let enhanced;
+        if (profile) {
+          const profileContent = extractProfileMetadataContent(profile);
+          enhanced = {
+            ...zap,
+            authorName: profileContent.display_name || profileContent.name || npub2,
+            authorPicture: profileContent.picture,
+            authorNpub: npub2
+          };
+        } else {
+          enhanced = {
+            ...zap,
+            authorName: npub2,
+            authorNpub: npub2
+          };
+        }
+        const skeletonEntry = zappersList.querySelector(
+          `[data-zap-index="${index}"]`
+        );
+        if (skeletonEntry) {
+          const enhancedEntry = renderZapEntry(enhanced, index);
+          setTrustedOuterHTML(skeletonEntry, enhancedEntry);
+        }
+      }
+      console.log(
+        "Nostr-Components: Zappers dialog: Progressive enhancement completed for",
+        zapDetails.length,
+        "zap entries"
+      );
+    } catch (error) {
+      console.error(
+        "Nostr-Components: Zappers dialog: Error in batched profile enhancement",
+        error
+      );
+      console.log(
+        "Nostr-Components: Zappers dialog: Falling back to individual profile fetching"
+      );
+      await enhanceZapDetailsIndividually(dialog, zapDetails, relays);
+    }
+  }
+  async function enhanceZapDetailsIndividually(dialog, zapDetails, relays) {
+    const zappersList = dialog.querySelector(".zappers-list");
+    if (!zappersList) return;
+    const profileCache2 = /* @__PURE__ */ new Map();
+    const profilePromises = zapDetails.map(async (zap, index) => {
+      if (profileCache2.has(zap.authorPubkey)) {
+        const cachedProfile = profileCache2.get(zap.authorPubkey);
+        return {
+          index,
+          enhanced: {
+            ...zap,
+            authorName: cachedProfile.authorName,
+            authorPicture: cachedProfile.authorPicture,
+            authorNpub: cachedProfile.authorNpub
+          }
+        };
+      }
+      try {
+        const { getProfileMetadata: getProfileMetadata2 } = await Promise.resolve().then(() => (init_zap_utils(), zap_utils_exports));
+        const profileMetadata = await getProfileMetadata2(
+          zap.authorPubkey,
+          relays
+        );
+        const profileContent = extractProfileMetadataContent(profileMetadata);
+        const npub2 = hexToNpub(zap.authorPubkey);
+        const enhanced = {
+          ...zap,
+          authorName: profileContent.display_name || profileContent.name || npub2,
+          authorPicture: profileContent.picture,
+          authorNpub: npub2
+        };
+        profileCache2.set(zap.authorPubkey, enhanced);
+        return {
+          index,
+          enhanced
+        };
+      } catch (error) {
+        console.error(
+          "Nostr-Components: Zappers dialog: Error fetching profile for",
+          zap.authorPubkey,
+          error
+        );
+        const npub2 = hexToNpub(zap.authorPubkey);
+        const enhanced = {
+          ...zap,
+          authorName: npub2,
+          authorNpub: npub2
+        };
+        profileCache2.set(zap.authorPubkey, enhanced);
+        return {
+          index,
+          enhanced
+        };
+      }
+    });
+    for (const promise of profilePromises) {
+      try {
+        const { index, enhanced } = await promise;
+        const skeletonEntry = zappersList.querySelector(
+          `[data-zap-index="${index}"]`
+        );
+        if (skeletonEntry) {
+          const enhancedEntry = renderZapEntry(enhanced, index);
+          setTrustedOuterHTML(skeletonEntry, enhancedEntry);
+        }
+      } catch (error) {
+        console.error(
+          "Nostr-Components: Zappers dialog: Error processing profile enhancement",
+          error
+        );
+      }
+    }
+  }
+
+  // src/common/icons.ts
+  var checkmarkIcon = (theme = "dark") => `
+  <svg
+    class="checkmark"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 52 52"
+    role="img"
+    aria-label="Success checkmark"
+  >
+    <style>
+      .checkmark__circle {
+        stroke-dasharray: 166;
+        stroke-dashoffset: 166;
+        stroke-width: 2;
+        stroke-miterlimit: 10;
+        stroke: #4bb71b;
+        fill: none;
+        animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+      }
+
+      .checkmark {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        display: block;
+        stroke-width: 3;
+        stroke: #4bb71b;
+        stroke-miterlimit: 10;
+        margin: 0 auto;
+        animation: fill 0.4s ease-in-out 0.4s forwards, scale 0.3s ease-in-out 0.9s both;
+      }
+
+      .checkmark__check {
+        transform-origin: 50% 50%;
+        stroke-dasharray: 48;
+        stroke-dashoffset: 48;
+        animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+      }
+
+      @keyframes stroke {
+        100% { stroke-dashoffset: 0; }
+      }
+
+      @keyframes scale {
+        0%, 100% { transform: none; }
+        50% { transform: scale3d(1.1, 1.1, 1); }
+      }
+
+      @keyframes fill {
+        100% { box-shadow: inset 0 0 0 30px ${theme === "dark" ? "#FFF" : "#000"}; }
+      }
+    </style>
+    <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="${theme === "dark" ? "#FFF" : "#000"}"/>
+    <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+  </svg>
+`;
+
+  // src/common/theme.ts
+  function getSuccessAnimation(theme = "dark") {
+    return checkmarkIcon(theme);
+  }
+
+  // src/nostr-zap-button/render.ts
+  init_utils8();
+  function renderZapButton({
+    isLoading,
+    isError,
+    isSuccess,
+    errorMessage,
+    buttonText,
+    totalZapAmount,
+    isAmountLoading,
+    hasZaps = false,
+    compact = false
+  }) {
+    if (isError) {
+      if (compact) {
+        return renderContainer2(
+          getLightningIcon(),
+          "",
+          null,
+          false,
+          false,
+          true,
+          true,
+          errorMessage || "Zap unavailable"
+        );
+      }
+      return renderError2(errorMessage || "");
+    }
+    if (isLoading) {
+      return renderLoading(isAmountLoading, compact);
+    }
+    const iconContent = isSuccess ? getSuccessAnimation("light") : getLightningIcon();
+    const textContent = compact ? "" : isSuccess ? `<span>Zapped</span>` : `<span>${escapeHtml(buttonText)}</span>`;
+    return renderContainer2(
+      iconContent,
+      textContent,
+      totalZapAmount,
+      isAmountLoading,
+      hasZaps,
+      false,
+      compact,
+      buttonText
+    );
+  }
+  function renderLoading(isAmountLoading, compact) {
+    return renderContainer2(
+      getLightningIcon(),
+      compact ? "" : '<span class="button-text-skeleton"></span>',
+      null,
+      isAmountLoading,
+      false,
+      true,
+      compact,
+      "Loading zap"
+    );
+  }
+  function renderError2(errorMessage) {
+    return renderErrorContainer2(
+      '<div class="error-icon">&#9888;</div>',
+      escapeHtml(errorMessage)
+    );
+  }
+  function renderErrorContainer2(leftContent, rightContent) {
+    return `
+    <div class="nostr-zap-button-container">
+      <div class="nostr-zap-button-left-container">
+        ${leftContent}
+      </div>
+      <div class="nostr-zap-button-right-container">
+        ${rightContent}
+      </div>
+    </div>
+  `;
+  }
+  function renderContainer2(iconContent, textContent, totalZapAmount, isAmountLoading, hasZaps = false, isButtonLoading = false, compact = false, buttonLabel = "Zap") {
+    const zapAmountHtml = isAmountLoading ? compact ? "" : `<span class="total-zap-amount skeleton"></span>` : totalZapAmount !== null ? `<span class="total-zap-amount${compact ? " compact-zap-count" : ""}${hasZaps ? " clickable" : ""}"${hasZaps ? ' role="button" tabindex="0" aria-label="View zappers"' : ""}>${totalZapAmount.toLocaleString()}${compact ? "" : " \u26A1 sats received"}</span>` : "";
+    const disabledAttrs = isButtonLoading ? ' disabled aria-busy="true"' : "";
+    const accessibleAttrs = compact ? ` aria-label="${escapeHtml(buttonLabel)}" title="${escapeHtml(buttonLabel)}"` : "";
+    const helpIconHtml = compact ? "" : `<button type="button" class="help-icon" aria-label="What is a zap?" title="What is a zap?">?</button>`;
+    return `
+    <div class="nostr-zap-button-container${compact ? " compact" : ""}">
+      <button type="button" class="nostr-zap-button"${accessibleAttrs}${disabledAttrs}>
+        ${iconContent}
+        ${textContent}
+      </button>
+      ${zapAmountHtml} ${helpIconHtml}
+    </div>
+  `;
+  }
+  function getLightningIcon() {
+    return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>`;
+  }
+
+  // src/nostr-zap-button/style.ts
+  function getZapButtonStyles() {
+    const customStyles = `
+    /* === ZAP BUTTON CONTAINER PATTERN === */
+    :host {
+      /* Icon sizing (overridable via CSS variables) */
+      --nostrc-icon-height: 25px;
+      --nostrc-icon-width: 25px;
+
+      /* Zap button CSS variables (overridable by parent components) */
+      --nostrc-zap-btn-padding: var(--nostrc-spacing-sm) var(--nostrc-spacing-md);
+      --nostrc-zap-btn-border-radius: var(--nostrc-border-radius-md);
+      --nostrc-zap-btn-border: var(--nostrc-border-width) solid var(--nostrc-color-border);
+      --nostrc-zap-btn-min-height: 47px;
+      --nostrc-zap-btn-width: auto;
+      --nostrc-zap-btn-horizontal-alignment: left;
+      --nostrc-zap-btn-bg: var(--nostrc-theme-bg, #ffffff);
+      --nostrc-zap-btn-color: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-zap-btn-font-family: var(--nostrc-font-family-primary);
+      --nostrc-zap-btn-font-size: var(--nostrc-font-size-base);
+
+      /* Hover state variables */
+      --nostrc-zap-btn-hover-bg: var(--nostrc-theme-hover-bg, rgba(0, 0, 0, 0.05));
+      --nostrc-zap-btn-hover-color: var(--nostrc-theme-text-primary, #333333);
+      --nostrc-zap-btn-hover-border: var(--nostrc-border-width) solid var(--nostrc-theme-border, var(--nostrc-color-border));
+
+      /* Make the host a flex container for button + amount */
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      gap: var(--nostrc-spacing-md);
+      font-family: var(--nostrc-zap-btn-font-family);
+      font-size: var(--nostrc-zap-btn-font-size);
+    }
+
+    /* Focus state for accessibility */
+    .nostr-zap-button:focus-visible,
+    .help-icon:focus-visible,
+    .total-zap-amount.clickable:focus-visible {
+      outline: 2px solid var(--nostrc-color-primary, #007bff);
+      outline-offset: 2px;
+    }
+
+    :host(.is-error) .nostr-zap-button-container {
+      border: var(--nostrc-border-width) solid var(--nostrc-color-error-text);
+      border-radius: var(--nostrc-border-radius-md);
+      padding: var(--nostrc-spacing-sm);
+      color: var(--nostrc-color-error-text);
+    }
+
+    .nostr-zap-button-container {
+      display: flex;
+      align-items: center;
+      gap: var(--nostrc-spacing-md);
+      width: fit-content;
+    }
+
+    :host([compact]) {
+      --nostrc-icon-height: 20px;
+      --nostrc-icon-width: 20px;
+      --nostrc-zap-btn-border: 0;
+      --nostrc-zap-btn-hover-border: 0;
+      --nostrc-zap-btn-min-height: 34px;
+      --nostrc-zap-btn-padding: 7px;
+      --nostrc-zap-btn-bg: transparent;
+      --nostrc-zap-btn-hover-bg: rgba(255, 200, 0, 0.12);
+      gap: 0;
+    }
+
+    :host([compact]) .nostr-zap-button-container.compact {
+      gap: 1px;
+    }
+
+    :host([compact]) .nostr-zap-button {
+      border-radius: 9999px;
+      box-sizing: border-box;
+      justify-content: center;
+      min-width: 34px;
+    }
+
+    :host([compact]) .compact-zap-count {
+      font-size: 13px;
+      line-height: 20px;
+      padding-right: 2px;
+    }
+
+    /* Match YouTube's 40px action geometry while keeping Zap visually distinct. */
+    :host([compact][data-surface="youtube"]) {
+      --nostrc-icon-height: 22px;
+      --nostrc-icon-width: 22px;
+      --nostrc-zap-btn-min-height: 40px;
+      --nostrc-zap-btn-padding: 9px;
+      --nostrc-zap-btn-bg: transparent;
+      --nostrc-zap-btn-hover-bg: transparent;
+      --nostrc-zap-btn-color: #0f0f0f;
+      display: inline-flex;
+      flex: 0 0 auto;
+      width: auto;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) {
+      --nostrc-zap-btn-color: #f1f1f1;
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-zap-button-container.compact {
+      width: auto;
+      height: 40px;
+      gap: 3px;
+      border-radius: 9999px;
+      background: rgba(0, 0, 0, 0.05);
+      transition: background-color 0.2s ease;
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) .nostr-zap-button-container.compact {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-zap-button-container.compact:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) .nostr-zap-button-container.compact:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-zap-button {
+      min-width: 40px;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"]) .compact-zap-count {
+      color: currentcolor;
+      padding-right: 10px;
+    }
+
+    .nostr-zap-button-left-container {
+      display: flex;
+      align-items: center;
+    }
+
+    .nostr-zap-button-right-container {
+      display: flex;
+      align-items: center;
+    }
+
+    .nostr-zap-button {
+      display: flex;
+      align-items: center;
+      justify-content: var(--nostrc-zap-btn-horizontal-alignment);
+      gap: var(--nostrc-spacing-sm);
+      background: var(--nostrc-zap-btn-bg);
+      color: var(--nostrc-zap-btn-color);
+      border: var(--nostrc-zap-btn-border);
+      border-radius: var(--nostrc-zap-btn-border-radius);
+      padding: var(--nostrc-zap-btn-padding);
+      min-height: var(--nostrc-zap-btn-min-height);
+      width: var(--nostrc-zap-btn-width);
+      cursor: pointer;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    /* Hover state on the button */
+    .nostr-zap-button:hover {
+      background: var(--nostrc-zap-btn-hover-bg);
+      color: var(--nostrc-zap-btn-hover-color);
+      border: var(--nostrc-zap-btn-hover-border);
+    }
+
+    .nostr-zap-button:disabled {
+      pointer-events: none;
+      user-select: none;
+      opacity: 0.6;
+    }
+
+    :host:not([user-status="ready"]) .nostr-zap-button {
+      cursor: not-allowed;
+    }
+
+    /* SVG Icon Styles */
+    .nostr-zap-button svg {
+      display: inline-block;
+      vertical-align: middle;
+      width: var(--nostrc-icon-width);
+      height: var(--nostrc-icon-height);
+    }
+
+    /* Total zap amount display */
+    .total-zap-amount {
+      font-size: var(--nostrc-font-size-sm);
+      color: var(--nostrc-theme-text-secondary, #666666);
+      white-space: nowrap;
+    }
+
+    /* Clickable zap amount */
+    .total-zap-amount.clickable {
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .total-zap-amount.clickable:hover {
+      color: var(--nostrc-color-primary, #7f00ff);
+    }
+
+    /* Help icon \u2014 visual glyph inside a \u226544px hit target */
+    .help-icon {
+      background: none;
+      border: 1px solid var(--nostrc-color-border, #e0e0e0);
+      border-radius: var(--nostrc-border-radius-full, 50%);
+      box-sizing: border-box;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--nostrc-theme-text-secondary, #666666);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: var(--nostrc-spacing-xs, 4px);
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .help-icon:hover {
+      background: var(--nostrc-color-hover-background, rgba(0, 0, 0, 0.05));
+      border-color: var(--nostrc-color-primary, #7f00ff);
+      color: var(--nostrc-color-primary, #7f00ff);
+    }
+
+    /* Skeleton loader for zap amount */
+    .total-zap-amount.skeleton {
+      background: linear-gradient(90deg,
+        var(--nostrc-color-skeleton, #f0f0f0) 25%,
+        var(--nostrc-color-skeleton-highlight, #e0e0e0) 50%,
+        var(--nostrc-color-skeleton, #f0f0f0) 75%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: var(--nostrc-border-radius-sm);
+      width: 80px;
+      height: 1.2em;
+      display: inline-block;
+    }
+
+    /* Skeleton loader for button text */
+    .button-text-skeleton {
+      background: linear-gradient(90deg,
+        var(--nostrc-color-skeleton, #f0f0f0) 25%,
+        var(--nostrc-color-skeleton-highlight, #e0e0e0) 50%,
+        var(--nostrc-color-skeleton, #f0f0f0) 75%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: var(--nostrc-border-radius-sm);
+      width: 60px;
+      height: 1em;
+      display: inline-block;
+    }
+
+    @keyframes skeleton-loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nostr-zap-button,
+      .help-icon,
+      .total-zap-amount {
+        transition: none;
+      }
+      .total-zap-amount.skeleton,
+      .button-text-skeleton {
+        animation: none;
+      }
+    }
+
+    /* Error message styling */
+    .nostr-zap-button-error small {
+      color: var(--nostrc-color-error-text);
+      font-size: var(--nostrc-font-size-sm);
+      line-height: 1em;
+      max-width: 250px;
+      white-space: pre-line;
+    }
+  `;
+    return getComponentStyles(customStyles);
+  }
+
+  // src/nostr-zap-button/nostr-zap.ts
+  init_zap_utils();
+  init_utils8();
+  init_relay_transport();
+  init_trusted_html();
+  var NostrZap = class extends NostrUserComponent {
+    zapActionStatus = this.channel("zapAction");
+    zapListStatus = this.channel("zapList");
+    totalZapAmount = null;
+    cachedZapDetails = [];
+    cachedAmountDialog = null;
+    zapCountLoadSeq = 0;
+    constructor() {
+      super();
+    }
+    connectedCallback() {
+      super.connectedCallback?.();
+      if (this.zapListStatus.get() == 0 /* Idle */) {
+        this.initChannelStatus("zapList", 1 /* Loading */, { reflectOverall: false });
+      }
+      this.attachDelegatedListeners();
+      this.render();
+    }
+    static get observedAttributes() {
+      return [
+        ...super.observedAttributes,
+        "text",
+        "amount",
+        "default-amount",
+        "url",
+        "compact"
+      ];
+    }
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (oldValue === newValue) return;
+      super.attributeChangedCallback(name, oldValue, newValue);
+      this.render();
+    }
+    disconnectedCallback() {
+      super.disconnectedCallback?.();
+      if (this.cachedAmountDialog && typeof this.cachedAmountDialog.close === "function") {
+        this.cachedAmountDialog.close();
+      }
+    }
+    /** Base class functions */
+    onStatusChange(_status) {
+      this.render();
+    }
+    onUserReady(_user, _profile) {
+      this.render();
+      this.updateZapCount();
+    }
+    /** A host relay transport replaces only networking, not the component UI/signer. */
+    async connectToNostr() {
+      if (!getRelayTransport()) {
+        await super.connectToNostr();
+        return;
+      }
+      this.conn.set(2 /* Ready */);
+      this.nostrReadyResolve?.();
+      try {
+        this.onNostrRelaysConnected();
+      } catch (hookError) {
+        console.error("Error in onNostrRelaysConnected hook:", hookError);
+      }
+    }
+    /** Protected methods */
+    validateInputs() {
+      if (!super.validateInputs()) {
+        this.zapActionStatus.set(0 /* Idle */);
+        this.zapListStatus.set(0 /* Idle */);
+        return false;
+      }
+      const textAttr = this.getAttribute("text");
+      const amtAttr = this.getAttribute("amount");
+      const defaultAmtAttr = this.getAttribute("default-amount");
+      const urlAttr = this.getAttribute("url");
+      const tagName = this.tagName.toLowerCase();
+      let errorMessage = null;
+      if (textAttr && textAttr.length > 128) {
+        errorMessage = "Max text length: 128 characters";
+      } else if (amtAttr) {
+        const num2 = Number(amtAttr);
+        if (isNaN(num2) || num2 <= 0) {
+          errorMessage = "Invalid amount";
+        } else if (num2 > 21e4) {
+          errorMessage = "Amount too high (max 210,000 sats)";
+        }
+      } else if (defaultAmtAttr) {
+        const num2 = Number(defaultAmtAttr);
+        if (isNaN(num2) || num2 <= 0) {
+          errorMessage = "Invalid default-amount";
+        } else if (num2 > 21e4) {
+          errorMessage = "Default-amount too high (max 210,000 sats)";
+        }
+      } else if (urlAttr) {
+        if (!isValidUrl(urlAttr)) {
+          errorMessage = "Invalid URL format";
+        }
+      }
+      if (errorMessage) {
+        this.zapActionStatus.set(3 /* Error */, errorMessage);
+        this.zapListStatus.set(3 /* Error */, errorMessage);
+        this.userStatus.set(0 /* Idle */);
+        console.error(`Nostr-Components: ${tagName}: ${errorMessage}`);
+        return false;
+      }
+      return true;
+    }
+    /** Private functions */
+    async handleZapClick() {
+      if (this.userStatus.get() !== 2 /* Ready */) return;
+      if (this.zapActionStatus.get() === 1 /* Loading */) return;
+      this.zapActionStatus.set(1 /* Loading */);
+      this.render();
+      try {
+        const signerResult = await ensureSignerForAction({
+          action: "zap",
+          theme: this.theme
+        });
+        if (signerResult.status === "dismissed") {
+          this.zapActionStatus.set(2 /* Ready */);
+          this.render();
+          return;
+        }
+        if (!signerResult.publicKey) {
+          this.zapActionStatus.set(
+            3 /* Error */,
+            signerResult.message || "Connect a Nostr signer to send a zap."
+          );
+          this.render();
+          return;
+        }
+        if (!this.user) {
+          this.zapActionStatus.set(3 /* Error */, "Could not resolve user to zap.");
+          this.render();
+          return;
+        }
+        const relays = this.getRelays().join(",");
+        const npub2 = this.user.npub;
+        this.cachedAmountDialog = await init({
+          npub: npub2,
+          relays,
+          cachedDialogComponent: this.cachedAmountDialog,
+          theme: this.theme === "dark" ? "dark" : "light",
+          fixedAmount: (() => {
+            const amtAttr = this.getAttribute("amount");
+            if (!amtAttr) return void 0;
+            const num2 = Number(amtAttr);
+            if (isNaN(num2) || num2 <= 0 || num2 > 21e4) {
+              console.error("Nostr-Components: Zap button: Max zap amount: 210,000 sats");
+              return void 0;
+            }
+            return num2;
+          })(),
+          defaultAmount: (() => {
+            const defAttr = this.getAttribute("default-amount");
+            if (!defAttr) return 21;
+            const num2 = Number(defAttr);
+            if (isNaN(num2) || num2 <= 0 || num2 > 21e4) {
+              console.error("Nostr-Components: Zap button: Max zap amount: 210,000 sats");
+              return 21;
+            }
+            return num2;
+          })(),
+          url: this.getAttribute("url") || void 0,
+          anon: false
+        });
+        this.zapActionStatus.set(2 /* Ready */);
+      } catch (e) {
+        this.zapActionStatus.set(3 /* Error */, e?.message || "Unable to zap");
+      } finally {
+        this.render();
+      }
+    }
+    async handleHelpClick() {
+      try {
+        await showHelpDialog2(this.theme === "dark" ? "dark" : "light");
+      } catch (error) {
+        console.error("Error showing help dialog:", error);
+      }
+    }
+    async handleZappersClick() {
+      if (this.cachedZapDetails.length === 0) {
+        return;
+      }
+      try {
+        await openZappersDialog({
+          zapDetails: this.cachedZapDetails,
+          theme: this.theme === "dark" ? "dark" : "light",
+          relays: this.getRelays()
+        });
+      } catch (error) {
+        console.error("Nostr-Components: Zap button: Error opening zappers dialog", error);
+      }
+    }
+    attachDelegatedListeners() {
+      this.delegateEvent("click", ".nostr-zap-button", (e) => {
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        void this.handleZapClick();
+      });
+      this.delegateEvent("click", ".help-icon", (e) => {
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        this.handleHelpClick();
+      });
+      this.delegateEvent("click", ".total-zap-amount", (e) => {
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        void this.handleZappersClick();
+      });
+      this.delegateEvent("keydown", ".total-zap-amount.clickable", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        e.stopPropagation();
+        void this.handleZappersClick();
+      });
+    }
+    async updateZapCount() {
+      if (!this.user) return;
+      const seq = ++this.zapCountLoadSeq;
+      try {
+        this.zapListStatus.set(1 /* Loading */);
+        this.render();
+        await this.ensureNostrConnected();
+        if (seq !== this.zapCountLoadSeq) return;
+        const result = await fetchTotalZapAmount({
+          pubkey: this.user.pubkey,
+          relays: this.getRelays(),
+          url: this.getAttribute("url") || void 0
+        });
+        if (seq !== this.zapCountLoadSeq) return;
+        this.totalZapAmount = result.totalAmount;
+        this.cachedZapDetails = result.zapDetails;
+        this.zapListStatus.set(2 /* Ready */);
+      } catch (e) {
+        if (seq !== this.zapCountLoadSeq) return;
+        console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
+        this.totalZapAmount = null;
+        this.zapListStatus.set(3 /* Error */);
+      } finally {
+        if (seq === this.zapCountLoadSeq) {
+          this.render();
+        }
+      }
+    }
+    renderContent() {
+      const isUserLoading = this.userStatus.get() == 1 /* Loading */;
+      const isActionLoading = this.zapActionStatus.get() == 1 /* Loading */;
+      const isAmountLoading = this.zapListStatus.get() == 1 /* Loading */;
+      const isError = this.computeOverall() === 3 /* Error */;
+      const errorMessage = this.errorMessage;
+      const buttonText = this.getAttribute("text") || "Zap";
+      const renderOptions = {
+        isLoading: isUserLoading || isActionLoading,
+        isAmountLoading,
+        isError,
+        isSuccess: false,
+        // TODO: Add success state handling
+        errorMessage,
+        buttonText,
+        totalZapAmount: this.totalZapAmount,
+        hasZaps: this.cachedZapDetails.length > 0,
+        compact: this.hasAttribute("compact")
+      };
+      setTrustedInnerHTML(this.shadowRoot, `
+      ${getZapButtonStyles()}
+      ${renderZapButton(renderOptions)}
+    `);
+    }
+  };
+  if (!customElements.get("nostr-zap-button")) {
+    customElements.define("nostr-zap-button", NostrZap);
+  }
+
+  // browser-extension/src/component-hydrator.js
+  var COMPONENT_HYDRATION_EVENT_PREFIX = "nostr-components-hydrate:";
+  function setCommonAttributes(component, slot) {
+    component.setAttribute("url", slot.dataset.statusUrl || "");
+    component.setAttribute("compact", "");
+    component.setAttribute("data-theme", slot.dataset.theme || "light");
+    if (slot.dataset.nostrYoutubeAction === "true") {
+      component.setAttribute("data-surface", "youtube");
+    }
+  }
+  function constructRegisteredElement(registry, tagName) {
+    const ComponentConstructor = registry?.get(tagName);
+    return typeof ComponentConstructor === "function" ? new ComponentConstructor() : null;
+  }
+  function hydrateActionSlot(slot, registry = globalThis.customElements) {
+    if (!slot || slot.dataset?.nostrYoutubeAction !== "true" && slot.dataset?.nostrCompetencyLike !== "true") {
+      return false;
+    }
+    let like = slot.querySelector("nostr-like-button");
+    if (!like) {
+      like = constructRegisteredElement(registry, "nostr-like-button");
+      if (!like) return false;
+      slot.appendChild(like);
+    }
+    setCommonAttributes(like, slot);
+    const recipientNpub = slot.dataset.recipientNpub || slot.dataset.zapRecipientNpub || "";
+    let zap = slot.querySelector("nostr-zap-button");
+    if (!recipientNpub) {
+      zap?.remove();
+      return true;
+    }
+    if (!zap) {
+      zap = constructRegisteredElement(registry, "nostr-zap-button");
+      if (!zap) return false;
+      slot.appendChild(zap);
+    }
+    setCommonAttributes(zap, slot);
+    zap.setAttribute("npub", recipientNpub);
+    return true;
+  }
+  function installComponentHydrator({
+    channel,
+    root = globalThis.document,
+    registry = globalThis.customElements
+  } = {}) {
+    if (!/^[0-9a-f]{64}$/.test(String(channel || ""))) {
+      throw new Error("Invalid component hydration channel");
+    }
+    const eventName = COMPONENT_HYDRATION_EVENT_PREFIX + channel;
+    const handler = function(event) {
+      hydrateActionSlot(event.target, registry);
+    };
+    root.addEventListener(eventName, handler, true);
+    return Object.freeze({
+      eventName,
+      dispose: function() {
+        root.removeEventListener(eventName, handler, true);
+      }
+    });
+  }
+
+  // browser-extension/src/components.ts
+  var HYDRATOR_KEY = "__nostrComponentsMainWorldHydrator";
+  var transport = globalThis.__nostrComponentsRelayTransport;
+  var previousHydrator = globalThis[HYDRATOR_KEY];
+  if (transport?.__channel) {
+    previousHydrator?.dispose?.();
+    globalThis[HYDRATOR_KEY] = installComponentHydrator({
+      channel: transport.__channel
+    });
   }
 })();
 /*! Bundled license information:

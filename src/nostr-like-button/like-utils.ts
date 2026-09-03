@@ -9,6 +9,18 @@ import type { LikeCountResult, LikeDetails } from './like-netting';
 
 export type { LikeCountResult, LikeDetails };
 
+/** Read a host's short-lived reaction cache without waiting for any relay. */
+export async function fetchCachedLikeStateForUrl(
+  url: string,
+  relays: string[],
+): Promise<boolean | null> {
+  const transport = getRelayTransport();
+  if (!transport?.getCachedLikeState) return null;
+
+  const state = await transport.getCachedLikeState(relays, normalizeURL(url));
+  return state.found ? state.isLiked : null;
+}
+
 /**
  * Fetch likes for a URL using NIP-25 kind 17 events.
  *
@@ -35,6 +47,15 @@ export async function fetchLikesForUrl(
       limit: 1000
     };
     const transport = getRelayTransport();
+    if (transport?.getLikeState) {
+      const state = await transport.getLikeState(relays, normalizedUrl);
+      return {
+        ...state,
+        // The extension deliberately keeps liker pubkeys out of MAIN-world
+        // state responses. Compact host actions do not open the likers dialog.
+        likeDetails: [],
+      };
+    }
     const events = transport
       ? await transport.query(relays, filter)
       : await pool.querySync(relays, filter);

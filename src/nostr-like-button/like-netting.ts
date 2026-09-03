@@ -13,6 +13,8 @@ export interface LikeCountResult {
   likeDetails: LikeDetails[];
   likedCount: number;
   dislikedCount: number;
+  /** Active user's current state when supplied by an extension host. */
+  isLiked?: boolean;
 }
 
 function isLikeContent(content: string): boolean {

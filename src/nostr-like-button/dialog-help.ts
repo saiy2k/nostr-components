@@ -4,6 +4,7 @@
 import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getHelpDialogStyles } from './dialog-help-style';
+import { setTrustedInnerHTML } from '../common/trusted-html';
 
 export const injectHelpDialogStyles = (): void => {
   // Check if styles are already injected
@@ -29,7 +30,7 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
   }
   
   // Set dialog content
-  dialogComponent.innerHTML = `
+  setTrustedInnerHTML(dialogComponent, `
     <div class="help-content">
       <p>Like any webpage to show your appreciation! Your likes are stored on Nostr, a decentralized network you control—no accounts needed.</p>
       <ul>
@@ -38,8 +39,7 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
         <li>Works with a browser extension like <a href="https://getalby.com" target="_blank" rel="noopener noreferrer">Alby</a> or nos2x</li>
       </ul>
     </div>
-  `;
+  `);
   
   dialogComponent.showModal();
 };
-

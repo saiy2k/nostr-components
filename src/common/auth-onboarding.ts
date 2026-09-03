@@ -6,6 +6,7 @@ import {
   getPublicKey,
 } from './nostr-login-service';
 import { getAuthOnboardingDialogStyles } from './auth-onboarding-style';
+import { setTrustedInnerHTML } from './trusted-html';
 
 export type AuthAction = 'like' | 'zap' | 'follow';
 export type EnsureSignerStatus =
@@ -242,7 +243,7 @@ export async function showAuthOnboarding(
     ) as DialogComponentElement;
     dialogComponent.setAttribute('header', 'Start with Nostr in seconds');
     dialogComponent.setAttribute('data-theme', theme);
-    dialogComponent.innerHTML = `
+    setTrustedInnerHTML(dialogComponent, `
       <div class="auth-onboarding">
         <section class="auth-onboarding-hero">
           <div class="auth-onboarding-eyebrow">${content.eyebrow}</div>
@@ -271,7 +272,7 @@ export async function showAuthOnboarding(
 
         <div class="auth-onboarding-status" aria-live="polite"></div>
       </div>
-    `;
+    `);
 
     dialogComponent.showModal();
 

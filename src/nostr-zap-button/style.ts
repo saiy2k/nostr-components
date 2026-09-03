@@ -58,6 +58,85 @@ export function getZapButtonStyles(): string {
       width: fit-content;
     }
 
+    :host([compact]) {
+      --nostrc-icon-height: 20px;
+      --nostrc-icon-width: 20px;
+      --nostrc-zap-btn-border: 0;
+      --nostrc-zap-btn-hover-border: 0;
+      --nostrc-zap-btn-min-height: 34px;
+      --nostrc-zap-btn-padding: 7px;
+      --nostrc-zap-btn-bg: transparent;
+      --nostrc-zap-btn-hover-bg: rgba(255, 200, 0, 0.12);
+      gap: 0;
+    }
+
+    :host([compact]) .nostr-zap-button-container.compact {
+      gap: 1px;
+    }
+
+    :host([compact]) .nostr-zap-button {
+      border-radius: 9999px;
+      box-sizing: border-box;
+      justify-content: center;
+      min-width: 34px;
+    }
+
+    :host([compact]) .compact-zap-count {
+      font-size: 13px;
+      line-height: 20px;
+      padding-right: 2px;
+    }
+
+    /* Match YouTube's 40px action geometry while keeping Zap visually distinct. */
+    :host([compact][data-surface="youtube"]) {
+      --nostrc-icon-height: 22px;
+      --nostrc-icon-width: 22px;
+      --nostrc-zap-btn-min-height: 40px;
+      --nostrc-zap-btn-padding: 9px;
+      --nostrc-zap-btn-bg: transparent;
+      --nostrc-zap-btn-hover-bg: transparent;
+      --nostrc-zap-btn-color: #0f0f0f;
+      display: inline-flex;
+      flex: 0 0 auto;
+      width: auto;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) {
+      --nostrc-zap-btn-color: #f1f1f1;
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-zap-button-container.compact {
+      width: auto;
+      height: 40px;
+      gap: 3px;
+      border-radius: 9999px;
+      background: rgba(0, 0, 0, 0.05);
+      transition: background-color 0.2s ease;
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) .nostr-zap-button-container.compact {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-zap-button-container.compact:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    :host([compact][data-surface="youtube"][data-theme="dark"]) .nostr-zap-button-container.compact:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    :host([compact][data-surface="youtube"]) .nostr-zap-button {
+      min-width: 40px;
+      height: 40px;
+    }
+
+    :host([compact][data-surface="youtube"]) .compact-zap-count {
+      color: currentcolor;
+      padding-right: 10px;
+    }
+
     .nostr-zap-button-left-container {
       display: flex;
       align-items: center;
@@ -219,4 +298,3 @@ export function getZapButtonStyles(): string {
   
   return getComponentStyles(customStyles);
 }
-

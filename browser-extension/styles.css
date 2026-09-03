@@ -14,6 +14,36 @@
   position: relative;
   z-index: 1;
   cursor: pointer;
+  gap: 2px;
+}
+
+.nostr-youtube-action-slot {
+  align-items: center;
+  align-self: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  justify-content: center;
+  margin-left: 4px;
+  min-height: 40px;
+  position: relative;
+  z-index: 1;
+}
+
+.nostr-youtube-action-slot nostr-like-button,
+.nostr-youtube-action-slot nostr-zap-button,
+.nostr-competency-action-slot nostr-like-button,
+.nostr-competency-action-slot nostr-zap-button {
+  display: inline-flex;
+  position: relative;
+  z-index: 2;
+}
+
+.nostr-youtube-action-slot nostr-like-button,
+.nostr-youtube-action-slot nostr-zap-button {
+  flex: 0 0 auto;
+  height: 40px;
+  width: auto;
 }
 
 .nostr-competency-action-slot > nostr-like-button {

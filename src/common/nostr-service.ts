@@ -6,12 +6,17 @@ import NDK, {
   NDKUserProfile,
   NDKEvent,
   NDKRelayStatus,
+  profileFromEvent,
 } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from './constants';
 import { DEFAULT_PROFILE_IMAGE } from './constants';
 import { normalizeURL } from 'nostr-tools/utils';
-import { getZapProviderInfo } from '../nostr-zap-button/zap-utils';
+import {
+  getProfileMetadata,
+  getZapProviderInfo,
+} from '../nostr-zap-button/zap-utils';
 import { validateZapReceipt } from '../nostr-zap-button/zap-receipt';
+import { getRelayTransport } from './relay-transport';
 
 /** How long to keep polling the relay pool for a first connection. */
 const CONNECT_GRACE_MS = 5000;
@@ -141,7 +146,10 @@ export class NostrService {
   }
 
   public getRelays(): string[] {
-    return this.ndk.explicitRelayUrls || DEFAULT_RELAYS;
+    const explicitRelays = this.ndk.explicitRelayUrls;
+    return explicitRelays && explicitRelays.length > 0
+      ? explicitRelays
+      : [...DEFAULT_RELAYS];
   }
 
   public async resolveNDKUser(identifier: {
@@ -185,8 +193,26 @@ export class NostrService {
     return user ? this.fetchZaps(user) : 0;
   }
 
-  public async getProfile(user: NDKUser | null): Promise<NDKUserProfile | null> {
+  public async getProfile(
+    user: NDKUser | null,
+    relays: string[] = this.getRelays(),
+  ): Promise<NDKUserProfile | null> {
     if (!user) return null;
+
+    const transport = getRelayTransport();
+    if (transport) {
+      const event = await getProfileMetadata(user.pubkey, relays);
+      if (!event) return null;
+      try {
+        const profile = profileFromEvent(new NDKEvent(this.ndk, event));
+        if (profile.picture === undefined || profile.picture === null) {
+          profile.picture = DEFAULT_PROFILE_IMAGE;
+        }
+        return profile;
+      } catch {
+        return null;
+      }
+    }
 
     await user.fetchProfile();
 

@@ -63,12 +63,35 @@ class FakeNDK {
   }
 }
 
+class FakeNDKEvent {
+  content = '';
+  created_at = 0;
+
+  constructor(_ndk?: FakeNDK, event: Record<string, any> = {}) {
+    Object.assign(this, event);
+  }
+
+  rawEvent() {
+    return { ...this };
+  }
+}
+
 vi.mock('@nostr-dev-kit/ndk', () => ({
   default: FakeNDK,
   NDKRelayStatus: { CONNECTED },
   NDKKind: {},
   NDKUser: class {},
-  NDKEvent: class {},
+  NDKEvent: FakeNDKEvent,
+  profileFromEvent(event: FakeNDKEvent) {
+    const payload = JSON.parse(event.content || '{}');
+    return {
+      ...payload,
+      displayName: payload.display_name,
+      picture: payload.picture || payload.image,
+      image: payload.picture || payload.image,
+      created_at: event.created_at,
+    };
+  },
 }));
 
 const RELAYS = [
@@ -95,8 +118,48 @@ describe('NostrService.connectToNostr concurrency', () => {
   });
 
   afterEach(() => {
+    delete (
+      globalThis as typeof globalThis & {
+        __nostrComponentsRelayTransport?: unknown;
+      }
+    ).__nostrComponentsRelayTransport;
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it('loads profiles through the host transport without a direct NDK fetch', async () => {
+    const { service } = await freshService();
+    const fetchProfile = vi.fn();
+    const pubkey = '9'.repeat(64);
+    const customRelays = ['wss://profiles.example'];
+    const query = vi.fn().mockResolvedValue([
+      {
+        pubkey,
+        created_at: 10,
+        kind: 0,
+        content: JSON.stringify({
+          display_name: 'YouTube creator',
+          picture: 'https://example.com/creator.png',
+        }),
+      },
+    ]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn() },
+    });
+
+    await expect(
+      service.getProfile({ pubkey, fetchProfile } as any, customRelays),
+    ).resolves.toMatchObject({
+      displayName: 'YouTube creator',
+      image: 'https://example.com/creator.png',
+      picture: 'https://example.com/creator.png',
+    });
+    expect(fetchProfile).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledWith(customRelays, {
+      kinds: [0],
+      authors: [pubkey],
+      limit: 1,
+    });
   });
 
   it('shares a single connection attempt across concurrent callers', async () => {
