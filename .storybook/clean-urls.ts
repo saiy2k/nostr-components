@@ -98,7 +98,9 @@ export const resolveCleanPath = (
   cleanToSb?: Map<string, SbPath>
 ) => {
   const p = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-  return cleanToSb?.get(p) ?? cleanPathToStorybookPath(p);
+  // Once the story index is loaded, reject unknown paths instead of inventing IDs.
+  if (cleanToSb?.size) return cleanToSb.get(p) ?? null;
+  return cleanPathToStorybookPath(p);
 };
 
 export const storybookPathToCleanPath = (

@@ -95,5 +95,17 @@ describe('clean Storybook URLs', () => {
     }
     const { cleanToSb } = buildCleanPathMaps(once());
     expect(cleanToSb.get('/')?.storyId).toBe('nostr-components--docs');
+    // Hydrated maps are authoritative: unknown paths must not invent story IDs.
+    expect(resolveCleanPath('/unknown-page', cleanToSb)).toBeNull();
+    expect(rewriteUrlToStorybook('/unknown-page', cleanToSb)).toBeNull();
+    expect(resolveCleanPath('/unknown-page')).toEqual({
+      viewMode: 'docs',
+      storyId: 'unknown-page--docs',
+    });
+    expect(resolveCleanPath('/unknown-page', new Map())).toEqual({
+      viewMode: 'docs',
+      storyId: 'unknown-page--docs',
+    });
+    expect(resolveCleanPath('/zap-button', cleanToSb)?.storyId).toBe('zap-button--docs');
   });
 });
