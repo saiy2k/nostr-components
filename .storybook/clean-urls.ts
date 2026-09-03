@@ -163,7 +163,6 @@ let idToClean = new Map<string, string>();
 let cleanToSb = new Map<string, SbPath>();
 let syncDepth = 0;
 let rawPush: History['pushState'];
-let rawReplace: History['replaceState'];
 
 const isSyncing = () => syncDepth > 0;
 
@@ -175,8 +174,7 @@ const endSyncSoon = (after?: () => void) => {
     syncDepth = Math.max(0, syncDepth - 1);
     if (syncDepth === 0) after?.();
   };
-  requestAnimationFrame(finish);
-  // Background tabs may throttle rAF; always clear.
+  queueMicrotask(finish);
   setTimeout(finish, 100);
 };
 
@@ -197,16 +195,35 @@ const leafEntries = (index?: API_IndexHash): Entry[] =>
           type: e.type,
         }));
 
-const polish = () => {
-  if (isSyncing() || idToClean.size === 0 || !hasStorybookPathParam()) return;
-  const next = rewriteUrlToClean(location.href, idToClean);
-  if (!next || next === `${location.pathname}${location.search}${location.hash}`) return;
+let polishQueued = false;
+
+const applyPolish = () => {
+  if (isSyncing() || !hasStorybookPathParam()) return;
+  const next = rewriteUrlToClean(location.href, idToClean.size ? idToClean : undefined);
+  if (!next || next.startsWith('//')) return;
+  if (next === `${location.pathname}${location.search}${location.hash}`) return;
   syncDepth += 1;
   try {
-    rawReplace.call(history, history.state, '', next);
+    // Native replace so Storybook does not re-route from the clean path.
+    History.prototype.replaceState.call(history, history.state, '', next);
   } finally {
     syncDepth = Math.max(0, syncDepth - 1);
   }
+};
+
+/**
+ * Storybook's history.push() calls pushState(?path=) then immediately reads
+ * window.location to apply the story (applyTx). Polishing in that same turn
+ * leaves the canvas on the previous story. A microtask runs after applyTx and
+ * still before paint, so the address bar never shows ?path=.
+ */
+const polish = () => {
+  if (polishQueued) return;
+  polishQueued = true;
+  queueMicrotask(() => {
+    polishQueued = false;
+    applyPolish();
+  });
 };
 
 const selectClean = (api: API) => {
@@ -226,19 +243,26 @@ const selectClean = (api: API) => {
   }
 };
 
+const PATCH_MARK = '__nostrCleanUrls';
+
 const patchHistory = () => {
+  if ((history.pushState as unknown as { [PATCH_MARK]?: boolean })[PATCH_MARK]) return;
   rawPush = history.pushState.bind(history);
-  rawReplace = history.replaceState.bind(history);
-  const wrap =
+  const sbReplace = history.replaceState.bind(history);
+  const after =
     (orig: History['pushState']): History['pushState'] =>
     (state, title, url) => {
-      if (isSyncing() || url == null || idToClean.size === 0) {
-        return orig(state, title, url as string);
-      }
-      return orig(state, title, rewriteUrlToClean(String(url), idToClean) ?? url);
+      if (isSyncing()) return orig(state, title, url as string);
+      const result = orig(state, title, url as string);
+      polish();
+      return result;
     };
-  history.pushState = wrap(rawPush);
-  history.replaceState = wrap(rawReplace);
+  const push = after(rawPush);
+  const replace = after(sbReplace);
+  (push as unknown as { [PATCH_MARK]?: boolean })[PATCH_MARK] = true;
+  (replace as unknown as { [PATCH_MARK]?: boolean })[PATCH_MARK] = true;
+  history.pushState = push;
+  history.replaceState = replace;
 };
 
 export function initCleanUrls() {
@@ -251,8 +275,8 @@ export function initCleanUrls() {
     api.on(SET_INDEX, refresh);
     api.on(STORY_INDEX_INVALIDATED, refresh);
     api.on(CURRENT_STORY_WAS_SET, () => {
+      patchHistory();
       refresh();
-      requestAnimationFrame(polish);
     });
     addEventListener('popstate', () => {
       if (isSyncing()) return;
@@ -274,11 +298,8 @@ export function initCleanUrls() {
     refresh();
     selectClean(api);
     const t = setInterval(() => {
+      patchHistory();
       refresh();
-      if (idToClean.size) {
-        selectClean(api);
-        clearInterval(t);
-      }
     }, 100);
     setTimeout(() => clearInterval(t), 8000);
   });

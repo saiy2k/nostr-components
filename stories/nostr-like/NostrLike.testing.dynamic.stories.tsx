@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { DYNAMIC_TEST_TAGS, generateCode, getArgTypes, getTestingParameters } from './utils';
+import { generateCode, getArgTypes, getTestingParameters } from './utils';
 import { TEST_CASES as INVALID_TEST_CASES } from './test-cases-invalid';
 import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic';
 import { createFastSwitchingPlay } from '../common/fast-switching';
 
 const meta: Meta = {
   title: 'Like Button/Testing/Dynamic',
-  tags: [...DYNAMIC_TEST_TAGS],
+  tags: ['test', 'dynamic'],
   render: args => generateCode(args),
   argTypes: getArgTypes(),
   args: {},
