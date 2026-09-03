@@ -57,7 +57,8 @@ export const parseStorybookPath = (q?: string | null): SbPath | null => {
 
 /** Heuristic used before index.json is available. */
 export const cleanPathToStorybookPath = (pathname: string): SbPath | null => {
-  if (!pathname || pathname === '/' || isStaticPath(pathname)) return null;
+  if (!pathname || isStaticPath(pathname)) return null;
+  if (pathname === '/') return { viewMode: 'docs', storyId: 'nostr-components--docs' };
   const segs = pathname.split('/').filter(Boolean).map(sanitize).filter(Boolean);
   if (!segs.length) return null;
   if (segs.length === 1) return { viewMode: 'docs', storyId: `${segs[0]}--docs` };
@@ -107,6 +108,7 @@ export const storybookPathToCleanPath = (
   pathQuery: string,
   idToClean?: Map<string, string>
 ) => {
+  if (!pathQuery || pathQuery === '/') return '/';
   const parsed = parseStorybookPath(pathQuery);
   if (!parsed) return null;
   if (idToClean?.has(parsed.storyId)) return idToClean.get(parsed.storyId)!;
@@ -238,7 +240,7 @@ const PATCH_MARK = '__nostrCleanUrls';
 
 const selectClean = (api: API) => {
   if (hasStorybookPathParam() || isStaticPath(location.pathname)) return;
-  if (location.pathname === '/' || !location.pathname) return;
+  if (!location.pathname) return;
   const r = resolveCleanPath(location.pathname, cleanToSb);
   if (!r) return;
   const s = api.getState?.() as { storyId?: string; viewMode?: string } | undefined;

@@ -15,7 +15,8 @@
         .replace(/(^-|-$)/g, '');
     };
     var pathFromPathname = function (pathname) {
-      if (!pathname || pathname === '/' || staticRe.test(pathname)) return null;
+      if (!pathname || staticRe.test(pathname)) return null;
+      if (pathname === '/') return '/docs/nostr-components--docs';
       if ((pathname.split('/').pop() || '').indexOf('.') !== -1) return null;
       var segs = pathname.split('/').filter(Boolean).map(slug).filter(Boolean);
       if (!segs.length) return null;

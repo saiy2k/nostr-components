@@ -47,8 +47,14 @@ describe('clean Storybook URLs', () => {
       viewMode: 'story',
       storyId: 'zap-button-styling--ocean-glass',
     });
+    expect(cleanPathToStorybookPath('/')).toEqual({
+      viewMode: 'docs',
+      storyId: 'nostr-components--docs',
+    });
     expect(cleanPathToStorybookPath('/images/logo.png')).toBeNull();
     expect(cleanPathToStorybookPath('/iframe')).toBeNull();
+    expect(rewriteUrlToClean('/?path=/')).toBe('/');
+    expect(rewriteUrlToClean('/?path=/docs/nostr-components--docs')).toBe('/');
 
     const { idToClean, cleanToSb } = buildCleanPathMaps(entries);
     expect(idToClean.get('zap-button-styling--ocean-glass-theme')).toBe(
