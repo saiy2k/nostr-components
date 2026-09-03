@@ -1,25 +1,48 @@
 <base href="/" />
-<!-- Early clean-path → ?path= rewrite before Storybook boots. -->
 <script>
 (function () {
   try {
-    var loc = location;
-    // Keep STATIC_RE in sync with .storybook/clean-urls.ts
-    if (new URLSearchParams(loc.search).has('path') || loc.pathname === '/') return;
-    if (/^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|favicon|project\.json|nunito-sans)/.test(loc.pathname)) return;
-    if ((loc.pathname.split('/').pop() || '').indexOf('.') !== -1) return;
+    var origAssign = Object.assign;
+    var staticRe =
+      /^\/(sb-|assets\/|images\/|themes|dist\/|iframe|index\.|vite-inject|@|node_modules\/|favicon|project\.json|nunito-sans)/;
     var slug = function (s) {
-      return String(s).toLowerCase().replace(/[ ’–—―′¿'`‘“”"″′‘’']/g, '-').replace(/&/g, 'and').replace(/[^\w-]/g, '-').replace(/--+/g, '-').replace(/(^-|-$)/g, '');
+      return String(s)
+        .toLowerCase()
+        .replace(/[ ’–—―′¿'`‘“”"″′‘’']/g, '-')
+        .replace(/&/g, 'and')
+        .replace(/[^\w-]/g, '-')
+        .replace(/--+/g, '-')
+        .replace(/(^-|-$)/g, '');
     };
-    var segs = loc.pathname.split('/').filter(Boolean).map(slug).filter(Boolean);
-    if (!segs.length) return;
-    var mode = segs.length === 1 ? 'docs' : 'story';
-    var id = segs.length === 1 ? segs[0] + '--docs' : segs.slice(0, -1).join('-') + '--' + segs[segs.length - 1];
-    var parts = ['path=/' + mode + '/' + id];
-    new URLSearchParams(loc.search).forEach(function (v, k) {
-      if (k !== 'path') parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
-    });
-    history.replaceState(history.state, '', '/?' + parts.join('&') + loc.hash);
+    var pathFromPathname = function (pathname) {
+      if (!pathname || pathname === '/' || staticRe.test(pathname)) return null;
+      if ((pathname.split('/').pop() || '').indexOf('.') !== -1) return null;
+      var segs = pathname.split('/').filter(Boolean).map(slug).filter(Boolean);
+      if (!segs.length) return null;
+      if (segs.length === 1) return '/docs/' + segs[0] + '--docs';
+      return '/story/' + segs.slice(0, -1).join('-') + '--' + segs[segs.length - 1];
+    };
+    Object.assign = function (target) {
+      var result = origAssign.apply(this, arguments);
+      try {
+        if (
+          result &&
+          typeof result.pathname === 'string' &&
+          typeof result.search === 'string' &&
+          typeof result.hash === 'string' &&
+          typeof result.key === 'string' &&
+          'state' in result &&
+          result.search.indexOf('path=') === -1
+        ) {
+          var p = pathFromPathname(result.pathname);
+          if (p) {
+            var rest = result.search.charAt(0) === '?' ? result.search.slice(1) : result.search;
+            result.search = '?path=' + p + (rest ? '&' + rest : '');
+          }
+        }
+      } catch (e) {}
+      return result;
+    };
   } catch (e) {}
 })();
 </script>

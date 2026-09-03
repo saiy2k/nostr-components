@@ -204,19 +204,12 @@ const applyPolish = () => {
   if (next === `${location.pathname}${location.search}${location.hash}`) return;
   syncDepth += 1;
   try {
-    // Native replace so Storybook does not re-route from the clean path.
     History.prototype.replaceState.call(history, history.state, '', next);
   } finally {
     syncDepth = Math.max(0, syncDepth - 1);
   }
 };
 
-/**
- * Storybook's history.push() calls pushState(?path=) then immediately reads
- * window.location to apply the story (applyTx). Polishing in that same turn
- * leaves the canvas on the previous story. A microtask runs after applyTx and
- * still before paint, so the address bar never shows ?path=.
- */
 const polish = () => {
   if (polishQueued) return;
   polishQueued = true;
@@ -225,6 +218,21 @@ const polish = () => {
     applyPolish();
   });
 };
+
+/** Rewrite ?path= to a clean path before the browser commits history (no omnibox flash). */
+const historyUrlToClean = (url: string | URL | null | undefined) => {
+  if (url == null || typeof location === 'undefined') return null;
+  try {
+    const abs = new URL(typeof url === 'string' ? url : url.href, location.href);
+    if (!abs.searchParams.has('path')) return null;
+    const next = rewriteUrlToClean(abs.href, idToClean.size ? idToClean : undefined);
+    return next && !next.startsWith('//') ? next : null;
+  } catch {
+    return null;
+  }
+};
+
+const PATCH_MARK = '__nostrCleanUrls';
 
 const selectClean = (api: API) => {
   if (hasStorybookPathParam() || isStaticPath(location.pathname)) return;
@@ -243,8 +251,6 @@ const selectClean = (api: API) => {
   }
 };
 
-const PATCH_MARK = '__nostrCleanUrls';
-
 const patchHistory = () => {
   if ((history.pushState as unknown as { [PATCH_MARK]?: boolean })[PATCH_MARK]) return;
   rawPush = history.pushState.bind(history);
@@ -252,8 +258,8 @@ const patchHistory = () => {
   const after =
     (orig: History['pushState']): History['pushState'] =>
     (state, title, url) => {
-      if (isSyncing()) return orig(state, title, url as string);
-      const result = orig(state, title, url as string);
+      const next = historyUrlToClean(url as string | URL | null) ?? url;
+      const result = orig(state, title, next as string);
       polish();
       return result;
     };
