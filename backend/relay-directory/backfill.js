@@ -306,13 +306,13 @@ async function executeBackfillCursor(
   const previousState = config.backfillResume
     ? await readBackfillState(stateRef)
     : null;
-  if (previousState?.status === "complete") {
+  if (isTerminalCursorStatus(previousState?.status)) {
     const summary = completedCursorSummary(relay, kind, previousState);
     printAlreadyCompleteSkip(summary);
     logBackfillEvent("backfill_cursor_result", {
       relay,
       kind,
-      status: "already_complete",
+      status: cursorStatusLabel(summary),
       lastReason: summary.lastReason,
       cursorUntil: summary.cursorUntil ?? null,
       oldestSeenAt: summary.oldestSeenAt ?? null,
@@ -380,6 +380,34 @@ async function executeBackfillCursor(
         cursorUntil: safeState.cursorUntil,
         pageLimit: safeState.pageLimit,
       });
+      // Relays that permanently reject this kind filter will never yield
+      // events; mark the cursor terminal so daily runs stop retry_later churn.
+      if (isPermanentRelayKindUnsupported(page.reason)) {
+        await writeCursorCheckpoint(db, relay, kind, safeState, config, {
+          status: "unsupported",
+          completed: true,
+          lastReason: page.reason,
+        });
+        stats.completed = true;
+        stats.unsupported = true;
+        logBackfillEvent("backfill_page_result", {
+          relay,
+          kind,
+          page: stats.pages,
+          maxPages: config.backfillMaxPages,
+          durationMs: Date.now() - pageStartedMs,
+          events: page.events.length,
+          valid: 0,
+          claims: 0,
+          writes: 0,
+          reason: page.reason,
+          cursorUntil: safeState.cursorUntil,
+          pageLimit: safeState.pageLimit,
+          completed: true,
+          retryPaused: false,
+        });
+        break;
+      }
       logBackfillEvent("backfill_page_result", {
         relay,
         kind,
@@ -907,20 +935,29 @@ function createCursorStats(relay, kind) {
     duplicateEventsSkipped: 0,
     gapsWritten: 0,
     completed: false,
+    unsupported: false,
     retryPaused: false,
     lastReason: null,
   };
 }
 
 function completedCursorSummary(relay, kind, previousState) {
+  const unsupported = previousState?.status === "unsupported";
   return {
     ...createCursorStats(relay, kind),
     cursorUntil: previousState.cursorUntil,
     oldestSeenAt: previousState.oldestSeenAt,
     completed: true,
     alreadyComplete: true,
-    lastReason: "already-complete",
+    unsupported,
+    lastReason: unsupported
+      ? previousState.lastReason || "unsupported"
+      : "already-complete",
   };
+}
+
+export function isTerminalCursorStatus(status) {
+  return status === "complete" || status === "unsupported";
 }
 
 function addProcessedPageStats(stats, processed) {
@@ -946,6 +983,7 @@ function createBackfillTotals() {
     duplicateEventsSkipped: 0,
     completedCursors: 0,
     alreadyCompleteCursors: 0,
+    unsupportedCursors: 0,
     pausedCursors: 0,
     retryLaterCursors: 0,
     failedCursors: 0,
@@ -971,6 +1009,7 @@ function addCursorSummary(totals, summary) {
     totals[key] += summary[key] || 0;
   }
   if (summary.failed) totals.failedCursors += 1;
+  else if (summary.unsupported) totals.unsupportedCursors += 1;
   else if (summary.alreadyComplete) totals.alreadyCompleteCursors += 1;
   else if (summary.completed) totals.completedCursors += 1;
   else if (summary.retryPaused) totals.retryLaterCursors += 1;
@@ -1056,6 +1095,18 @@ function oldestCreatedAt(events) {
 
 export function isSuccessfulRelayPage(reason) {
   return reason === "eose" || reason === "max";
+}
+
+/**
+ * True when a relay closed the REQ because this kind is not accepted.
+ * Transient closes (timeout, auth, disconnect) must keep retrying.
+ */
+export function isPermanentRelayKindUnsupported(reason) {
+  if (typeof reason !== "string" || !reason.startsWith("closed:")) return false;
+  const detail = reason.slice("closed:".length).toLowerCase();
+  return (
+    detail.includes("kind not allowed") || detail.includes("kinds not supported")
+  );
 }
 
 export function decideBackfillCursor({
@@ -1215,6 +1266,7 @@ function printPageProgress({
 }
 
 function cursorStatusLabel(stats) {
+  if (stats.unsupported) return "unsupported";
   if (stats.alreadyComplete) return "already_complete";
   if (stats.completed) return "complete";
   if (stats.retryPaused) return "retry_later";
@@ -1236,8 +1288,9 @@ function printCursorSummary(stats) {
 }
 
 function printAlreadyCompleteSkip(stats) {
+  const label = stats.unsupported ? "unsupported" : "already-complete";
   console.log(
-    `  ${stats.relay} kind:${stats.kind} skip already-complete lastReason=${stats.lastReason}`,
+    `  ${stats.relay} kind:${stats.kind} skip ${label} lastReason=${stats.lastReason}`,
   );
 }
 
@@ -1275,6 +1328,7 @@ function printBackfillSummary(output, config) {
   console.log(
     `  already-complete:     ${output.stats.alreadyCompleteCursors}`,
   );
+  console.log(`  unsupported cursors:  ${output.stats.unsupportedCursors}`);
   console.log(`  paused cursors:       ${output.stats.pausedCursors}`);
   console.log(`  retry_later cursors:  ${output.stats.retryLaterCursors}`);
   console.log(`  failed cursors:       ${output.stats.failedCursors}`);

@@ -8,7 +8,9 @@ import { finalizeEvent } from "nostr-tools";
 import {
   createBoundedCache,
   decideBackfillCursor,
+  isPermanentRelayKindUnsupported,
   isSuccessfulRelayPage,
+  isTerminalCursorStatus,
   loadBackfillConfig,
   resolveRelays,
   runBackfill,
@@ -449,6 +451,123 @@ describe("stateful cursor orchestration", () => {
     });
   });
 
+  it("marks kind-not-allowed closes as unsupported instead of retry_later", async () => {
+    const db = fakeFirestore();
+    const reason =
+      "closed:ERROR: bad req: filter validation failed: kind not allowed: 10011";
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.us.whitenoise.chat",
+      10011,
+      testConfig({ backfillUntil: 500 }),
+      {
+        queryRelay: async () => ({ events: [], reason }),
+      },
+    );
+
+    expect(summary).toMatchObject({
+      completed: true,
+      unsupported: true,
+      retryPaused: false,
+      cursorUntil: 500,
+      lastReason: reason,
+    });
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0]).toMatchObject({
+      collection: "state",
+      data: {
+        cursorUntil: 500,
+        status: "unsupported",
+        completed: true,
+        lastReason: reason,
+      },
+    });
+  });
+
+  it("marks kinds-not-supported closes as unsupported instead of retry_later", async () => {
+    const db = fakeFirestore();
+    const reason = "closed:kinds not supported";
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.fountain.fm",
+      10011,
+      testConfig({ backfillUntil: 500 }),
+      {
+        queryRelay: async () => ({ events: [], reason }),
+      },
+    );
+
+    expect(summary).toMatchObject({
+      completed: true,
+      unsupported: true,
+      retryPaused: false,
+      lastReason: reason,
+    });
+    expect(db.writes[0]).toMatchObject({
+      data: { status: "unsupported", completed: true },
+    });
+  });
+
+  it("keeps auth-required closes as retry_later", async () => {
+    const db = fakeFirestore();
+    const reason = "closed:auth-required";
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig({ backfillUntil: 500 }),
+      {
+        queryRelay: async () => ({ events: [], reason }),
+      },
+    );
+
+    expect(summary).toMatchObject({
+      completed: false,
+      unsupported: false,
+      retryPaused: true,
+      lastReason: reason,
+    });
+    expect(db.writes[0]).toMatchObject({
+      data: { status: "retry_later", completed: false },
+    });
+  });
+
+  it("skips unsupported cursors on resume", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__relay_us_whitenoise_chat:kind:10011", {
+      status: "unsupported",
+      completed: true,
+      cursorUntil: 500,
+      lastReason:
+        "closed:ERROR: bad req: filter validation failed: kind not allowed: 10011",
+    });
+    let queried = false;
+
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.us.whitenoise.chat",
+      10011,
+      testConfig({ backfillUntil: 999 }),
+      {
+        queryRelay: async () => {
+          queried = true;
+          return { events: [], reason: "eose" };
+        },
+      },
+    );
+
+    expect(queried).toBe(false);
+    expect(summary).toMatchObject({
+      completed: true,
+      alreadyComplete: true,
+      unsupported: true,
+      cursorUntil: 500,
+      lastReason:
+        "closed:ERROR: bad req: filter validation failed: kind not allowed: 10011",
+    });
+    expect(db.writes).toHaveLength(0);
+  });
+
   it("does not let an all-invalid full page advance the cursor", async () => {
     const db = fakeFirestore();
     const summary = await runBackfillCursor(
@@ -676,6 +795,7 @@ describe("top-level cursor coordination", () => {
     expect(result.totals).toMatchObject({
       relayKindCursors: 4,
       alreadyCompleteCursors: 2,
+      unsupportedCursors: 0,
       completedCursors: 2,
       failedCursors: 0,
       lastReasonCounts: {
@@ -730,6 +850,81 @@ describe("top-level cursor coordination", () => {
         status: "paused",
         lastReason: "max-pages",
       }),
+    });
+  });
+
+  it("rolls up unsupported cursors separately from retry_later", async () => {
+    const db = fakeFirestore();
+    const reason =
+      "closed:ERROR: bad req: filter validation failed: kind not allowed: 10011";
+    const result = await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://relay.us.whitenoise.chat", "wss://timeout.example"],
+        backfillUntil: 500,
+      }),
+      {
+        queryRelay: async (relay, filter) => {
+          if (
+            relay === "wss://relay.us.whitenoise.chat" &&
+            filter.kinds[0] === 10011
+          ) {
+            return { events: [], reason };
+          }
+          if (relay === "wss://timeout.example") {
+            return { events: [], reason: "timeout" };
+          }
+          return { events: [], reason: "eose" };
+        },
+      },
+    );
+
+    expect(result.totals).toMatchObject({
+      relayKindCursors: 4,
+      unsupportedCursors: 1,
+      retryLaterCursors: 2,
+      completedCursors: 1,
+      alreadyCompleteCursors: 0,
+    });
+    expect(result.cursorSummaries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          relay: "wss://relay.us.whitenoise.chat",
+          kind: 10011,
+          unsupported: true,
+          retryPaused: false,
+          lastReason: reason,
+        }),
+      ]),
+    );
+  });
+
+  it("does not count skipped unsupported cursors as already-complete", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__relay_fountain_fm:kind:10011", {
+      status: "unsupported",
+      completed: true,
+      cursorUntil: 500,
+      lastReason: "closed:kinds not supported",
+    });
+
+    const result = await runBackfillCursors(
+      db,
+      testConfig({
+        relays: ["wss://relay.fountain.fm"],
+        backfillUntil: 999,
+      }),
+      {
+        queryRelay: async () => ({ events: [], reason: "eose" }),
+      },
+    );
+
+    expect(result.totals).toMatchObject({
+      relayKindCursors: 2,
+      unsupportedCursors: 1,
+      alreadyCompleteCursors: 0,
+      completedCursors: 1,
+      retryLaterCursors: 0,
     });
   });
 
@@ -1099,6 +1294,31 @@ describe("relay page completion", () => {
     expect(isSuccessfulRelayPage("max")).toBe(true);
     expect(isSuccessfulRelayPage("timeout")).toBe(false);
     expect(isSuccessfulRelayPage("closed:auth-required")).toBe(false);
+  });
+
+  it("detects permanent kind-unsupported closes", () => {
+    expect(
+      isPermanentRelayKindUnsupported(
+        "closed:ERROR: bad req: filter validation failed: kind not allowed: 10011",
+      ),
+    ).toBe(true);
+    expect(isPermanentRelayKindUnsupported("closed:kinds not supported")).toBe(
+      true,
+    );
+    expect(isPermanentRelayKindUnsupported("closed:KIND NOT ALLOWED")).toBe(
+      true,
+    );
+    expect(isPermanentRelayKindUnsupported("closed:auth-required")).toBe(false);
+    expect(isPermanentRelayKindUnsupported("timeout")).toBe(false);
+    expect(isPermanentRelayKindUnsupported("eose")).toBe(false);
+  });
+
+  it("treats complete and unsupported cursor statuses as terminal", () => {
+    expect(isTerminalCursorStatus("complete")).toBe(true);
+    expect(isTerminalCursorStatus("unsupported")).toBe(true);
+    expect(isTerminalCursorStatus("retry_later")).toBe(false);
+    expect(isTerminalCursorStatus("paused")).toBe(false);
+    expect(isTerminalCursorStatus("running")).toBe(false);
   });
 });
 
