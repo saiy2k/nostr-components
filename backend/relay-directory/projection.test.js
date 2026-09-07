@@ -984,6 +984,92 @@ describe("projection execution", () => {
     expect(verifyClaims).toHaveBeenCalledTimes(1);
   });
 
+  it("records pendingHandleCount when the read limit is saturated", async () => {
+    const handles = [
+      dueHandle("alice", "one", PUBKEY_A),
+      dueHandle("bob", "two", PUBKEY_B),
+      dueHandle("carol", "three", PUBKEY_A),
+    ];
+    const writes = [];
+    const verifyClaims = vi.fn(async (handleData) =>
+      verificationOutput({
+        results: [
+          {
+            claimId: handleData.claims[0].claimId,
+            identityStatus: "rejected",
+            rejectionReason: "test",
+          },
+        ],
+      }),
+    );
+
+    const output = await runProjection(
+      projectionArgs({ projectionLimit: 2 }),
+      null,
+      {
+        db: fakeFirestore(handles, writes),
+        verifyHandleClaims: verifyClaims,
+      },
+    );
+
+    expect(output.stats).toMatchObject({
+      pendingHandleCount: 3,
+      projectionLimitSaturated: true,
+      handleDocsRead: 2,
+    });
+    const summary = writes.find(
+      (write) => write.collection === "relayProjectionRuns",
+    );
+    expect(summary.data.stats).toMatchObject({
+      pendingHandleCount: 3,
+      projectionLimitSaturated: true,
+    });
+  });
+
+  it("keeps projection healthy when the pending handle count fails", async () => {
+    const db = fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)]);
+    const originalCollection = db.collection.bind(db);
+    db.collection = (name) => {
+      const adapter = originalCollection(name);
+      const wrap = (query) => ({
+        where: (...args) => wrap(query.where(...args)),
+        orderBy: (...args) => wrap(query.orderBy(...args)),
+        limit: (...args) => wrap(query.limit(...args)),
+        count: () => ({
+          get: async () => {
+            throw new Error("count unavailable");
+          },
+        }),
+        get: (...args) => query.get(...args),
+        doc: (...args) => query.doc(...args),
+      });
+      return wrap(adapter);
+    };
+    const verifyClaims = vi.fn(async (handleData) =>
+      verificationOutput({
+        results: [
+          {
+            claimId: handleData.claims[0].claimId,
+            identityStatus: "rejected",
+            rejectionReason: "test",
+          },
+        ],
+      }),
+    );
+
+    const output = await runProjection(projectionArgs(), null, {
+      db,
+      verifyHandleClaims: verifyClaims,
+    });
+
+    expect(output.stats).toMatchObject({
+      pendingHandleCount: null,
+      projectionLimitSaturated: false,
+      handlesDue: 1,
+      rejected: 1,
+    });
+  });
+
   it("stops cleanly when the run deadline is reached", async () => {
     const now = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(1);
     const verifyClaims = vi.fn();
@@ -1115,18 +1201,33 @@ function fxTwitterFetch(
 
 function collectionAdapter(name, handle, calls = []) {
   const handles = Array.isArray(handle) ? handle : [handle];
-  const make = (ordered) => ({
+  const make = (ordered, maxDocs = Infinity) => ({
     where: (...args) => {
       calls.push(["where", ...args]);
-      return make(ordered);
+      return make(ordered, maxDocs);
     },
     orderBy: (...args) => {
       calls.push(["orderBy", ...args]);
-      return make(true);
+      return make(true, maxDocs);
     },
     limit: (...args) => {
       calls.push(["limit", ...args]);
-      return make(ordered);
+      return make(ordered, args[0]);
+    },
+    count: () => {
+      calls.push(["count"]);
+      return {
+        get: async () => ({
+          data: () => ({
+            count:
+              name === "handles"
+                ? handles.filter(
+                    (data) => Number(data.pendingClaimCount || 0) > 0,
+                  ).length
+                : 0,
+          }),
+        }),
+      };
     },
     get: async () => {
       if (name !== "handles") return { docs: [] };
@@ -1136,7 +1237,9 @@ function collectionAdapter(name, handle, calls = []) {
           id: `twitter:${data.handle || index}`,
           data: () => data,
         }));
-      return { docs };
+      return {
+        docs: Number.isFinite(maxDocs) ? docs.slice(0, maxDocs) : docs,
+      };
     },
     doc: (id) => ({ collection: name, id }),
   });

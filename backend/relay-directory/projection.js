@@ -116,9 +116,14 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     dependencies.db ?? (await createFirestore(args, FirestoreCtor));
   const verifyClaims = dependencies.verifyHandleClaims || verifyHandleClaims;
   const now = dependencies.now || Date.now;
-  const handleDocs = await readPendingHandleDocs(db, args);
+  const [handleDocs, pendingHandleCount] = await Promise.all([
+    readPendingHandleDocs(db, args),
+    countPendingHandleDocs(db, args),
+  ]);
   const stats = {
     handleDocsRead: handleDocs.length,
+    pendingHandleCount,
+    projectionLimitSaturated: handleDocs.length >= args.projectionLimit,
     handlesDue: 0,
     handlesSkippedNotDue: 0,
     handlesChanged: 0,
@@ -141,6 +146,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
 
   logProjectionEvent("projection_run_begin", {
     handleDocsRead: handleDocs.length,
+    pendingHandleCount: stats.pendingHandleCount,
+    projectionLimitSaturated: stats.projectionLimitSaturated,
     projectionLimit: args.projectionLimit,
     maxProofs: args.maxProofs,
     runDeadlineMs: args.runDeadlineMs,
@@ -444,6 +451,22 @@ function syntheticBioClaim(handleData, record, now = new Date()) {
   };
 }
 
+/** Best-effort queue depth; a failed count must not fail a healthy run. */
+async function countPendingHandleDocs(db, args) {
+  try {
+    const snapshot = await db
+      .collection(args.firestoreHandlesCollection)
+      .where("pendingClaimCount", ">", 0)
+      .count()
+      .get();
+    const count = snapshot.data()?.count;
+    return Number.isInteger(count) ? count : null;
+  } catch (error) {
+    console.warn(`Pending handle count failed: ${error?.message || error}`);
+    return null;
+  }
+}
+
 async function readPendingHandleDocs(db, args) {
   const collection = db.collection(args.firestoreHandlesCollection);
   const limit = args.projectionLimit;
@@ -570,6 +593,11 @@ export function lightningAddressToLnurlp(lud16) {
 function printProjectionSummary(output, args) {
   console.log("\nDirectory projection complete.");
   console.log(`  handle docs read:     ${output.stats.handleDocsRead}`);
+  console.log(
+    `  pending handles:      ${output.stats.pendingHandleCount}${
+      output.stats.projectionLimitSaturated ? " (limit saturated)" : ""
+    }`,
+  );
   console.log(`  handles due:          ${output.stats.handlesDue}`);
   console.log(
     `  handles skipped:      ${output.stats.handlesSkippedNotDue || 0}`,
