@@ -4,12 +4,13 @@
  * NIP-05 utility functions for resolving nostr identifiers
  */
 
-const NIP05_REGEX = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+// Per NIP-05 spec: <local-part> MUST only use characters a-z0-9-_.
+const NIP05_REGEX = /^[a-z0-9-_.]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 const HEX_PUBKEY_REGEX = /^[0-9a-fA-F]{64}$/;
 
 /**
  * Resolves a NIP-05 identifier to a nostr public key.
- * Includes format validation, identifier lowercasing per spec, safe prototype lookup,
+ * Includes strict NIP-05 local-part format validation, safe prototype lookup,
  * 64-character hex format verification, and request timeout.
  * 
  * @param nip05 - NIP-05 identifier in format username@domain.com
@@ -27,10 +28,8 @@ export async function resolveNip05(nip05: string, timeoutMs: number = 5000): Pro
     throw new Error("Invalid NIP-05: missing name or domain");
   }
 
-  const localName = name.toLowerCase();
   const normalizedDomain = domain.toLowerCase();
-
-  const url = `https://${normalizedDomain}/.well-known/nostr.json?name=${encodeURIComponent(localName)}`;
+  const url = `https://${normalizedDomain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`;
   
   // Set up AbortController for timeout
   const controller = new AbortController();
@@ -52,9 +51,7 @@ export async function resolveNip05(nip05: string, timeoutMs: number = 5000): Pro
     }
 
     let pubkey: unknown = undefined;
-    if (Object.prototype.hasOwnProperty.call(json.names, localName)) {
-      pubkey = json.names[localName];
-    } else if (Object.prototype.hasOwnProperty.call(json.names, name)) {
+    if (Object.prototype.hasOwnProperty.call(json.names, name)) {
       pubkey = json.names[name];
     }
     

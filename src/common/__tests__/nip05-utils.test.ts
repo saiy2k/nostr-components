@@ -11,6 +11,7 @@ describe("resolveNip05", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -35,7 +36,7 @@ describe("resolveNip05", () => {
     );
   });
 
-  it("normalizes mixed-case input name and domain per NIP-05 spec", async () => {
+  it("normalizes mixed-case domain names", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -46,7 +47,7 @@ describe("resolveNip05", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await resolveNip05("BoB@ExAmPlE.CoM");
+    const result = await resolveNip05("bob@ExAmPlE.CoM");
     expect(result).toBe(validPubkey);
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.com/.well-known/nostr.json?name=bob",
@@ -54,19 +55,20 @@ describe("resolveNip05", () => {
     );
   });
 
-  it("falls back to original name casing if server returns original casing in names", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        names: {
-          Charlie: validPubkey,
-        },
-      }),
-    });
+  it("rejects uppercase characters or + in local-part per NIP-05 spec", async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await resolveNip05("Charlie@example.com");
-    expect(result).toBe(validPubkey);
+    await expect(resolveNip05("Alice@example.com")).rejects.toThrow(
+      "Invalid NIP-05 format"
+    );
+    await expect(resolveNip05("alice+tag@example.com")).rejects.toThrow(
+      "Invalid NIP-05 format"
+    );
+    await expect(resolveNip05("BOB@example.com")).rejects.toThrow(
+      "Invalid NIP-05 format"
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("prevents prototype property pollution / shadowing (e.g. toString)", async () => {
@@ -78,7 +80,7 @@ describe("resolveNip05", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(resolveNip05("toString@example.com")).rejects.toThrow(
+    await expect(resolveNip05("tostring@example.com")).rejects.toThrow(
       "NIP-05 not found"
     );
   });
@@ -158,15 +160,22 @@ describe("resolveNip05", () => {
     );
   });
 
-  it("handles request abort / timeout", async () => {
-    const abortError = new Error("The operation was aborted");
-    abortError.name = "AbortError";
-
-    const fetchMock = vi.fn().mockRejectedValue(abortError);
+  it("handles request abort / timeout via timer-driven signal", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockImplementation((_url, { signal }: { signal: AbortSignal }) => {
+      return new Promise((_, reject) => {
+        signal.addEventListener("abort", () => {
+          const err = new Error("The operation was aborted");
+          err.name = "AbortError";
+          reject(err);
+        });
+      });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(resolveNip05("alice@example.com", 100)).rejects.toThrow(
-      "NIP-05 resolution timed out"
-    );
+    const promise = resolveNip05("alice@example.com", 100);
+    vi.advanceTimersByTime(100);
+
+    await expect(promise).rejects.toThrow("NIP-05 resolution timed out");
   });
 });
