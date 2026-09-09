@@ -16,7 +16,7 @@ import {
   type DirectorySort,
 } from "./directory";
 import { brandMark, icon, networkGraphic } from "./icons";
-import { DEFAULT_DIRECTORY_API_URL, fetchDirectoryPage } from "./api";
+import { DEFAULT_DIRECTORY_API_URL, fetchNextDirectoryPage } from "./api";
 
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 
@@ -156,8 +156,9 @@ function renderProfiles(): void {
 function renderPagination(
   pagination: ReturnType<typeof paginateProfiles<DirectoryProfile>>,
 ): void {
-  const paginationNav =
-    document.querySelector<HTMLElement>("#directory-pagination");
+  const paginationNav = document.querySelector<HTMLElement>(
+    "#directory-pagination",
+  );
   if (!paginationNav) return;
 
   if (pagination.totalItems === 0 || (!loaded && loading)) {
@@ -206,7 +207,7 @@ function renderPagination(
       >
         ${icon.chevronLeft()}<span>Previous</span>
       </button>
-      <div class="pagination-pages" role="navigation" aria-label="Pagination pages">
+      <div class="pagination-pages" role="group" aria-label="Pagination pages">
         ${pagesHtml}
       </div>
       <button
@@ -266,7 +267,7 @@ async function loadProfiles(reset = true): Promise<void> {
   }
   renderProfiles();
   try {
-    const page = await fetchDirectoryPage(
+    const page = await fetchNextDirectoryPage(
       directoryApiUrl,
       reset ? null : nextCursor,
     );

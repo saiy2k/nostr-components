@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { npubEncode } from "nostr-tools/nip19";
-import { fetchDirectoryPage, parseDirectoryPage } from "./api";
+import {
+  fetchDirectoryPage,
+  fetchNextDirectoryPage,
+  parseDirectoryPage,
+} from "./api";
 
 const profile = {
   id: "twitter:alice",
@@ -103,6 +107,55 @@ describe("directory API", () => {
     await expect(
       fetchDirectoryPage(endpoint, "twitter:alice", fetcher),
     ).rejects.toThrow("page cursor");
+  });
+
+  it("skips empty pages with cursors until profiles are available", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response('{"profiles":[],"nextCursor":"twitter:alice"}'),
+      )
+      .mockResolvedValueOnce(
+        new Response('{"profiles":[],"nextCursor":"twitter:bob"}'),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ profiles: [profile], nextCursor: null })),
+      );
+
+    await expect(
+      fetchNextDirectoryPage(endpoint, null, fetcher),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        profiles: [expect.objectContaining({ id: profile.id })],
+      }),
+    );
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(
+      new URL(String(fetcher.mock.calls[1][0])).searchParams.get("cursor"),
+    ).toBe("twitter:alice");
+    expect(
+      new URL(String(fetcher.mock.calls[2][0])).searchParams.get("cursor"),
+    ).toBe("twitter:bob");
+  });
+
+  it("bounds consecutive empty-page requests and preserves the last cursor", async () => {
+    const cursors = ["alice", "bob", "carol", "dave", "erin"];
+    const fetcher = vi.fn<typeof fetch>();
+    for (const cursor of cursors) {
+      fetcher.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ profiles: [], nextCursor: `twitter:${cursor}` }),
+        ),
+      );
+    }
+
+    await expect(
+      fetchNextDirectoryPage(endpoint, null, fetcher),
+    ).resolves.toEqual({
+      profiles: [],
+      nextCursor: "twitter:erin",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(5);
   });
 
   it("aborts stalled requests and reports a timeout", async () => {

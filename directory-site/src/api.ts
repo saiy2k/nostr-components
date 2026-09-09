@@ -5,6 +5,7 @@ export const DEFAULT_DIRECTORY_API_URL =
   "https://us-central1-gr-prod.cloudfunctions.net/listDirectoryProfiles";
 const PAGE_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_EMPTY_PAGE_REQUESTS = 5;
 const CURSOR_PATTERN = /^twitter:[a-z0-9_]{1,15}$/;
 
 export interface DirectoryPage {
@@ -110,4 +111,21 @@ export async function fetchDirectoryPage(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function fetchNextDirectoryPage(
+  endpoint: string,
+  cursor: string | null = null,
+  fetcher: typeof fetch = fetch,
+): Promise<DirectoryPage> {
+  let requestCursor = cursor;
+  let page: DirectoryPage = { profiles: [], nextCursor: requestCursor };
+
+  for (let attempt = 0; attempt < MAX_EMPTY_PAGE_REQUESTS; attempt += 1) {
+    page = await fetchDirectoryPage(endpoint, requestCursor, fetcher);
+    if (page.profiles.length > 0 || !page.nextCursor) return page;
+    requestCursor = page.nextCursor;
+  }
+
+  return page;
 }
