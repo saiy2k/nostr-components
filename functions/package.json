@@ -8,7 +8,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "node lookup.test.js"
+    "test": "node --test *.test.js"
   },
   "dependencies": {
     "firebase-admin": "^13.4.0",
