@@ -33,6 +33,13 @@ import {
   normalizeTwitterHandle,
   numberFromEnv,
 } from "./utils.js";
+import {
+  DEFAULT_WOT_THRESHOLDS,
+  WOT_MODES,
+  evaluateWebOfTrust,
+  trustFieldsFromEvaluation,
+  wotRejectsIdentity,
+} from "./web-of-trust.js";
 
 export function loadProjectionConfig(env = process.env) {
   const args = {
@@ -68,6 +75,17 @@ export function loadProjectionConfig(env = process.env) {
       env,
       "MAX_RETRY_ATTEMPTS",
       DEFAULT_MAX_RETRY_ATTEMPTS,
+    ),
+    wotMode: env.WOT_MODE || "flag",
+    wotAcceptScore: numberFromEnv(
+      env,
+      "WOT_ACCEPT_SCORE",
+      DEFAULT_WOT_THRESHOLDS.acceptScore,
+    ),
+    wotRejectScore: numberFromEnv(
+      env,
+      "WOT_REJECT_SCORE",
+      DEFAULT_WOT_THRESHOLDS.rejectScore,
     ),
   };
   validateProjectionArgs(args);
@@ -108,6 +126,20 @@ function validateProjectionArgs(args) {
   if (!Number.isInteger(args.maxRetryAttempts) || args.maxRetryAttempts <= 0) {
     throw new Error("MAX_RETRY_ATTEMPTS must be a positive integer.");
   }
+  if (!WOT_MODES.includes(args.wotMode)) {
+    throw new Error(`WOT_MODE must be one of ${WOT_MODES.join(", ")}.`);
+  }
+  for (const [name, value] of [
+    ["WOT_ACCEPT_SCORE", args.wotAcceptScore],
+    ["WOT_REJECT_SCORE", args.wotRejectScore],
+  ]) {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${name} must be a number.`);
+    }
+  }
+  if (args.wotRejectScore >= args.wotAcceptScore) {
+    throw new Error("WOT_REJECT_SCORE must be below WOT_ACCEPT_SCORE.");
+  }
 }
 
 export async function runProjection(args, FirestoreCtor, dependencies = {}) {
@@ -137,6 +169,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     rejected: 0,
     retryLater: 0,
     pendingDropped: 0,
+    trustOutcomes: { accepted: 0, rejected: 0, ambiguous: 0, unavailable: 0 },
+    trustEnforcedRejections: 0,
     firestoreWrites: 0,
     stoppedReason: null,
   };
@@ -153,6 +187,7 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     runDeadlineMs: args.runDeadlineMs,
     checkZaps: args.checkZaps,
     verifyTweets: args.verifyTweets,
+    wotMode: args.wotMode,
   });
 
   for (const handleDoc of handleDocs) {
@@ -200,6 +235,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       verification.xProfileFailures,
     );
     stats.xBioIdentifiersResolved += verification.xBioIdentifiersResolved;
+    mergeFailureCounts(stats.trustOutcomes, verification.trustOutcomes);
+    stats.trustEnforcedRejections += verification.trustEnforcedRejections || 0;
 
     const transition = applyProjectionResults(
       handleDoc.data,
@@ -243,6 +280,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
         xProfilesFailed: verification.xProfilesFailed || 0,
         xProfileFailures: verification.xProfileFailures || {},
         xBioIdentifiersResolved: verification.xBioIdentifiersResolved,
+        trustOutcomes: verification.trustOutcomes || {},
+        trustEnforcedRejections: verification.trustEnforcedRejections || 0,
         stopRun: verification.stopRun,
         stoppedReason: verification.stoppedReason,
       },
@@ -288,6 +327,9 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       maxProofs: args.maxProofs,
       scanXProfiles: true,
       runDeadlineMs: args.runDeadlineMs,
+      wotMode: args.wotMode,
+      wotAcceptScore: args.wotAcceptScore,
+      wotRejectScore: args.wotRejectScore,
     },
     stats,
   };
@@ -326,9 +368,60 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
   let xProfilesFailed = 0;
   let xProfileFailures = {};
   let xBioIdentifiersResolved = 0;
+  let profileSignalsByHandle = new Map();
   let stopRun = false;
   let stoppedReason = null;
+  const trustOutcomes = {
+    accepted: 0,
+    rejected: 0,
+    ambiguous: 0,
+    unavailable: 0,
+  };
+  let trustEnforcedRejections = 0;
   const proofsRemaining = limits.proofsRemaining ?? Infinity;
+
+  /**
+   * Score an already-verified identity pair and either annotate it (flag mode)
+   * or downgrade it to a rejection (enforce mode). Identifier validation has
+   * already run at this point, so WoT can only ever remove trust, never grant
+   * it to a claim that failed proof-tweet or X-bio validation.
+   */
+  const applyTrust = (result, claim, { xBioLinksPubkey }) => {
+    if (args.wotMode === "off") return result;
+    const evaluation = evaluateWebOfTrust({
+      xProfile: profileSignalsByHandle.get(
+        normalizeTwitterHandle(result.handle || claim?.handle),
+      ),
+      nostrMetadata: claim?.metadata,
+      linkage: {
+        xBioLinksPubkey,
+        nostrProfileLinksHandle: claimLinksHandle(claim),
+        proofTweetVerified: result.verificationMethod === "nip39_proof_tweet",
+      },
+      thresholds: {
+        acceptScore: args.wotAcceptScore,
+        rejectScore: args.wotRejectScore,
+      },
+    });
+    trustOutcomes[evaluation.status] += 1;
+    const trustFields = trustFieldsFromEvaluation(evaluation, args.wotMode);
+    if (!wotRejectsIdentity(evaluation, args.wotMode)) {
+      return { ...result, ...trustFields };
+    }
+    trustEnforcedRejections += 1;
+    const rejectionReason = evaluation.bothProfilesScamRisk
+      ? "both_profiles_scam_risk"
+      : "low_trust_score";
+    return {
+      claimId: result.claimId,
+      claim: result.claim,
+      handle: result.handle,
+      pubkey: result.pubkey,
+      ...trustFields,
+      identityStatus: "rejected",
+      rejectionReason: `web-of-trust:${rejectionReason}`,
+    };
+  };
 
   if (pending.length > 0) {
     const bioDiscovery = await discoverXBioIdentities({
@@ -341,6 +434,8 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     xProfilesFailed = bioDiscovery.profilesFailed;
     xProfileFailures = bioDiscovery.profileFailures;
     xBioIdentifiersResolved = bioDiscovery.identifiersResolved;
+    profileSignalsByHandle =
+      bioDiscovery.profileSignalsByHandle || profileSignalsByHandle;
     const distinctBioPubkeys = new Set(
       bioDiscovery.records.map((record) => record.pubkey),
     );
@@ -358,7 +453,7 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
         claim.metadata,
         args,
       );
-      results.push(verified);
+      results.push(applyTrust(verified, claim, { xBioLinksPubkey: true }));
       completedClaimIds.add(claim.claimId);
     }
     const normalizedHandle = normalizeTwitterHandle(handleData?.handle);
@@ -388,6 +483,9 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       let result = await verifyTweetCandidate(claim, args.timeoutMs);
       if (result.identityStatus === "verified") {
         result = await enrichVerifiedResult(result, claim.metadata, args);
+        result = applyTrust({ ...result, claimId: claim.claimId }, claim, {
+          xBioLinksPubkey: false,
+        });
       }
       results.push({ ...result, claimId: claim.claimId });
       completedClaimIds.add(claim.claimId);
@@ -407,9 +505,22 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     xProfilesFailed,
     xProfileFailures,
     xBioIdentifiersResolved,
+    trustOutcomes,
+    trustEnforcedRejections,
     stopRun,
     stoppedReason,
   };
+}
+
+/**
+ * True when the Nostr side of the pair advertises the X handle itself (a
+ * kind-0 field or a NIP-39 `i` tag), which together with an X bio link makes
+ * the claim mutually attested rather than one-sided.
+ */
+function claimLinksHandle(claim) {
+  return (claim?.sources || []).some(
+    (source) => String(source).startsWith("kind0.") || source === "event.i_tag",
+  );
 }
 
 async function enrichVerifiedResult(result, metadata, args) {
@@ -613,6 +724,16 @@ function printProjectionSummary(output, args) {
   console.log(`  rejected:             ${output.stats.rejected}`);
   console.log(`  retry later:          ${output.stats.retryLater}`);
   console.log(`  pending dropped:      ${output.stats.pendingDropped}`);
+  console.log(
+    `  web-of-trust (${args.wotMode}):  ` +
+      `accepted ${output.stats.trustOutcomes.accepted}, ` +
+      `rejected ${output.stats.trustOutcomes.rejected}, ` +
+      `ambiguous ${output.stats.trustOutcomes.ambiguous}, ` +
+      `unavailable ${output.stats.trustOutcomes.unavailable}`,
+  );
+  console.log(
+    `  trust rejections:     ${output.stats.trustEnforcedRejections}`,
+  );
   console.log(`  Firestore writes:     ${output.stats.firestoreWrites}`);
   console.log(`  firestore project:    ${args.firestoreProject}`);
   if (output.stats.stoppedReason) {
@@ -653,6 +774,9 @@ function summarizeResultForLog(result) {
     proofSource: result.proofSource || null,
     zapReason: result.zapReason || null,
     zappable: result.zappable === true,
+    trustStatus: result.trustStatus || null,
+    trustScore: Number.isFinite(result.trustScore) ? result.trustScore : null,
+    trustReasons: result.trustReasons || [],
     pubkey: result.pubkey || result.claim?.pubkey || null,
   };
 }

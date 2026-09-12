@@ -256,8 +256,9 @@ export function buildHandleProjectionWrites(
         identityStatus: "verified",
         obsoleteAt: null,
         supersededByEntryId: null,
-        directoryStatus:
-          active.zappable === true
+        directoryStatus: trustBlocksAutoZap(active)
+          ? "verified_untrusted"
+          : active.zappable === true
             ? "verified_zappable"
             : active.zapReason === "zap-check-skipped"
               ? "verified_zap_unknown"
@@ -270,7 +271,14 @@ export function buildHandleProjectionWrites(
         xUserId: active.xUserId,
         verifiedAt: active.verifiedAt,
         zappable: active.zappable === true,
-        autoZapAllowed: active.zappable === true,
+        autoZapAllowed:
+          active.zappable === true && !trustBlocksAutoZap(active),
+        trustStatus: active.trustStatus || null,
+        trustScore: Number.isFinite(active.trustScore)
+          ? active.trustScore
+          : null,
+        trustReasons: active.trustReasons || [],
+        trustEvaluatedAt: active.trustEvaluatedAt || null,
         lud16: active.lud16,
         lnurlp: active.lnurlp,
         zapReason: active.zapReason,
@@ -322,7 +330,21 @@ function verifiedClaim(current, result, nowIso) {
     lnurlNostrPubkey: result.lnurlNostrPubkey,
     zapCheckedAt: result.zapCheckedAt,
     zapCheckTransient: result.zapCheckTransient,
+    trustStatus: result.trustStatus,
+    trustScore: result.trustScore,
+    trustReasons: result.trustReasons,
+    trustEvaluatedAt: result.trustEvaluatedAt,
+    trustMode: result.trustMode,
   });
+}
+
+/**
+ * A pair the Web-of-Trust evaluation rejected stays in the directory (the
+ * identifier link is still real) but loses its automatic-zap privilege, so a
+ * flagged scam pair can never be paid without a human decision.
+ */
+export function trustBlocksAutoZap(claim) {
+  return claim?.trustStatus === "rejected";
 }
 
 function normalizeActiveIdentity(activeIdentity, claimsById, tombstonesById) {
