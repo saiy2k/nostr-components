@@ -272,6 +272,7 @@ export async function discoverXBioIdentities({
     .sort()
     .slice(0, Math.max(0, maxProfiles));
   const recordsByKey = new Map();
+  const profileSignalsByHandle = new Map();
   let profilesAttempted = 0;
   let profilesChecked = 0;
   let profilesFailed = 0;
@@ -300,6 +301,8 @@ export async function discoverXBioIdentities({
     }
     profilesChecked += 1;
     checkedHandles.push(handle);
+    const xProfileSignals = extractXProfileSignals(profileResult.profile);
+    profileSignalsByHandle.set(handle, xProfileSignals);
 
     const identifiers = extractNostrIdentifiers(
       profileSearchText(profileResult.profile),
@@ -333,6 +336,7 @@ export async function discoverXBioIdentities({
         nostrIdentifier: resolved.identifier,
         proofSource: profileResult.source,
         xUserId: profileResult.profile.id,
+        xProfileSignals,
         verifiedAt: new Date().toISOString(),
       });
     }
@@ -340,6 +344,7 @@ export async function discoverXBioIdentities({
 
   return {
     records: [...recordsByKey.values()],
+    profileSignalsByHandle,
     profilesAttempted,
     profilesChecked,
     profilesFailed,
@@ -383,6 +388,44 @@ async function fetchXProfileViaFxTwitter(handle, timeoutMs, fetchImpl) {
       retryable: true,
     });
   }
+}
+
+/**
+ * Reduce an FxTwitter profile payload to the deterministic counters and text
+ * the Web-of-Trust evaluation scores. Field names have varied across FxTwitter
+ * versions, so each signal accepts the known spellings and falls back to null
+ * rather than guessing.
+ */
+export function extractXProfileSignals(profile) {
+  if (!profile || typeof profile !== "object") return null;
+  return {
+    handle: normalizeTwitterHandle(profile.screen_name) || null,
+    displayName: profile.name || null,
+    description: profile.description || profile.raw_description?.text || null,
+    location: profile.location || null,
+    website: profile.website?.url || profile.url || null,
+    followers: profileCount(profile.followers, profile.followers_count),
+    following: profileCount(profile.following, profile.friends_count),
+    tweets: profileCount(profile.tweets, profile.statuses_count),
+    createdAt: profileCreatedAt(profile),
+  };
+}
+
+function profileCount(...values) {
+  for (const value of values) {
+    const count = Number(value);
+    if (Number.isFinite(count) && count >= 0) return Math.floor(count);
+  }
+  return null;
+}
+
+function profileCreatedAt(profile) {
+  for (const value of [profile.joined, profile.created_at]) {
+    if (!value) continue;
+    const parsed = Date.parse(String(value));
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+  }
+  return null;
 }
 
 function profileSearchText(profile) {

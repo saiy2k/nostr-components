@@ -85,3 +85,71 @@ gcloud firestore indexes composite create \
 
 Use the configured `FIRESTORE_HANDLES_COLLECTION` and `FIRESTORE_DATABASE`
 values when they differ from the defaults.
+
+## Web of Trust
+
+Identifier validation — NIP-39 proof tweets and X bio `npub` / `nprofile` /
+NIP-05 scanning — only proves that an X profile and a Nostr profile point at
+each other. It cannot tell an honest pair from a scammer who controls both
+halves of their own link, and proof tweets are scarce enough that they cannot
+carry the trust decision alone. `relay-directory/web-of-trust.js` scores the
+pair separately, after identifier validation has already passed. It never
+promotes a claim that failed validation; it can only withhold trust.
+
+### Inputs
+
+| Side | Signals |
+| --- | --- |
+| X profile | account age, follower / following / tweet counts, follow ratio, bio text, handle and display name |
+| Nostr profile | kind-0 `name`, `about`, `nip05`, `lud16`, `website` |
+| Linkage | X bio links the pubkey, Nostr profile links the handle, NIP-39 proof tweet verified |
+
+X signals come from the FxTwitter profile already fetched during the bio scan,
+so scoring adds no extra network requests.
+
+### Scoring
+
+Each rule contributes a fixed weight from `WOT_SIGNAL_WEIGHTS`. Trust signals
+(mutual link, proof tweet, established account, real follower base, NIP-05 and
+Lightning address) add; risk signals (brand-new account, negligible followers
+or activity, empty Nostr profile) subtract; scam signals (scam phrasing in
+either bio, support/giveaway impersonation names, mass-follow ratio) subtract
+the most. Rules run in a fixed order over deterministic inputs, so the same
+profiles always produce the same score and the same reason list. Repeated scam
+phrases are capped so one keyword-stuffed bio cannot dominate the score.
+
+### Decisions
+
+| Outcome | Rule |
+| --- | --- |
+| `unavailable` | The X profile could not be read, so nothing is assessable. |
+| `rejected` | Both profiles emit a scam signal, or score ≤ `WOT_REJECT_SCORE`. |
+| `accepted` | score ≥ `WOT_ACCEPT_SCORE`. |
+| `ambiguous` | Assessable, but between the two thresholds. |
+
+The "both profiles emit a scam signal" rule is the case this exists for: a
+scam X account linked to a scam Nostr account is rejected on the evidence of
+the pair, regardless of the numeric score.
+
+### Failure behavior
+
+The evaluation performs no I/O and never throws. Missing or unparseable fields
+withhold their signals, which pushes the outcome toward `ambiguous` or
+`unavailable` rather than a false `accepted` or `rejected`. A failed X profile
+fetch therefore leaves the identity verified and unscored rather than
+rejecting it.
+
+### Configuration
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `WOT_MODE` | `flag` | `off` skips scoring; `flag` records the outcome; `enforce` also rejects a `rejected` pair. |
+| `WOT_ACCEPT_SCORE` | `3` | Score at or above which a pair is accepted. |
+| `WOT_REJECT_SCORE` | `-3` | Score at or below which a pair is rejected. Must be below `WOT_ACCEPT_SCORE`. |
+
+Claims and directory entries carry `trustStatus`, `trustScore`,
+`trustReasons` and `trustEvaluatedAt`. In every mode except `off`, a
+`rejected` pair loses `autoZapAllowed` and its entry is written with
+`directoryStatus: "verified_untrusted"`, so a flagged scam pair can never be
+zapped automatically even while `WOT_MODE=flag` keeps it in the directory for
+review. Run summaries report `trustOutcomes` and `trustEnforcedRejections`.

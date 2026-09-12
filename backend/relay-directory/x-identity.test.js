@@ -5,6 +5,7 @@ import { nip19 } from "nostr-tools";
 import {
   discoverXBioIdentities,
   extractNostrIdentifiers,
+  extractXProfileSignals,
   resolveNostrIdentifier,
   verifyTweetCandidate,
 } from "./x-identity.js";
@@ -380,5 +381,94 @@ describe("Nostr identifiers in X profile bios", () => {
     expect(
       requestedUrls.some((url) => url.includes("api.x.com")),
     ).toBe(false);
+  });
+});
+
+describe("X profile signal extraction", () => {
+  it("normalizes the counters and text the trust evaluation scores", () => {
+    expect(
+      extractXProfileSignals({
+        id: "x-user-1",
+        screen_name: "Alice",
+        name: "Alice",
+        description: "Bitcoin developer",
+        location: "Earth",
+        website: { url: "https://example.com" },
+        followers: 5000,
+        following: 400,
+        tweets: 3000,
+        joined: "2011-04-02T00:00:00.000Z",
+      }),
+    ).toEqual({
+      handle: "alice",
+      displayName: "Alice",
+      description: "Bitcoin developer",
+      location: "Earth",
+      website: "https://example.com",
+      followers: 5000,
+      following: 400,
+      tweets: 3000,
+      createdAt: "2011-04-02T00:00:00.000Z",
+    });
+  });
+
+  it("accepts legacy count field names and withholds unusable values", () => {
+    expect(
+      extractXProfileSignals({
+        screen_name: "bob",
+        followers_count: 12,
+        friends_count: 8,
+        statuses_count: 3,
+        created_at: "Thu Apr 16 07:07:26 +0000 2009",
+      }),
+    ).toMatchObject({
+      followers: 12,
+      following: 8,
+      tweets: 3,
+      createdAt: "2009-04-16T07:07:26.000Z",
+    });
+    expect(
+      extractXProfileSignals({
+        screen_name: "carol",
+        followers: "many",
+        joined: "not-a-date",
+      }),
+    ).toMatchObject({ followers: null, createdAt: null });
+    expect(extractXProfileSignals(null)).toBeNull();
+  });
+
+  it("exposes the checked profile signals for trust scoring", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => ({
+        code: 200,
+        message: "OK",
+        user: {
+          id: "x-user-1",
+          screen_name: "alice",
+          description: `Nostr: ${NPUB}`,
+          followers: 5000,
+          following: 400,
+          tweets: 3000,
+          joined: "2011-04-02T00:00:00.000Z",
+        },
+      }),
+    }));
+    const discovery = await discoverXBioIdentities({
+      handleSeeds: [{ handle: "alice", pubkey: PUBKEY }],
+      timeoutMs: 1000,
+      maxProfiles: 1,
+      fetchImpl,
+    });
+
+    expect(discovery.profileSignalsByHandle.get("alice")).toMatchObject({
+      handle: "alice",
+      followers: 5000,
+    });
+    expect(discovery.records[0].xProfileSignals).toMatchObject({
+      followers: 5000,
+    });
   });
 });

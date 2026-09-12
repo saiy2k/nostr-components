@@ -45,6 +45,29 @@ describe("projection configuration", () => {
     });
   });
 
+  it("defaults Web-of-Trust scoring to flag mode and validates overrides", () => {
+    expect(
+      loadProjectionConfig({ FIRESTORE_PROJECT: "gr-prod" }),
+    ).toMatchObject({ wotMode: "flag", wotAcceptScore: 3, wotRejectScore: -3 });
+    expect(
+      loadProjectionConfig({
+        FIRESTORE_PROJECT: "gr-prod",
+        WOT_MODE: "enforce",
+        WOT_ACCEPT_SCORE: "5",
+        WOT_REJECT_SCORE: "-1",
+      }),
+    ).toMatchObject({ wotMode: "enforce", wotAcceptScore: 5, wotRejectScore: -1 });
+    expect(() =>
+      loadProjectionConfig({ FIRESTORE_PROJECT: "gr-prod", WOT_MODE: "block" }),
+    ).toThrow("WOT_MODE must be one of off, flag, enforce.");
+    expect(() =>
+      loadProjectionConfig({
+        FIRESTORE_PROJECT: "gr-prod",
+        WOT_REJECT_SCORE: "4",
+      }),
+    ).toThrow("WOT_REJECT_SCORE must be below WOT_ACCEPT_SCORE.");
+  });
+
   it("loads and validates a graceful run deadline from the environment", () => {
     expect(
       loadProjectionConfig({
@@ -1089,6 +1112,294 @@ describe("projection execution", () => {
   });
 });
 
+describe("web-of-trust in projection", () => {
+  const SCAM_X_BIO = `Free bitcoin giveaway! DM to claim. Nostr: ${NPUB_A}`;
+  const SCAM_NOSTR_METADATA = {
+    name: "Wallet Support Desk",
+    about: "Airdrop giveaway, DM to claim your free bitcoin",
+  };
+
+  function scamProfileResponse() {
+    return fxTwitterProfile({
+      id: "x-user-1",
+      screen_name: "alice",
+      description: SCAM_X_BIO,
+      followers: 2,
+      following: 9000,
+      tweets: 1,
+      joined: new Date(NOW.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+  }
+
+  function reputableProfileResponse(description) {
+    return fxTwitterProfile({
+      id: "x-user-1",
+      screen_name: "alice",
+      description,
+      followers: 8000,
+      following: 300,
+      tweets: 4000,
+      joined: "2011-04-02T00:00:00.000Z",
+    });
+  }
+
+  it("flags a scam pair without disturbing identifier validation", async () => {
+    vi.stubGlobal("fetch", async () => scamProfileResponse());
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [
+          {
+            ...pendingClaim("kind0", PUBKEY_A, 100, null),
+            sources: ["kind0.twitter"],
+            metadata: SCAM_NOSTR_METADATA,
+          },
+        ],
+      },
+      projectionArgs({ wotMode: "flag" }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.results[0]).toMatchObject({
+      claimId: "kind0",
+      identityStatus: "verified",
+      verificationMethod: "x_profile_bio_npub",
+      trustStatus: "rejected",
+      trustMode: "flag",
+    });
+    expect(result.results[0].trustReasons).toContain("both_profiles_scam_risk");
+    expect(result.trustOutcomes).toMatchObject({ rejected: 1 });
+    expect(result.trustEnforcedRejections).toBe(0);
+  });
+
+  it("rejects a scam pair in enforce mode", async () => {
+    vi.stubGlobal("fetch", async () => scamProfileResponse());
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [
+          {
+            ...pendingClaim("kind0", PUBKEY_A, 100, null),
+            sources: ["kind0.twitter"],
+            metadata: SCAM_NOSTR_METADATA,
+          },
+        ],
+      },
+      projectionArgs({ wotMode: "enforce" }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.results[0]).toMatchObject({
+      claimId: "kind0",
+      identityStatus: "rejected",
+      rejectionReason: "web-of-trust:both_profiles_scam_risk",
+      trustStatus: "rejected",
+    });
+    expect(result.trustEnforcedRejections).toBe(1);
+  });
+
+  it("accepts a reputable mutually linked pair", async () => {
+    vi.stubGlobal("fetch", async () =>
+      reputableProfileResponse(`Nostr: ${NPUB_A}`),
+    );
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [
+          {
+            ...pendingClaim("kind0", PUBKEY_A, 100, null),
+            sources: ["kind0.twitter"],
+            metadata: {
+              name: "Alice",
+              about: "Bitcoin developer",
+              nip05: "alice@example.com",
+              lud16: "alice@example.com",
+            },
+          },
+        ],
+      },
+      projectionArgs({ wotMode: "enforce" }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.results[0]).toMatchObject({
+      identityStatus: "verified",
+      trustStatus: "accepted",
+    });
+    expect(result.results[0].trustReasons).toContain("mutual_identity_link");
+    expect(result.trustOutcomes).toMatchObject({ accepted: 1 });
+  });
+
+  it("records an ambiguous outcome for a thin but clean profile", async () => {
+    vi.stubGlobal("fetch", async () =>
+      fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: `Nostr: ${NPUB_A}`,
+        followers: 40,
+        following: 30,
+        tweets: 20,
+        joined: new Date(
+          NOW.getTime() - 150 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+      }),
+    );
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [
+          { ...pendingClaim("kind0", PUBKEY_A, 100, null), sources: [] },
+        ],
+      },
+      projectionArgs({ wotMode: "enforce" }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.results[0]).toMatchObject({
+      identityStatus: "verified",
+      trustStatus: "ambiguous",
+    });
+    expect(result.trustOutcomes).toMatchObject({ ambiguous: 1 });
+  });
+
+  it("records an unavailable outcome when the X profile cannot be read", async () => {
+    vi.stubGlobal("fetch", async (url) =>
+      String(url).includes("/2/profile/")
+        ? fxTwitterProfile(null, 404)
+        : fxTwitterTweet({
+            text: `My Nostr profile is ${NPUB_A}`,
+            author: { id: "x-user-1", screen_name: "alice" },
+          }),
+    );
+    const result = await verifyHandleClaims(
+      { handle: "alice", claims: [pendingClaim("proof", PUBKEY_A, 100)] },
+      projectionArgs({ wotMode: "enforce" }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.results[0]).toMatchObject({
+      identityStatus: "verified",
+      verificationMethod: "nip39_proof_tweet",
+      trustStatus: "unavailable",
+    });
+    expect(result.results[0].trustReasons).toEqual(["x_profile_unavailable"]);
+    expect(result.trustOutcomes).toMatchObject({ unavailable: 1 });
+  });
+
+  it("skips scoring entirely when the mode is off", async () => {
+    vi.stubGlobal("fetch", async () => scamProfileResponse());
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [
+          {
+            ...pendingClaim("kind0", PUBKEY_A, 100, null),
+            metadata: SCAM_NOSTR_METADATA,
+          },
+        ],
+      },
+      projectionArgs({ wotMode: "off" }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.results[0].identityStatus).toBe("verified");
+    expect(result.results[0].trustStatus).toBeUndefined();
+    expect(result.trustOutcomes).toEqual({
+      accepted: 0,
+      rejected: 0,
+      ambiguous: 0,
+      unavailable: 0,
+    });
+  });
+
+  it("withholds auto-zap and marks the entry untrusted for a flagged pair", () => {
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      pendingClaimCount: 1,
+    };
+    const transition = applyProjectionResults(
+      handleData,
+      [
+        {
+          claimId: "kind0",
+          identityStatus: "verified",
+          verificationMethod: "x_profile_bio_npub",
+          zappable: true,
+          zapReason: "nip57-ready",
+          trustStatus: "rejected",
+          trustScore: -9,
+          trustReasons: ["both_profiles_scam_risk", "x_bio_scam_phrase"],
+          trustEvaluatedAt: NOW.toISOString(),
+          trustMode: "flag",
+        },
+      ],
+      { now: NOW },
+    );
+    const writes = buildHandleProjectionWrites(
+      { id: "twitter:alice", data: handleData },
+      transition,
+      {
+        firestoreHandlesCollection: "handles",
+        firestoreEntriesCollection: "entries",
+      },
+    );
+    const entryWrite = writes.find((write) => write.collection === "entries");
+
+    expect(transition.state.activeIdentity).toMatchObject({
+      trustStatus: "rejected",
+      trustScore: -9,
+    });
+    expect(entryWrite.data).toMatchObject({
+      identityStatus: "verified",
+      directoryStatus: "verified_untrusted",
+      zappable: true,
+      autoZapAllowed: false,
+      trustStatus: "rejected",
+      trustScore: -9,
+    });
+  });
+
+  it("leaves auto-zap intact for an accepted pair", () => {
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      pendingClaimCount: 1,
+    };
+    const transition = applyProjectionResults(
+      handleData,
+      [
+        {
+          claimId: "kind0",
+          identityStatus: "verified",
+          zappable: true,
+          zapReason: "nip57-ready",
+          trustStatus: "accepted",
+          trustScore: 8,
+          trustReasons: ["mutual_identity_link"],
+          trustEvaluatedAt: NOW.toISOString(),
+          trustMode: "flag",
+        },
+      ],
+      { now: NOW },
+    );
+    const entryWrite = buildHandleProjectionWrites(
+      { id: "twitter:alice", data: handleData },
+      transition,
+      {
+        firestoreHandlesCollection: "handles",
+        firestoreEntriesCollection: "entries",
+      },
+    ).find((write) => write.collection === "entries");
+
+    expect(entryWrite.data).toMatchObject({
+      directoryStatus: "verified_zappable",
+      autoZapAllowed: true,
+      trustStatus: "accepted",
+    });
+  });
+});
+
 function pendingClaim(
   claimId,
   pubkey,
@@ -1141,6 +1452,9 @@ function projectionArgs(overrides = {}) {
     maxInactiveVerifiedClaims: 10,
     maxRejectionTombstones: 100,
     maxRetryAttempts: 5,
+    wotMode: "flag",
+    wotAcceptScore: 3,
+    wotRejectScore: -3,
     out: null,
     ...overrides,
   };
