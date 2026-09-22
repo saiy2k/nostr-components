@@ -12,18 +12,19 @@ export interface ReplyItem {
 }
 
 export function formatReplyText(content: string): string {
-  return escapeHtml(content).replace(/\n/g, '<br />');
+  if (!content) return '';
+  return escapeHtml(content).replace(/\r?\n/g, '<br />');
 }
 
 export function buildReplyItem(
   reply: NDKEvent,
   profile: NDKUserProfile | null | undefined
 ): ReplyItem {
-  const fallbackName = reply.author?.npub || reply.pubkey.slice(0, 12);
+  const fallbackName = reply.author?.npub || (reply.pubkey ? reply.pubkey.slice(0, 12) : '');
 
   return {
-    id: reply.id,
-    authorKey: reply.pubkey,
+    id: reply.id || '',
+    authorKey: reply.pubkey || '',
     authorName:
       profile?.displayName ||
       profile?.name ||
