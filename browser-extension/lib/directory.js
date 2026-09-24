@@ -7,6 +7,11 @@
   const DEGRADED_MEMORY_TTL_MS = 5 * 60 * 1000;
   const memoryCache = new Map();
 
+  /**
+   * Retrieves the active browser runtime API (browser or chrome).
+   *
+   * @returns {{ kind: string, runtime: object } | null} The runtime API object or null
+   */
   function getRuntime() {
     if (typeof browser !== 'undefined' && browser.runtime) {
       return { kind: 'browser', runtime: browser.runtime };
@@ -17,11 +22,23 @@
     return null;
   }
 
+  /**
+   * Normalizes a social handle by trimming, removing leading @, and lowercasing.
+   *
+   * @param {string} value - Raw handle string
+   * @returns {string|null} Normalized handle or null if invalid
+   */
   function normalizeHandle(value) {
     const handle = String(value || '').trim().replace(/^@/, '').toLowerCase();
     return /^[a-z0-9_]{1,15}$/.test(handle) ? handle : null;
   }
 
+  /**
+   * Dispatches a runtime message to query directory handle verification data.
+   *
+   * @param {string} handle - Normalized social handle
+   * @returns {Promise<object>} The lookup result payload
+   */
   async function sendLookupRequest(handle) {
     const runtime = getRuntime();
     if (!runtime) {
@@ -56,6 +73,12 @@
     return response.result;
   }
 
+  /**
+   * Retrieves an entry from in-memory cache if present and unexpired.
+   *
+   * @param {string} handle - Normalized handle key
+   * @returns {object|null} Cached value or null if absent/expired
+   */
   function getMemoryEntry(handle) {
     const cached = memoryCache.get(handle);
     if (!cached) {
@@ -68,6 +91,13 @@
     return cached.value;
   }
 
+  /**
+   * Stores an entry into the in-memory cache with an expiration timestamp.
+   *
+   * @param {string} handle - Normalized handle key
+   * @param {object} value - Value to cache
+   * @param {number} expiresAt - Absolute expiration timestamp in ms
+   */
   function setMemoryEntry(handle, value, expiresAt) {
     memoryCache.set(handle, { value: value, expiresAt: expiresAt });
   }
