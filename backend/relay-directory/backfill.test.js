@@ -3,7 +3,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { finalizeEvent } from "nostr-tools";
 import {
   createBoundedCache,
@@ -963,6 +963,66 @@ describe("top-level cursor coordination", () => {
         "max-pages": 2,
       },
     });
+  });
+
+  it("rolls resume, timeout wait, and cursor movement into run totals", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__resumed_example:kind:0", {
+      status: "paused",
+      cursorUntil: 800,
+      lastReason: "max-pages",
+    });
+    db.seed("state", "backfill:wss:__resumed_example:kind:10011", {
+      status: "complete",
+      cursorUntil: 10,
+      lastReason: "eose",
+    });
+    db.seed("state", "backfill:wss:__skip_example:kind:10011", {
+      status: "unsupported",
+      completed: true,
+      cursorUntil: 500,
+      lastReason: "closed:kinds not supported",
+    });
+
+    let clock = 0;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => {
+      clock += 1000;
+      return clock;
+    });
+    try {
+      const result = await runBackfillCursors(
+        db,
+        testConfig({
+          relays: ["wss://resumed.example", "wss://skip.example"],
+          backfillUntil: 1000,
+          backfillMaxPages: 1,
+        }),
+        {
+          queryRelay: async (relay, filter) => {
+            if (relay === "wss://resumed.example" && filter.kinds[0] === 0) {
+              return { events: [identityEvent(700)], reason: "max" };
+            }
+            if (relay === "wss://skip.example" && filter.kinds[0] === 0) {
+              return { events: [identityEvent(900)], reason: "timeout" };
+            }
+            return { events: [], reason: "eose" };
+          },
+        },
+      );
+
+      expect(result.totals).toMatchObject({
+        resumedCursors: 1,
+        alreadyCompleteCursors: 1,
+        unsupportedCursors: 1,
+        timeoutWaitMs: 1000,
+        productivePageMs: 1000,
+        cursorUntilMin: 700,
+        cursorUntilMax: 1000,
+        cursorsAdvanced: 1,
+      });
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it("buckets dynamic relay error reasons in run totals", async () => {
