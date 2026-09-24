@@ -201,26 +201,51 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     );
     stats.xBioIdentifiersResolved += verification.xBioIdentifiersResolved;
 
-    const transition = applyProjectionResults(
+    const projectionOptions = {
+      retryDelayMs: args.projectionExternalRetryMs,
+      maxPendingClaims: args.maxPendingClaims,
+      maxInactiveVerifiedClaims: args.maxInactiveVerifiedClaims,
+      maxRejectionTombstones: args.maxRejectionTombstones,
+      maxRetryAttempts: args.maxRetryAttempts,
+    };
+    let transition = applyProjectionResults(
       handleDoc.data,
       verification.results,
-      {
-        retryDelayMs: args.projectionExternalRetryMs,
-        maxPendingClaims: args.maxPendingClaims,
-        maxInactiveVerifiedClaims: args.maxInactiveVerifiedClaims,
-        maxRejectionTombstones: args.maxRejectionTombstones,
-        maxRetryAttempts: args.maxRetryAttempts,
-      },
+      projectionOptions,
     );
-    const writes = buildHandleProjectionWrites(handleDoc, transition, args);
+    let writes = buildHandleProjectionWrites(handleDoc, transition, args);
     if (writes.length) {
-      await commitFirestoreWrites(db, writes);
-      stats.firestoreWrites += writes.length;
-      stats.handlesChanged += 1;
-      stats.verified += transition.stats.verified;
-      stats.rejected += transition.stats.rejected;
-      stats.retryLater += transition.stats.retryLater;
-      stats.pendingDropped += transition.stats.pendingDropped;
+      const committed = await db.runTransaction(async (tx) => {
+        const ref = db.collection(args.firestoreHandlesCollection).doc(handleDoc.id);
+        const snap = await tx.get(ref);
+        const fresh = snap.exists ? snap.data() || {} : {};
+        const freshTransition = applyProjectionResults(
+          fresh,
+          verification.results,
+          projectionOptions,
+        );
+        const freshWrites = buildHandleProjectionWrites(
+          handleDoc,
+          freshTransition,
+          args,
+        );
+        for (const write of freshWrites) {
+          tx.set(db.collection(write.collection).doc(write.id), write.data, {
+            merge: true,
+          });
+        }
+        return { writes: freshWrites, transition: freshTransition };
+      });
+      writes = committed.writes;
+      transition = committed.transition;
+      if (writes.length) {
+        stats.firestoreWrites += writes.length;
+        stats.handlesChanged += 1;
+        stats.verified += transition.stats.verified;
+        stats.rejected += transition.stats.rejected;
+        stats.retryLater += transition.stats.retryLater;
+        stats.pendingDropped += transition.stats.pendingDropped;
+      }
     }
 
     logProjectionEvent("projection_handle_result", {

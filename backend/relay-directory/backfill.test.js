@@ -568,13 +568,13 @@ describe("stateful cursor orchestration", () => {
     expect(db.writes).toHaveLength(0);
   });
 
-  it("does not let an all-invalid full page advance the cursor", async () => {
+  it("advances an all-invalid full page to the oldest raw timestamp", async () => {
     const db = fakeFirestore();
     const summary = await runBackfillCursor(
       db,
       "wss://relay.example",
       10011,
-      testConfig({ backfillUntil: 500 }),
+      testConfig({ backfillUntil: 500, backfillMaxPages: 1 }),
       {
         queryRelay: async () => ({
           events: [
@@ -589,9 +589,11 @@ describe("stateful cursor orchestration", () => {
     );
 
     expect(summary).toMatchObject({
-      cursorUntil: 500,
-      retryPaused: true,
-      lastReason: "page-contained-no-valid-events",
+      cursorUntil: 100,
+      identityClaimsDiscovered: 0,
+      directoryHandleWrites: 0,
+      retryPaused: false,
+      lastReason: "max-pages",
     });
   });
 
@@ -1049,7 +1051,7 @@ describe("top-level cursor coordination", () => {
       },
     );
 
-    expect(db.readCount("handles")).toBe(1);
+    expect(db.readCount("handles")).toBe(2);
   });
 
   it("advances past a poison-pill handle while dead-lettering the failure", async () => {
@@ -1152,6 +1154,39 @@ describe("top-level cursor coordination", () => {
     });
   });
 
+  it("pauses the cursor on a retryable handle write error", async () => {
+    const db = fakeFirestore();
+    db.runTransaction = async () => {
+      const error = new Error("unavailable");
+      error.code = 14;
+      throw error;
+    };
+
+    const summary = await runBackfillCursor(
+      db,
+      "wss://relay.example",
+      10011,
+      testConfig({ backfillUntil: 500, backfillMaxPages: 1 }),
+      {
+        queryRelay: async () => ({
+          events: [identityEvent(100)],
+          reason: "eose",
+        }),
+      },
+    );
+
+    expect(summary).toMatchObject({
+      retryPaused: true,
+      cursorUntil: 500,
+      lastReason: "handle-write-dead-letter-failed",
+      directoryHandleWrites: 0,
+      handleWriteDeadLetters: 0,
+    });
+    expect(db.writes.some((write) => write.collection === "failures")).toBe(
+      false,
+    );
+  });
+
   it("keeps the cursor unmoved when dead-lettering a failed handle also fails", async () => {
     const db = fakeFirestore();
     db.failAllHandleWrites = true;
@@ -1190,6 +1225,14 @@ describe("top-level cursor coordination", () => {
     const db = fakeFirestore();
     const event = identityEvent(100);
     let handleCommitAttempts = 0;
+    const originalRunTransaction = db.runTransaction.bind(db);
+    db.runTransaction = async (fn) => {
+      handleCommitAttempts += 1;
+      if (handleCommitAttempts === 1) {
+        throw new Error("firestore unavailable");
+      }
+      return originalRunTransaction(fn);
+    };
     const originalBatch = db.batch.bind(db);
     db.batch = () => {
       const batch = originalBatch();
@@ -1199,12 +1242,7 @@ describe("top-level cursor coordination", () => {
           (write) => write.collection === "handles",
         );
         if (pendingHandles.length) {
-          handleCommitAttempts += 1;
-          // Fail the first cursor's batch attempt and singleton fallback so the
-          // write is dead-lettered; later cursors may commit successfully.
-          if (handleCommitAttempts <= 2) {
-            throw new Error("firestore unavailable");
-          }
+          throw new Error("firestore unavailable");
         }
         return originalCommit();
       };
@@ -1235,7 +1273,7 @@ describe("top-level cursor coordination", () => {
     ).toHaveLength(1);
   });
 
-  it("commits a clean handle page in one Firestore batch", async () => {
+  it("commits each clean handle in its own transaction", async () => {
     const db = fakeFirestore();
     const alice = identityEvent(100);
     const bob = finalizeEvent(
@@ -1249,19 +1287,11 @@ describe("top-level cursor coordination", () => {
       },
       new Uint8Array(32).fill(2),
     );
-    let handleBatchCommits = 0;
-    const originalBatch = db.batch.bind(db);
-    db.batch = () => {
-      const batch = originalBatch();
-      const originalCommit = batch.commit;
-      batch.commit = async () => {
-        const pendingHandles = batch.pending.filter(
-          (write) => write.collection === "handles",
-        );
-        if (pendingHandles.length) handleBatchCommits += 1;
-        return originalCommit();
-      };
-      return batch;
+    let handleTransactions = 0;
+    const originalRunTransaction = db.runTransaction.bind(db);
+    db.runTransaction = async (fn) => {
+      handleTransactions += 1;
+      return originalRunTransaction(fn);
     };
 
     await runBackfillCursor(
@@ -1277,7 +1307,7 @@ describe("top-level cursor coordination", () => {
       },
     );
 
-    expect(handleBatchCommits).toBe(1);
+    expect(handleTransactions).toBe(2);
     expect(
       db.writes.filter((write) => write.collection === "handles"),
     ).toHaveLength(2);
@@ -1488,6 +1518,27 @@ function testConfig(overrides = {}) {
   };
 }
 
+function applyWrites(db, writes, documents, pending) {
+  for (const write of pending) {
+    if (db.failCollections.has(write.collection)) {
+      throw new Error(`write failed for collection ${write.collection}`);
+    }
+    if (
+      write.collection === "handles" &&
+      (db.failAllHandleWrites || db.failWritesForIds.has(write.id))
+    ) {
+      throw new Error(`write failed for ${write.id}`);
+    }
+  }
+  for (const write of pending) {
+    writes.push(write);
+    documents.set(`${write.collection}/${write.id}`, {
+      ...(documents.get(`${write.collection}/${write.id}`) || {}),
+      ...write.data,
+    });
+  }
+}
+
 function fakeFirestore() {
   const writes = [];
   const documents = new Map();
@@ -1521,6 +1572,23 @@ function fakeFirestore() {
         },
       };
     },
+    async runTransaction(fn) {
+      const pending = [];
+      const tx = {
+        get: (ref) => ref.get(),
+        set(ref, data, options) {
+          pending.push({
+            collection: ref.collection,
+            id: ref.id,
+            data,
+            options,
+          });
+        },
+      };
+      const result = await fn(tx);
+      applyWrites(db, writes, documents, pending);
+      return result;
+    },
     batch() {
       const pending = [];
       return {
@@ -1529,25 +1597,7 @@ function fakeFirestore() {
           pending.push({ collection: ref.collection, id: ref.id, data });
         },
         commit: async () => {
-          // Atomic like Firestore batches: validate all ops before applying any.
-          for (const write of pending) {
-            if (db.failCollections.has(write.collection)) {
-              throw new Error(`write failed for collection ${write.collection}`);
-            }
-            if (
-              write.collection === "handles" &&
-              (db.failAllHandleWrites || db.failWritesForIds.has(write.id))
-            ) {
-              throw new Error(`write failed for ${write.id}`);
-            }
-          }
-          for (const write of pending) {
-            writes.push(write);
-            documents.set(`${write.collection}/${write.id}`, {
-              ...(documents.get(`${write.collection}/${write.id}`) || {}),
-              ...write.data,
-            });
-          }
+          applyWrites(db, writes, documents, pending);
         },
       };
     },

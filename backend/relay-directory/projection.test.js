@@ -791,6 +791,19 @@ describe("projection execution", () => {
           commit: async () => {},
         };
       }
+      async runTransaction(fn) {
+        const tx = {
+          get: (ref) => ref.get(),
+          set: (ref, data, options) =>
+            writes.push({
+              collection: ref.collection,
+              id: ref.id,
+              data,
+              options,
+            }),
+        };
+        return fn(tx);
+      }
     }
 
     const output = await runProjection(
@@ -1216,7 +1229,14 @@ function collectionAdapter(name, handle, calls = []) {
         docs: Number.isFinite(maxDocs) ? docs.slice(0, maxDocs) : docs,
       };
     },
-    doc: (id) => ({ collection: name, id }),
+    doc: (id) => ({
+      collection: name,
+      id,
+      get: async () => {
+        const data = handles.find((item) => `twitter:${item.handle}` === id);
+        return { exists: Boolean(data), data: () => data || null };
+      },
+    }),
   });
   return make(false);
 }
@@ -1249,6 +1269,22 @@ function verificationOutput(overrides = {}) {
 function fakeFirestore(handles, writes = []) {
   return {
     collection: (name) => collectionAdapter(name, handles),
+    async runTransaction(fn) {
+      const pendingWrites = [];
+      const tx = {
+        get: (ref) => ref.get(),
+        set: (ref, data, options) =>
+          pendingWrites.push({
+            collection: ref.collection,
+            id: ref.id,
+            data,
+            options,
+          }),
+      };
+      const result = await fn(tx);
+      writes.push(...pendingWrites);
+      return result;
+    },
     batch: () => {
       const pendingWrites = [];
       return {

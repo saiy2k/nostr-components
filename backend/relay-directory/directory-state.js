@@ -232,51 +232,23 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
   for (const [handle, handleClaims] of groupedEntries) {
     const id = directoryHandleId(handle);
     const cached = handleStateCache.get(handle);
-    const existed = cached !== null && cached !== undefined;
-    const existing = cached || {};
-    const merged = mergeHandleClaims(existing, handleClaims, options);
-    stats.claimsAdded += merged.stats.added;
-    stats.claimsEvicted += merged.stats.evicted;
-    stats.claimsSkippedExisting += merged.stats.skippedExisting;
-    stats.claimsSkippedRejected += merged.stats.skippedRejected;
-    if (!merged.changed) continue;
+    const built = buildMergedHandleWrite(cached, handleClaims, handle, options);
+    stats.claimsAdded += built.merged.stats.added;
+    stats.claimsEvicted += built.merged.stats.evicted;
+    stats.claimsSkippedExisting += built.merged.stats.skippedExisting;
+    stats.claimsSkippedRejected += built.merged.stats.skippedRejected;
+    if (!built.changed) continue;
 
     stats.handlesChanged += 1;
-    const projectionStatus =
-      merged.pendingClaimCount > 0
-        ? "pending"
-        : existing.projectionStatus || "complete";
-    const nextCacheState = {
-      ...existing,
-      platform: "twitter",
-      handle,
-      claims: merged.claims,
-      rejectedClaimTombstones: merged.rejectedClaimTombstones,
-      pendingClaimCount: merged.pendingClaimCount,
-      projectionStatus,
-    };
     // Cache is updated only after a successful Firestore commit so a failed
     // write cannot poison later cursors that share this map.
     writes.push({
       collection,
       id,
       handle,
-      nextCacheState,
-      data: stripUndefined({
-        platform: "twitter",
-        handle,
-        activeIdentity: existed ? undefined : existing.activeIdentity || null,
-        claims: merged.claims,
-        rejectedClaimTombstones: merged.rejectedClaimTombstones,
-        pendingClaimCount: merged.pendingClaimCount,
-        projectionStatus,
-        nextAttemptAt:
-          merged.pendingClaimCount > 0
-            ? FieldValue.serverTimestamp()
-            : undefined,
-        createdAt: existed ? undefined : FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      }),
+      incomingClaims: handleClaims,
+      nextCacheState: built.nextCacheState,
+      data: built.data,
     });
   }
 
@@ -285,6 +257,46 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
 
 export function directoryHandleId(handle) {
   return firestoreSafeId(`twitter:${normalizeTwitterHandle(handle)}`);
+}
+
+/** Re-merge incoming claims onto a fresh handle doc. `existing` is null when the doc is absent. */
+export function buildMergedHandleWrite(existing, incomingClaims, handle, options = {}) {
+  const existed = existing != null;
+  const merged = mergeHandleClaims(existed ? existing : {}, incomingClaims, options);
+  if (!merged.changed) return { changed: false, merged };
+  const projectionStatus =
+    merged.pendingClaimCount > 0
+      ? "pending"
+      : existing?.projectionStatus || "complete";
+  const nextCacheState = {
+    ...(existed ? existing : {}),
+    platform: "twitter",
+    handle,
+    claims: merged.claims,
+    rejectedClaimTombstones: merged.rejectedClaimTombstones,
+    pendingClaimCount: merged.pendingClaimCount,
+    projectionStatus,
+  };
+  return {
+    changed: true,
+    merged,
+    nextCacheState,
+    data: stripUndefined({
+      platform: "twitter",
+      handle,
+      activeIdentity: existed ? undefined : existing?.activeIdentity || null,
+      claims: merged.claims,
+      rejectedClaimTombstones: merged.rejectedClaimTombstones,
+      pendingClaimCount: merged.pendingClaimCount,
+      projectionStatus,
+      nextAttemptAt:
+        merged.pendingClaimCount > 0
+          ? FieldValue.serverTimestamp()
+          : undefined,
+      createdAt: existed ? undefined : FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+  };
 }
 
 function groupClaimsByHandle(claims) {
@@ -366,10 +378,9 @@ async function filterExistingMentionHandles(candidates, cache, options) {
     candidates.map(async (candidate) => {
       if (!candidate.requiresExistenceCheck) return candidate;
       if (!cache.has(candidate.handle)) {
-        cache.set(
-          candidate.handle,
-          checkXHandleExists(candidate.handle, options),
-        );
+        const exists = await checkXHandleExists(candidate.handle, options);
+        if (exists === null) return candidate;
+        cache.set(candidate.handle, exists);
       }
       return (await cache.get(candidate.handle)) ? candidate : null;
     }),

@@ -13,6 +13,7 @@ import {
   DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
   DEFAULT_MAX_PENDING_CLAIMS,
   DEFAULT_MAX_REJECTION_TOMBSTONES,
+  buildMergedHandleWrite,
   extractIdentityClaims,
   planDirectoryHandleWrites,
 } from "./directory-state.js";
@@ -440,41 +441,7 @@ async function executeBackfillCursor(
       context,
     );
     addProcessedPageStats(stats, processed);
-    if (page.reason === "max" && processed.validEvents.length === 0) {
-      printPageProgress({
-        page: stats.pages,
-        maxPages: config.backfillMaxPages,
-        events: page.events.length,
-        valid: 0,
-        reason: "page-contained-no-valid-events",
-        cursorUntil: safeState.cursorUntil,
-        pageLimit: safeState.pageLimit,
-      });
-      logBackfillEvent("backfill_page_result", {
-        relay,
-        kind,
-        page: stats.pages,
-        maxPages: config.backfillMaxPages,
-        durationMs: Date.now() - pageStartedMs,
-        events: page.events.length,
-        valid: 0,
-        claims: 0,
-        writes: 0,
-        reason: "page-contained-no-valid-events",
-        cursorUntil: safeState.cursorUntil,
-        pageLimit: safeState.pageLimit,
-        retryPaused: true,
-      });
-      await writeCursorCheckpoint(db, relay, kind, safeState, config, {
-        status: "retry_later",
-        completed: false,
-        lastReason: "page-contained-no-valid-events",
-      });
-      stats.lastReason = "page-contained-no-valid-events";
-      stats.retryPaused = true;
-      break;
-    }
-    const pageOldest = oldestCreatedAt(processed.validEvents);
+    const pageOldest = oldestCreatedAt(processed.rawEvents);
     const pageResult = decidePageResult({
       page,
       pageOldest,
@@ -482,7 +449,7 @@ async function executeBackfillCursor(
       kind,
       cursor,
       config,
-      cursorEvents: processed.validEvents,
+      cursorEvents: processed.rawEvents,
     });
 
     const commitResult = await commitProcessedPage(
@@ -580,7 +547,8 @@ async function executeBackfillCursor(
 }
 
 export async function processBackfillPage(db, page, relay, config, context) {
-  const validEvents = dedupeEvents(page.events).filter(isValidSignedEvent);
+  const rawEvents = dedupeEvents(page.events);
+  const validEvents = rawEvents.filter(isValidSignedEvent);
   const fresh = filterEventsNotSeen(validEvents, context.eventIdsSeen);
   const claims = await extractIdentityClaims(fresh.events, relay, new Date(), {
     mentionValidationCache: context.mentionValidationCache,
@@ -591,6 +559,7 @@ export async function processBackfillPage(db, page, relay, config, context) {
     handleStateCache: context.handleStateCache,
   });
   return {
+    rawEvents,
     validEvents,
     freshEvents: fresh.events,
     duplicateEventsSkipped: fresh.duplicateCount,
@@ -757,65 +726,73 @@ async function commitHandleWritesBestEffort(
   return { succeeded, failed, deadLettered, deadLetterFailed };
 }
 
+const RETRYABLE_FIRESTORE_CODES = new Set([4, 8, 10, 13, 14]);
+
+function isRetryableFirestoreError(error) {
+  return RETRYABLE_FIRESTORE_CODES.has(Number(error?.code));
+}
+
 async function commitHandleWriteChunk(
   db,
   writes,
   handleStateCache,
   failureContext,
 ) {
-  if (!writes.length) {
-    return { succeeded: 0, failed: 0, deadLettered: 0, deadLetterFailed: 0 };
-  }
-
-  try {
-    await commitFirestoreWrites(
+  const totals = { succeeded: 0, failed: 0, deadLettered: 0, deadLetterFailed: 0 };
+  for (const write of writes) {
+    const result = await commitHandleTransaction(
       db,
-      writes.map((write) => ({
-        collection: write.collection,
-        id: write.id,
-        data: write.data,
-      })),
+      write,
+      handleStateCache,
+      failureContext,
     );
-    for (const write of writes) {
-      if (handleStateCache && write.handle) {
-        handleStateCache.set(write.handle, write.nextCacheState);
-      }
+    totals.succeeded += result.succeeded;
+    totals.failed += result.failed;
+    totals.deadLettered += result.deadLettered;
+    totals.deadLetterFailed += result.deadLetterFailed;
+  }
+  return totals;
+}
+
+async function commitHandleTransaction(
+  db,
+  write,
+  handleStateCache,
+  failureContext,
+) {
+  try {
+    const outcome = await db.runTransaction(async (tx) => {
+      const ref = db.collection(write.collection).doc(write.id);
+      const snap = await tx.get(ref);
+      const existing = snap.exists ? snap.data() || {} : null;
+      const merged = buildMergedHandleWrite(
+        existing,
+        write.incomingClaims || [],
+        write.handle,
+        failureContext.config || {},
+      );
+      if (!merged.changed) return { wrote: false, cacheState: existing };
+      tx.set(ref, merged.data, { merge: true });
+      return { wrote: true, cacheState: merged.nextCacheState };
+    });
+    if (handleStateCache && write.handle) {
+      handleStateCache.set(write.handle, outcome.cacheState);
     }
     return {
-      succeeded: writes.length,
+      succeeded: outcome.wrote ? 1 : 0,
       failed: 0,
       deadLettered: 0,
       deadLetterFailed: 0,
     };
-  } catch {
-    // Batch failed — isolate poison docs by splitting / falling back.
-    if (writes.length === 1) {
-      return commitSingleHandleWrite(
-        db,
-        writes[0],
-        handleStateCache,
-        failureContext,
+  } catch (error) {
+    if (isRetryableFirestoreError(error)) {
+      if (handleStateCache && write.handle) handleStateCache.delete(write.handle);
+      console.warn(
+        `Handle write failed for ${write.id}: ${error?.message || error}`,
       );
+      return { succeeded: 0, failed: 1, deadLettered: 0, deadLetterFailed: 1 };
     }
-    const mid = Math.ceil(writes.length / 2);
-    const left = await commitHandleWriteChunk(
-      db,
-      writes.slice(0, mid),
-      handleStateCache,
-      failureContext,
-    );
-    const right = await commitHandleWriteChunk(
-      db,
-      writes.slice(mid),
-      handleStateCache,
-      failureContext,
-    );
-    return {
-      succeeded: left.succeeded + right.succeeded,
-      failed: left.failed + right.failed,
-      deadLettered: left.deadLettered + right.deadLettered,
-      deadLetterFailed: left.deadLetterFailed + right.deadLetterFailed,
-    };
+    return commitSingleHandleWrite(db, write, handleStateCache, failureContext);
   }
 }
 
@@ -844,6 +821,9 @@ async function commitSingleHandleWrite(
     console.warn(
       `Handle write failed for ${write.id}: ${error?.message || error}`,
     );
+    if (isRetryableFirestoreError(error)) {
+      return { succeeded: 0, failed: 1, deadLettered: 0, deadLetterFailed: 1 };
+    }
     try {
       await commitFirestoreWrites(db, [
         buildHandleWriteFailureWrite(
