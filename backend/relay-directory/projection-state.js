@@ -91,11 +91,7 @@ export function applyProjectionResults(handleData, results, options = {}) {
       });
       stats.rejected += 1;
     } else if (result.identityStatus === "retry_later") {
-      const priorAttemptCount = Number(current.attemptCount || 0);
-      const attemptCount =
-        (Number.isInteger(priorAttemptCount) && priorAttemptCount >= 0
-          ? priorAttemptCount
-          : 0) + 1;
+      const attemptCount = nextAttemptCount(current);
       const retryReason =
         result.retryReason || "temporary_verification_failure";
       if (attemptCount >= maxRetryAttempts) {
@@ -117,6 +113,46 @@ export function applyProjectionResults(handleData, results, options = {}) {
           retryAt: new Date(
             retryAtMs(result, now, retryDelayMs, maxExternalRetryMs),
           ).toISOString(),
+        });
+        stats.retryLater += 1;
+      }
+    }
+  }
+
+  if ((results || []).length === 0) {
+    // Verification produced no claim results (e.g. a retryable X profile
+    // failure). Count the attempt so MAX_RETRY_ATTEMPTS still applies and
+    // the deferral shows up in the run summary. Claims whose verification
+    // was never attempted this run (e.g. proof tweets skipped when the proof
+    // budget ran out) stay pending without burning an attempt.
+    const attemptedClaimIds = options.attemptedClaimIds
+      ? new Set(options.attemptedClaimIds)
+      : null;
+    for (const claim of [...claimsById.values()]) {
+      if (claim.status !== "pending") continue;
+      if (attemptedClaimIds && !attemptedClaimIds.has(claim.claimId)) continue;
+      const attemptCount = nextAttemptCount(claim);
+      const retryReason =
+        options.deferReason ||
+        claim.retryReason ||
+        "temporary_verification_failure";
+      if (attemptCount >= maxRetryAttempts) {
+        claimsById.delete(claim.claimId);
+        tombstonesById.set(claim.claimId, {
+          claimId: claim.claimId,
+          rejectedAt: nowIso,
+          reason: `retry-attempts-exhausted:${retryReason}`,
+        });
+        stats.rejected += 1;
+      } else {
+        claimsById.set(claim.claimId, {
+          ...claim,
+          status: "pending",
+          attemptCount,
+          lastAttemptAt: nowIso,
+          retryReason,
+          retrySource: "projection",
+          retryAt: new Date(now.getTime() + retryDelayMs).toISOString(),
         });
         stats.retryLater += 1;
       }
@@ -201,6 +237,11 @@ export function buildHandleProjectionWrites(
       }),
     },
   ];
+}
+
+function nextAttemptCount(claim) {
+  const prior = Number(claim?.attemptCount || 0);
+  return (Number.isInteger(prior) && prior >= 0 ? prior : 0) + 1;
 }
 
 function verifiedClaim(current, result, nowIso) {

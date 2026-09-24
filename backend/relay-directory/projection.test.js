@@ -34,7 +34,7 @@ describe("projection configuration", () => {
       loadProjectionConfig({ FIRESTORE_PROJECT: "gr-prod" }),
     ).toMatchObject({
       firestoreHandlesCollection: "nostrDirectoryHandles",
-      projectionLimit: 100,
+      projectionLimit: 1000,
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,
       maxRejectionTombstones: 100,
@@ -285,6 +285,80 @@ describe("claim projection policy", () => {
       projectionStatus: "retry_later",
       nextAttemptAt: new Date("2026-07-03T12:01:00.000Z"),
     });
+  });
+
+  it("counts empty-result deferrals toward the retry cap", () => {
+    const handle = {
+      claims: [pendingClaim("waiting", PUBKEY_A, 100, null)],
+      pendingClaimCount: 1,
+      projectionStatus: "pending",
+      nextAttemptAt: NOW,
+    };
+    const options = {
+      now: NOW,
+      retryDelayMs: 60000,
+      maxRetryAttempts: 2,
+      deferReason: "http_500",
+      attemptedClaimIds: ["waiting"],
+    };
+    const first = applyProjectionResults(handle, [], options);
+
+    expect(first.stats).toMatchObject({ retryLater: 1, rejected: 0 });
+    expect(first.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+      nextAttemptAt: new Date("2026-07-03T12:01:00.000Z"),
+    });
+    expect(first.state.claims[0]).toMatchObject({
+      claimId: "waiting",
+      status: "pending",
+      attemptCount: 1,
+      retryReason: "http_500",
+      lastAttemptAt: NOW.toISOString(),
+      retryAt: "2026-07-03T12:01:00.000Z",
+    });
+
+    const exhausted = applyProjectionResults(first.state, [], options);
+
+    expect(exhausted.stats).toMatchObject({ retryLater: 0, rejected: 1 });
+    expect(exhausted.state.claims).toEqual([]);
+    expect(exhausted.state).toMatchObject({
+      pendingClaimCount: 0,
+      projectionStatus: "complete",
+      nextAttemptAt: null,
+    });
+    expect(exhausted.state.rejectedClaimTombstones).toEqual([
+      expect.objectContaining({
+        claimId: "waiting",
+        reason: "retry-attempts-exhausted:http_500",
+      }),
+    ]);
+  });
+
+  it("leaves unattempted claims pending without burning retry attempts", () => {
+    const transition = applyProjectionResults(
+      {
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+        pendingClaimCount: 1,
+        projectionStatus: "pending",
+        nextAttemptAt: NOW,
+      },
+      [],
+      { now: NOW, retryDelayMs: 60000, attemptedClaimIds: [] },
+    );
+
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+      nextAttemptAt: new Date("2026-07-03T12:01:00.000Z"),
+    });
+    expect(transition.state.claims[0]).toMatchObject({
+      claimId: "proof",
+      status: "pending",
+    });
+    expect(transition.state.claims[0].attemptCount).toBeUndefined();
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
   });
 
   it("does not resurrect an active identity after its claim is rejected", () => {
@@ -585,6 +659,340 @@ describe("external verification", () => {
         rejectionReason: "x_bio_does_not_link_claimed_pubkey",
       },
     ]);
+  });
+
+  it("rejects a proofless claim when the X profile no longer exists", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 404));
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result).toMatchObject({
+      xProfilesAttempted: 1,
+      xProfilesFailed: 1,
+      xProfileFailures: { http_404: 1 },
+      deferReason: "http_404",
+      results: [
+        {
+          claimId: "kind0",
+          identityStatus: "rejected",
+          rejectionReason: "x_profile_not_found",
+        },
+      ],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+    });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "complete",
+      pendingClaimCount: 0,
+      claims: [],
+    });
+    expect(transition.state.rejectedClaimTombstones).toEqual([
+      expect.objectContaining({
+        claimId: "kind0",
+        reason: "x_profile_not_found",
+      }),
+    ]);
+  });
+
+  it("lets the proof tweet path settle a claim when the X profile is gone", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 404);
+      return fxTwitterTweet({
+        text: `My Nostr profile is ${NPUB_A}`,
+        author: { id: "x-user-1", screen_name: "alice" },
+      });
+    });
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.xProfileFailures).toEqual({ http_404: 1 });
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        claimId: "proof",
+        identityStatus: "verified",
+        verificationMethod: "nip39_proof_tweet",
+      }),
+    ]);
+  });
+
+  it("keeps the tweet failure terminal when profile and proof tweet are gone", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 404);
+      return fxTwitterTweet(null, 404);
+    });
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        claimId: "proof",
+        identityStatus: "rejected",
+        rejectionReason: "proof-tweet-unavailable",
+      }),
+    ]);
+  });
+
+  it("defers without a claim result when the profile fetch is retryable", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 500));
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      xProfilesFailed: 1,
+      xProfileFailures: { http_500: 1 },
+      deferReason: "http_500",
+      stopRun: false,
+      stoppedReason: null,
+      attemptedClaimIds: ["kind0"],
+    });
+  });
+
+  it("stops the run without rejecting claims when FxTwitter rate-limits", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 429));
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      stopRun: true,
+      stoppedReason: "x_rate_limited",
+      deferReason: "x_rate_limited",
+      attemptedClaimIds: ["kind0"],
+    });
+  });
+
+  it("does not burn retry attempts for proof tweets skipped by the budget", async () => {
+    vi.stubGlobal("fetch", async () =>
+      fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: "No Nostr profile here",
+      }),
+    );
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 0 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      proofTweetsAttempted: 0,
+      deferReason: "proof_budget_exhausted",
+      attemptedClaimIds: [],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.claims[0].attemptCount).toBeUndefined();
+  });
+
+  it("keeps an unchecked proof tweet pending when the X profile is gone", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 404);
+      return fxTwitterTweet(null, 404);
+    });
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 0 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      proofTweetsAttempted: 0,
+      deferReason: "http_404",
+      attemptedClaimIds: [],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
+  });
+
+  it("does not count a failed profile lookup as an attempt for a proof claim", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 500));
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 0 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      xProfilesFailed: 1,
+      xProfileFailures: { http_500: 1 },
+      deferReason: "http_500",
+      attemptedClaimIds: [],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.claims[0].attemptCount).toBeUndefined();
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
+  });
+
+  it("reports the proof retry reason when a tweet check defers", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 403);
+      throw new Error("network down");
+    });
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.xProfileFailures).toEqual({ http_403: 1 });
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        claimId: "proof",
+        identityStatus: "retry_later",
+        retryReason: "network_error",
+      }),
+    ]);
+    expect(result.deferReason).toBe("network_error");
+  });
+
+  it("defers without rejecting when the profile fetch is forbidden", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 403));
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      xProfilesFailed: 1,
+      xProfileFailures: { http_403: 1 },
+      deferReason: "http_403",
+      stopRun: false,
+      attemptedClaimIds: ["kind0"],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 1, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.claims[0]).toMatchObject({
+      attemptCount: 1,
+      retryReason: "http_403",
+    });
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
+  });
+
+  it("rejects a proofless claim when the X profile payload is unusable", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null));
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result).toMatchObject({
+      xProfilesFailed: 1,
+      xProfileFailures: { profile_unavailable: 1 },
+      deferReason: "profile_unavailable",
+      results: [
+        {
+          claimId: "kind0",
+          identityStatus: "rejected",
+          rejectionReason: "x_profile_not_found",
+        },
+      ],
+    });
   });
 
   it("normalizes a stored handle before matching checked X profiles", async () => {
@@ -1059,6 +1467,81 @@ describe("projection execution", () => {
     });
   });
 
+  it("counts deferred handles and their reasons in the run summary", async () => {
+    const writes = [];
+    const verifyClaims = vi.fn(async () =>
+      verificationOutput({
+        deferReason: "timeout",
+        attemptedClaimIds: ["claim"],
+      }),
+    );
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      const output = await runProjection(projectionArgs(), null, {
+        db: fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)], writes),
+        verifyHandleClaims: verifyClaims,
+      });
+
+      expect(output.stats).toMatchObject({
+        handlesDue: 1,
+        handlesDeferred: 1,
+        deferReasons: { timeout: 1 },
+        retryLater: 1,
+        rejected: 0,
+      });
+      const summary = writes.find(
+        (write) => write.collection === "relayProjectionRuns",
+      );
+      expect(summary.data.stats).toMatchObject({
+        handlesDeferred: 1,
+        deferReasons: { timeout: 1 },
+      });
+      expect(
+        loggedProjectionEvent(logSpy, "projection_handle_result"),
+      ).toMatchObject({ deferredReason: "timeout" });
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it("counts handles deferred by a claim retry in the run summary", async () => {
+    const writes = [];
+    const verifyClaims = vi.fn(async (handleData) =>
+      verificationOutput({
+        results: [
+          {
+            claimId: handleData.claims[0].claimId,
+            identityStatus: "retry_later",
+            retryReason: "http_500",
+          },
+        ],
+        attemptedClaimIds: [handleData.claims[0].claimId],
+      }),
+    );
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      const output = await runProjection(projectionArgs(), null, {
+        db: fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)], writes),
+        verifyHandleClaims: verifyClaims,
+      });
+
+      expect(output.stats).toMatchObject({
+        handlesDue: 1,
+        handlesDeferred: 1,
+        deferReasons: { http_500: 1 },
+        retryLater: 1,
+        rejected: 0,
+      });
+      expect(
+        loggedProjectionEvent(logSpy, "projection_handle_result"),
+      ).toMatchObject({ deferredReason: "http_500" });
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it("stops cleanly when the run deadline is reached", async () => {
     const now = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(1);
     const verifyClaims = vi.fn();
@@ -1262,8 +1745,24 @@ function verificationOutput(overrides = {}) {
     xBioIdentifiersResolved: 0,
     stopRun: false,
     stoppedReason: null,
+    deferReason: null,
+    attemptedClaimIds: [],
     ...overrides,
   };
+}
+
+function loggedProjectionEvent(logSpy, message) {
+  return logSpy.mock.calls
+    .map((call) => call[0])
+    .filter((line) => typeof line === "string")
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .find((entry) => entry?.message === message);
 }
 
 function fakeFirestore(handles, writes = []) {

@@ -276,6 +276,7 @@ export async function discoverXBioIdentities({
   let profilesChecked = 0;
   let profilesFailed = 0;
   const profileFailures = {};
+  const failedHandles = {};
   let profilesWithIdentifiers = 0;
   let identifiersResolved = 0;
   let stoppedReason = null;
@@ -296,6 +297,10 @@ export async function discoverXBioIdentities({
       profilesFailed += 1;
       profileFailures[profileResult.reason] =
         (profileFailures[profileResult.reason] || 0) + 1;
+      failedHandles[handle] = {
+        reason: profileResult.reason,
+        retryable: profileResult.retryable,
+      };
       continue;
     }
     profilesChecked += 1;
@@ -344,6 +349,7 @@ export async function discoverXBioIdentities({
     profilesChecked,
     profilesFailed,
     profileFailures,
+    failedHandles,
     checkedHandles,
     profilesWithIdentifiers,
     identifiersResolved,

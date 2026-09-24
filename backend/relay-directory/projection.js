@@ -42,7 +42,7 @@ export function loadProjectionConfig(env = process.env) {
     maxProofs: numberFromEnv(env, "MAX_PROOFS", 250),
     verifyTweets: env.VERIFY_TWEETS !== "0",
     checkZaps: env.CHECK_ZAPS !== "0",
-    projectionLimit: numberFromEnv(env, "PROJECTION_LIMIT", 100),
+    projectionLimit: numberFromEnv(env, "PROJECTION_LIMIT", 1000),
     projectionExternalRetryMs: numberFromEnv(
       env,
       "PROJECTION_EXTERNAL_RETRY_MS",
@@ -136,6 +136,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     verified: 0,
     rejected: 0,
     retryLater: 0,
+    handlesDeferred: 0,
+    deferReasons: {},
     pendingDropped: 0,
     firestoreWrites: 0,
     stoppedReason: null,
@@ -207,6 +209,8 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       maxInactiveVerifiedClaims: args.maxInactiveVerifiedClaims,
       maxRejectionTombstones: args.maxRejectionTombstones,
       maxRetryAttempts: args.maxRetryAttempts,
+      deferReason: verification.deferReason,
+      attemptedClaimIds: verification.attemptedClaimIds,
     };
     let transition = applyProjectionResults(
       handleDoc.data,
@@ -248,11 +252,25 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       }
     }
 
+    const deferredPendingClaim =
+      transition.state.projectionStatus === "retry_later"
+        ? transition.state.claims.find((claim) => claim.status === "pending")
+        : null;
+    const deferredReason = deferredPendingClaim
+      ? verification.deferReason || deferredPendingClaim.retryReason || "unknown"
+      : null;
+    if (deferredReason) {
+      stats.handlesDeferred += 1;
+      stats.deferReasons[deferredReason] =
+        (stats.deferReasons[deferredReason] || 0) + 1;
+    }
+
     logProjectionEvent("projection_handle_result", {
       handleDocId: handleDoc.id,
       handle,
       durationMs: Math.max(0, now() - handleStartedMs),
       changed: transition.changed,
+      deferredReason,
       activeChanged: transition.activeChanged,
       firestoreWrites: writes.length,
       writeTargets: writes.map((write) => ({
@@ -343,6 +361,7 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
   const pending = pendingClaimsForHandle(handleData);
   const results = [];
   const completedClaimIds = new Set();
+  const attemptedClaimIds = new Set();
   let proofTweetsAttempted = 0;
   let xProfilesAttempted = 0;
   let xProfilesFailed = 0;
@@ -350,6 +369,7 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
   let xBioIdentifiersResolved = 0;
   let stopRun = false;
   let stoppedReason = null;
+  let deferReason = null;
   const proofsRemaining = limits.proofsRemaining ?? Infinity;
 
   if (pending.length > 0) {
@@ -396,9 +416,43 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
         completedClaimIds.add(claim.claimId);
       }
     }
+    const profileFailure = bioDiscovery.failedHandles?.[normalizedHandle];
+    if (profileFailure) deferReason = profileFailure.reason;
+    // Only a missing profile is terminal. Other failures (including
+    // non-retryable 4xx like 403, which can mean suspended or blocked rather
+    // than deleted) defer and count toward the retry cap instead.
+    const profileMissing =
+      profileFailure?.reason === "http_404" ||
+      profileFailure?.reason === "profile_unavailable";
+    if (profileFailure && !profileMissing) {
+      // The profile fetch was attempted and failed. Count the attempt only
+      // for proofless claims, which the bio path decides; proof claims are
+      // marked attempted when their tweet check starts.
+      for (const claim of pending) {
+        if (!claim.proofTweetId) attemptedClaimIds.add(claim.claimId);
+      }
+    }
+    if (profileMissing) {
+      // A missing X profile is terminal for proofless claims. Claims with a
+      // proof tweet still fall through to the tweet check below.
+      for (const claim of pending) {
+        if (completedClaimIds.has(claim.claimId) || claim.proofTweetId)
+          continue;
+        results.push({
+          claimId: claim.claimId,
+          identityStatus: "rejected",
+          rejectionReason: "x_profile_not_found",
+        });
+        completedClaimIds.add(claim.claimId);
+      }
+    }
     if (bioDiscovery.stoppedReason === "x_rate_limited") {
       stopRun = true;
       stoppedReason = "x_rate_limited";
+      deferReason = deferReason || "x_rate_limited";
+      for (const claim of pending) {
+        if (!claim.proofTweetId) attemptedClaimIds.add(claim.claimId);
+      }
     }
   }
 
@@ -407,17 +461,34 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       if (completedClaimIds.has(claim.claimId) || !claim.proofTweetId) continue;
       if (proofTweetsAttempted >= proofsRemaining) break;
       proofTweetsAttempted += 1;
+      attemptedClaimIds.add(claim.claimId);
       let result = await verifyTweetCandidate(claim, args.timeoutMs);
       if (result.identityStatus === "verified") {
         result = await enrichVerifiedResult(result, claim.metadata, args);
       }
       results.push({ ...result, claimId: claim.claimId });
+      if (result.identityStatus === "retry_later") {
+        // The proof check is the freshest deferral cause for this handle.
+        deferReason =
+          result.retryReason || "temporary_verification_failure";
+      }
       completedClaimIds.add(claim.claimId);
       if (result.retryRateLimited) {
         stopRun = true;
         stoppedReason = result.retryReason || "x_rate_limited";
         break;
       }
+    }
+  }
+
+  if (!deferReason && !stopRun) {
+    const uncheckedProofClaim = pending.find(
+      (claim) => claim.proofTweetId && !completedClaimIds.has(claim.claimId),
+    );
+    if (uncheckedProofClaim) {
+      deferReason = args.verifyTweets
+        ? "proof_budget_exhausted"
+        : "tweet_verification_disabled";
     }
   }
 
@@ -431,6 +502,8 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     xBioIdentifiersResolved,
     stopRun,
     stoppedReason,
+    deferReason,
+    attemptedClaimIds: [...attemptedClaimIds],
   };
 }
 
@@ -634,6 +707,7 @@ function printProjectionSummary(output, args) {
   console.log(`  verified:             ${output.stats.verified}`);
   console.log(`  rejected:             ${output.stats.rejected}`);
   console.log(`  retry later:          ${output.stats.retryLater}`);
+  console.log(`  handles deferred:     ${output.stats.handlesDeferred}`);
   console.log(`  pending dropped:      ${output.stats.pendingDropped}`);
   console.log(`  Firestore writes:     ${output.stats.firestoreWrites}`);
   console.log(`  firestore project:    ${args.firestoreProject}`);

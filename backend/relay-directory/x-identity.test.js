@@ -346,6 +346,30 @@ describe("Nostr identifiers in X profile bios", () => {
       profilesChecked: 0,
       profilesFailed: 1,
       profileFailures: { http_404: 1 },
+      failedHandles: { alice: { reason: "http_404", retryable: false } },
+      stoppedReason: null,
+    });
+  });
+
+  it("flags retryable profile fetch failures for a later attempt", async () => {
+    const result = await discoverXBioIdentities({
+      handleSeeds: [{ handle: "alice" }],
+      timeoutMs: 1000,
+      maxProfiles: 10,
+      fetchImpl: async () => ({
+        ok: false,
+        status: 500,
+        headers: { get: () => null },
+      }),
+    });
+
+    expect(result).toMatchObject({
+      records: [],
+      profilesAttempted: 1,
+      profilesChecked: 0,
+      profilesFailed: 1,
+      profileFailures: { http_500: 1 },
+      failedHandles: { alice: { reason: "http_500", retryable: true } },
       stoppedReason: null,
     });
   });
