@@ -72,6 +72,14 @@
     memoryCache.set(handle, { value: value, expiresAt: expiresAt });
   }
 
+  /**
+   * Looks up a user handle in the directory cache (memory -> local storage -> firestore lookup).
+   * Verified zappable identities are cached for 24 hours, while unverified or non-zappable
+   * identities are cached for 1 hour to allow newly enabled zaps to be discovered quickly.
+   *
+   * @param {string} value - The handle to look up
+   * @returns {Promise<object|null>} Directory entry object or null if handle is invalid
+   */
   async function lookup(value) {
     const handle = normalizeHandle(value);
     if (!handle) {
@@ -94,7 +102,9 @@
     try {
       const result = await sendLookupRequest(handle);
       const valueToCache = { ...result, source: 'firestore' };
-      const ttlMs = valueToCache.verified ? VERIFIED_TTL_MS : MISS_TTL_MS;
+      const isZappable = valueToCache.zappable === true ||
+        (valueToCache.activeIdentity && valueToCache.activeIdentity.zappable === true);
+      const ttlMs = (valueToCache.verified && isZappable) ? VERIFIED_TTL_MS : MISS_TTL_MS;
       const expiresAt = Date.now() + ttlMs;
       setMemoryEntry(handle, valueToCache, expiresAt);
       await extension.storage.setDirectoryEntry(handle, valueToCache, ttlMs);
