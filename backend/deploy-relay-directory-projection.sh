@@ -5,7 +5,7 @@ BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -z "${PROJECT_ID:-}" ]; then
   echo "PROJECT_ID is required." >&2
-  echo "Example: PROJECT_ID=gr-prod ./deploy-relay-directory-projection.sh" >&2
+  echo "Example: PROJECT_ID=nostr-components ./deploy-relay-directory-projection.sh" >&2
   exit 1
 fi
 

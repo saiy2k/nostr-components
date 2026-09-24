@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "sat-the-standard"
+    "default": "sat-the-standard",
+    "directory": "nostr-components"
   },
   "targets": {
     "sat-the-standard": {

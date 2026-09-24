@@ -21,8 +21,8 @@ Cloud Run deployment scripts (PROJECT_ID is required):
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
-PROJECT_ID=your-gcp-project backend/deploy-relay-directory-backfill.sh
-PROJECT_ID=your-gcp-project backend/deploy-relay-directory-projection.sh
+PROJECT_ID=nostr-components backend/deploy-relay-directory-backfill.sh
+PROJECT_ID=nostr-components backend/deploy-relay-directory-projection.sh
 ```
 
 By default the deploy script also creates a Cloud Scheduler job
@@ -35,14 +35,14 @@ Schedule knobs:
 ```sh
 # Custom cadence (unix-cron) and timezone
 SCHEDULE="0 3 * * *" SCHEDULE_TIME_ZONE="Asia/Kolkata" \
-  PROJECT_ID=your-gcp-project backend/deploy-relay-directory-backfill.sh
+  PROJECT_ID=nostr-components backend/deploy-relay-directory-backfill.sh
 
 # Deploy the job image only (no scheduler)
-CREATE_SCHEDULER=false PROJECT_ID=your-gcp-project \
+CREATE_SCHEDULER=false PROJECT_ID=nostr-components \
   backend/deploy-relay-directory-backfill.sh
 
 # Execute once immediately after deploy
-RUN_AFTER_DEPLOY=true PROJECT_ID=your-gcp-project \
+RUN_AFTER_DEPLOY=true PROJECT_ID=nostr-components \
   backend/deploy-relay-directory-backfill.sh
 ```
 
@@ -50,7 +50,7 @@ Grant project-wide `roles/datastore.user` only when bootstrapping an isolated
 crawler project (not a shared production project):
 
 ```sh
-GRANT_DATASTORE_IAM=true PROJECT_ID=your-isolated-project \
+GRANT_DATASTORE_IAM=true PROJECT_ID=nostr-components \
   backend/deploy-relay-directory-backfill.sh
 ```
 
@@ -76,7 +76,7 @@ database:
 
 ```sh
 gcloud firestore indexes composite create \
-  --project=your-gcp-project \
+  --project=nostr-components \
   --database='(default)' \
   --collection-group=nostrDirectoryHandles \
   --field-config=field-path=pendingClaimCount,order=ascending \
@@ -85,3 +85,16 @@ gcloud firestore indexes composite create \
 
 Use the configured `FIRESTORE_HANDLES_COLLECTION` and `FIRESTORE_DATABASE`
 values when they differ from the defaults.
+
+Client Firestore rules for this database live in `backend/firestore.rules`.
+Nostr Atlas, the browser extension, and Storybook never read these collections
+directly. Deploy the rules only to the new directory project (`nostr-components`):
+
+```sh
+firebase deploy --only firestore:rules --project directory \
+  --config backend/firebase.json
+```
+
+Do not deploy this rules file to `sat-the-standard`. A full `firebase deploy`
+from the repository root does not include it. If `FIRESTORE_*_COLLECTION`
+overrides rename a collection, add that name to the rules before using it.
