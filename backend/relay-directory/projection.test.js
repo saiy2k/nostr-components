@@ -34,7 +34,7 @@ describe("projection configuration", () => {
       loadProjectionConfig({ FIRESTORE_PROJECT: "gr-prod" }),
     ).toMatchObject({
       firestoreHandlesCollection: "nostrDirectoryHandles",
-      projectionLimit: 100,
+      projectionLimit: 1000,
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,
       maxRejectionTombstones: 100,
@@ -299,6 +299,7 @@ describe("claim projection policy", () => {
       retryDelayMs: 60000,
       maxRetryAttempts: 2,
       deferReason: "http_500",
+      attemptedClaimIds: ["waiting"],
     };
     const first = applyProjectionResults(handle, [], options);
 
@@ -332,6 +333,32 @@ describe("claim projection policy", () => {
         reason: "retry-attempts-exhausted:http_500",
       }),
     ]);
+  });
+
+  it("leaves unattempted claims pending without burning retry attempts", () => {
+    const transition = applyProjectionResults(
+      {
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+        pendingClaimCount: 1,
+        projectionStatus: "pending",
+        nextAttemptAt: NOW,
+      },
+      [],
+      { now: NOW, retryDelayMs: 60000, attemptedClaimIds: [] },
+    );
+
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+      nextAttemptAt: new Date("2026-07-03T12:01:00.000Z"),
+    });
+    expect(transition.state.claims[0]).toMatchObject({
+      claimId: "proof",
+      status: "pending",
+    });
+    expect(transition.state.claims[0].attemptCount).toBeUndefined();
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
   });
 
   it("does not resurrect an active identity after its claim is rejected", () => {
@@ -745,6 +772,7 @@ describe("external verification", () => {
       deferReason: "http_500",
       stopRun: false,
       stoppedReason: null,
+      attemptedClaimIds: ["kind0"],
     });
   });
 
@@ -764,7 +792,83 @@ describe("external verification", () => {
       stopRun: true,
       stoppedReason: "x_rate_limited",
       deferReason: "x_rate_limited",
+      attemptedClaimIds: ["kind0"],
     });
+  });
+
+  it("does not burn retry attempts for proof tweets skipped by the budget", async () => {
+    vi.stubGlobal("fetch", async () =>
+      fxTwitterProfile({
+        id: "x-user-1",
+        screen_name: "alice",
+        description: "No Nostr profile here",
+      }),
+    );
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 0 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      proofTweetsAttempted: 0,
+      deferReason: "proof_budget_exhausted",
+      attemptedClaimIds: [],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.claims[0].attemptCount).toBeUndefined();
+  });
+
+  it("keeps an unchecked proof tweet pending when the X profile is gone", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 404);
+      return fxTwitterTweet(null, 404);
+    });
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 0 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      proofTweetsAttempted: 0,
+      deferReason: "http_404",
+      attemptedClaimIds: [],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
   });
 
   it("normalizes a stored handle before matching checked X profiles", async () => {
@@ -1242,7 +1346,10 @@ describe("projection execution", () => {
   it("counts deferred handles and their reasons in the run summary", async () => {
     const writes = [];
     const verifyClaims = vi.fn(async () =>
-      verificationOutput({ deferReason: "timeout" }),
+      verificationOutput({
+        deferReason: "timeout",
+        attemptedClaimIds: ["claim"],
+      }),
     );
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -1266,18 +1373,46 @@ describe("projection execution", () => {
         handlesDeferred: 1,
         deferReasons: { timeout: 1 },
       });
-      const handleResultLog = logSpy.mock.calls
-        .map((call) => call[0])
-        .filter((line) => typeof line === "string")
-        .map((line) => {
-          try {
-            return JSON.parse(line);
-          } catch {
-            return null;
-          }
-        })
-        .find((entry) => entry?.message === "projection_handle_result");
-      expect(handleResultLog).toMatchObject({ deferredReason: "timeout" });
+      expect(
+        loggedProjectionEvent(logSpy, "projection_handle_result"),
+      ).toMatchObject({ deferredReason: "timeout" });
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it("counts handles deferred by a claim retry in the run summary", async () => {
+    const writes = [];
+    const verifyClaims = vi.fn(async (handleData) =>
+      verificationOutput({
+        results: [
+          {
+            claimId: handleData.claims[0].claimId,
+            identityStatus: "retry_later",
+            retryReason: "http_500",
+          },
+        ],
+        attemptedClaimIds: [handleData.claims[0].claimId],
+      }),
+    );
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      const output = await runProjection(projectionArgs(), null, {
+        db: fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)], writes),
+        verifyHandleClaims: verifyClaims,
+      });
+
+      expect(output.stats).toMatchObject({
+        handlesDue: 1,
+        handlesDeferred: 1,
+        deferReasons: { http_500: 1 },
+        retryLater: 1,
+        rejected: 0,
+      });
+      expect(
+        loggedProjectionEvent(logSpy, "projection_handle_result"),
+      ).toMatchObject({ deferredReason: "http_500" });
     } finally {
       logSpy.mockRestore();
     }
@@ -1487,8 +1622,23 @@ function verificationOutput(overrides = {}) {
     stopRun: false,
     stoppedReason: null,
     deferReason: null,
+    attemptedClaimIds: [],
     ...overrides,
   };
+}
+
+function loggedProjectionEvent(logSpy, message) {
+  return logSpy.mock.calls
+    .map((call) => call[0])
+    .filter((line) => typeof line === "string")
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .find((entry) => entry?.message === message);
 }
 
 function fakeFirestore(handles, writes = []) {

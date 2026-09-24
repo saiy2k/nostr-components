@@ -122,9 +122,15 @@ export function applyProjectionResults(handleData, results, options = {}) {
   if ((results || []).length === 0) {
     // Verification produced no claim results (e.g. a retryable X profile
     // failure). Count the attempt so MAX_RETRY_ATTEMPTS still applies and
-    // the deferral shows up in the run summary.
+    // the deferral shows up in the run summary. Claims whose verification
+    // was never attempted this run (e.g. proof tweets skipped when the proof
+    // budget ran out) stay pending without burning an attempt.
+    const attemptedClaimIds = options.attemptedClaimIds
+      ? new Set(options.attemptedClaimIds)
+      : null;
     for (const claim of [...claimsById.values()]) {
       if (claim.status !== "pending") continue;
+      if (attemptedClaimIds && !attemptedClaimIds.has(claim.claimId)) continue;
       const attemptCount = nextAttemptCount(claim);
       const retryReason =
         options.deferReason ||
