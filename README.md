@@ -39,7 +39,7 @@ Add the component script to your HTML's `<head>`. Each component can be loaded i
 </head>
 <body>
   <h1> Welcome to My home page </h1>
-  <nostr-zap-button nip05="saiy2k@iris.to" url="https://nostr-components.web.app/"></nostr-zap-button>
+  <nostr-zap-button nip05="saiy2k@iris.to" url="https://nostr-component.web.app/"></nostr-zap-button>
   <nostr-profile npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"></nostr-profile>
   <nostr-like-button></nostr-like-button>
 
@@ -94,7 +94,7 @@ What is [Zap](https://www.youtube.com/shorts/PDnrh8pkF3g)?
   <nostr-zap-button 
     npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3"
     data-theme="dark"
-    url="https://nostr-components.web.app/"
+    url="https://nostr-component.web.app/"
     text="⚡ Zap Me"
   ></nostr-zap-button>
 </body>
@@ -284,7 +284,7 @@ For more details, see the [WordPress Plugin](https://wordpress.org/plugins/saiy2
 
 ## 📖 Documentation, Examples and Demo
 
-Check out our full documentation [here](https://nostr-components.web.app).
+Check out our full documentation [here](https://nostr-component.web.app).
 
 ---
 

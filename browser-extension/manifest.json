@@ -11,7 +11,7 @@
     "https://www.youtube.com/*",
     "https://m.youtube.com/*",
     "https://youtube.com/*",
-    "https://us-central1-gr-prod.cloudfunctions.net/*",
+    "https://us-central1-nostr-components.cloudfunctions.net/*",
     "https://*/*",
     "wss://relay.damus.io/*",
     "wss://nostr.wine/*",

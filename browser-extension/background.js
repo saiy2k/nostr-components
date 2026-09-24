@@ -5,7 +5,7 @@ if (typeof importScripts === 'function') {
 }
 
 const DIRECTORY_LOOKUP_ENDPOINT =
-  'https://us-central1-gr-prod.cloudfunctions.net/lookupDirectoryHandle';
+  'https://us-central1-nostr-components.cloudfunctions.net/lookupDirectoryHandle';
 const LOOKUP_TIMEOUT_MS = 5000;
 const ZAP_HTTP_TIMEOUT_MS = 10000;
 const ZAP_HTTP_MAX_BYTES = 64 * 1024;

@@ -1,13 +1,13 @@
 {
   "projects": {
-    "default": "sat-the-standard",
+    "default": "nostr-components",
     "directory": "nostr-components"
   },
   "targets": {
-    "sat-the-standard": {
+    "nostr-components": {
       "hosting": {
         "storybook": [
-          "nostr-components"
+          "nostr-component"
         ]
       }
     }
