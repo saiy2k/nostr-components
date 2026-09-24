@@ -10,6 +10,8 @@ const rulesPath = path.resolve(
   "../firestore.rules",
 );
 const rules = readFileSync(rulesPath, "utf8");
+const PERMISSIVE_ALLOW =
+  /allow\s+(?:read|write|get|list|create|update|delete)(?:\s*,\s*(?:read|write|get|list|create|update|delete))*\s*:\s*if\s+true\b/;
 
 const SERVER_ONLY_COLLECTIONS = [
   "nostrDirectoryHandles",
@@ -29,13 +31,14 @@ describe("directory Firestore rules", () => {
       );
       expect(block, collection).not.toBeNull();
       expect(block[0]).toContain("allow read, write: if false;");
-      expect(block[0]).not.toMatch(/allow read,\s*write:\s*if true/);
+      expect(block[0]).not.toMatch(PERMISSIVE_ALLOW);
     }
   });
 
   it("denies client access to any other document in the directory database", () => {
     expect(rules).toContain("match /{document=**} {");
-    expect(rules).not.toMatch(/allow read:\s*if true/);
-    expect(rules).not.toMatch(/allow write:\s*if true/);
+    expect(rules).not.toMatch(PERMISSIVE_ALLOW);
+    expect(PERMISSIVE_ALLOW.test("allow get: if true;")).toBe(true);
+    expect(PERMISSIVE_ALLOW.test("allow read, write: if false;")).toBe(false);
   });
 });
