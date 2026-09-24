@@ -871,6 +871,70 @@ describe("external verification", () => {
     expect(transition.state.rejectedClaimTombstones).toEqual([]);
   });
 
+  it("defers without rejecting when the profile fetch is forbidden", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 403));
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      xProfilesFailed: 1,
+      xProfileFailures: { http_403: 1 },
+      deferReason: "http_403",
+      stopRun: false,
+      attemptedClaimIds: ["kind0"],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 1, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.claims[0]).toMatchObject({
+      attemptCount: 1,
+      retryReason: "http_403",
+    });
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
+  });
+
+  it("rejects a proofless claim when the X profile payload is unusable", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null));
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("kind0", PUBKEY_A, 100, null)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result).toMatchObject({
+      xProfilesFailed: 1,
+      xProfileFailures: { profile_unavailable: 1 },
+      deferReason: "profile_unavailable",
+      results: [
+        {
+          claimId: "kind0",
+          identityStatus: "rejected",
+          rejectionReason: "x_profile_not_found",
+        },
+      ],
+    });
+  });
+
   it("normalizes a stored handle before matching checked X profiles", async () => {
     vi.stubGlobal("fetch", async () =>
       fxTwitterProfile({

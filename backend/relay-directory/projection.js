@@ -418,11 +418,18 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     }
     const profileFailure = bioDiscovery.failedHandles?.[normalizedHandle];
     if (profileFailure) deferReason = profileFailure.reason;
-    if (profileFailure?.retryable) {
-      // A transient profile failure blocked the bio path for every claim.
+    // Only a missing profile is terminal. Other failures (including
+    // non-retryable 4xx like 403, which can mean suspended or blocked rather
+    // than deleted) defer and count toward the retry cap instead.
+    const profileMissing =
+      profileFailure?.reason === "http_404" ||
+      profileFailure?.reason === "profile_unavailable";
+    if (profileFailure && !profileMissing) {
+      // The profile fetch was attempted and failed; count the attempt for
+      // every claim so the retry cap can terminate persistent failures.
       for (const claim of pending) attemptedClaimIds.add(claim.claimId);
     }
-    if (profileFailure && !profileFailure.retryable) {
+    if (profileMissing) {
       // A missing X profile is terminal for proofless claims. Claims with a
       // proof tweet still fall through to the tweet check below.
       for (const claim of pending) {
