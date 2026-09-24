@@ -1233,21 +1233,6 @@ describe("top-level cursor coordination", () => {
       }
       return originalRunTransaction(fn);
     };
-    const originalBatch = db.batch.bind(db);
-    db.batch = () => {
-      const batch = originalBatch();
-      const originalCommit = batch.commit;
-      batch.commit = async () => {
-        const pendingHandles = batch.pending.filter(
-          (write) => write.collection === "handles",
-        );
-        if (pendingHandles.length) {
-          throw new Error("firestore unavailable");
-        }
-        return originalCommit();
-      };
-      return batch;
-    };
 
     const result = await runBackfillCursors(
       db,

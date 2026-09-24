@@ -91,7 +91,7 @@ Nostr Atlas, the browser extension, and Storybook never read these collections
 directly. Deploy the rules only to the new directory project (`nostr-components`):
 
 ```sh
-firebase deploy --only firestore:rules --project directory \
+firebase deploy --only firestore:rules --project nostr-components \
   --config backend/firebase.json
 ```
 
