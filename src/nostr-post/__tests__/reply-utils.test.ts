@@ -38,8 +38,15 @@ describe('reply-utils', () => {
       expect(formatReplyText('line1\r\n\r\nline2')).toBe('line1<br /><br />line2');
     });
 
+    it('converts lone carriage returns (\\r) to <br />', () => {
+      expect(formatReplyText('line1\rline2')).toBe('line1<br />line2');
+      expect(formatReplyText('line1\r\rline2')).toBe('line1<br /><br />line2');
+    });
+
     it('handles mixed newlines correctly', () => {
-      expect(formatReplyText('line1\r\nline2\nline3')).toBe('line1<br />line2<br />line3');
+      expect(formatReplyText('line1\r\nline2\nline3\rline4')).toBe(
+        'line1<br />line2<br />line3<br />line4'
+      );
     });
   });
 
