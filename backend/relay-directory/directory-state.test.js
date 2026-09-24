@@ -206,6 +206,43 @@ describe("identity claim extraction", () => {
     });
   });
 
+  it("keeps an @mention when the FxTwitter lookup is inconclusive", async () => {
+    const cache = new Map();
+    let lookups = 0;
+    const event = {
+      id: "event-mention-unknown",
+      kind: 0,
+      pubkey: PUBKEY_A,
+      created_at: 100,
+      content: JSON.stringify({ about: "Thanks @saiy2k" }),
+      tags: [],
+    };
+    const options = {
+      mentionValidationCache: cache,
+      fetchImpl: async () => {
+        lookups += 1;
+        throw new Error("network unavailable");
+      },
+    };
+    const first = await extractIdentityClaims(
+      [event],
+      "wss://relay.example",
+      new Date("2026-07-07T00:00:00.000Z"),
+      options,
+    );
+    const second = await extractIdentityClaims(
+      [{ ...event, id: "event-mention-unknown-2" }],
+      "wss://relay.example",
+      new Date("2026-07-07T00:00:00.000Z"),
+      options,
+    );
+
+    expect(first.map((claim) => claim.handle)).toEqual(["saiy2k"]);
+    expect(second.map((claim) => claim.handle)).toEqual(["saiy2k"]);
+    expect(lookups).toBe(2);
+    expect(cache.size).toBe(0);
+  });
+
   it("does not accept incomplete or mismatched FxTwitter profile payloads", async () => {
     await expect(
       checkXHandleExists("alice", {

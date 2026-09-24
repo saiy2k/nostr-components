@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 import { FieldValue } from "@google-cloud/firestore";
-import { nip19 } from "nostr-tools";
 import {
   DEFAULT_COLLECTIONS,
   firestoreTimestampToMs,
@@ -10,7 +9,6 @@ import {
 import {
   claimRecency,
   compareClaimsNewestFirst,
-  firestoreSafeId,
   isHexPubkey,
 } from "./utils.js";
 
@@ -185,16 +183,14 @@ export function applyProjectionResults(handleData, results, options = {}) {
 }
 
 export function buildHandleProjectionWrites(
-  { id, data },
+  { id },
   transition,
   options = {},
 ) {
   if (!transition?.changed) return [];
   const handlesCollection =
     options.firestoreHandlesCollection || DEFAULT_COLLECTIONS.handles;
-  const entriesCollection =
-    options.firestoreEntriesCollection || DEFAULT_COLLECTIONS.entries;
-  const writes = [
+  return [
     {
       collection: handlesCollection,
       id,
@@ -205,90 +201,6 @@ export function buildHandleProjectionWrites(
       }),
     },
   ];
-  const active = transition.state.activeIdentity;
-  const activeEntryId =
-    active && isHexPubkey(active.pubkey)
-      ? directoryEntryId(data?.handle || active.handle, active.pubkey)
-      : null;
-  const previousActive = data?.activeIdentity;
-  const previousEntryId =
-    previousActive && isHexPubkey(previousActive.pubkey)
-      ? directoryEntryId(
-          data?.handle || previousActive.handle,
-          previousActive.pubkey,
-        )
-      : null;
-
-  if (
-    transition.activeChanged &&
-    previousEntryId &&
-    previousEntryId !== activeEntryId
-  ) {
-    writes.push({
-      collection: entriesCollection,
-      id: previousEntryId,
-      data: stripUndefined({
-        identityStatus: "obsolete",
-        directoryStatus: "obsolete",
-        zappable: false,
-        autoZapAllowed: false,
-        supersededByEntryId: activeEntryId,
-        obsoleteAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      }),
-    });
-  }
-
-  if (transition.activeChanged && activeEntryId) {
-    writes.push({
-      collection: entriesCollection,
-      id: activeEntryId,
-      data: stripUndefined({
-        platform: "twitter",
-        handle: data?.handle || active.handle,
-        pubkey: active.pubkey,
-        npub: active.npub || nip19.npubEncode(active.pubkey),
-        claimId: active.claimId,
-        sourceEventId: active.sourceEventId,
-        sourceKind: active.sourceKind,
-        sourceCreatedAt: active.sourceCreatedAt,
-        sourceRelay: active.sourceRelay,
-        identityStatus: "verified",
-        obsoleteAt: null,
-        supersededByEntryId: null,
-        directoryStatus:
-          active.zappable === true
-            ? "verified_zappable"
-            : active.zapReason === "zap-check-skipped"
-              ? "verified_zap_unknown"
-              : "verified_not_zappable",
-        verificationMethods: active.verificationMethods || [],
-        metadata: active.metadata || null,
-        proofTweetId: active.proofTweetId,
-        proofSource: active.proofSource,
-        nostrIdentifier: active.nostrIdentifier,
-        xUserId: active.xUserId,
-        verifiedAt: active.verifiedAt,
-        zappable: active.zappable === true,
-        autoZapAllowed: active.zappable === true,
-        lud16: active.lud16,
-        lnurlp: active.lnurlp,
-        zapReason: active.zapReason,
-        zapCheckedAt: active.zapCheckedAt,
-        zapCheckTransient: active.zapCheckTransient === true,
-        lastSeenAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      }),
-    });
-  }
-
-  return writes;
-}
-
-export function directoryEntryId(handle, pubkey) {
-  return firestoreSafeId(
-    `twitter:${String(handle || "").toLowerCase()}:${pubkey}`,
-  );
 }
 
 function verifiedClaim(current, result, nowIso) {

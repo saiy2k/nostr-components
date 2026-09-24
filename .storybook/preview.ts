@@ -10,7 +10,7 @@ const preview: Preview = {
     },
     options: {
       brandTitle: 'Nostr Components',
-      brandUrl: 'https://nostr-components.web.app/',
+      brandUrl: 'https://nostr-component.web.app/',
     },
   },
   decorators: [

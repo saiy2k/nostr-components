@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  // Directory database only. Deploy with:
+  //   firebase deploy --only firestore:rules --project nostr-components --config backend/firebase.json
+  // Do not deploy this file to sat-the-standard. That project has its own rules.
+  //
+  // Nostr Atlas and the browser extension do not use the Firestore client SDK.
+  // Atlas reads a public HTTPS API. The extension calls lookupDirectoryHandle.
+  // Those functions and the Cloud Run crawler use the Admin SDK, which ignores
+  // these rules. Client reads would expose pending claims, evidence, tombstones,
+  // and lightning addresses that the API strips out.
+  match /databases/{database}/documents {
+    match /nostrDirectoryHandles/{handleId} {
+      allow read, write: if false;
+    }
+
+    match /relayCrawlerState/{docId} {
+      allow read, write: if false;
+    }
+
+    match /relayCrawlerGaps/{docId} {
+      allow read, write: if false;
+    }
+
+    match /nostrDirectoryHandleWriteFailures/{docId} {
+      allow read, write: if false;
+    }
+
+    match /relayProjectionRuns/{docId} {
+      allow read, write: if false;
+    }
+
+    // Anything else in this database is server-only too.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

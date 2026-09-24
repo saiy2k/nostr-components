@@ -2,7 +2,7 @@
 
 Sites and projects using Nostr Components:
 
-1. [Nostr Components Documentation](https://nostr-components.web.app/)
+1. [Nostr Components Documentation](https://nostr-component.web.app/)
 2. [Nostr Components - Launch Post](https://saiy2k.in/2025/02/17/nostr-components/)
 3. [Gray Face of India](https://grayfaceofindia.in/who-we-are/)
 4. [Sats in INR](https://sats-in-inr.web.app/)
