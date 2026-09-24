@@ -425,9 +425,12 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       profileFailure?.reason === "http_404" ||
       profileFailure?.reason === "profile_unavailable";
     if (profileFailure && !profileMissing) {
-      // The profile fetch was attempted and failed; count the attempt for
-      // every claim so the retry cap can terminate persistent failures.
-      for (const claim of pending) attemptedClaimIds.add(claim.claimId);
+      // The profile fetch was attempted and failed. Count the attempt only
+      // for proofless claims, which the bio path decides; proof claims are
+      // marked attempted when their tweet check starts.
+      for (const claim of pending) {
+        if (!claim.proofTweetId) attemptedClaimIds.add(claim.claimId);
+      }
     }
     if (profileMissing) {
       // A missing X profile is terminal for proofless claims. Claims with a
@@ -447,7 +450,9 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       stopRun = true;
       stoppedReason = "x_rate_limited";
       deferReason = deferReason || "x_rate_limited";
-      for (const claim of pending) attemptedClaimIds.add(claim.claimId);
+      for (const claim of pending) {
+        if (!claim.proofTweetId) attemptedClaimIds.add(claim.claimId);
+      }
     }
   }
 
@@ -462,6 +467,11 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
         result = await enrichVerifiedResult(result, claim.metadata, args);
       }
       results.push({ ...result, claimId: claim.claimId });
+      if (result.identityStatus === "retry_later") {
+        // The proof check is the freshest deferral cause for this handle.
+        deferReason =
+          result.retryReason || "temporary_verification_failure";
+      }
       completedClaimIds.add(claim.claimId);
       if (result.retryRateLimited) {
         stopRun = true;

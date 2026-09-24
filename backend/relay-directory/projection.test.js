@@ -871,6 +871,66 @@ describe("external verification", () => {
     expect(transition.state.rejectedClaimTombstones).toEqual([]);
   });
 
+  it("does not count a failed profile lookup as an attempt for a proof claim", async () => {
+    vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 500));
+    const handleData = {
+      handle: "alice",
+      claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      pendingClaimCount: 1,
+    };
+    const result = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 0 },
+    );
+
+    expect(result).toMatchObject({
+      results: [],
+      xProfilesFailed: 1,
+      xProfileFailures: { http_500: 1 },
+      deferReason: "http_500",
+      attemptedClaimIds: [],
+    });
+
+    const transition = applyProjectionResults(handleData, result.results, {
+      now: NOW,
+      deferReason: result.deferReason,
+      attemptedClaimIds: result.attemptedClaimIds,
+    });
+    expect(transition.stats).toMatchObject({ retryLater: 0, rejected: 0 });
+    expect(transition.state).toMatchObject({
+      projectionStatus: "retry_later",
+      pendingClaimCount: 1,
+    });
+    expect(transition.state.claims[0].attemptCount).toBeUndefined();
+    expect(transition.state.rejectedClaimTombstones).toEqual([]);
+  });
+
+  it("reports the proof retry reason when a tweet check defers", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 403);
+      throw new Error("network down");
+    });
+    const result = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      },
+      projectionArgs({ checkZaps: false }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(result.xProfileFailures).toEqual({ http_403: 1 });
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        claimId: "proof",
+        identityStatus: "retry_later",
+        retryReason: "network_error",
+      }),
+    ]);
+    expect(result.deferReason).toBe("network_error");
+  });
+
   it("defers without rejecting when the profile fetch is forbidden", async () => {
     vi.stubGlobal("fetch", async () => fxTwitterProfile(null, 403));
     const handleData = {
