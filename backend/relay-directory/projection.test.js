@@ -12,7 +12,6 @@ import {
 import {
   applyProjectionResults,
   buildHandleProjectionWrites,
-  directoryEntryId,
   pendingClaimsForHandle,
   projectionHandleIsDue,
 } from "./projection-state.js";
@@ -35,7 +34,6 @@ describe("projection configuration", () => {
       loadProjectionConfig({ FIRESTORE_PROJECT: "gr-prod" }),
     ).toMatchObject({
       firestoreHandlesCollection: "nostrDirectoryHandles",
-      firestoreEntriesCollection: "nostrDirectoryEntries",
       projectionLimit: 100,
       maxPendingClaims: 20,
       maxInactiveVerifiedClaims: 10,
@@ -389,7 +387,7 @@ describe("claim projection policy", () => {
 });
 
 describe("projection writes", () => {
-  it("uses two writes when a verified identity becomes active", () => {
+  it("writes only the handle when a verified identity becomes active", () => {
     const data = {
       handle: "alice",
       claims: [pendingClaim("claim", PUBKEY_A, 100)],
@@ -401,13 +399,10 @@ describe("projection writes", () => {
     const writes = buildHandleProjectionWrites(
       { id: "twitter:alice", data },
       transition,
-      {
-        firestoreHandlesCollection: "handles",
-        firestoreEntriesCollection: "entries",
-      },
+      { firestoreHandlesCollection: "handles" },
     );
 
-    expect(writes).toHaveLength(2);
+    expect(writes).toHaveLength(1);
     expect(writes[0]).toMatchObject({
       collection: "handles",
       id: "twitter:alice",
@@ -424,18 +419,14 @@ describe("projection writes", () => {
       "updatedAt",
     ]);
     expect(writes[0].data.handle).toBeUndefined();
-    expect(writes[1]).toMatchObject({
-      collection: "entries",
-      id: directoryEntryId("alice", PUBKEY_A),
-      data: {
-        handle: "alice",
-        pubkey: PUBKEY_A,
-        identityStatus: "verified",
-      },
+    expect(writes[0].data.activeIdentity).toMatchObject({
+      claimId: "claim",
+      pubkey: PUBKEY_A,
+      status: "verified",
     });
   });
 
-  it("marks the previous directory entry obsolete when a new pubkey becomes active", () => {
+  it("replaces the active identity on the handle when a newer pubkey verifies", () => {
     const previous = verifiedClaim("old", PUBKEY_A, 100);
     const data = {
       handle: "alice",
@@ -449,32 +440,18 @@ describe("projection writes", () => {
     const writes = buildHandleProjectionWrites(
       { id: "twitter:alice", data },
       transition,
-      {
-        firestoreHandlesCollection: "handles",
-        firestoreEntriesCollection: "entries",
-      },
+      { firestoreHandlesCollection: "handles" },
     );
 
-    expect(writes).toHaveLength(3);
-    expect(writes[1]).toMatchObject({
-      collection: "entries",
-      id: directoryEntryId("alice", PUBKEY_A),
-      data: {
-        identityStatus: "obsolete",
-        directoryStatus: "obsolete",
-        autoZapAllowed: false,
-        supersededByEntryId: directoryEntryId("alice", PUBKEY_B),
-      },
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({
+      collection: "handles",
+      id: "twitter:alice",
     });
-    expect(writes[2]).toMatchObject({
-      collection: "entries",
-      id: directoryEntryId("alice", PUBKEY_B),
-      data: {
-        identityStatus: "verified",
-        pubkey: PUBKEY_B,
-        obsoleteAt: null,
-        supersededByEntryId: null,
-      },
+    expect(writes[0].data.activeIdentity).toMatchObject({
+      claimId: "new",
+      pubkey: PUBKEY_B,
+      status: "verified",
     });
   });
 
@@ -494,7 +471,7 @@ describe("projection writes", () => {
     ).toHaveLength(1);
   });
 
-  it("does not build a directory entry for an invalid active pubkey", () => {
+  it("clears an invalid active pubkey on the handle", () => {
     const data = {
       handle: "alice",
       activeIdentity: { claimId: "invalid", pubkey: "not-a-pubkey" },
@@ -505,14 +482,12 @@ describe("projection writes", () => {
     const writes = buildHandleProjectionWrites(
       { id: "twitter:alice", data },
       transition,
-      {
-        firestoreHandlesCollection: "handles",
-        firestoreEntriesCollection: "entries",
-      },
+      { firestoreHandlesCollection: "handles" },
     );
 
     expect(writes).toHaveLength(1);
     expect(writes[0].collection).toBe("handles");
+    expect(writes[0].data.activeIdentity).toBeNull();
     expect(transition.state.activeIdentity).toBeNull();
   });
 });
@@ -704,7 +679,12 @@ describe("external verification", () => {
       { id: "twitter:alice", data: { handle: "alice" } },
       transition,
     );
-    expect(writes[1].data.directoryStatus).toBe("verified_zap_unknown");
+    expect(writes).toHaveLength(1);
+    expect(writes[0].data.activeIdentity).toMatchObject({
+      claimId: "proof",
+      zapReason: "zap-check-skipped",
+      status: "verified",
+    });
   });
 
   it("checks NIP-57 support after identity verification", async () => {
@@ -771,7 +751,8 @@ describe("external verification", () => {
       zapCheckTransient: true,
       zapCheckedAt: expect.any(String),
     });
-    expect(writes[1].data).toMatchObject({
+    expect(writes).toHaveLength(1);
+    expect(writes[0].data.activeIdentity).toMatchObject({
       zapCheckTransient: true,
       zapCheckedAt: expect.any(String),
     });
@@ -779,7 +760,7 @@ describe("external verification", () => {
 });
 
 describe("projection execution", () => {
-  it("writes the handle, the active directory entry, and a run summary", async () => {
+  it("writes the handle and a run summary", async () => {
     vi.stubGlobal("fetch", async (url) =>
       fxTwitterFetch(url, {
         profileDescription: "No Nostr profile here",
@@ -816,7 +797,6 @@ describe("projection execution", () => {
       projectionArgs({
         firestoreProject: "gr-prod",
         firestoreHandlesCollection: "handles",
-        firestoreEntriesCollection: "entries",
         checkZaps: false,
       }),
       FakeFirestore,
@@ -826,14 +806,13 @@ describe("projection execution", () => {
     expect(output.stats).toMatchObject({
       verified: 1,
       handlesChanged: 1,
-      firestoreWrites: 2,
+      firestoreWrites: 1,
     });
     expect(writes.map((write) => write.collection)).toEqual([
       "handles",
-      "entries",
       "relayProjectionRuns",
     ]);
-    expect(writes[2].data).toMatchObject({
+    expect(writes[1].data).toMatchObject({
       mode: "projection",
       source: "directory-handle-claims",
       runId: expect.stringMatching(/^projection-/),
@@ -900,10 +879,7 @@ describe("projection execution", () => {
     );
 
     expect(output.stats).toMatchObject({ verified: 1, handlesChanged: 1 });
-    expect(writes.map((write) => write.collection)).toEqual([
-      "handles",
-      "entries",
-    ]);
+    expect(writes.map((write) => write.collection)).toEqual(["handles"]);
   });
 
   it("stops iterating when verification requests a run stop", async () => {
@@ -1129,7 +1105,6 @@ function projectionArgs(overrides = {}) {
     firestoreProject: "gr-prod",
     firestoreDatabase: "(default)",
     firestoreHandlesCollection: "handles",
-    firestoreEntriesCollection: "entries",
     timeoutMs: 1000,
     maxProofs: 10,
     verifyTweets: true,

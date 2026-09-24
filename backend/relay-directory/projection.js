@@ -233,8 +233,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       writeTargets: writes.map((write) => ({
         collection: write.collection,
         id: write.id,
-        identityStatus: write.data?.identityStatus || null,
-        directoryStatus: write.data?.directoryStatus || null,
       })),
       verification: {
         claimsConsidered: verification.claimsConsidered,
@@ -280,7 +278,6 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     firestore: {
       project: args.firestoreProject,
       database: args.firestoreDatabase,
-      entriesCollection: args.firestoreEntriesCollection,
       handlesCollection: args.firestoreHandlesCollection,
     },
     controls: {

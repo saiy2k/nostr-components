@@ -98,7 +98,6 @@ export function loadRelaysFromFile(filePath = DEFAULT_RELAYS_FILE) {
 }
 
 export const DEFAULT_COLLECTIONS = {
-  entries: "nostrDirectoryEntries",
   handles: "nostrDirectoryHandles",
   projectionRuns: "relayProjectionRuns",
   state: "relayCrawlerState",
@@ -116,8 +115,6 @@ export function firestoreConfigFromEnv(env = process.env) {
       env.GCLOUD_PROJECT ||
       null,
     firestoreDatabase: env.FIRESTORE_DATABASE || "(default)",
-    firestoreEntriesCollection:
-      env.FIRESTORE_ENTRIES_COLLECTION || DEFAULT_COLLECTIONS.entries,
     firestoreHandlesCollection:
       env.FIRESTORE_HANDLES_COLLECTION || DEFAULT_COLLECTIONS.handles,
     firestoreProjectionRunsCollection:
