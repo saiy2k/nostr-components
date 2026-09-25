@@ -6,7 +6,8 @@ import { normalizeTwitterHandle } from "./lookup.js";
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
-const MAX_OFFSET = 1_000_000;
+const MAX_OFFSET = 10_000;
+const MAX_CURSOR_POSITION = 1_000_000;
 const MAX_SEARCH_LENGTH = 255;
 const CURSOR_PATTERN = /^twitter:[a-z0-9_]{1,15}$/;
 const NIP05_PATTERN = /^[a-z0-9_.+-]+@[a-z0-9.-]+$/i;
@@ -93,6 +94,14 @@ function validatedInteger(value, fallback, maximum, error) {
 }
 
 export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
+  const cursor = parameters.cursor;
+  if (
+    cursor !== undefined &&
+    (typeof cursor !== "string" || !CURSOR_PATTERN.test(cursor))
+  ) {
+    return { status: 400, body: { error: "invalid_cursor" } };
+  }
+
   let pageSize;
   let offset;
   let search;
@@ -107,7 +116,7 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
     offset = validatedInteger(
       parameters.offset,
       0,
-      MAX_OFFSET,
+      cursor === undefined ? MAX_OFFSET : MAX_CURSOR_POSITION,
       "invalid_offset",
     );
     search = directorySearchFilter(parameters.search);
@@ -122,22 +131,10 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
     return { status: 400, body: { error: code } };
   }
 
-  // Cursor pagination was used by the first preview of this endpoint. Reject it
-  // explicitly so callers cannot accidentally mix cursor and offset semantics.
-  if (parameters.cursor !== undefined) {
-    if (
-      typeof parameters.cursor !== "string" ||
-      !CURSOR_PATTERN.test(parameters.cursor)
-    ) {
-      return { status: 400, body: { error: "invalid_cursor" } };
-    }
-    return { status: 400, body: { error: "cursor_not_supported" } };
-  }
-
   if (search?.matchesNothing) {
     return {
       status: 200,
-      body: { profiles: [], total: 0, offset },
+      body: { profiles: [], total: 0, offset, nextCursor: null },
     };
   }
 
@@ -149,7 +146,8 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
   const countSnapshot = await query.count().get();
   const total = countSnapshot.data().count;
   query = query.orderBy(FieldPath.documentId());
-  if (offset > 0) query = query.offset(offset);
+  if (cursor !== undefined) query = query.startAfter(cursor);
+  else if (offset > 0) query = query.offset(offset);
   const snapshot = await query
     .select(
       "platform",
@@ -159,17 +157,19 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
       "activeIdentity.metadata.name",
       "activeIdentity.metadata.nip05",
     )
-    .limit(pageSize)
+    .limit(pageSize + 1)
     .get();
+  const documents = snapshot.docs.slice(0, pageSize);
 
   return {
     status: 200,
     body: {
-      profiles: snapshot.docs
+      profiles: documents
         .map((doc) => publicDirectoryProfile(doc.id, doc.data()))
         .filter(Boolean),
       total,
       offset,
+      nextCursor: snapshot.docs.length > pageSize ? documents.at(-1).id : null,
     },
   };
 }

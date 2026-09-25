@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { npubEncode } from "nostr-tools/nip19";
-import { fetchDirectoryPage, parseDirectoryPage } from "./api";
+import {
+  fetchDirectoryPage,
+  fetchDirectoryPageAtOffset,
+  parseDirectoryPage,
+} from "./api";
 
 const profile = {
   id: "twitter:alice",
@@ -21,6 +25,7 @@ describe("directory API", () => {
       profiles: [profile],
       total: 1,
       offset: 0,
+      nextCursor: null,
     });
     expect(page.profiles[0]).toMatchObject({
       id: "twitter:alice",
@@ -34,30 +39,59 @@ describe("directory API", () => {
     });
     expect(page.total).toBe(1);
     expect(page.offset).toBe(0);
+    expect(page.nextCursor).toBeNull();
   });
 
   it.each([
     null,
-    { profiles: [], total: -1, offset: 0 },
-    { profiles: [], total: 0, offset: -1 },
+    { profiles: [], total: -1, offset: 0, nextCursor: null },
+    { profiles: [], total: 0, offset: -1, nextCursor: null },
     { profiles: [profile] },
-    { profiles: [{ ...profile, verified: false }], total: 1, offset: 0 },
-    { profiles: [{ ...profile, pubkey: "invalid" }], total: 1, offset: 0 },
-    { profiles: [{ ...profile, id: "twitter:bob" }], total: 1, offset: 0 },
-    { profiles: [{ ...profile, platform: "youtube" }], total: 1, offset: 0 },
-    { profiles: Array(51).fill(profile), total: 51, offset: 0 },
+    {
+      profiles: [{ ...profile, verified: false }],
+      total: 1,
+      offset: 0,
+      nextCursor: null,
+    },
+    {
+      profiles: [{ ...profile, pubkey: "invalid" }],
+      total: 1,
+      offset: 0,
+      nextCursor: null,
+    },
+    {
+      profiles: [{ ...profile, id: "twitter:bob" }],
+      total: 1,
+      offset: 0,
+      nextCursor: null,
+    },
+    {
+      profiles: [{ ...profile, platform: "youtube" }],
+      total: 1,
+      offset: 0,
+      nextCursor: null,
+    },
+    {
+      profiles: Array(51).fill(profile),
+      total: 51,
+      offset: 0,
+      nextCursor: null,
+    },
   ])("rejects malformed responses: %j", (value) => {
     expect(() => parseDirectoryPage(value)).toThrow();
   });
 
   it("uses GET, a bounded batch size, offset, and backend search", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ profiles: [profile], total: 1, offset: 50 }),
-        ),
-      );
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          profiles: [profile],
+          total: 1,
+          offset: 50,
+          nextCursor: null,
+        }),
+      ),
+    );
     await fetchDirectoryPage(
       endpoint,
       { offset: 50, search: "@alice" },
@@ -77,11 +111,14 @@ describe("directory API", () => {
   it("treats an empty directory as a successful response", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(new Response('{"profiles":[],"total":0,"offset":0}'));
+      .mockResolvedValue(
+        new Response('{"profiles":[],"total":0,"offset":0,"nextCursor":null}'),
+      );
     await expect(fetchDirectoryPage(endpoint, {}, fetcher)).resolves.toEqual({
       profiles: [],
       total: 0,
       offset: 0,
+      nextCursor: null,
     });
   });
 
@@ -109,7 +146,9 @@ describe("directory API", () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(
-        new Response('{"profiles":[],"total":100,"offset":0}'),
+        new Response(
+          '{"profiles":[],"total":100,"offset":0,"nextCursor":null}',
+        ),
       );
     await expect(
       fetchDirectoryPage(endpoint, { offset: 50 }, fetcher),
@@ -122,9 +161,68 @@ describe("directory API", () => {
       fetchDirectoryPage(endpoint, { offset: -1 }, fetcher),
     ).rejects.toThrow("page is invalid");
     await expect(
+      fetchDirectoryPage(endpoint, { offset: 10_001 }, fetcher),
+    ).rejects.toThrow("page is invalid");
+    await expect(
+      fetchDirectoryPage(
+        endpoint,
+        {
+          offset: 10_001,
+          cursor: "invalid/cursor",
+        },
+        fetcher,
+      ),
+    ).rejects.toThrow("cursor is invalid");
+    await expect(
       fetchDirectoryPage(endpoint, { search: "x".repeat(256) }, fetcher),
     ).rejects.toThrow("too long");
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("uses keyset cursors to reach batches beyond the direct offset window", async () => {
+    const finalProfile = {
+      ...profile,
+      id: "twitter:carol",
+      handle: "carol",
+    };
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      const offset = Number(url.searchParams.get("offset"));
+      const cursor = url.searchParams.get("cursor");
+      if (offset === 10_000 && cursor === null) {
+        return new Response(
+          '{"profiles":[],"total":10101,"offset":10000,"nextCursor":"twitter:alice"}',
+        );
+      }
+      if (offset === 10_050 && cursor === "twitter:alice") {
+        return new Response(
+          '{"profiles":[],"total":10101,"offset":10050,"nextCursor":"twitter:bob"}',
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          profiles: [finalProfile],
+          total: 10_101,
+          offset: 10_100,
+          nextCursor: null,
+        }),
+      );
+    });
+    const seen: number[] = [];
+
+    await expect(
+      fetchDirectoryPageAtOffset(
+        endpoint,
+        { offset: 10_100 },
+        (page) => seen.push(page.offset),
+        fetcher,
+      ),
+    ).resolves.toMatchObject({
+      offset: 10_100,
+      profiles: [expect.objectContaining({ id: "twitter:carol" })],
+    });
+    expect(seen).toEqual([10_000, 10_050, 10_100]);
+    expect(fetcher).toHaveBeenCalledTimes(3);
   });
 
   it("aborts stalled requests and reports a timeout", async () => {

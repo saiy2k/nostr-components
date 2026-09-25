@@ -22,10 +22,17 @@ backward-compatible development fallback. **Deploy the function before building
 against a new project**, or use the local Functions emulator below.
 
 The API reads up to 50 documents per request. `limit` accepts 1–100 and `offset`
-selects the first record in a batch. Every response includes `total`, the count of
-verified records matching the request, so the UI can show all database-backed
-pages before those pages are loaded. The browser caches 50-record batches and
-requests the batch containing a page only when the user opens that page.
+tracks the first logical record in a batch. Every response includes `total`, the
+count of verified records matching the request, and `nextCursor`, the last
+document ID when more records exist. The UI can therefore show all database-backed
+pages before those pages are loaded.
+
+Direct Firestore offsets are capped at 10,000 records because Firestore bills
+skipped documents. Pages inside that result window can be opened directly. For a
+deeper page, the browser starts from the nearest cached `nextCursor` (or the
+10,000-record boundary) and advances with keyset `startAfter` requests. Each such
+request still reads at most one batch; it never applies the large logical offset
+to Firestore. The browser caches all fetched 50-record batches and cursors.
 
 The optional `search` parameter performs an exact, server-side lookup by X handle
 (including `@handle` and X/Twitter profile URLs), NIP-05 address, or npub. It does
@@ -114,8 +121,11 @@ another collection. Set these in `functions/.env.local` for the emulator, or
 4. Check the directory pagination bar: verify its total page count matches
    `ceil(total / pageSize)`, then use previous/next, a distant direct page, and
    page-size switching (10, 25, 50). Page 6 at the default size should request
-   `offset=50`; a distant page should request its containing 50-record batch.
-   Returning to a page in a cached batch should not fetch the entire collection.
+   `offset=50`; a distant page inside the first 10,000 records should request its
+   containing 50-record batch. For a synthetic directory larger than 10,000,
+   confirm deeper requests include a validated `cursor` and advance in 50-record
+   batches rather than applying a deep Firestore offset. Returning to a cached
+   page should not fetch the collection again.
 5. Select **Popular on Nostr** and check the explanatory empty state. Return to
    the X tab. Add a local claim preview: it should be marked **Local preview**, have
    no verification check, and cause no write request. Refreshing the directory
@@ -127,10 +137,11 @@ another collection. Set these in `functions/.env.local` for the emulator, or
    request; it should stop after about 15 seconds.
 7. To check an empty directory, set `FIRESTORE_HANDLES_COLLECTION` to an unused
    collection name and restart the Functions emulator. Expect
-   `{ "profiles": [], "nextCursor": null }`. Use a separate test Firebase project
-   for invalid-record fixtures: documents without a verified active identity must
-   never become verified rows. The Functions-only emulator still reads real
-   Firestore, so do not modify production claims for this check.
+   `{ "profiles": [], "total": 0, "offset": 0, "nextCursor": null }`. Use a
+   separate test Firebase project for invalid-record fixtures: documents without
+   a verified active identity must never become verified rows. The Functions-only
+   emulator still reads real Firestore, so do not modify production claims for
+   this check.
 
 You can also inspect the endpoint without opening a browser:
 

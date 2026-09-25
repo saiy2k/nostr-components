@@ -4,19 +4,23 @@ import type { DirectoryProfile } from "./data";
 export const DEFAULT_DIRECTORY_API_URL =
   "https://us-central1-gr-prod.cloudfunctions.net/listDirectoryProfiles";
 export const DIRECTORY_BATCH_SIZE = 50;
+export const MAX_DIRECT_DIRECTORY_OFFSET = 10_000;
 const REQUEST_TIMEOUT_MS = 15_000;
-const MAX_OFFSET = 1_000_000;
+const MAX_CURSOR_POSITION = 1_000_000;
 const MAX_SEARCH_LENGTH = 255;
+const CURSOR_PATTERN = /^twitter:[a-z0-9_]{1,15}$/;
 
 export interface DirectoryPage {
   readonly profiles: DirectoryProfile[];
   readonly total: number;
   readonly offset: number;
+  readonly nextCursor: string | null;
 }
 
 export interface DirectoryRequest {
   readonly offset?: number;
   readonly search?: string;
+  readonly cursor?: string;
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -32,7 +36,12 @@ export function parseDirectoryPage(value: unknown): DirectoryPage {
     (value.total as number) < 0 ||
     !Number.isSafeInteger(value.offset) ||
     (value.offset as number) < 0 ||
-    (value.offset as number) > MAX_OFFSET
+    (value.offset as number) > MAX_CURSOR_POSITION ||
+    !(
+      value.nextCursor === null ||
+      (typeof value.nextCursor === "string" &&
+        CURSOR_PATTERN.test(value.nextCursor))
+    )
   ) {
     throw new Error("The directory returned an invalid response.");
   }
@@ -84,6 +93,7 @@ export function parseDirectoryPage(value: unknown): DirectoryPage {
     profiles,
     total: value.total as number,
     offset: value.offset as number,
+    nextCursor: value.nextCursor as string | null,
   };
 }
 
@@ -93,8 +103,16 @@ export async function fetchDirectoryPage(
   fetcher: typeof fetch = fetch,
 ): Promise<DirectoryPage> {
   const offset = request.offset ?? 0;
-  if (!Number.isSafeInteger(offset) || offset < 0 || offset > MAX_OFFSET) {
+  if (
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > MAX_CURSOR_POSITION ||
+    (!request.cursor && offset > MAX_DIRECT_DIRECTORY_OFFSET)
+  ) {
     throw new Error("The requested directory page is invalid.");
+  }
+  if (request.cursor && !CURSOR_PATTERN.test(request.cursor)) {
+    throw new Error("The requested directory cursor is invalid.");
   }
   const search = request.search?.trim() ?? "";
   if (search.length > MAX_SEARCH_LENGTH) {
@@ -104,6 +122,8 @@ export async function fetchDirectoryPage(
   const url = new URL(endpoint);
   url.searchParams.set("limit", String(DIRECTORY_BATCH_SIZE));
   url.searchParams.set("offset", String(offset));
+  if (request.cursor) url.searchParams.set("cursor", request.cursor);
+  else url.searchParams.delete("cursor");
   if (search) url.searchParams.set("search", search);
   else url.searchParams.delete("search");
 
@@ -122,6 +142,13 @@ export async function fetchDirectoryPage(
     if (page.offset !== offset) {
       throw new Error("The directory returned the wrong page.");
     }
+    if (
+      request.cursor &&
+      page.nextCursor &&
+      page.nextCursor <= request.cursor
+    ) {
+      throw new Error("The directory returned an invalid page cursor.");
+    }
     return page;
   } catch (error) {
     if (controller.signal.aborted) {
@@ -131,4 +158,77 @@ export async function fetchDirectoryPage(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export interface DirectoryOffsetRequest {
+  readonly offset: number;
+  readonly search?: string;
+  readonly cachedCursors?: ReadonlyMap<number, string | null>;
+}
+
+export async function fetchDirectoryPageAtOffset(
+  endpoint: string,
+  request: DirectoryOffsetRequest,
+  onPage: (page: DirectoryPage) => void = () => {},
+  fetcher: typeof fetch = fetch,
+): Promise<DirectoryPage> {
+  const targetOffset = request.offset;
+  if (
+    !Number.isSafeInteger(targetOffset) ||
+    targetOffset < 0 ||
+    targetOffset % DIRECTORY_BATCH_SIZE !== 0
+  ) {
+    throw new Error("The requested directory batch is invalid.");
+  }
+
+  if (targetOffset <= MAX_DIRECT_DIRECTORY_OFFSET) {
+    const page = await fetchDirectoryPage(
+      endpoint,
+      { offset: targetOffset, search: request.search },
+      fetcher,
+    );
+    onPage(page);
+    return page;
+  }
+
+  const cursors = new Map(request.cachedCursors);
+  let anchorOffset = -1;
+  let cursor: string | null = null;
+  for (const [offset, nextCursor] of cursors) {
+    if (offset < targetOffset && nextCursor && offset > anchorOffset) {
+      anchorOffset = offset;
+      cursor = nextCursor;
+    }
+  }
+
+  if (!cursor) {
+    const anchor = await fetchDirectoryPage(
+      endpoint,
+      { offset: MAX_DIRECT_DIRECTORY_OFFSET, search: request.search },
+      fetcher,
+    );
+    onPage(anchor);
+    anchorOffset = anchor.offset;
+    cursor = anchor.nextCursor;
+  }
+
+  for (
+    let offset = anchorOffset + DIRECTORY_BATCH_SIZE;
+    offset <= targetOffset;
+    offset += DIRECTORY_BATCH_SIZE
+  ) {
+    if (!cursor) {
+      throw new Error("The directory no longer contains the requested page.");
+    }
+    const page = await fetchDirectoryPage(
+      endpoint,
+      { offset, search: request.search, cursor },
+      fetcher,
+    );
+    onPage(page);
+    if (offset === targetOffset) return page;
+    cursor = page.nextCursor;
+  }
+
+  throw new Error("The requested directory page could not be reached.");
 }

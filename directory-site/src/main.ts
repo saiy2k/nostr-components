@@ -20,7 +20,8 @@ import { brandMark, icon, networkGraphic } from "./icons";
 import {
   DEFAULT_DIRECTORY_API_URL,
   DIRECTORY_BATCH_SIZE,
-  fetchDirectoryPage,
+  fetchDirectoryPageAtOffset,
+  type DirectoryPage,
 } from "./api";
 
 const appRoot = document.querySelector<HTMLDivElement>("#app");
@@ -32,6 +33,7 @@ const app = appRoot;
 const directoryApiUrl =
   import.meta.env.VITE_DIRECTORY_API_URL?.trim() || DEFAULT_DIRECTORY_API_URL;
 let profileBatches = new Map<number, DirectoryProfile[]>();
+let batchNextCursors = new Map<number, string | null>();
 let previewProfiles: DirectoryProfile[] = [];
 let totalProfiles = 0;
 let loading = false;
@@ -303,6 +305,7 @@ async function loadProfileBatches(
     loadGeneration = generation;
     pendingLoads = 0;
     profileBatches = new Map();
+    batchNextCursors = new Map();
     totalProfiles = 0;
     loaded = false;
   }
@@ -316,15 +319,23 @@ async function loadProfileBatches(
   loadFailed = false;
   renderProfiles();
   try {
-    const pages = await Promise.all(
-      offsets.map((offset) =>
-        fetchDirectoryPage(directoryApiUrl, { offset, search: query }),
-      ),
-    );
+    const pages: DirectoryPage[] = [];
+    const workingCursors = new Map(batchNextCursors);
+    for (const offset of [...offsets].sort((a, b) => a - b)) {
+      await fetchDirectoryPageAtOffset(
+        directoryApiUrl,
+        { offset, search: query, cachedCursors: workingCursors },
+        (page) => {
+          pages.push(page);
+          workingCursors.set(page.offset, page.nextCursor);
+        },
+      );
+    }
     if (generation !== loadGeneration) return;
 
     for (const page of pages) {
       profileBatches.set(page.offset, page.profiles);
+      batchNextCursors.set(page.offset, page.nextCursor);
     }
     totalProfiles = pages[0]?.total ?? 0;
     loaded = true;
