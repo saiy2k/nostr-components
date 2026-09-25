@@ -6,7 +6,7 @@ export interface DirectoryProfile {
   readonly handle: string;
   readonly nip05: string;
   readonly category: DirectoryCategory;
-  readonly followers: number;
+  readonly followers: number | null;
   readonly verified: boolean;
   readonly npub: string;
   readonly youtube: string;
@@ -22,6 +22,7 @@ export const categories: readonly DirectoryCategory[] = [
   "Popular on Nostr",
 ];
 
+// Sample fixtures used by unit tests only. The site loads profiles through api.ts.
 export const directoryProfiles: readonly DirectoryProfile[] = [
   {
     id: "jack",

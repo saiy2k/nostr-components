@@ -7,6 +7,14 @@ export const icon = {
     <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
       <path d="m6 8 4 4 4-4" />
     </svg>`,
+  chevronLeft: () => `
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+      <path d="m12 14-4-4 4-4" />
+    </svg>`,
+  chevronRight: () => `
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+      <path d="m8 6 4 4-4 4" />
+    </svg>`,
   check: () => `
     <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
       <path d="m6.5 10.1 2.1 2.2 5-5" />
