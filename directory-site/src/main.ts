@@ -9,6 +9,7 @@ import {
   PAGE_SIZE_OPTIONS,
   formatFollowers,
   getPaginationPageList,
+  getRequiredBatchOffsets,
   getVisibleProfiles,
   nip05ProfileUrl,
   paginateProfiles,
@@ -16,7 +17,11 @@ import {
   type DirectorySort,
 } from "./directory";
 import { brandMark, icon, networkGraphic } from "./icons";
-import { DEFAULT_DIRECTORY_API_URL, fetchNextDirectoryPage } from "./api";
+import {
+  DEFAULT_DIRECTORY_API_URL,
+  DIRECTORY_BATCH_SIZE,
+  fetchDirectoryPage,
+} from "./api";
 
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 
@@ -26,18 +31,20 @@ const app = appRoot;
 
 const directoryApiUrl =
   import.meta.env.VITE_DIRECTORY_API_URL?.trim() || DEFAULT_DIRECTORY_API_URL;
-let profiles: DirectoryProfile[] = [];
+let profileBatches = new Map<number, DirectoryProfile[]>();
 let previewProfiles: DirectoryProfile[] = [];
-let nextCursor: string | null = null;
+let totalProfiles = 0;
 let loading = false;
 let loaded = false;
 let loadFailed = false;
-let lastLoadReset = true;
+let loadGeneration = 0;
+let pendingLoads = 0;
 let category: DirectoryCategory = "Popular on X.com";
 let query = "";
-let sort: DirectorySort = "followers";
+const sort: DirectorySort = "followers";
 let currentPage = 1;
 let pageSize = DEFAULT_PAGE_SIZE;
+let searchTimer: number | null = null;
 
 const escapeHtml = (value: string): string =>
   value.replace(
@@ -92,55 +99,87 @@ function profileRow(profile: DirectoryProfile): string {
     </article>`;
 }
 
+function matchingPreviewProfiles(): DirectoryProfile[] {
+  return getVisibleProfiles(previewProfiles, { category, query, sort });
+}
+
+function cachedRemoteProfile(index: number): DirectoryProfile | undefined {
+  const batchOffset =
+    Math.floor(index / DIRECTORY_BATCH_SIZE) * DIRECTORY_BATCH_SIZE;
+  return profileBatches.get(batchOffset)?.[index - batchOffset];
+}
+
+function currentDirectoryPage() {
+  const previews = matchingPreviewProfiles();
+  const remoteTotal = category === "Popular on X.com" ? totalProfiles : 0;
+  const totalItems = previews.length + remoteTotal;
+  const pagination = paginateProfiles(
+    Array.from({ length: totalItems }, (_, index) => index),
+    currentPage,
+    pageSize,
+  );
+  const items = pagination.items
+    .map((index) =>
+      index < previews.length
+        ? previews[index]
+        : cachedRemoteProfile(index - previews.length),
+    )
+    .filter((profile): profile is DirectoryProfile => profile !== undefined);
+
+  return { pagination, items, previewCount: previews.length };
+}
+
+function requiredBatchOffsets(): number[] {
+  if (category !== "Popular on X.com" || totalProfiles === 0) return [];
+  const { pagination, previewCount } = currentDirectoryPage();
+  return getRequiredBatchOffsets(
+    pagination.startIndex,
+    pagination.endIndex,
+    previewCount,
+    totalProfiles,
+    DIRECTORY_BATCH_SIZE,
+    new Set(profileBatches.keys()),
+  );
+}
+
 function renderProfiles(): void {
   const results = document.querySelector<HTMLDivElement>("#profile-results");
   const resultCount = document.querySelector<HTMLElement>("#result-count");
   if (!results || !resultCount) return;
 
-  const visibleProfiles = getVisibleProfiles(
-    [...previewProfiles, ...profiles],
-    {
-      category,
-      query,
-      sort,
-    },
-  );
-
-  const pagination = paginateProfiles(visibleProfiles, currentPage, pageSize);
+  const { pagination, items } = currentDirectoryPage();
   currentPage = pagination.page;
 
-  const totalLoaded = visibleProfiles.length;
   if (loading && !loaded) {
     resultCount.textContent = "Loading creator claims…";
-  } else if (totalLoaded === 0) {
+  } else if (pagination.totalItems === 0) {
     resultCount.textContent = "0 creator claims";
   } else {
-    const claimNoun = totalLoaded === 1 ? "creator claim" : "creator claims";
-    resultCount.textContent = `Showing ${pagination.startIndex + 1}–${pagination.endIndex} of ${totalLoaded} ${claimNoun}${nextCursor ? " in loaded results" : ""}`;
+    const claimNoun =
+      pagination.totalItems === 1 ? "creator claim" : "creator claims";
+    resultCount.textContent = `Showing ${pagination.startIndex + 1}–${pagination.endIndex} of ${pagination.totalItems} ${claimNoun}`;
   }
 
   results.setAttribute("aria-busy", String(loading));
-  const emptyTitle =
-    loading && !loaded
-      ? "Loading creator claims…"
-      : loadFailed && !loaded
-        ? "Creator claims could not be loaded"
-        : category === "Popular on Nostr"
-          ? "Nostr rankings are not available yet"
-          : "No creator claims found";
-  const emptyDescription =
-    loading && !loaded
-      ? "Fetching verified accounts."
-      : loadFailed && !loaded
-        ? "Please retry using the button below."
-        : category === "Popular on Nostr"
-          ? "The live directory currently lists verified X accounts. Choose Popular on X.com to browse them."
-          : nextCursor
-            ? "Try another search or load more creator claims below."
-            : "Try an X handle, name, Nostr address, or npub. Only verified X accounts appear in the live directory.";
+  const waitingForPage = loading && items.length === 0;
+  const missingPage = pagination.totalItems > 0 && items.length === 0;
+  const emptyTitle = waitingForPage
+    ? "Loading creator claims…"
+    : loadFailed && (!loaded || missingPage)
+      ? "This directory page could not be loaded"
+      : category === "Popular on Nostr"
+        ? "Nostr rankings are not available yet"
+        : "No creator claims found";
+  const emptyDescription = waitingForPage
+    ? "Fetching verified accounts."
+    : loadFailed && (!loaded || missingPage)
+      ? "Please retry using the button below."
+      : category === "Popular on Nostr"
+        ? "The live directory currently lists verified X accounts. Choose Popular on X.com to browse them."
+        : "Try an exact X handle, NIP-05 address, or npub. Search runs against all verified X accounts in the directory.";
 
-  results.innerHTML = visibleProfiles.length
-    ? pagination.items.map(profileRow).join("")
+  results.innerHTML = items.length
+    ? items.map(profileRow).join("")
     : `
       <div class="empty-state">
         <span>${icon.search()}</span>
@@ -154,7 +193,7 @@ function renderProfiles(): void {
 }
 
 function renderPagination(
-  pagination: ReturnType<typeof paginateProfiles<DirectoryProfile>>,
+  pagination: ReturnType<typeof paginateProfiles<number>>,
 ): void {
   const paginationNav = document.querySelector<HTMLElement>(
     "#directory-pagination",
@@ -238,56 +277,78 @@ function renderDirectoryStatus(): void {
   const status = document.querySelector<HTMLElement>("#directory-status");
   const refresh =
     document.querySelector<HTMLButtonElement>("#refresh-directory");
-  const more = document.querySelector<HTMLButtonElement>("#load-more-profiles");
+  const cachedProfiles = [...profileBatches.values()].reduce(
+    (count, batch) => count + batch.length,
+    0,
+  );
   if (status) {
     status.textContent = loadFailed
-      ? "Could not load creator claims. Check your connection and retry. Previously loaded claims and local previews are kept."
+      ? "Could not load creator claims. Check your connection and retry. Local previews are kept."
       : loading
         ? "Loading verified creator claims…"
-        : `${profiles.length} verified X ${profiles.length === 1 ? "account" : "accounts"} loaded. ${nextCursor ? "Search and sorting apply to loaded accounts; load more to expand results. " : ""}Audience counts and YouTube claims are not available yet.`;
+        : `${totalProfiles} verified X ${totalProfiles === 1 ? "account" : "accounts"} in the directory; ${cachedProfiles} cached in this browser. Audience counts, popularity rankings, and YouTube claims are not available yet.`;
   }
   if (refresh) {
     refresh.disabled = loading;
     refresh.textContent = loadFailed ? "Retry" : "Refresh";
   }
-  if (more) {
-    more.hidden = !nextCursor || category !== "Popular on X.com";
-    more.disabled = loading || loadFailed;
-    more.textContent = loading ? "Loading…" : "Load more creator claims";
-  }
 }
 
-async function loadProfiles(reset = true): Promise<void> {
-  if (loading) return;
+async function loadProfileBatches(
+  offsets: readonly number[],
+  reset = false,
+): Promise<void> {
+  const generation = reset ? loadGeneration + 1 : loadGeneration;
+  if (reset) {
+    loadGeneration = generation;
+    pendingLoads = 0;
+    profileBatches = new Map();
+    totalProfiles = 0;
+    loaded = false;
+  }
+  if (offsets.length === 0) {
+    renderProfiles();
+    return;
+  }
+
+  pendingLoads += 1;
   loading = true;
   loadFailed = false;
-  lastLoadReset = reset;
-  if (reset) {
-    currentPage = 1;
-  }
   renderProfiles();
   try {
-    const page = await fetchNextDirectoryPage(
-      directoryApiUrl,
-      reset ? null : nextCursor,
+    const pages = await Promise.all(
+      offsets.map((offset) =>
+        fetchDirectoryPage(directoryApiUrl, { offset, search: query }),
+      ),
     );
-    profiles = [
-      ...new Map(
-        [...(reset ? [] : profiles), ...page.profiles].map((profile) => [
-          profile.id,
-          profile,
-        ]),
-      ).values(),
-    ];
-    nextCursor = page.nextCursor;
+    if (generation !== loadGeneration) return;
+
+    for (const page of pages) {
+      profileBatches.set(page.offset, page.profiles);
+    }
+    totalProfiles = pages[0]?.total ?? 0;
     loaded = true;
   } catch (error) {
+    if (generation !== loadGeneration) return;
     loadFailed = true;
     console.error("Failed to load the creator directory", error);
   } finally {
-    loading = false;
-    renderProfiles();
+    if (generation === loadGeneration) {
+      pendingLoads = Math.max(0, pendingLoads - 1);
+      loading = pendingLoads > 0;
+      renderProfiles();
+    }
   }
+}
+
+async function reloadProfiles(search = query): Promise<void> {
+  query = search.trim();
+  currentPage = 1;
+  await loadProfileBatches([0], true);
+}
+
+async function ensureCurrentPageLoaded(): Promise<void> {
+  await loadProfileBatches(requiredBatchOffsets());
 }
 
 function renderApp(): void {
@@ -311,7 +372,7 @@ function renderApp(): void {
           <form class="hero-search" id="hero-search" role="search">
             <label class="sr-only" for="directory-search">Search creator claims</label>
             ${icon.search()}
-            <input id="directory-search" type="search" autocomplete="off" placeholder="Search X, name, NIP-05, or npub" />
+            <input id="directory-search" type="search" autocomplete="off" maxlength="255" placeholder="Search exact X handle, NIP-05, or npub" />
             <button type="submit" aria-label="Search creator claims">${icon.arrow()}</button>
           </form>
         </div>
@@ -321,14 +382,6 @@ function renderApp(): void {
       <section class="directory shell" id="directory" aria-label="Creator claims">
         <div class="directory-heading-row">
           <p id="result-count" aria-live="polite"></p>
-          <label class="sort-control">
-            <span class="sr-only">Sort directory</span>
-            <select id="sort-directory">
-              <option value="followers"${sort === "followers" ? " selected" : ""}>Most followed</option>
-              <option value="name"${sort === "name" ? " selected" : ""}>Name A–Z</option>
-            </select>
-            ${icon.chevron()}
-          </label>
         </div>
 
         <div class="tabs" role="tablist" aria-label="Creator claim categories">
@@ -357,7 +410,6 @@ function renderApp(): void {
           <p id="directory-status" role="status" aria-live="polite"></p>
           <div class="directory-data-actions">
             <button class="secondary-button" type="button" id="refresh-directory">Refresh</button>
-            <button class="secondary-button" type="button" id="load-more-profiles" hidden>Load more creator claims</button>
           </div>
         </div>
       </section>
@@ -423,12 +475,8 @@ function bindEvents(): void {
   document
     .querySelector("#refresh-directory")
     ?.addEventListener("click", () => {
-      void loadProfiles(loadFailed ? lastLoadReset : true);
-    });
-  document
-    .querySelector("#load-more-profiles")
-    ?.addEventListener("click", () => {
-      if (nextCursor) void loadProfiles(false);
+      if (loadFailed && loaded) void ensureCurrentPageLoaded();
+      else void reloadProfiles();
     });
 
   const paginationNav = document.querySelector("#directory-pagination");
@@ -440,6 +488,7 @@ function bindEvents(): void {
       if (!isNaN(newPage) && newPage !== currentPage) {
         currentPage = newPage;
         renderProfiles();
+        void ensureCurrentPageLoaded();
         scrollToDirectory();
       }
       return;
@@ -449,23 +498,18 @@ function bindEvents(): void {
     if (prevBtn && currentPage > 1) {
       currentPage--;
       renderProfiles();
+      void ensureCurrentPageLoaded();
       scrollToDirectory();
       return;
     }
 
     const nextBtn = target.closest<HTMLButtonElement>("#pagination-next");
     if (nextBtn) {
-      const visibleProfiles = getVisibleProfiles(
-        [...previewProfiles, ...profiles],
-        { category, query, sort },
-      );
-      const totalPages = Math.max(
-        1,
-        Math.ceil(visibleProfiles.length / pageSize),
-      );
+      const { totalPages } = currentDirectoryPage().pagination;
       if (currentPage < totalPages) {
         currentPage++;
         renderProfiles();
+        void ensureCurrentPageLoaded();
         scrollToDirectory();
       }
     }
@@ -481,6 +525,7 @@ function bindEvents(): void {
       pageSize = newSize;
       currentPage = 1;
       renderProfiles();
+      void ensureCurrentPageLoaded();
       scrollToDirectory();
     }
   });
@@ -488,8 +533,6 @@ function bindEvents(): void {
   const searchForm = document.querySelector<HTMLFormElement>("#hero-search");
   const searchInput =
     document.querySelector<HTMLInputElement>("#directory-search");
-  const sortSelect =
-    document.querySelector<HTMLSelectElement>("#sort-directory");
   const profileDialog =
     document.querySelector<HTMLDialogElement>("#profile-dialog");
   const addProfileForm =
@@ -497,24 +540,21 @@ function bindEvents(): void {
 
   searchForm?.addEventListener("submit", (event) => {
     event.preventDefault();
-    query = searchInput?.value ?? "";
-    currentPage = 1;
-    renderProfiles();
+    if (searchTimer !== null) window.clearTimeout(searchTimer);
+    searchTimer = null;
+    void reloadProfiles(searchInput?.value ?? "");
     document
       .querySelector("#directory")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   searchInput?.addEventListener("input", (event) => {
-    query = (event.target as HTMLInputElement).value;
-    currentPage = 1;
-    renderProfiles();
-  });
-
-  sortSelect?.addEventListener("change", (event) => {
-    sort = (event.target as HTMLSelectElement).value as DirectorySort;
-    currentPage = 1;
-    renderProfiles();
+    if (searchTimer !== null) window.clearTimeout(searchTimer);
+    const search = (event.target as HTMLInputElement).value;
+    searchTimer = window.setTimeout(() => {
+      searchTimer = null;
+      void reloadProfiles(search);
+    }, 300);
   });
 
   document.querySelector(".tabs")?.addEventListener("click", (event) => {
@@ -532,6 +572,7 @@ function bindEvents(): void {
         tab.setAttribute("aria-selected", String(selected));
       });
     renderProfiles();
+    void ensureCurrentPageLoaded();
   });
 
   document
@@ -549,10 +590,8 @@ function bindEvents(): void {
       if (clearFilters) {
         query = "";
         category = "Popular on X.com";
-        sort = "followers";
         currentPage = 1;
         if (searchInput) searchInput.value = "";
-        if (sortSelect) sortSelect.value = "followers";
         document
           .querySelectorAll<HTMLButtonElement>("[data-category]")
           .forEach((tab) => {
@@ -560,7 +599,7 @@ function bindEvents(): void {
             tab.classList.toggle("selected", selected);
             tab.setAttribute("aria-selected", String(selected));
           });
-        renderProfiles();
+        void reloadProfiles("");
       }
     });
 
@@ -625,6 +664,7 @@ function bindEvents(): void {
         tab.setAttribute("aria-selected", String(selected));
       });
     renderProfiles();
+    void ensureCurrentPageLoaded();
     showToast(`${name} was added to your local claim preview.`);
   });
 
@@ -681,4 +721,4 @@ function showToast(message: string): void {
 }
 
 renderApp();
-void loadProfiles();
+void reloadProfiles();

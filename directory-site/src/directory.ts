@@ -144,3 +144,25 @@ export function getPaginationPageList(
     totalPages,
   ];
 }
+
+export function getRequiredBatchOffsets(
+  startIndex: number,
+  endIndex: number,
+  previewCount: number,
+  remoteTotal: number,
+  batchSize: number,
+  cachedOffsets: ReadonlySet<number> = new Set(),
+): number[] {
+  if (remoteTotal <= 0 || batchSize <= 0) return [];
+
+  const remoteStart = Math.max(0, startIndex - previewCount);
+  const remoteEnd = Math.min(remoteTotal, Math.max(0, endIndex - previewCount));
+  if (remoteStart >= remoteEnd) return [];
+
+  const offsets: number[] = [];
+  const firstOffset = Math.floor(remoteStart / batchSize) * batchSize;
+  for (let offset = firstOffset; offset < remoteEnd; offset += batchSize) {
+    if (!cachedOffsets.has(offset)) offsets.push(offset);
+  }
+  return offsets;
+}

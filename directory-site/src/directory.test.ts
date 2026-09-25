@@ -3,6 +3,7 @@ import { directoryProfiles } from "./data";
 import {
   formatFollowers,
   getPaginationPageList,
+  getRequiredBatchOffsets,
   getVisibleProfiles,
   normalizeSearch,
   nip05ProfileUrl,
@@ -184,5 +185,24 @@ describe("directory pagination", () => {
     // Near end
     expect(getPaginationPageList(7, 10)).toEqual([1, "…", 6, 7, 8, 9, 10]);
     expect(getPaginationPageList(10, 10)).toEqual([1, "…", 6, 7, 8, 9, 10]);
+  });
+
+  it("loads the batch containing a page only when it is not cached", () => {
+    expect(getRequiredBatchOffsets(0, 10, 0, 5_000, 50)).toEqual([0]);
+    expect(getRequiredBatchOffsets(50, 60, 0, 5_000, 50, new Set([0]))).toEqual(
+      [50],
+    );
+    expect(
+      getRequiredBatchOffsets(4_990, 5_000, 0, 5_000, 50, new Set([0, 50])),
+    ).toEqual([4_950]);
+  });
+
+  it("loads both adjacent batches when local previews shift a page boundary", () => {
+    expect(getRequiredBatchOffsets(50, 60, 1, 5_000, 50, new Set())).toEqual([
+      0, 50,
+    ]);
+    expect(getRequiredBatchOffsets(50, 60, 1, 5_000, 50, new Set([0]))).toEqual(
+      [50],
+    );
   });
 });

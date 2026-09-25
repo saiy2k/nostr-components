@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { npubEncode } from "nostr-tools/nip19";
-import {
-  fetchDirectoryPage,
-  fetchNextDirectoryPage,
-  parseDirectoryPage,
-} from "./api";
+import { fetchDirectoryPage, parseDirectoryPage } from "./api";
 
 const profile = {
   id: "twitter:alice",
@@ -21,7 +17,11 @@ afterEach(() => vi.useRealTimers());
 
 describe("directory API", () => {
   it("maps verified identities to the UI without inventing follower counts or YouTube claims", () => {
-    const page = parseDirectoryPage({ profiles: [profile], nextCursor: null });
+    const page = parseDirectoryPage({
+      profiles: [profile],
+      total: 1,
+      offset: 0,
+    });
     expect(page.profiles[0]).toMatchObject({
       id: "twitter:alice",
       name: "Alice",
@@ -32,35 +32,41 @@ describe("directory API", () => {
       youtube: "",
       category: "Popular on X.com",
     });
-    expect(page.nextCursor).toBeNull();
+    expect(page.total).toBe(1);
+    expect(page.offset).toBe(0);
   });
 
   it.each([
     null,
-    { profiles: [], nextCursor: {} },
-    { profiles: [], nextCursor: "twitter:alice/secret" },
+    { profiles: [], total: -1, offset: 0 },
+    { profiles: [], total: 0, offset: -1 },
     { profiles: [profile] },
-    { profiles: [{ ...profile, verified: false }], nextCursor: null },
-    { profiles: [{ ...profile, pubkey: "invalid" }], nextCursor: null },
-    { profiles: [{ ...profile, id: "twitter:bob" }], nextCursor: null },
-    { profiles: [{ ...profile, platform: "youtube" }], nextCursor: null },
-    { profiles: Array(51).fill(profile), nextCursor: null },
+    { profiles: [{ ...profile, verified: false }], total: 1, offset: 0 },
+    { profiles: [{ ...profile, pubkey: "invalid" }], total: 1, offset: 0 },
+    { profiles: [{ ...profile, id: "twitter:bob" }], total: 1, offset: 0 },
+    { profiles: [{ ...profile, platform: "youtube" }], total: 1, offset: 0 },
+    { profiles: Array(51).fill(profile), total: 51, offset: 0 },
   ])("rejects malformed responses: %j", (value) => {
     expect(() => parseDirectoryPage(value)).toThrow();
   });
 
-  it("uses GET, a bounded page size and the supplied cursor", async () => {
+  it("uses GET, a bounded batch size, offset, and backend search", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(
-        new Response(JSON.stringify({ profiles: [profile], nextCursor: null })),
+        new Response(
+          JSON.stringify({ profiles: [profile], total: 1, offset: 50 }),
+        ),
       );
-    await fetchDirectoryPage(endpoint, "twitter:aaron", fetcher);
+    await fetchDirectoryPage(
+      endpoint,
+      { offset: 50, search: "@alice" },
+      fetcher,
+    );
     const [url, options] = fetcher.mock.calls[0];
     expect(new URL(String(url)).searchParams.get("limit")).toBe("50");
-    expect(new URL(String(url)).searchParams.get("cursor")).toBe(
-      "twitter:aaron",
-    );
+    expect(new URL(String(url)).searchParams.get("offset")).toBe("50");
+    expect(new URL(String(url)).searchParams.get("search")).toBe("@alice");
     expect(options).toMatchObject({
       method: "GET",
       credentials: "omit",
@@ -71,10 +77,11 @@ describe("directory API", () => {
   it("treats an empty directory as a successful response", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(new Response('{"profiles":[],"nextCursor":null}'));
-    await expect(fetchDirectoryPage(endpoint, null, fetcher)).resolves.toEqual({
+      .mockResolvedValue(new Response('{"profiles":[],"total":0,"offset":0}'));
+    await expect(fetchDirectoryPage(endpoint, {}, fetcher)).resolves.toEqual({
       profiles: [],
-      nextCursor: null,
+      total: 0,
+      offset: 0,
     });
   });
 
@@ -82,11 +89,11 @@ describe("directory API", () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response("unavailable", { status: 503 }));
-    await expect(fetchDirectoryPage(endpoint, null, fetcher)).rejects.toThrow(
+    await expect(fetchDirectoryPage(endpoint, {}, fetcher)).rejects.toThrow(
       "503",
     );
     fetcher.mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(fetchDirectoryPage(endpoint, null, fetcher)).rejects.toThrow(
+    await expect(fetchDirectoryPage(endpoint, {}, fetcher)).rejects.toThrow(
       "Failed to fetch",
     );
   });
@@ -95,67 +102,29 @@ describe("directory API", () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response("<html>Site</html>"));
-    await expect(fetchDirectoryPage(endpoint, null, fetcher)).rejects.toThrow();
+    await expect(fetchDirectoryPage(endpoint, {}, fetcher)).rejects.toThrow();
   });
 
-  it("rejects repeated cursors to prevent endless pagination", async () => {
+  it("rejects responses for a different offset", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(
-        new Response('{"profiles":[],"nextCursor":"twitter:alice"}'),
+        new Response('{"profiles":[],"total":100,"offset":0}'),
       );
     await expect(
-      fetchDirectoryPage(endpoint, "twitter:alice", fetcher),
-    ).rejects.toThrow("page cursor");
+      fetchDirectoryPage(endpoint, { offset: 50 }, fetcher),
+    ).rejects.toThrow("wrong page");
   });
 
-  it("skips empty pages with cursors until profiles are available", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        new Response('{"profiles":[],"nextCursor":"twitter:alice"}'),
-      )
-      .mockResolvedValueOnce(
-        new Response('{"profiles":[],"nextCursor":"twitter:bob"}'),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ profiles: [profile], nextCursor: null })),
-      );
-
-    await expect(
-      fetchNextDirectoryPage(endpoint, null, fetcher),
-    ).resolves.toEqual(
-      expect.objectContaining({
-        profiles: [expect.objectContaining({ id: profile.id })],
-      }),
-    );
-    expect(fetcher).toHaveBeenCalledTimes(3);
-    expect(
-      new URL(String(fetcher.mock.calls[1][0])).searchParams.get("cursor"),
-    ).toBe("twitter:alice");
-    expect(
-      new URL(String(fetcher.mock.calls[2][0])).searchParams.get("cursor"),
-    ).toBe("twitter:bob");
-  });
-
-  it("bounds consecutive empty-page requests and preserves the last cursor", async () => {
-    const cursors = ["alice", "bob", "carol", "dave", "erin"];
+  it("rejects invalid offsets and overlong searches before fetching", async () => {
     const fetcher = vi.fn<typeof fetch>();
-    for (const cursor of cursors) {
-      fetcher.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ profiles: [], nextCursor: `twitter:${cursor}` }),
-        ),
-      );
-    }
-
     await expect(
-      fetchNextDirectoryPage(endpoint, null, fetcher),
-    ).resolves.toEqual({
-      profiles: [],
-      nextCursor: "twitter:erin",
-    });
-    expect(fetcher).toHaveBeenCalledTimes(5);
+      fetchDirectoryPage(endpoint, { offset: -1 }, fetcher),
+    ).rejects.toThrow("page is invalid");
+    await expect(
+      fetchDirectoryPage(endpoint, { search: "x".repeat(256) }, fetcher),
+    ).rejects.toThrow("too long");
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("aborts stalled requests and reports a timeout", async () => {
@@ -169,7 +138,7 @@ describe("directory API", () => {
         }),
     );
     const result = expect(
-      fetchDirectoryPage(endpoint, null, fetcher),
+      fetchDirectoryPage(endpoint, {}, fetcher),
     ).rejects.toThrow("too long");
     await vi.advanceTimersByTimeAsync(15_000);
     await result;
