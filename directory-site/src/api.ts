@@ -3,14 +3,20 @@ import type { DirectoryProfile } from "./data";
 
 export const DEFAULT_DIRECTORY_API_URL =
   "https://us-central1-gr-prod.cloudfunctions.net/listDirectoryProfiles";
-const PAGE_SIZE = 50;
+export const DIRECTORY_BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 15_000;
-const MAX_EMPTY_PAGE_REQUESTS = 5;
-const CURSOR_PATTERN = /^twitter:[a-z0-9_]{1,15}$/;
+const MAX_OFFSET = 1_000_000;
+const MAX_SEARCH_LENGTH = 255;
 
 export interface DirectoryPage {
   readonly profiles: DirectoryProfile[];
-  readonly nextCursor: string | null;
+  readonly total: number;
+  readonly offset: number;
+}
+
+export interface DirectoryRequest {
+  readonly offset?: number;
+  readonly search?: string;
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -21,12 +27,12 @@ export function parseDirectoryPage(value: unknown): DirectoryPage {
   if (
     !record(value) ||
     !Array.isArray(value.profiles) ||
-    value.profiles.length > PAGE_SIZE ||
-    !(
-      value.nextCursor === null ||
-      (typeof value.nextCursor === "string" &&
-        CURSOR_PATTERN.test(value.nextCursor))
-    )
+    value.profiles.length > DIRECTORY_BATCH_SIZE ||
+    !Number.isSafeInteger(value.total) ||
+    (value.total as number) < 0 ||
+    !Number.isSafeInteger(value.offset) ||
+    (value.offset as number) < 0 ||
+    (value.offset as number) > MAX_OFFSET
   ) {
     throw new Error("The directory returned an invalid response.");
   }
@@ -74,18 +80,32 @@ export function parseDirectoryPage(value: unknown): DirectoryPage {
     };
   });
 
-  return { profiles, nextCursor: value.nextCursor };
+  return {
+    profiles,
+    total: value.total as number,
+    offset: value.offset as number,
+  };
 }
 
 export async function fetchDirectoryPage(
   endpoint: string,
-  cursor: string | null = null,
+  request: DirectoryRequest = {},
   fetcher: typeof fetch = fetch,
 ): Promise<DirectoryPage> {
+  const offset = request.offset ?? 0;
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > MAX_OFFSET) {
+    throw new Error("The requested directory page is invalid.");
+  }
+  const search = request.search?.trim() ?? "";
+  if (search.length > MAX_SEARCH_LENGTH) {
+    throw new Error("The directory search is too long.");
+  }
+
   const url = new URL(endpoint);
-  url.searchParams.set("limit", String(PAGE_SIZE));
-  if (cursor) url.searchParams.set("cursor", cursor);
-  else url.searchParams.delete("cursor");
+  url.searchParams.set("limit", String(DIRECTORY_BATCH_SIZE));
+  url.searchParams.set("offset", String(offset));
+  if (search) url.searchParams.set("search", search);
+  else url.searchParams.delete("search");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -99,8 +119,8 @@ export async function fetchDirectoryPage(
     if (!response.ok)
       throw new Error(`Directory request failed (${response.status}).`);
     const page = parseDirectoryPage(await response.json());
-    if (cursor && page.nextCursor && page.nextCursor <= cursor) {
-      throw new Error("The directory returned an invalid page cursor.");
+    if (page.offset !== offset) {
+      throw new Error("The directory returned the wrong page.");
     }
     return page;
   } catch (error) {
@@ -111,21 +131,4 @@ export async function fetchDirectoryPage(
   } finally {
     clearTimeout(timeout);
   }
-}
-
-export async function fetchNextDirectoryPage(
-  endpoint: string,
-  cursor: string | null = null,
-  fetcher: typeof fetch = fetch,
-): Promise<DirectoryPage> {
-  let requestCursor = cursor;
-  let page: DirectoryPage = { profiles: [], nextCursor: requestCursor };
-
-  for (let attempt = 0; attempt < MAX_EMPTY_PAGE_REQUESTS; attempt += 1) {
-    page = await fetchDirectoryPage(endpoint, requestCursor, fetcher);
-    if (page.profiles.length > 0 || !page.nextCursor) return page;
-    requestCursor = page.nextCursor;
-  }
-
-  return page;
 }
