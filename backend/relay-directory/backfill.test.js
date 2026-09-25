@@ -1083,6 +1083,69 @@ describe("top-level cursor coordination", () => {
     }
   });
 
+  it("counts a productive page when the checkpoint write fails", async () => {
+    const db = fakeFirestore();
+    db.failCollections.add("state");
+    const result = await runBackfillCursors(
+      db,
+      testConfig({ relays: ["wss://relay.example"], backfillMaxPages: 1 }),
+      {
+        queryRelay: async () => ({
+          events: [identityEvent(700)],
+          reason: "max",
+        }),
+      },
+    );
+
+    expect(result.totals.failedCursors).toBe(2);
+    expect(result.totals.productivePageMs).toBeGreaterThan(0);
+    expect(result.totals.timeoutWaitMs).toBe(0);
+  });
+
+  it("reports a failed completion checkpoint as failed", async () => {
+    const db = fakeFirestore();
+    db.failCollections.add("state");
+    for (const kind of [10011, 0]) {
+      db.seed("state", `backfill:wss:__relay_example:kind:${kind}`, {
+        status: "paused",
+        cursorUntil: 0,
+        lastReason: "max-pages",
+      });
+    }
+    const logs = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((line) => {
+      logs.push(String(line));
+    });
+    try {
+      const result = await runBackfillCursors(
+        db,
+        testConfig({
+          relays: ["wss://relay.example"],
+          backfillSince: 0,
+        }),
+        { queryRelay: async () => ({ events: [], reason: "eose" }) },
+      );
+
+      expect(result.cursorSummaries).toEqual([
+        expect.objectContaining({ kind: 10011, failed: true, completed: false }),
+        expect.objectContaining({ kind: 0, failed: true, completed: false }),
+      ]);
+      const statuses = logs
+        .map((line) => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        })
+        .filter((entry) => entry?.message === "backfill_cursor_result")
+        .map((entry) => entry.status);
+      expect(statuses).toEqual(["failed", "failed"]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("buckets dynamic relay error reasons in run totals", async () => {
     const db = fakeFirestore();
     const result = await runBackfillCursors(

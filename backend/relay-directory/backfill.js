@@ -349,6 +349,15 @@ async function executeBackfillCursor(
     previousStatus: previousState?.status || null,
   });
 
+  let openPage = null;
+  let openPageStartedMs = 0;
+  const finishPageTiming = (startedMs) => {
+    const durationMs = Date.now() - startedMs;
+    addPageTiming(stats, openPage, durationMs);
+    openPage = null;
+    return durationMs;
+  };
+
   try {
   while (
     stats.pages < config.backfillMaxPages &&
@@ -374,6 +383,8 @@ async function executeBackfillCursor(
     stats.pages += 1;
     stats.relayEvents += page.events.length;
     stats.lastReason = page.reason;
+    openPage = page;
+    openPageStartedMs = pageStartedMs;
 
     if (!isSuccessfulRelayPage(page.reason)) {
       printPageProgress({
@@ -394,8 +405,7 @@ async function executeBackfillCursor(
         });
         stats.completed = true;
         stats.unsupported = true;
-        const pageDurationMs = Date.now() - pageStartedMs;
-        addPageTiming(stats, page, pageDurationMs);
+        const pageDurationMs = finishPageTiming(pageStartedMs);
         logBackfillEvent("backfill_page_result", {
           relay,
           kind,
@@ -414,8 +424,7 @@ async function executeBackfillCursor(
         });
         break;
       }
-      const pageDurationMs = Date.now() - pageStartedMs;
-      addPageTiming(stats, page, pageDurationMs);
+      const pageDurationMs = finishPageTiming(pageStartedMs);
       logBackfillEvent("backfill_page_result", {
         relay,
         kind,
@@ -489,8 +498,7 @@ async function executeBackfillCursor(
       cursorUntil: pageResult.nextState.cursorUntil,
       pageLimit: pageResult.nextState.pageLimit,
     });
-    const pageDurationMs = Date.now() - pageStartedMs;
-    addPageTiming(stats, page, pageDurationMs);
+    const pageDurationMs = finishPageTiming(pageStartedMs);
     logBackfillEvent("backfill_page_result", {
       relay,
       kind,
@@ -530,6 +538,7 @@ async function executeBackfillCursor(
 
   await finalizePausedCursor(db, relay, kind, cursor, stats, config);
   } catch (error) {
+    if (openPage) finishPageTiming(openPageStartedMs);
     stats.failed = true;
     stats.lastReason = "cursor-error";
     stats.error = error?.message || String(error);
@@ -843,13 +852,13 @@ async function writeCursorCheckpoint(db, relay, kind, state, config, details) {
 async function finalizePausedCursor(db, relay, kind, cursor, stats, config) {
   if (stats.completed || stats.retryPaused) return;
   if (cursor.cursorUntil <= config.backfillSince) {
-    stats.completed = true;
     stats.lastReason ||= "reached-since";
     await writeCursorCheckpoint(db, relay, kind, cursor, config, {
       status: "complete",
       completed: true,
       lastReason: stats.lastReason,
     });
+    stats.completed = true;
     return;
   }
   if (stats.pages >= config.backfillMaxPages) {
