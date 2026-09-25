@@ -56,6 +56,10 @@ function fakeDatabase(records) {
           operation.offset = offset;
           return this;
         },
+        startAfter(cursor) {
+          operation.cursor = cursor;
+          return this;
+        },
         select(...fields) {
           operation.fields = fields;
           return this;
@@ -75,6 +79,7 @@ function fakeDatabase(records) {
         async get() {
           return {
             docs: matchingEntries()
+              .filter(([id]) => !operation.cursor || id > operation.cursor)
               .sort(([a], [b]) => a.localeCompare(b))
               .slice(operation.offset)
               .slice(0, operation.limit)
@@ -165,6 +170,7 @@ test("returns database totals and supports arbitrary page offsets", async () => 
   );
   assert.equal(first.body.total, 3);
   assert.equal(first.body.offset, 0);
+  assert.equal(first.body.nextCursor, "twitter:carol");
   const second = await listDirectoryProfiles(db, {
     limit: "2",
     offset: "2",
@@ -175,7 +181,8 @@ test("returns database totals and supports arbitrary page offsets", async () => 
   );
   assert.equal(second.body.total, 3);
   assert.equal(second.body.offset, 2);
-  assert.equal(db.reads[0].limit, 2);
+  assert.equal(second.body.nextCursor, null);
+  assert.equal(db.reads[0].limit, 3);
   assert.equal(db.reads[0].offset, 0);
   assert.equal(db.reads[1].offset, 2);
   assert.deepEqual(db.reads[0].filter, [
@@ -210,11 +217,11 @@ test("empty collections are successful and collection overrides stay server cont
     ),
     {
       status: 200,
-      body: { profiles: [], total: 0, offset: 0 },
+      body: { profiles: [], total: 0, offset: 0, nextCursor: null },
     },
   );
   assert.equal(db.reads[0].name, "testHandles");
-  assert.equal(db.reads[0].limit, 50);
+  assert.equal(db.reads[0].limit, 51);
 });
 
 test("rejects invalid limits, offsets, searches, and obsolete cursors before reading Firestore", async () => {
@@ -243,13 +250,35 @@ test("rejects invalid limits, offsets, searches, and obsolete cursors before rea
   ]) {
     assert.equal((await listDirectoryProfiles(db, { cursor })).status, 400);
   }
-  for (const offset of ["-1", "1.5", "1000001", "", ["2"], {}, 2]) {
+  for (const offset of ["-1", "1.5", "10001", "", ["2"], {}, 2]) {
     assert.equal((await listDirectoryProfiles(db, { offset })).status, 400);
   }
   for (const search of ["x".repeat(256), ["alice"], {}, 2]) {
     assert.equal((await listDirectoryProfiles(db, { search })).status, 400);
   }
   assert.equal(db.reads.length, 0);
+});
+
+test("uses a validated document cursor instead of a billed offset for deep pages", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:bob": handleRecord("bob"),
+    "twitter:carol": handleRecord("carol"),
+  });
+  const result = await listDirectoryProfiles(db, {
+    limit: "1",
+    offset: "10001",
+    cursor: "twitter:alice",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.offset, 10001);
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["bob"],
+  );
+  assert.equal(result.body.nextCursor, "twitter:bob");
+  assert.equal(db.reads[0].cursor, "twitter:alice");
+  assert.equal(db.reads[0].offset, 0);
 });
 
 test("parses exact handle, X URL, NIP-05, and npub searches", () => {
