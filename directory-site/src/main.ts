@@ -12,6 +12,17 @@ import {
   type DirectorySort,
 } from "./directory";
 import { brandMark, icon, networkGraphic } from "./icons";
+import {
+  claimProofComposerUrl,
+  connectClaimSigner,
+  createClaimEvent,
+  normalizeClaimHandle,
+  parseClaimRelays,
+  publishClaimEvent,
+  signClaimEvent,
+  validateProofUrl,
+  type NostrSigner,
+} from "./claim";
 
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 
@@ -23,6 +34,7 @@ let profiles: DirectoryProfile[] = [...directoryProfiles];
 let category: DirectoryCategory = "Popular on X.com";
 let query = "";
 let sort: DirectorySort = "followers";
+let claimIdentity: { pubkey: string; npub: string } | null = null;
 
 const escapeHtml = (value: string): string =>
   value.replace(
@@ -112,7 +124,7 @@ function renderApp(): void {
           <h1 id="hero-heading">Receive zaps on X.com and YouTube.</h1>
           <p>Claim the accounts people already know, connect them to your Nostr identity, and give supporters a clear path to zap you across the web.</p>
           <button class="primary-button hero-cta" type="button" data-open-profile-dialog>
-            ${icon.plusUser()}<span>Claim your X or YouTube account</span>
+            ${icon.plusUser()}<span>Claim your X account</span>
           </button>
           <form class="hero-search" id="hero-search" role="search">
             <label class="sr-only" for="directory-search">Search creator claims</label>
@@ -183,21 +195,48 @@ function renderApp(): void {
     </footer>
 
     <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
-      <form method="dialog" class="dialog-card" id="add-profile-form">
+      <form method="dialog" class="dialog-card claim-dialog-card" id="claim-account-form">
         <div class="dialog-heading">
-          <div><h2 id="profile-dialog-title">Preview a creator claim</h2><p>See how an X or YouTube account could appear with your Nostr identity. This stays in your browser.</p></div>
-          <button class="icon-button" value="cancel" type="submit" aria-label="Close claim preview">${icon.close()}</button>
+          <div><h2 id="profile-dialog-title">Claim your X account</h2><p>Publish a signed NIP-39 proof so the directory can verify your X account without receiving your private key.</p></div>
+          <button class="icon-button" value="cancel" type="submit" aria-label="Close claim dialog">${icon.close()}</button>
         </div>
-        <div class="form-grid">
-          <label>Creator name<input name="name" required maxlength="50" placeholder="Satoshi" /></label>
-          <label>X or YouTube handle<input name="handle" required maxlength="50" placeholder="@satoshi" /></label>
-          <label>Nostr address (NIP-05)<input name="nip05" required maxlength="100" placeholder="satoshi@example.com" /></label>
-          <label>Claim tab<select name="category"><option>Popular on X.com</option><option>Popular on Nostr</option></select></label>
-          <label class="full-field">Nostr public key<input name="npub" required minlength="20" pattern="npub1.+" placeholder="npub1…" /><small>Nostr public keys begin with npub1.</small></label>
+        <ol class="claim-steps">
+          <li>
+            <span class="claim-step-number">1</span>
+            <div class="claim-step-content">
+              <strong>Connect your Nostr signer</strong>
+              <p>Use a NIP-07 browser extension. Nostr Atlas asks it to sign the claim; your private key never enters this site.</p>
+              <button class="secondary-button" type="button" id="connect-claim-signer">Connect Nostr signer</button>
+              <div class="claim-identity">
+                <code id="claim-npub">Not connected</code>
+                <button class="text-button" type="button" id="copy-claim-npub" disabled>Copy npub</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="claim-step-number">2</span>
+            <div class="claim-step-content">
+              <strong>Post proof from your X account</strong>
+              <p>The proof tweet must contain the connected npub. Its author must match the handle below.</p>
+              <label>X handle<input name="handle" required maxlength="16" pattern="@?[A-Za-z0-9_]{1,15}" placeholder="@satoshi" autocomplete="off" /></label>
+              <a class="secondary-button claim-proof-link" id="claim-proof-link" aria-disabled="true">Open proof text on X</a>
+            </div>
+          </li>
+          <li>
+            <span class="claim-step-number">3</span>
+            <div class="claim-step-content">
+              <strong>Sign and publish the claim</strong>
+              <label>Proof tweet URL<input name="proofUrl" required type="url" inputmode="url" placeholder="https://x.com/satoshi/status/…" /></label>
+              <p>The signed event is published to public Nostr relays. Verification runs asynchronously, so the account may take time to appear.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="claim-status" id="claim-status" role="status" aria-live="polite">
+          Connect a signer to begin.
         </div>
         <div class="dialog-actions">
           <button class="secondary-button" value="cancel" type="submit">Cancel</button>
-          <button class="primary-button" value="default" type="submit">Add claim to preview</button>
+          <button class="primary-button" value="default" type="submit" id="publish-claim" disabled>Sign and publish claim</button>
         </div>
       </form>
     </dialog>
@@ -215,8 +254,38 @@ function bindEvents(): void {
     document.querySelector<HTMLSelectElement>("#sort-directory");
   const profileDialog =
     document.querySelector<HTMLDialogElement>("#profile-dialog");
-  const addProfileForm =
-    document.querySelector<HTMLFormElement>("#add-profile-form");
+  const claimForm = document.querySelector<HTMLFormElement>(
+    "#claim-account-form",
+  );
+  const connectClaimButton = document.querySelector<HTMLButtonElement>(
+    "#connect-claim-signer",
+  );
+  const claimNpub = document.querySelector<HTMLElement>("#claim-npub");
+  const copyClaimNpub =
+    document.querySelector<HTMLButtonElement>("#copy-claim-npub");
+  const claimProofLink =
+    document.querySelector<HTMLAnchorElement>("#claim-proof-link");
+  const publishClaimButton =
+    document.querySelector<HTMLButtonElement>("#publish-claim");
+  const claimStatus = document.querySelector<HTMLElement>("#claim-status");
+
+  const setClaimStatus = (
+    message: string,
+    state: "idle" | "working" | "error" | "success" = "idle",
+  ) => {
+    if (!claimStatus) return;
+    claimStatus.textContent = message;
+    claimStatus.dataset.state = state;
+  };
+
+  const browserSigner = (): NostrSigner | null => {
+    const signer = (window as typeof window & { nostr?: Partial<NostrSigner> })
+      .nostr;
+    return typeof signer?.getPublicKey === "function" &&
+      typeof signer.signEvent === "function"
+      ? (signer as NostrSigner)
+      : null;
+  };
 
   searchForm?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -290,59 +359,130 @@ function bindEvents(): void {
       });
     });
 
-  addProfileForm?.addEventListener("submit", (event) => {
+  claimProofLink?.addEventListener("click", (event) => {
+    if (!claimIdentity) event.preventDefault();
+  });
+
+  connectClaimButton?.addEventListener("click", async () => {
+    const signer = browserSigner();
+    if (!signer) {
+      setClaimStatus(
+        "No NIP-07 signer was found. Install or unlock a Nostr browser extension, then retry.",
+        "error",
+      );
+      return;
+    }
+
+    connectClaimButton.disabled = true;
+    setClaimStatus("Waiting for your Nostr signer…", "working");
+    try {
+      claimIdentity = await connectClaimSigner(signer);
+      if (claimNpub) claimNpub.textContent = claimIdentity.npub;
+      if (copyClaimNpub) copyClaimNpub.disabled = false;
+      if (publishClaimButton) publishClaimButton.disabled = false;
+      if (claimProofLink) {
+        claimProofLink.href = claimProofComposerUrl(claimIdentity.npub);
+        claimProofLink.target = "_blank";
+        claimProofLink.rel = "noreferrer";
+        claimProofLink.setAttribute("aria-disabled", "false");
+      }
+      setClaimStatus(
+        "Signer connected. Post the proof tweet, then paste its URL below.",
+        "success",
+      );
+    } catch (error) {
+      claimIdentity = null;
+      setClaimStatus(
+        error instanceof Error
+          ? error.message
+          : "The Nostr signer could not be connected.",
+        "error",
+      );
+    } finally {
+      connectClaimButton.disabled = false;
+    }
+  });
+
+  copyClaimNpub?.addEventListener("click", () => {
+    if (claimIdentity) void copyNpub(claimIdentity.npub, copyClaimNpub);
+  });
+
+  claimForm?.addEventListener("submit", async (event) => {
     const submitter = (event as SubmitEvent)
       .submitter as HTMLButtonElement | null;
     if (submitter?.value === "cancel") return;
     event.preventDefault();
-    if (!addProfileForm.reportValidity()) return;
+    if (!claimForm.reportValidity()) return;
+    if (!claimIdentity) {
+      setClaimStatus("Connect your Nostr signer before publishing.", "error");
+      return;
+    }
 
-    const formData = new FormData(addProfileForm);
-    const name = String(formData.get("name") ?? "").trim();
-    const handle = String(formData.get("handle") ?? "").trim();
-    const categoryValue = String(
-      formData.get("category") ?? "Popular on X.com",
-    ) as DirectoryProfile["category"];
-    const npub = String(formData.get("npub") ?? "").trim();
+    const signer = browserSigner();
+    if (!signer) {
+      setClaimStatus(
+        "The connected Nostr signer is no longer available.",
+        "error",
+      );
+      return;
+    }
 
-    profiles = [
-      {
-        id: `preview-${Date.now()}`,
-        name,
-        handle: handle.startsWith("@") ? handle : `@${handle}`,
-        nip05: String(formData.get("nip05") ?? "").trim(),
-        category: categoryValue,
-        followers: 0,
-        verified: false,
-        npub,
-        youtube: "",
-        avatar: {
-          initials: name
-            .split(/\s+/)
-            .map((part) => part[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase(),
-          foreground: "#ffffff",
-          background: "#7456f6",
-        },
-      },
-      ...profiles,
-    ];
-    category = categoryValue;
-    query = "";
-    if (searchInput) searchInput.value = "";
-    profileDialog?.close();
-    addProfileForm.reset();
-    document
-      .querySelectorAll<HTMLButtonElement>("[data-category]")
-      .forEach((tab) => {
-        const selected = tab.dataset.category === categoryValue;
-        tab.classList.toggle("selected", selected);
-        tab.setAttribute("aria-selected", String(selected));
-      });
-    renderProfiles();
-    showToast(`${name} was added to your local claim preview.`);
+    const formData = new FormData(claimForm);
+    const handle = normalizeClaimHandle(String(formData.get("handle") ?? ""));
+    const proofInput = claimForm.elements.namedItem(
+      "proofUrl",
+    ) as HTMLInputElement | null;
+    const proofUrl = handle
+      ? validateProofUrl(String(formData.get("proofUrl") ?? ""), handle)
+      : null;
+    if (!handle || !proofUrl) {
+      proofInput?.setCustomValidity(
+        "Use a proof tweet URL posted by the same X handle.",
+      );
+      proofInput?.reportValidity();
+      proofInput?.setCustomValidity("");
+      setClaimStatus(
+        "The proof tweet URL must belong to the X handle being claimed.",
+        "error",
+      );
+      return;
+    }
+
+    if (connectClaimButton) connectClaimButton.disabled = true;
+    if (publishClaimButton) publishClaimButton.disabled = true;
+    setClaimStatus(
+      "Waiting for signature and relay acknowledgement…",
+      "working",
+    );
+    let published = false;
+    try {
+      const unsigned = createClaimEvent(handle, proofUrl);
+      const signed = await signClaimEvent(
+        signer,
+        claimIdentity.pubkey,
+        unsigned,
+      );
+      const relays = parseClaimRelays(
+        import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
+      );
+      await publishClaimEvent(signed, relays);
+      setClaimStatus(
+        "Claim published. The directory will show it after the backend verifies the proof tweet.",
+        "success",
+      );
+      published = true;
+      showToast("Signed X account claim published to Nostr relays.");
+    } catch (error) {
+      setClaimStatus(
+        error instanceof Error
+          ? error.message
+          : "The signed claim could not be published.",
+        "error",
+      );
+    } finally {
+      if (connectClaimButton) connectClaimButton.disabled = false;
+      if (publishClaimButton) publishClaimButton.disabled = published;
+    }
   });
 
   profileDialog?.addEventListener("click", (event) => {
