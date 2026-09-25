@@ -566,6 +566,7 @@ async function executeBackfillCursor(
     gapsWritten: cursorResult.gapsWritten,
     cursorUntil: cursorResult.cursorUntil,
     oldestSeenAt: cursorResult.oldestSeenAt ?? null,
+    error: cursorResult.error || null,
   });
   return cursorResult;
 }
