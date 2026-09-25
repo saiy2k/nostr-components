@@ -1014,12 +1014,70 @@ describe("top-level cursor coordination", () => {
         resumedCursors: 1,
         alreadyCompleteCursors: 1,
         unsupportedCursors: 1,
-        timeoutWaitMs: 1000,
-        productivePageMs: 1000,
+        timeoutWaitMs: 2000,
+        productivePageMs: 2000,
         cursorUntilMin: 700,
         cursorUntilMax: 1000,
         cursorsAdvanced: 1,
       });
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("keeps cursor progress when a later page throws", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__relay_example:kind:0", {
+      status: "paused",
+      cursorUntil: 800,
+      lastReason: "max-pages",
+    });
+    let page = 0;
+    let clock = 0;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => {
+      clock += 1000;
+      return clock;
+    });
+    try {
+      const result = await runBackfillCursors(
+        db,
+        testConfig({
+          relays: ["wss://relay.example"],
+          backfillUntil: 1000,
+          backfillMaxPages: 2,
+        }),
+        {
+          queryRelay: async (_relay, filter) => {
+            if (filter.kinds[0] !== 0) {
+              return { events: [], reason: "eose" };
+            }
+            page += 1;
+            if (page > 1) throw new Error("relay dropped");
+            return { events: [identityEvent(700)], reason: "max" };
+          },
+        },
+      );
+
+      expect(result.totals).toMatchObject({
+        failedCursors: 1,
+        resumedCursors: 1,
+        productivePageMs: 2000,
+        timeoutWaitMs: 0,
+        cursorUntilMin: 700,
+        cursorUntilMax: 1000,
+        cursorsAdvanced: 1,
+      });
+      expect(result.cursorSummaries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 0,
+            failed: true,
+            resumed: true,
+            error: "relay dropped",
+            cursorUntil: 700,
+          }),
+        ]),
+      );
     } finally {
       now.mockRestore();
     }

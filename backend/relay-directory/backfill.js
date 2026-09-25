@@ -349,6 +349,7 @@ async function executeBackfillCursor(
     previousStatus: previousState?.status || null,
   });
 
+  try {
   while (
     stats.pages < config.backfillMaxPages &&
     cursor.cursorUntil > config.backfillSince
@@ -373,8 +374,6 @@ async function executeBackfillCursor(
     stats.pages += 1;
     stats.relayEvents += page.events.length;
     stats.lastReason = page.reason;
-    const pageDurationMs = Date.now() - pageStartedMs;
-    addPageTiming(stats, page, pageDurationMs);
 
     if (!isSuccessfulRelayPage(page.reason)) {
       printPageProgress({
@@ -395,6 +394,8 @@ async function executeBackfillCursor(
         });
         stats.completed = true;
         stats.unsupported = true;
+        const pageDurationMs = Date.now() - pageStartedMs;
+        addPageTiming(stats, page, pageDurationMs);
         logBackfillEvent("backfill_page_result", {
           relay,
           kind,
@@ -413,6 +414,8 @@ async function executeBackfillCursor(
         });
         break;
       }
+      const pageDurationMs = Date.now() - pageStartedMs;
+      addPageTiming(stats, page, pageDurationMs);
       logBackfillEvent("backfill_page_result", {
         relay,
         kind,
@@ -486,6 +489,8 @@ async function executeBackfillCursor(
       cursorUntil: pageResult.nextState.cursorUntil,
       pageLimit: pageResult.nextState.pageLimit,
     });
+    const pageDurationMs = Date.now() - pageStartedMs;
+    addPageTiming(stats, page, pageDurationMs);
     logBackfillEvent("backfill_page_result", {
       relay,
       kind,
@@ -524,7 +529,13 @@ async function executeBackfillCursor(
   }
 
   await finalizePausedCursor(db, relay, kind, cursor, stats, config);
-  printCursorSummary(stats);
+  } catch (error) {
+    stats.failed = true;
+    stats.lastReason = "cursor-error";
+    stats.error = error?.message || String(error);
+  }
+  if (stats.failed) printCursorFailure(stats);
+  else printCursorSummary(stats);
   const cursorResult = {
     ...stats,
     cursorUntil: cursor.cursorUntil,
@@ -989,8 +1000,7 @@ function addCursorSummary(totals, summary) {
   if (summary.resumed) totals.resumedCursors += 1;
   if (
     summary.cursorUntil != null &&
-    !summary.alreadyComplete &&
-    !summary.failed
+    !summary.alreadyComplete
   ) {
     totals.cursorUntilMin =
       totals.cursorUntilMin == null
