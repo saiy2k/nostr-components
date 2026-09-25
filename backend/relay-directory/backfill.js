@@ -323,6 +323,8 @@ async function executeBackfillCursor(
 
   const cursor = createCursorState(previousState, config);
   const stats = createCursorStats(relay, kind);
+  stats.resumed = Boolean(previousState);
+  stats.startedCursorUntil = cursor.cursorUntil;
   const context = {
     eventIdsSeen: new Set(),
     handleStateCache:
@@ -347,6 +349,16 @@ async function executeBackfillCursor(
     previousStatus: previousState?.status || null,
   });
 
+  let openPage = null;
+  let openPageStartedMs = 0;
+  const finishPageTiming = (startedMs) => {
+    const durationMs = Date.now() - startedMs;
+    addPageTiming(stats, openPage, durationMs);
+    openPage = null;
+    return durationMs;
+  };
+
+  try {
   while (
     stats.pages < config.backfillMaxPages &&
     cursor.cursorUntil > config.backfillSince
@@ -371,6 +383,8 @@ async function executeBackfillCursor(
     stats.pages += 1;
     stats.relayEvents += page.events.length;
     stats.lastReason = page.reason;
+    openPage = page;
+    openPageStartedMs = pageStartedMs;
 
     if (!isSuccessfulRelayPage(page.reason)) {
       printPageProgress({
@@ -391,12 +405,13 @@ async function executeBackfillCursor(
         });
         stats.completed = true;
         stats.unsupported = true;
+        const pageDurationMs = finishPageTiming(pageStartedMs);
         logBackfillEvent("backfill_page_result", {
           relay,
           kind,
           page: stats.pages,
           maxPages: config.backfillMaxPages,
-          durationMs: Date.now() - pageStartedMs,
+          durationMs: pageDurationMs,
           events: page.events.length,
           valid: 0,
           claims: 0,
@@ -409,12 +424,13 @@ async function executeBackfillCursor(
         });
         break;
       }
+      const pageDurationMs = finishPageTiming(pageStartedMs);
       logBackfillEvent("backfill_page_result", {
         relay,
         kind,
         page: stats.pages,
         maxPages: config.backfillMaxPages,
-        durationMs: Date.now() - pageStartedMs,
+        durationMs: pageDurationMs,
         events: page.events.length,
         valid: 0,
         claims: 0,
@@ -482,12 +498,13 @@ async function executeBackfillCursor(
       cursorUntil: pageResult.nextState.cursorUntil,
       pageLimit: pageResult.nextState.pageLimit,
     });
+    const pageDurationMs = finishPageTiming(pageStartedMs);
     logBackfillEvent("backfill_page_result", {
       relay,
       kind,
       page: stats.pages,
       maxPages: config.backfillMaxPages,
-      durationMs: Date.now() - pageStartedMs,
+      durationMs: pageDurationMs,
       events: page.events.length,
       valid: processed.validEvents.length,
       oldest: pageOldest,
@@ -520,7 +537,14 @@ async function executeBackfillCursor(
   }
 
   await finalizePausedCursor(db, relay, kind, cursor, stats, config);
-  printCursorSummary(stats);
+  } catch (error) {
+    if (openPage) finishPageTiming(openPageStartedMs);
+    stats.failed = true;
+    stats.lastReason = "cursor-error";
+    stats.error = error?.message || String(error);
+  }
+  if (stats.failed) printCursorFailure(stats);
+  else printCursorSummary(stats);
   const cursorResult = {
     ...stats,
     cursorUntil: cursor.cursorUntil,
@@ -542,6 +566,7 @@ async function executeBackfillCursor(
     gapsWritten: cursorResult.gapsWritten,
     cursorUntil: cursorResult.cursorUntil,
     oldestSeenAt: cursorResult.oldestSeenAt ?? null,
+    error: cursorResult.error || null,
   });
   return cursorResult;
 }
@@ -828,13 +853,13 @@ async function writeCursorCheckpoint(db, relay, kind, state, config, details) {
 async function finalizePausedCursor(db, relay, kind, cursor, stats, config) {
   if (stats.completed || stats.retryPaused) return;
   if (cursor.cursorUntil <= config.backfillSince) {
-    stats.completed = true;
     stats.lastReason ||= "reached-since";
     await writeCursorCheckpoint(db, relay, kind, cursor, config, {
       status: "complete",
       completed: true,
       lastReason: stats.lastReason,
     });
+    stats.completed = true;
     return;
   }
   if (stats.pages >= config.backfillMaxPages) {
@@ -886,6 +911,10 @@ function createCursorStats(relay, kind) {
     claimsSkippedRejected: 0,
     duplicateEventsSkipped: 0,
     gapsWritten: 0,
+    timeoutWaitMs: 0,
+    productivePageMs: 0,
+    resumed: false,
+    startedCursorUntil: null,
     completed: false,
     unsupported: false,
     retryPaused: false,
@@ -940,8 +969,24 @@ function createBackfillTotals() {
     retryLaterCursors: 0,
     failedCursors: 0,
     gapsWritten: 0,
+    resumedCursors: 0,
+    timeoutWaitMs: 0,
+    productivePageMs: 0,
+    cursorUntilMin: null,
+    cursorUntilMax: null,
+    cursorsAdvanced: 0,
     lastReasonCounts: {},
   };
+}
+
+function addPageTiming(stats, page, durationMs) {
+  if (page.reason === "timeout") {
+    stats.timeoutWaitMs += durationMs;
+    return;
+  }
+  if (isSuccessfulRelayPage(page.reason) && page.events.length > 0) {
+    stats.productivePageMs += durationMs;
+  }
 }
 
 function addCursorSummary(totals, summary) {
@@ -957,8 +1002,27 @@ function addCursorSummary(totals, summary) {
     "claimsSkippedRejected",
     "duplicateEventsSkipped",
     "gapsWritten",
+    "timeoutWaitMs",
+    "productivePageMs",
   ]) {
     totals[key] += summary[key] || 0;
+  }
+  if (summary.resumed) totals.resumedCursors += 1;
+  if (
+    summary.cursorUntil != null &&
+    !summary.alreadyComplete
+  ) {
+    totals.cursorUntilMin =
+      totals.cursorUntilMin == null
+        ? summary.cursorUntil
+        : Math.min(totals.cursorUntilMin, summary.cursorUntil);
+    totals.cursorUntilMax =
+      totals.cursorUntilMax == null
+        ? summary.cursorUntil
+        : Math.max(totals.cursorUntilMax, summary.cursorUntil);
+    if (summary.cursorUntil < summary.startedCursorUntil) {
+      totals.cursorsAdvanced += 1;
+    }
   }
   if (summary.failed) totals.failedCursors += 1;
   else if (summary.unsupported) totals.unsupportedCursors += 1;

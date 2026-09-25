@@ -3,7 +3,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { finalizeEvent } from "nostr-tools";
 import {
   createBoundedCache,
@@ -963,6 +963,206 @@ describe("top-level cursor coordination", () => {
         "max-pages": 2,
       },
     });
+  });
+
+  it("rolls resume, timeout wait, and cursor movement into run totals", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__resumed_example:kind:0", {
+      status: "paused",
+      cursorUntil: 800,
+      lastReason: "max-pages",
+    });
+    db.seed("state", "backfill:wss:__resumed_example:kind:10011", {
+      status: "complete",
+      cursorUntil: 10,
+      lastReason: "eose",
+    });
+    db.seed("state", "backfill:wss:__skip_example:kind:10011", {
+      status: "unsupported",
+      completed: true,
+      cursorUntil: 500,
+      lastReason: "closed:kinds not supported",
+    });
+
+    let clock = 0;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => {
+      clock += 1000;
+      return clock;
+    });
+    try {
+      const result = await runBackfillCursors(
+        db,
+        testConfig({
+          relays: ["wss://resumed.example", "wss://skip.example"],
+          backfillUntil: 1000,
+          backfillMaxPages: 1,
+        }),
+        {
+          queryRelay: async (relay, filter) => {
+            if (relay === "wss://resumed.example" && filter.kinds[0] === 0) {
+              return { events: [identityEvent(700)], reason: "max" };
+            }
+            if (relay === "wss://skip.example" && filter.kinds[0] === 0) {
+              return { events: [identityEvent(900)], reason: "timeout" };
+            }
+            return { events: [], reason: "eose" };
+          },
+        },
+      );
+
+      expect(result.totals).toMatchObject({
+        resumedCursors: 1,
+        alreadyCompleteCursors: 1,
+        unsupportedCursors: 1,
+        timeoutWaitMs: 2000,
+        productivePageMs: 2000,
+        cursorUntilMin: 700,
+        cursorUntilMax: 1000,
+        cursorsAdvanced: 1,
+      });
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("keeps cursor progress when a later page throws", async () => {
+    const db = fakeFirestore();
+    db.seed("state", "backfill:wss:__relay_example:kind:0", {
+      status: "paused",
+      cursorUntil: 800,
+      lastReason: "max-pages",
+    });
+    let page = 0;
+    let clock = 0;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => {
+      clock += 1000;
+      return clock;
+    });
+    try {
+      const result = await runBackfillCursors(
+        db,
+        testConfig({
+          relays: ["wss://relay.example"],
+          backfillUntil: 1000,
+          backfillMaxPages: 2,
+        }),
+        {
+          queryRelay: async (_relay, filter) => {
+            if (filter.kinds[0] !== 0) {
+              return { events: [], reason: "eose" };
+            }
+            page += 1;
+            if (page > 1) throw new Error("relay dropped");
+            return { events: [identityEvent(700)], reason: "max" };
+          },
+        },
+      );
+
+      expect(result.totals).toMatchObject({
+        failedCursors: 1,
+        resumedCursors: 1,
+        productivePageMs: 2000,
+        timeoutWaitMs: 0,
+        cursorUntilMin: 700,
+        cursorUntilMax: 1000,
+        cursorsAdvanced: 1,
+      });
+      expect(result.cursorSummaries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 0,
+            failed: true,
+            resumed: true,
+            error: "relay dropped",
+            cursorUntil: 700,
+          }),
+        ]),
+      );
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("counts a productive page when the checkpoint write fails", async () => {
+    const db = fakeFirestore();
+    db.failCollections.add("state");
+    let clock = 0;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => {
+      clock += 1000;
+      return clock;
+    });
+    try {
+      const result = await runBackfillCursors(
+        db,
+        testConfig({ relays: ["wss://relay.example"], backfillMaxPages: 1 }),
+        {
+          queryRelay: async () => ({
+            events: [identityEvent(700)],
+            reason: "max",
+          }),
+        },
+      );
+
+      expect(result.totals.failedCursors).toBe(2);
+      expect(result.totals.productivePageMs).toBeGreaterThan(0);
+      expect(result.totals.timeoutWaitMs).toBe(0);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("reports a failed completion checkpoint as failed", async () => {
+    const db = fakeFirestore();
+    db.failCollections.add("state");
+    for (const kind of [10011, 0]) {
+      db.seed("state", `backfill:wss:__relay_example:kind:${kind}`, {
+        status: "paused",
+        cursorUntil: 1,
+        lastReason: "max-pages",
+      });
+    }
+    const logs = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((line) => {
+      logs.push(String(line));
+    });
+    try {
+      const result = await runBackfillCursors(
+        db,
+        testConfig({
+          relays: ["wss://relay.example"],
+          backfillSince: 1,
+        }),
+        { queryRelay: async () => ({ events: [], reason: "eose" }) },
+      );
+
+      expect(result.cursorSummaries).toEqual([
+        expect.objectContaining({
+          kind: 10011,
+          failed: true,
+          completed: false,
+          pages: 0,
+        }),
+        expect.objectContaining({
+          kind: 0,
+          failed: true,
+          completed: false,
+          pages: 0,
+        }),
+      ]);
+      const results = logs
+        .map((line) => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        })
+        .filter((entry) => entry?.message === "backfill_cursor_result");
+      expect(results.map((entry) => entry.status)).toEqual(["failed", "failed"]);
+      expect(results.every((entry) => entry.error)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("buckets dynamic relay error reasons in run totals", async () => {
