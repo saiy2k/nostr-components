@@ -1,6 +1,5 @@
 import "./styles.css";
 import {
-  categories,
   type DirectoryCategory,
   type DirectoryProfile,
 } from "./data";
@@ -13,6 +12,7 @@ import {
   getVisibleProfiles,
   nip05ProfileUrl,
   paginateProfiles,
+  xProfileUrl,
   truncateNpub,
   type DirectorySort,
 } from "./directory";
@@ -67,6 +67,10 @@ function profileRow(profile: DirectoryProfile): string {
   const safeNip05 = escapeHtml(profile.nip05);
   const safeNpub = escapeHtml(profile.npub);
   const nip05Url = nip05ProfileUrl(profile.nip05);
+  const handleUrl = xProfileUrl(profile.handle);
+  const handleHtml = handleUrl
+    ? `<a href="${escapeHtml(handleUrl)}" target="_blank" rel="noreferrer" title="Open X profile">${safeHandle}</a>`
+    : safeHandle;
   const verificationLabel = profile.verified
     ? "X account ownership verified"
     : "Local preview · not verified";
@@ -84,7 +88,7 @@ function profileRow(profile: DirectoryProfile): string {
             <strong>${safeName}</strong>
             ${profile.verified ? `<span class="verified-mark" title="${verificationLabel}">${icon.check()}<span class="sr-only">${verificationLabel}</span></span>` : ""}
           </span>
-          <span class="profile-handle">${safeHandle}${profile.verified ? "" : " · Local preview"}</span>
+          <span class="profile-handle">${handleHtml}${profile.verified ? "" : " · Local preview"}</span>
         </span>
       </div>
       ${nip05Url ? `<a class="nip05-link" href="${escapeHtml(nip05Url)}" target="_blank" rel="noreferrer" title="Profile-provided Nostr address">${safeNip05}</a>` : `<span class="nip05-link">${safeNip05 || "—"}</span>`}
@@ -113,7 +117,7 @@ function cachedRemoteProfile(index: number): DirectoryProfile | undefined {
 
 function currentDirectoryPage() {
   const previews = matchingPreviewProfiles();
-  const remoteTotal = category === "Popular on X.com" ? totalProfiles : 0;
+  const remoteTotal = totalProfiles;
   const totalItems = previews.length + remoteTotal;
   const pagination = paginateProfiles(
     Array.from({ length: totalItems }, (_, index) => index),
@@ -132,7 +136,7 @@ function currentDirectoryPage() {
 }
 
 function requiredBatchOffsets(): number[] {
-  if (category !== "Popular on X.com" || totalProfiles === 0) return [];
+  if (totalProfiles === 0) return [];
   const { pagination, previewCount } = currentDirectoryPage();
   return getRequiredBatchOffsets(
     pagination.startIndex,
@@ -169,16 +173,12 @@ function renderProfiles(): void {
     ? "Loading creator claims…"
     : loadFailed && (!loaded || missingPage)
       ? "This directory page could not be loaded"
-      : category === "Popular on Nostr"
-        ? "Nostr rankings are not available yet"
-        : "No creator claims found";
+      : "No creator claims found";
   const emptyDescription = waitingForPage
     ? "Fetching verified accounts."
     : loadFailed && (!loaded || missingPage)
       ? "Please retry using the button below."
-      : category === "Popular on Nostr"
-        ? "The live directory currently lists verified X accounts. Choose Popular on X.com to browse them."
-        : "Try an exact X handle, NIP-05 address, or npub. Search runs against all verified X accounts in the directory.";
+      : "Try an X handle, NIP-05 address, or npub. A partial handle lists every match.";
 
   results.innerHTML = items.length
     ? items.map(profileRow).join("")
@@ -383,7 +383,7 @@ function renderApp(): void {
           <form class="hero-search" id="hero-search" role="search">
             <label class="sr-only" for="directory-search">Search creator claims</label>
             ${icon.search()}
-            <input id="directory-search" type="search" autocomplete="off" maxlength="255" placeholder="Search exact X handle, NIP-05, or npub" />
+            <input id="directory-search" type="search" autocomplete="off" maxlength="255" placeholder="Search X handle, NIP-05, or npub" />
             <button type="submit" aria-label="Search creator claims">${icon.arrow()}</button>
           </form>
         </div>
@@ -393,21 +393,6 @@ function renderApp(): void {
       <section class="directory shell" id="directory" aria-label="Creator claims">
         <div class="directory-heading-row">
           <p id="result-count" aria-live="polite"></p>
-        </div>
-
-        <div class="tabs" role="tablist" aria-label="Creator claim categories">
-          ${categories
-            .map(
-              (item) => `
-                <button
-                  class="tab ${item === category ? "selected" : ""}"
-                  type="button"
-                  role="tab"
-                  aria-selected="${item === category}"
-                  data-category="${item}"
-                >${item}</button>`,
-            )
-            .join("")}
         </div>
 
         <div class="profile-table" role="region" aria-label="Creator claim directory" tabindex="0">
@@ -457,7 +442,6 @@ function renderApp(): void {
           <label>Creator name<input name="name" required maxlength="50" placeholder="Satoshi" /></label>
           <label>X or YouTube handle<input name="handle" required maxlength="50" placeholder="@satoshi" /></label>
           <label>Nostr address (NIP-05)<input name="nip05" required maxlength="100" placeholder="satoshi@example.com" /></label>
-          <label>Claim tab<select name="category"><option>Popular on X.com</option><option>Popular on Nostr</option></select></label>
           <label class="full-field">Nostr public key<input name="npub" required minlength="20" pattern="npub1.+" placeholder="npub1…" /><small>Nostr public keys begin with npub1.</small></label>
         </div>
         <div class="dialog-actions">
@@ -566,24 +550,6 @@ function bindEvents(): void {
       searchTimer = null;
       void reloadProfiles(search);
     }, 300);
-  });
-
-  document.querySelector(".tabs")?.addEventListener("click", (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
-      "[data-category]",
-    );
-    if (!button) return;
-    category = button.dataset.category as DirectoryCategory;
-    currentPage = 1;
-    document
-      .querySelectorAll<HTMLButtonElement>("[data-category]")
-      .forEach((tab) => {
-        const selected = tab === button;
-        tab.classList.toggle("selected", selected);
-        tab.setAttribute("aria-selected", String(selected));
-      });
-    renderProfiles();
-    void ensureCurrentPageLoaded();
   });
 
   document

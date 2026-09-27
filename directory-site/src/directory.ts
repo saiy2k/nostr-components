@@ -61,6 +61,12 @@ export function formatFollowers(value: number | null): string {
   return value.toLocaleString("en-US");
 }
 
+export function xProfileUrl(handle: string): string | null {
+  const normalized = handle.trim().replace(/^@/, "");
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(normalized)) return null;
+  return `https://x.com/${normalized}`;
+}
+
 export function nip05ProfileUrl(value: string): string | null {
   const match =
     /^(?:[a-zA-Z0-9_.-]+@)?((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})$/.exec(

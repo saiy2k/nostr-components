@@ -77,10 +77,22 @@ function fakeDatabase(records) {
           };
         },
         async get() {
+          let entries = matchingEntries().sort((a, b) => {
+            if (operation.order === "handle") {
+              const byHandle = String(a[1].handle).localeCompare(String(b[1].handle));
+              if (byHandle !== 0) return byHandle;
+            }
+            return a[0].localeCompare(b[0]);
+          });
+          if (operation.cursor) {
+            entries = entries.filter(([id, data]) =>
+              operation.order === "handle"
+                ? String(data.handle) > operation.cursor
+                : id > operation.cursor,
+            );
+          }
           return {
-            docs: matchingEntries()
-              .filter(([id]) => !operation.cursor || id > operation.cursor)
-              .sort(([a], [b]) => a.localeCompare(b))
+            docs: entries
               .slice(operation.offset)
               .slice(0, operation.limit)
               .map(([id, data]) => ({ id, data: () => data })),
@@ -91,8 +103,11 @@ function fakeDatabase(records) {
       function matchingEntries() {
         return Object.entries(records).filter(([, data]) =>
           operation.filters.every(([field, operator, value]) => {
-            assert.equal(operator, "==");
-            return nestedValue(data, field) === value;
+            const current = nestedValue(data, field);
+            if (operator === "==") return current === value;
+            if (operator === ">=") return String(current ?? "") >= value;
+            if (operator === "<=") return String(current ?? "") <= value;
+            throw new Error(`unexpected operator ${operator}`);
           }),
         );
       }
@@ -281,15 +296,22 @@ test("uses a validated document cursor instead of a billed offset for deep pages
   assert.equal(db.reads[0].offset, 0);
 });
 
-test("parses exact handle, X URL, NIP-05, and npub searches", () => {
+test("parses handle prefixes, X URLs, NIP-05, and npub searches", () => {
   const pubkey = "a".repeat(64);
   assert.deepEqual(directorySearchFilter("@Alice"), {
     field: "handle",
     value: "alice",
+    prefix: true,
+  });
+  assert.deepEqual(directorySearchFilter("ly"), {
+    field: "handle",
+    value: "ly",
+    prefix: true,
   });
   assert.deepEqual(directorySearchFilter("https://x.com/Alice"), {
     field: "handle",
     value: "alice",
+    prefix: true,
   });
   assert.deepEqual(directorySearchFilter("alice@example.com"), {
     field: "activeIdentity.metadata.nip05",
@@ -323,9 +345,27 @@ test("searches the whole verified collection before paginating", async () => {
     assert.equal(result.body.total, 1);
     assert.deepEqual(
       result.body.profiles.map((profile) => profile.handle),
-      ["bob"],
-    );
+    ["bob"],
+  );
   }
+});
+
+test("lists every verified handle that starts with the typed prefix", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:ly": handleRecord("ly"),
+    "twitter:lynaldencontact": handleRecord("lynaldencontact"),
+    "twitter:lynn": handleRecord("lynn"),
+    "twitter:blyn": handleRecord("blyn"),
+  });
+  const result = await listDirectoryProfiles(db, { search: "LY", limit: "10" });
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["ly", "lynaldencontact", "lynn"],
+  );
+  assert.equal(result.body.total, 3);
+  assert.equal(db.reads[0].order, "handle");
 });
 
 function responseRecorder() {

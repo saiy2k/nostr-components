@@ -621,6 +621,7 @@ svg {
 }
 
 .profile-table {
+  margin-top: 20px;
   overflow-x: auto;
   outline: 0;
 }
@@ -711,6 +712,16 @@ svg {
   color: var(--muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.profile-handle a {
+  color: inherit;
+}
+
+.profile-handle a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .verified-mark,

@@ -75,10 +75,19 @@ export function directorySearchFilter(value) {
   }
 
   const profileMatch = search.match(X_PROFILE_PATTERN);
-  const handle = normalizeTwitterHandle(
-    profileMatch ? profileMatch[1] : search,
-  );
-  return handle ? { field: "handle", value: handle } : { matchesNothing: true };
+  const handle = handlePrefix(profileMatch ? profileMatch[1] : search);
+  return handle
+    ? { field: "handle", value: handle, prefix: true }
+    : { matchesNothing: true };
+}
+
+function handlePrefix(value) {
+  const handle = String(value || "")
+    .trim()
+    .replace(/^@/, "")
+    .split(/[/?#\s]/)[0]
+    .toLowerCase();
+  return /^[a-z0-9_]{1,15}$/.test(handle) ? handle : null;
 }
 
 function validatedInteger(value, fallback, maximum, error) {
@@ -141,13 +150,23 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
   let query = db
     .collection(options.collection || "nostrDirectoryHandles")
     .where("activeIdentity.status", "==", "verified");
-  if (search) query = query.where(search.field, "==", search.value);
+  if (search?.prefix) {
+    query = query
+      .where(search.field, ">=", search.value)
+      .where(search.field, "<=", `${search.value}\uf8ff`)
+      .orderBy(search.field);
+  } else {
+    if (search) query = query.where(search.field, "==", search.value);
+    query = query.orderBy(FieldPath.documentId());
+  }
 
   const countSnapshot = await query.count().get();
   const total = countSnapshot.data().count;
-  query = query.orderBy(FieldPath.documentId());
-  if (cursor !== undefined) query = query.startAfter(cursor);
-  else if (offset > 0) query = query.offset(offset);
+  if (cursor !== undefined) {
+    query = query.startAfter(search?.prefix ? cursor.slice(8) : cursor);
+  } else if (offset > 0) {
+    query = query.offset(offset);
+  }
   const snapshot = await query
     .select(
       "platform",
