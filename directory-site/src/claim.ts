@@ -18,6 +18,7 @@ const PROOF_URL_PATTERN =
   /^\/(?:@?)([a-z0-9_]{1,15})\/status\/(\d{10,25})(?:\/(?:photo|video)\/\d{1,5})?\/?$/i;
 const TWITTER_IDENTITY = /^(?:twitter|x|com\.twitter):([a-z0-9_]{1,15})$/i;
 const MAX_IDENTITY_TAGS = 20;
+export const CLAIM_CLIENT_TAG = ["client", "Nostr Atlas"] as const;
 const MAX_TAG_VALUES = 10;
 const MAX_TAG_VALUE_LENGTH = 2000;
 export const IDENTITY_READ_TIMEOUT_MS = 8_000;
@@ -325,6 +326,7 @@ function identityTagsForClaim(
     ...kept,
     ["i", `twitter:${handle}`, proofUrl],
     ...links.map((link) => ["i", `${link.platform}:${link.name}`, link.url]),
+    [...CLAIM_CLIENT_TAG],
   ];
 }
 

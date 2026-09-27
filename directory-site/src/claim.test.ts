@@ -125,6 +125,7 @@ describe("signed NIP-39 claim", () => {
       content: "",
       tags: [
         ["i", "twitter:alice", "https://x.com/alice/status/1234567890123"],
+        ["client", "Nostr Atlas"],
       ],
     });
     await expect(
@@ -208,6 +209,7 @@ describe("signed NIP-39 claim", () => {
         ["i", "github:alice", "gist"],
         ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
         ["i", "twitter:alice", "https://x.com/alice/status/1234567890123"],
+        ["client", "Nostr Atlas"],
       ],
     });
     expect(() =>
@@ -278,6 +280,7 @@ describe("signed NIP-39 claim", () => {
       ["i", "twitter:alice", "https://x.com/alice/status/1234567890123"],
       ["i", "github:alice", "https://github.com/alice"],
       ["i", "youtube:alice", "https://www.youtube.com/@alice"],
+      ["client", "Nostr Atlas"],
     ]);
   });
 
@@ -664,6 +667,7 @@ describe("claim event boundaries", () => {
       ["i", "mastodon:alice", "post"],
       ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
       ["i", "twitter:alice", PROOF],
+      ["client", "Nostr Atlas"],
     ]);
   });
 
@@ -713,8 +717,9 @@ describe("claim event boundaries", () => {
         "https://github.com/user",
       ]),
     });
-    expect(event.tags).toHaveLength(20);
-    expect(event.tags.at(-1)).toEqual(["i", "twitter:alice", PROOF]);
+    expect(event.tags).toHaveLength(21);
+    expect(event.tags.at(-2)).toEqual(["i", "twitter:alice", PROOF]);
+    expect(event.tags.at(-1)).toEqual(["client", "Nostr Atlas"]);
     expect(
       createClaimEvent("alice", PROOF, NOW, {
         createdAt: NOW_SECONDS - 50,

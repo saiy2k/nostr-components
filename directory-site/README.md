@@ -240,9 +240,10 @@ relay-directory protocol:
    connected npub. That function also returns the relay list the directory
    crawler is using.
 5. The signer signs a kind `10011` NIP-39 event. Other `i` tags already published
-   for that pubkey are kept, up to 20 identity tags in total. The site
-   snapshots the event fields before signing and rejects a signature that does
-   not match that snapshot.
+   for that pubkey are kept, up to 20 identity tags in total. The event includes
+   a `client` tag, `Nostr Atlas`, so the stored claim shows that this site
+   created it. The site snapshots the event fields before signing and rejects a
+   signature that does not match that snapshot.
 6. A relay from that crawler list must acknowledge the event. An
    acknowledgement from any other configured relay is not enough.
 7. The site then sends that signed event to `ingestClaim`, which writes and
