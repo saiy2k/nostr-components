@@ -154,23 +154,23 @@ function renderProfiles(): void {
   currentPage = pagination.page;
 
   if (loading && !loaded) {
-    resultCount.textContent = "Loading creator claims…";
+    resultCount.textContent = "Loading verified accounts…";
   } else if (pagination.totalItems === 0) {
-    resultCount.textContent = "0 creator claims";
+    resultCount.textContent = "0 verified accounts";
   } else {
-    const claimNoun =
-      pagination.totalItems === 1 ? "creator claim" : "creator claims";
-    resultCount.textContent = `Showing ${pagination.startIndex + 1}–${pagination.endIndex} of ${pagination.totalItems} ${claimNoun}`;
+    const accountNoun =
+      pagination.totalItems === 1 ? "verified account" : "verified accounts";
+    resultCount.textContent = `Showing ${pagination.startIndex + 1}–${pagination.endIndex} of ${pagination.totalItems} ${accountNoun}`;
   }
 
   results.setAttribute("aria-busy", String(loading));
   const waitingForPage = loading && items.length === 0;
   const missingPage = pagination.totalItems > 0 && items.length === 0;
   const emptyTitle = waitingForPage
-    ? "Loading creator claims…"
+    ? "Loading verified accounts…"
     : loadFailed && (!loaded || missingPage)
       ? "This directory page could not be loaded"
-      : "No creator claims found";
+      : "No verified accounts found";
   const emptyDescription = waitingForPage
     ? "Fetching verified accounts."
     : loadFailed && (!loaded || missingPage)
@@ -233,7 +233,7 @@ function renderPagination(
 
   paginationNav.innerHTML = `
     <div class="pagination-summary">
-      Showing <strong>${startNumber}–${endNumber}</strong> of <strong>${pagination.totalItems}</strong> claims
+      Showing <strong>${startNumber}–${endNumber}</strong> of <strong>${pagination.totalItems}</strong> accounts
     </div>
     <div class="pagination-controls">
       <button
@@ -259,9 +259,9 @@ function renderPagination(
       </button>
     </div>
     <div class="pagination-size">
-      <label for="page-size-select" class="sr-only">Claims per page</label>
+      <label for="page-size-select" class="sr-only">Accounts per page</label>
       <div class="page-size-wrap">
-        <select id="page-size-select" aria-label="Claims per page">
+        <select id="page-size-select" aria-label="Accounts per page">
           ${PAGE_SIZE_OPTIONS.map(
             (opt) =>
               `<option value="${opt}"${pageSize === opt ? " selected" : ""}>${opt} per page</option>`,
@@ -282,9 +282,9 @@ function renderDirectoryStatus(): void {
   );
   if (status) {
     status.textContent = loadFailed
-      ? "Could not load creator claims. Check your connection and retry. Local previews are kept."
+      ? "Could not load verified accounts. Check your connection and retry. Local previews are kept."
       : loading
-        ? "Loading verified creator claims…"
+        ? "Loading verified accounts…"
         : `${directoryTotal} verified X ${directoryTotal === 1 ? "account" : "accounts"} in the directory; ${cachedProfiles} cached in this browser.`;
   }
   if (refresh) {
@@ -392,23 +392,23 @@ function renderApp(): void {
             ${icon.plusUser()}<span>Claim your X or YouTube account</span>
           </button>
           <form class="hero-search" id="hero-search" role="search">
-            <label class="sr-only" for="directory-search">Search creator claims</label>
+            <label class="sr-only" for="directory-search">Search verified accounts</label>
             ${icon.search()}
             <input id="directory-search" type="search" autocomplete="off" maxlength="255" placeholder="Search X handle, NIP-05, or npub" />
-            <button type="submit" aria-label="Search creator claims">${icon.arrow()}</button>
+            <button type="submit" aria-label="Search verified accounts">${icon.arrow()}</button>
           </form>
         </div>
         <div class="hero-network">${networkGraphic()}</div>
       </section>
 
-      <section class="directory shell" id="directory" aria-label="Creator claims">
+      <section class="directory shell" id="directory" aria-label="Verified accounts">
         <div class="directory-heading-row">
           <p id="result-count" aria-live="polite"></p>
         </div>
 
-        <div class="profile-table" role="region" aria-label="Creator claim directory" tabindex="0">
+        <div class="profile-table" role="region" aria-label="Verified accounts" tabindex="0">
           <div class="table-header" aria-hidden="true">
-            <span>Creator</span><span>Nostr address</span><span>npub (click to copy)</span><span></span>
+            <span>X account</span><span>Nostr address</span><span>npub (click to copy)</span><span></span>
           </div>
           <div id="profile-results"></div>
         </div>
