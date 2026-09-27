@@ -8,6 +8,7 @@ import {
   normalizeSearch,
   nip05ProfileUrl,
   paginateProfiles,
+  profileAvatarHtml,
   truncateNpub,
 } from "./directory";
 
@@ -204,5 +205,43 @@ describe("directory pagination", () => {
     expect(getRequiredBatchOffsets(50, 60, 1, 5_000, 50, new Set([0]))).toEqual(
       [50],
     );
+  });
+});
+
+describe("profile avatars", () => {
+  const avatar = {
+    initials: "A<",
+    foreground: "#ffffff",
+    background: "#7456f6",
+  };
+
+  it("renders initials when no https picture is available", () => {
+    const html = profileAvatarHtml({ avatar, picture: "" });
+    expect(html).toContain("avatar-initials");
+    expect(html).toContain("A&lt;");
+    expect(html).not.toContain("<img");
+  });
+
+  it("renders a sanitized https picture over the initials", () => {
+    const html = profileAvatarHtml({
+      avatar,
+      picture: "https://cdn.example/a.png?q=1&b=2",
+    });
+    expect(html).toContain(
+      'src="https://cdn.example/a.png?q=1&amp;b=2"',
+    );
+    expect(html).toContain('referrerpolicy="no-referrer"');
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain('alt=""');
+    expect(html).toContain("avatar-initials");
+  });
+
+  it("drops a non-https picture instead of putting it in src", () => {
+    const html = profileAvatarHtml({
+      avatar,
+      picture: 'javascript:alert(1)',
+    });
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("javascript:");
   });
 });

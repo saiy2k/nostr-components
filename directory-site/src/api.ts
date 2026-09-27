@@ -1,5 +1,6 @@
 import { npubEncode } from "nostr-tools/nip19";
 import type { DirectoryProfile } from "./data";
+import { httpsPictureUrl } from "./directory";
 
 export const DEFAULT_DIRECTORY_API_URL =
   "https://us-central1-gr-prod.cloudfunctions.net/listDirectoryProfiles";
@@ -65,6 +66,7 @@ export function parseDirectoryPage(value: unknown): DirectoryPage {
     }
 
     const name = profile.name.trim() || profile.handle;
+    const picture = readPicture(profile.picture);
     return {
       id: profile.id as string,
       name,
@@ -76,6 +78,7 @@ export function parseDirectoryPage(value: unknown): DirectoryPage {
       // Encode the verified key; never trust a stored npub that may disagree.
       npub: npubEncode(profile.pubkey.toLowerCase()),
       youtube: "",
+      picture,
       avatar: {
         initials: name
           .split(/\s+/)
@@ -95,6 +98,13 @@ export function parseDirectoryPage(value: unknown): DirectoryPage {
     offset: value.offset as number,
     nextCursor: value.nextCursor as string | null,
   };
+}
+
+function readPicture(value: unknown): string {
+  if (value === undefined || value === null || value === "") return "";
+  const picture = httpsPictureUrl(value);
+  if (!picture) throw new Error("The directory returned an invalid profile.");
+  return picture;
 }
 
 export async function fetchDirectoryPage(

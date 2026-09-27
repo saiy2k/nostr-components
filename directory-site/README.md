@@ -11,9 +11,11 @@ component library so the package build and backend jobs remain unchanged.
 The site fetches `listDirectoryProfiles`, an HTTP Firebase Function that reads
 `nostrDirectoryHandles` in Firestore using the Admin SDK. It uses each handle's
 current `activeIdentity`, so pending claims and obsolete identities are excluded.
-The response contains only the handle, verified public key, name, and NIP-05
-metadata; claim evidence and payment details stay on the server. No Firebase
-web API key, browser database credentials, or public Firestore rules are needed.
+The response contains the handle, verified public key, name, NIP-05, and `picture`.
+`picture` is the Nostr profile image, the stored X avatar when that image is
+missing, or an empty string. Claim evidence and payment details stay on the
+server. No Firebase web API key, browser database credentials, or public
+Firestore rules are needed.
 
 `VITE_DIRECTORY_API_URL` selects the endpoint. Builds for the separate live
 Firebase project should always set it to that project's deployed function URL.

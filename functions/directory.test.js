@@ -128,8 +128,47 @@ test("exposes an allowlist of current identity fields, never evidence or payment
       verified: true,
       name: "Alice",
       nip05: "alice@example.com",
+      picture: "",
     },
   );
+});
+
+test("prefers a Nostr https picture and falls back to the stored X avatar", () => {
+  const nostr = "https://cdn.example/alice.png";
+  const xPicture =
+    "https://pbs.twimg.com/profile_images/1/alice_200x200.jpg";
+  const data = handleRecord("alice");
+  data.activeIdentity.metadata.picture = nostr;
+  data.activeIdentity.metadata.xPicture = xPicture;
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, nostr);
+
+  data.activeIdentity.metadata.picture = "HTTPS://CDN.Example/a.png";
+  assert.equal(
+    publicDirectoryProfile("twitter:alice", data).picture,
+    "https://cdn.example/a.png",
+  );
+
+  data.activeIdentity.metadata.picture = "javascript:alert(1)";
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, xPicture);
+
+  data.activeIdentity.metadata.picture = "http://cdn.example/alice.png";
+  data.activeIdentity.metadata.xPicture = "https://user:pass@cdn.example/x.png";
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, "");
+
+  data.activeIdentity.metadata.xPicture = `https://cdn.example/${"a".repeat(2000)}.png`;
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, "");
+});
+
+test("does not publish a picture that exists only on a claim", () => {
+  const data = handleRecord("alice");
+  data.activeIdentity.claimId = "claim-1";
+  data.claims = [
+    {
+      claimId: "claim-1",
+      metadata: { picture: "https://cdn.example/claim-only.png" },
+    },
+  ];
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, "");
 });
 
 test("rejects unverified, malformed, mismatched, or unsupported records", () => {
@@ -220,6 +259,14 @@ test("returns database totals and supports arbitrary page offsets", async () => 
   ]);
   assert.equal(db.reads[0].name, "nostrDirectoryHandles");
   assert.equal(db.reads[0].fields.includes("claims"), false);
+  assert.equal(
+    db.reads[0].fields.includes("activeIdentity.metadata.picture"),
+    true,
+  );
+  assert.equal(
+    db.reads[0].fields.includes("activeIdentity.metadata.xPicture"),
+    true,
+  );
 });
 
 test("omits malformed profiles while retaining the Firestore verified total", async () => {

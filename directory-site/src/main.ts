@@ -11,6 +11,7 @@ import {
   getVisibleProfiles,
   nip05ProfileUrl,
   paginateProfiles,
+  profileAvatarHtml,
   xProfileUrl,
   truncateNpub,
   type DirectorySort,
@@ -78,11 +79,7 @@ function profileRow(profile: DirectoryProfile): string {
   return `
     <article class="profile-row" data-profile-id="${escapeHtml(profile.id)}">
       <div class="profile-primary">
-        <span
-          class="avatar"
-          aria-hidden="true"
-          style="--avatar-bg:${profile.avatar.background};--avatar-fg:${profile.avatar.foreground}"
-        >${escapeHtml(profile.avatar.initials)}</span>
+        ${profileAvatarHtml(profile)}
         <span class="profile-name-wrap">
           <span class="profile-name-line">
             <strong>${safeName}</strong>
@@ -566,6 +563,22 @@ function bindEvents(): void {
 
   document
     .querySelector("#profile-results")
+    ?.addEventListener(
+      "error",
+      (event) => {
+        const image = event.target;
+        if (
+          image instanceof HTMLImageElement &&
+          image.classList.contains("avatar-image")
+        ) {
+          image.remove();
+        }
+      },
+      true,
+    );
+
+  document
+    .querySelector("#profile-results")
     ?.addEventListener("click", (event) => {
       const copyButton = (
         event.target as HTMLElement
@@ -626,6 +639,7 @@ function bindEvents(): void {
         verified: false,
         npub,
         youtube: "",
+        picture: "",
         avatar: {
           initials: name
             .split(/\s+/)

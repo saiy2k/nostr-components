@@ -1,5 +1,53 @@
 import type { DirectoryCategory, DirectoryProfile } from "./data";
 
+const PICTURE_MAX_LENGTH = 2000;
+
+export function httpsPictureUrl(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > PICTURE_MAX_LENGTH) return "";
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:") return "";
+    if (url.username || url.password) return "";
+    if (!url.hostname) return "";
+    const serialized = url.toString();
+    if (
+      !serialized.startsWith("https://") ||
+      serialized.length > PICTURE_MAX_LENGTH
+    ) {
+      return "";
+    }
+    return serialized;
+  } catch {
+    return "";
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>'"]/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#039;",
+        '"': "&quot;",
+      })[character] ?? character,
+  );
+}
+
+export function profileAvatarHtml(
+  profile: Pick<DirectoryProfile, "avatar" | "picture">,
+): string {
+  const picture = httpsPictureUrl(profile.picture);
+  const image = picture
+    ? `<img class="avatar-image" src="${escapeHtml(picture)}" alt="" referrerpolicy="no-referrer" loading="lazy">`
+    : "";
+  return `<span class="avatar" aria-hidden="true" style="--avatar-bg:${escapeHtml(profile.avatar.background)};--avatar-fg:${escapeHtml(profile.avatar.foreground)}">${image}<span class="avatar-initials">${escapeHtml(profile.avatar.initials)}</span></span>`;
+}
+
 export type DirectorySort = "followers" | "name";
 
 export interface DirectoryFilters {

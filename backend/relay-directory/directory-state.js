@@ -3,6 +3,7 @@
 import { FieldValue } from "@google-cloud/firestore";
 import { nip19 } from "nostr-tools";
 import { DEFAULT_COLLECTIONS, stripUndefined } from "./runtime.js";
+import { httpsPictureUrl } from "./picture-url.js";
 import {
   compareClaimsNewestFirst,
   extractTweetId,
@@ -366,6 +367,7 @@ function profileMetadata(pubkey, metadata) {
     pubkey,
     name: boundedString(metadata.name || metadata.display_name, 100),
     nip05: boundedString(metadata.nip05, 255),
+    picture: httpsPictureUrl(metadata.picture) || undefined,
     lud16: boundedString(metadata.lud16, 255),
     lud06: boundedString(metadata.lud06, 2000),
     website: boundedString(metadata.website, 2000),

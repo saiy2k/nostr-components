@@ -14,8 +14,41 @@ const NIP05_PATTERN = /^[a-z0-9_.+-]+@[a-z0-9.-]+$/i;
 const X_PROFILE_PATTERN =
   /^(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/(@?[a-z0-9_]{1,15})(?:[/?#].*)?$/i;
 
+const PICTURE_MAX_LENGTH = 2000;
+
 function boundedString(value, length) {
   return typeof value === "string" ? value.trim().slice(0, length) : "";
+}
+
+function httpsPictureUrl(value) {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > PICTURE_MAX_LENGTH) return "";
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return "";
+  }
+  if (url.protocol !== "https:") return "";
+  if (url.username || url.password) return "";
+  if (!url.hostname) return "";
+  const serialized = url.toString();
+  if (
+    !serialized.startsWith("https://") ||
+    serialized.length > PICTURE_MAX_LENGTH
+  ) {
+    return "";
+  }
+  return serialized;
+}
+
+function publicPicture(active) {
+  return (
+    httpsPictureUrl(active?.metadata?.picture) ||
+    httpsPictureUrl(active?.metadata?.xPicture) ||
+    ""
+  );
 }
 
 // Read the current identity from handles, not potentially obsolete entry records.
@@ -43,6 +76,7 @@ export function publicDirectoryProfile(id, data) {
     verified: true,
     name: boundedString(active.metadata?.name, 100) || handle,
     nip05: profileNip05(data, active),
+    picture: publicPicture(active),
   };
 }
 
@@ -189,6 +223,8 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
       "activeIdentity.pubkey",
       "activeIdentity.metadata.name",
       "activeIdentity.metadata.nip05",
+      "activeIdentity.metadata.picture",
+      "activeIdentity.metadata.xPicture",
     )
     .limit(pageSize + 1)
     .get();

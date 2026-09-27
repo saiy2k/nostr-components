@@ -667,6 +667,7 @@ svg {
 }
 
 .avatar {
+  position: relative;
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
@@ -687,6 +688,16 @@ svg {
   font-size: 12px;
   font-weight: 820;
   letter-spacing: -0.03em;
+}
+
+.avatar-image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .profile-name-wrap {

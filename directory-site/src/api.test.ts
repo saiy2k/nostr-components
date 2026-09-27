@@ -35,12 +35,47 @@ describe("directory API", () => {
       npub: npubEncode(profile.pubkey),
       followers: null,
       youtube: "",
+      picture: "",
       category: "Popular on X.com",
     });
     expect(page.total).toBe(1);
     expect(page.offset).toBe(0);
     expect(page.nextCursor).toBeNull();
   });
+
+  it("keeps a missing picture and accepts one https picture", () => {
+    expect(
+      parseDirectoryPage({
+        profiles: [profile],
+        total: 1,
+        offset: 0,
+        nextCursor: null,
+      }).profiles[0].picture,
+    ).toBe("");
+
+    expect(
+      parseDirectoryPage({
+        profiles: [{ ...profile, picture: " HTTPS://CDN.Example/a.png " }],
+        total: 1,
+        offset: 0,
+        nextCursor: null,
+      }).profiles[0].picture,
+    ).toBe("https://cdn.example/a.png");
+  });
+
+  it.each(["javascript:alert(1)", "http://cdn.example/a.png", "not a url"])(
+    "rejects an unsafe picture: %s",
+    (picture) => {
+      expect(() =>
+        parseDirectoryPage({
+          profiles: [{ ...profile, picture }],
+          total: 1,
+          offset: 0,
+          nextCursor: null,
+        }),
+      ).toThrow(/invalid profile/);
+    },
+  );
 
   it.each([
     null,
