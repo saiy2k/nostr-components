@@ -234,10 +234,12 @@ relay-directory protocol:
    stored by the site.
 2. The dialog shows the signer's npub and opens an X composer with proof text.
 3. The user pastes the proof tweet URL. The author in the URL must match the
-   claimed X handle.
-4. The signer signs a kind `10011` NIP-39 event with an `i` tag containing the X
-   handle and proof URL. The site validates the returned signature and exact
-   event fields before publishing it.
+   claimed X handle. A `/photo` or `/video` suffix on that status URL is
+   accepted.
+4. The signer signs a kind `10011` NIP-39 event. Other `i` tags already published
+   for that pubkey are kept; only the claimed X identity is replaced. The site
+   snapshots the event fields before signing and rejects a signature that does
+   not match that snapshot.
 5. At least one configured Nostr relay must acknowledge the event. The existing
    backend later discovers the event and independently checks the proof tweet
    before promoting the identity.

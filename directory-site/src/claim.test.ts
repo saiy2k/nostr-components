@@ -10,6 +10,7 @@ import {
   claimProofText,
   connectClaimSigner,
   createClaimEvent,
+  loadExistingClaimEvent,
   normalizeClaimHandle,
   parseClaimRelays,
   publishClaimEvent,
@@ -40,6 +41,21 @@ describe("claim input validation", () => {
         "https://evil.example/alice/status/1234567890123",
         "alice",
       ),
+    ).toBeNull();
+    expect(
+      validateProofUrl(
+        "https://x.com/alice/status/1234567890123/photo/1",
+        "alice",
+      ),
+    ).toBe("https://x.com/alice/status/1234567890123");
+    expect(
+      validateProofUrl(
+        "https://x.com/alice/status/1234567890123/video/2",
+        "alice",
+      ),
+    ).toBe("https://x.com/alice/status/1234567890123");
+    expect(
+      validateProofUrl("https://x.com/i/web/status/1234567890123", "alice"),
     ).toBeNull();
   });
 
@@ -119,6 +135,165 @@ describe("signed NIP-39 claim", () => {
     await expect(signClaimEvent(signer, pubkey, unsigned)).rejects.toThrow(
       "invalid claim event",
     );
+  });
+
+  it("rejects a signer that mutates the claim event in place", async () => {
+    const secret = generateSecretKey();
+    const pubkey = getPublicKey(secret);
+    const unsigned = createClaimEvent(
+      "alice",
+      "https://x.com/alice/status/1234567890123",
+    );
+    const signer = {
+      getPublicKey: vi.fn().mockResolvedValue(pubkey),
+      signEvent: vi.fn().mockImplementation(async (event) => {
+        event.tags = [
+          ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
+        ];
+        return finalizeEvent(event, secret);
+      }),
+    };
+    await expect(signClaimEvent(signer, pubkey, unsigned)).rejects.toThrow(
+      "invalid claim event",
+    );
+  });
+
+  it("replaces only the claimed X identity and keeps other identities", () => {
+    const now = new Date("2026-09-25T12:00:00.000Z");
+    expect(
+      createClaimEvent(
+        "alice",
+        "https://x.com/alice/status/1234567890123",
+        now,
+        {
+          createdAt: now.getTime() / 1000 - 10,
+          tags: [
+            ["i", "github:alice", "gist"],
+            ["i", "twitter:alice", "https://x.com/alice/status/1111111111"],
+            ["i", "x:Alice", "old"],
+            ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
+            ["client", "nostr-atlas"],
+          ],
+        },
+      ),
+    ).toEqual({
+      kind: 10011,
+      created_at: 1790337600,
+      content: "",
+      tags: [
+        ["i", "github:alice", "gist"],
+        ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
+        ["i", "twitter:alice", "https://x.com/alice/status/1234567890123"],
+      ],
+    });
+    expect(() =>
+      createClaimEvent(
+        "alice",
+        "https://x.com/alice/status/1234567890123",
+        now,
+        {
+          createdAt: 1790337600 + 121,
+        },
+      ),
+    ).toThrow("too far in the future");
+  });
+
+  it("uses a newer timestamp when replacing an existing identity", () => {
+    const now = new Date("2026-09-25T12:00:00.000Z");
+    expect(
+      createClaimEvent(
+        "alice",
+        "https://x.com/alice/status/1234567890123",
+        now,
+        {
+          createdAt: 1790337600,
+        },
+      ).created_at,
+    ).toBe(1790337601);
+  });
+
+  it("reads the newest verified identity and refuses an unreadable relay response", async () => {
+    const secret = generateSecretKey();
+    const pubkey = getPublicKey(secret);
+    const older = finalizeEvent(
+      createClaimEvent(
+        "alice",
+        "https://x.com/alice/status/1234567890123",
+        new Date("2026-09-25T12:00:00.000Z"),
+      ),
+      secret,
+    );
+    const newer = finalizeEvent(
+      {
+        ...createClaimEvent(
+          "alice",
+          "https://x.com/alice/status/1234567890123",
+          new Date("2026-09-25T12:00:10.000Z"),
+        ),
+        tags: [
+          ["i", "github:alice", "gist"],
+          ["i", "twitter:alice", "https://x.com/alice/status/1234567890123"],
+        ],
+      },
+      secret,
+    );
+    const relays = ["wss://one.example/"];
+    const readable = {
+      subscribe: vi.fn((_relays, _filter, params) => {
+        params.onevent(older);
+        params.onevent(newer);
+        params.onclose(["closed by caller"]);
+        return { close: vi.fn() };
+      }),
+      close: vi.fn(),
+    };
+    await expect(
+      loadExistingClaimEvent(pubkey, relays, readable),
+    ).resolves.toMatchObject({ id: newer.id });
+    expect(readable.close).toHaveBeenCalledWith(relays);
+
+    const unverified = {
+      id: newer.id,
+      pubkey: newer.pubkey,
+      created_at: newer.created_at,
+      kind: newer.kind,
+      tags: [["i", "twitter:mallory"]],
+      content: newer.content,
+      sig: newer.sig,
+    };
+    const unreadable = {
+      subscribe: vi.fn((_relays, _filter, params) => {
+        params.onevent(unverified);
+        params.onclose(["closed by caller"]);
+        return { close: vi.fn() };
+      }),
+      close: vi.fn(),
+    };
+    await expect(
+      loadExistingClaimEvent(pubkey, relays, unreadable),
+    ).rejects.toThrow("Could not read the existing Nostr identity");
+
+    const unavailable = {
+      subscribe: vi.fn((_relays, _filter, params) => {
+        params.onclose(["connection timed out"]);
+        return { close: vi.fn() };
+      }),
+      close: vi.fn(),
+    };
+    await expect(
+      loadExistingClaimEvent(pubkey, relays, unavailable),
+    ).rejects.toThrow("Could not read the existing Nostr identity");
+
+    const empty = {
+      subscribe: vi.fn((_relays, _filter, params) => {
+        params.onclose(["closed by caller"]);
+        return { close: vi.fn() };
+      }),
+      close: vi.fn(),
+    };
+    await expect(
+      loadExistingClaimEvent(pubkey, relays, empty),
+    ).resolves.toBeNull();
   });
 
   it("succeeds after one relay acknowledges and always closes the pool", async () => {

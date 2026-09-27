@@ -27,6 +27,7 @@ import {
   claimProofComposerUrl,
   connectClaimSigner,
   createClaimEvent,
+  loadExistingClaimEvent,
   normalizeClaimHandle,
   parseClaimRelays,
   publishClaimEvent,
@@ -594,6 +595,7 @@ function bindEvents(): void {
   const publishClaimButton =
     document.querySelector<HTMLButtonElement>("#publish-claim");
   const claimStatus = document.querySelector<HTMLElement>("#claim-status");
+  let publishing = false;
 
   const setClaimStatus = (
     message: string,
@@ -602,6 +604,32 @@ function bindEvents(): void {
     if (!claimStatus) return;
     claimStatus.textContent = message;
     claimStatus.dataset.state = state;
+  };
+
+  const clearClaimIdentity = () => {
+    claimIdentity = null;
+    if (claimNpub) claimNpub.textContent = "Not connected";
+    if (copyClaimNpub) copyClaimNpub.disabled = true;
+    if (publishClaimButton) publishClaimButton.disabled = true;
+    if (claimProofLink) {
+      claimProofLink.removeAttribute("href");
+      claimProofLink.removeAttribute("target");
+      claimProofLink.removeAttribute("rel");
+      claimProofLink.setAttribute("aria-disabled", "true");
+    }
+  };
+
+  const showClaimIdentity = (identity: { pubkey: string; npub: string }) => {
+    claimIdentity = identity;
+    if (claimNpub) claimNpub.textContent = identity.npub;
+    if (copyClaimNpub) copyClaimNpub.disabled = false;
+    if (publishClaimButton && !publishing) publishClaimButton.disabled = false;
+    if (claimProofLink) {
+      claimProofLink.href = claimProofComposerUrl(identity.npub);
+      claimProofLink.target = "_blank";
+      claimProofLink.rel = "noreferrer";
+      claimProofLink.setAttribute("aria-disabled", "false");
+    }
   };
 
   const browserSigner = (): NostrSigner | null => {
@@ -701,22 +729,13 @@ function bindEvents(): void {
     connectClaimButton.disabled = true;
     setClaimStatus("Waiting for your Nostr signer…", "working");
     try {
-      claimIdentity = await connectClaimSigner(signer);
-      if (claimNpub) claimNpub.textContent = claimIdentity.npub;
-      if (copyClaimNpub) copyClaimNpub.disabled = false;
-      if (publishClaimButton) publishClaimButton.disabled = false;
-      if (claimProofLink) {
-        claimProofLink.href = claimProofComposerUrl(claimIdentity.npub);
-        claimProofLink.target = "_blank";
-        claimProofLink.rel = "noreferrer";
-        claimProofLink.setAttribute("aria-disabled", "false");
-      }
+      showClaimIdentity(await connectClaimSigner(signer));
       setClaimStatus(
         "Signer connected. Post the proof tweet, then paste its URL below.",
         "success",
       );
     } catch (error) {
-      claimIdentity = null;
+      clearClaimIdentity();
       setClaimStatus(
         error instanceof Error
           ? error.message
@@ -737,6 +756,7 @@ function bindEvents(): void {
       .submitter as HTMLButtonElement | null;
     if (submitter?.value === "cancel") return;
     event.preventDefault();
+    if (publishing) return;
     if (!claimForm.reportValidity()) return;
     if (!claimIdentity) {
       setClaimStatus("Connect your Nostr signer before publishing.", "error");
@@ -773,29 +793,49 @@ function bindEvents(): void {
       return;
     }
 
+    publishing = true;
     if (connectClaimButton) connectClaimButton.disabled = true;
     if (publishClaimButton) publishClaimButton.disabled = true;
     setClaimStatus(
       "Waiting for signature and relay acknowledgement…",
       "working",
     );
-    let published = false;
     try {
-      const unsigned = createClaimEvent(handle, proofUrl);
+      const currentSigner = await connectClaimSigner(signer);
+      if (!claimIdentity || currentSigner.pubkey !== claimIdentity.pubkey) {
+        clearClaimIdentity();
+        setClaimStatus(
+          "The Nostr signer account changed. Connect again before publishing.",
+          "error",
+        );
+        return;
+      }
+      const relays = parseClaimRelays(
+        import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
+      );
+      const existing = await loadExistingClaimEvent(
+        claimIdentity.pubkey,
+        relays,
+      );
+      const unsigned = createClaimEvent(
+        handle,
+        proofUrl,
+        new Date(),
+        existing && {
+          createdAt: existing.created_at,
+          tags: existing.tags,
+        },
+      );
       const signed = await signClaimEvent(
         signer,
         claimIdentity.pubkey,
         unsigned,
-      );
-      const relays = parseClaimRelays(
-        import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
       );
       await publishClaimEvent(signed, relays);
       setClaimStatus(
         "Claim published. The directory will show it after the backend verifies the proof tweet.",
         "success",
       );
-      published = true;
       showToast("Signed X account claim published to Nostr relays.");
     } catch (error) {
       setClaimStatus(
@@ -805,13 +845,25 @@ function bindEvents(): void {
         "error",
       );
     } finally {
+      publishing = false;
       if (connectClaimButton) connectClaimButton.disabled = false;
-      if (publishClaimButton) publishClaimButton.disabled = published;
+      if (publishClaimButton) publishClaimButton.disabled = !claimIdentity;
     }
   });
 
   profileDialog?.addEventListener("click", (event) => {
     if (event.target === profileDialog) profileDialog.close();
+  });
+
+  profileDialog?.addEventListener("close", () => {
+    if (publishing) return;
+    if (publishClaimButton) publishClaimButton.disabled = !claimIdentity;
+    if (claimIdentity && claimStatus?.dataset.state === "success") {
+      setClaimStatus(
+        "Signer connected. Post the proof tweet, then paste its URL below.",
+        "success",
+      );
+    }
   });
 }
 
