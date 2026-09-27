@@ -17,11 +17,12 @@ missing, or an empty string. Claim evidence and payment details stay on the
 server. No Firebase web API key, browser database credentials, or public
 Firestore rules are needed.
 
-`VITE_DIRECTORY_API_URL` selects the endpoint. Builds for the separate live
-Firebase project should always set it to that project's deployed function URL.
-Without an override, the site retains the existing `gr-prod` endpoint as a
-backward-compatible development fallback. **Deploy the function before building
-against a new project**, or use the local Functions emulator below.
+`VITE_DIRECTORY_API_URL` selects the endpoint. Builds for a different Firebase
+project should set it to that project's deployed function URL. Without an
+override, the site uses
+`https://us-central1-nostr-components.cloudfunctions.net/listDirectoryProfiles`.
+**Deploy the function before building against a new project**, or use the local
+Functions emulator below.
 
 The API reads up to 50 documents per request. `limit` accepts 1–100 and `offset`
 tracks the first logical record in a batch. Every response includes `total`, the
@@ -85,7 +86,7 @@ Use Node.js 22 and the Firebase CLI. From the repository root:
 npm ci
 npm --prefix functions ci
 gcloud auth application-default login
-firebase emulators:start --only functions --project gr-prod
+firebase emulators:start --only functions --project nostr-components
 ```
 
 The signed-in Google account needs permission to read the directory database.
@@ -96,7 +97,7 @@ If local credentials already exist, the login step is unnecessary.
 In a second terminal, from the repository root:
 
 ```sh
-VITE_DIRECTORY_API_URL=http://127.0.0.1:5001/gr-prod/us-central1/listDirectoryProfiles npm run dev:directory
+VITE_DIRECTORY_API_URL=http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles npm run dev:directory
 ```
 
 Open the URL printed by Vite. For a persistent endpoint override, copy
@@ -157,12 +158,12 @@ another collection. Set these in `functions/.env.local` for the emulator, or
 You can also inspect the endpoint without opening a browser:
 
 ```sh
-curl --fail-with-body 'http://127.0.0.1:5001/gr-prod/us-central1/listDirectoryProfiles?limit=2&offset=0'
-curl --fail-with-body 'http://127.0.0.1:5001/gr-prod/us-central1/listDirectoryProfiles?search=%40jack'
+curl --fail-with-body 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles?limit=2&offset=0'
+curl --fail-with-body 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles?search=%40jack'
 # Expect 400 invalid_limit:
-curl -i 'http://127.0.0.1:5001/gr-prod/us-central1/listDirectoryProfiles?limit=101'
+curl -i 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles?limit=101'
 # Expect 405 method_not_allowed:
-curl -i -X POST 'http://127.0.0.1:5001/gr-prod/us-central1/listDirectoryProfiles'
+curl -i -X POST 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles'
 ```
 
 ## Deploy the read API

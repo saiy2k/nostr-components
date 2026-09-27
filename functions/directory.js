@@ -139,6 +139,22 @@ function handlePrefix(value) {
   return /^[a-z0-9_]{1,15}$/.test(handle) ? handle : null;
 }
 
+function orderedDirectoryQuery(db, options, search, browseOrder) {
+  let query = db
+    .collection(options.collection || "nostrDirectoryHandles")
+    .where("activeIdentity.status", "==", "verified");
+  if (search?.prefix) {
+    return query
+      .where(search.field, ">=", search.value)
+      .where(search.field, "<=", `${search.value}\uf8ff`)
+      .orderBy(search.field);
+  }
+  if (search) query = query.where(search.field, "==", search.value);
+  if (browseOrder === "listingKey") return query.orderBy("listingKey");
+  if (browseOrder === "handle") return query.orderBy("handle");
+  return query.orderBy(FieldPath.documentId());
+}
+
 function validatedInteger(value, fallback, maximum, error) {
   if (value === undefined) return fallback;
   if (
@@ -196,31 +212,25 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
     };
   }
 
-  let query = db
-    .collection(options.collection || "nostrDirectoryHandles")
-    .where("activeIdentity.status", "==", "verified");
   // Unfiltered browse puts the curated handles first. Search stays on the
   // matched field so a lookup is not rearranged by that pin list.
-  const browseByListingKey = !search;
-  if (search?.prefix) {
-    query = query
-      .where(search.field, ">=", search.value)
-      .where(search.field, "<=", `${search.value}\uf8ff`)
-      .orderBy(search.field);
-  } else {
-    if (search) query = query.where(search.field, "==", search.value);
-    query = query.orderBy(
-      browseByListingKey ? "listingKey" : FieldPath.documentId(),
-    );
+  // orderBy(listingKey) hides documents that do not have the field yet, so an
+  // empty result falls back to handle order until that backfill exists.
+  let browseOrder = search ? "documentId" : "listingKey";
+  let query = orderedDirectoryQuery(db, options, search, browseOrder);
+  let countSnapshot = await query.count().get();
+  let total = countSnapshot.data().count;
+  if (browseOrder === "listingKey" && total === 0) {
+    browseOrder = "handle";
+    query = orderedDirectoryQuery(db, options, null, browseOrder);
+    countSnapshot = await query.count().get();
+    total = countSnapshot.data().count;
   }
-
-  const countSnapshot = await query.count().get();
-  const total = countSnapshot.data().count;
   if (cursor !== undefined) {
     query = query.startAfter(
-      search?.prefix
+      search?.prefix || browseOrder === "handle"
         ? cursor.slice(8)
-        : browseByListingKey
+        : browseOrder === "listingKey"
           ? listingKeyForHandle(cursor.slice(8))
           : cursor,
     );

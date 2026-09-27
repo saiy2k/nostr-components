@@ -315,7 +315,10 @@ test("empty collections are successful and collection overrides stay server cont
     },
   );
   assert.equal(db.reads[0].name, "testHandles");
-  assert.equal(db.reads[0].limit, 51);
+  assert.equal(db.reads[0].order, "listingKey");
+  assert.equal(db.reads[1].name, "testHandles");
+  assert.equal(db.reads[1].order, "handle");
+  assert.equal(db.reads[1].limit, 51);
 });
 
 test("rejects invalid limits, offsets, searches, and obsolete cursors before reading Firestore", async () => {
@@ -376,18 +379,52 @@ test("uses a validated document cursor instead of a billed offset for deep pages
   assert.equal(db.reads[0].offset, 0);
 });
 
+test("lists verified profiles in handle order when listing keys are absent", async () => {
+  const alice = handleRecord("alice", { listingKey: undefined });
+  alice.activeIdentity.metadata.picture = "https://cdn.example/alice.png";
+  const zoe = handleRecord("zoe", { listingKey: undefined });
+  zoe.activeIdentity.metadata.xPicture =
+    "https://pbs.twimg.com/profile_images/1/zoe.jpg";
+  const db = fakeDatabase({
+    "twitter:zoe": zoe,
+    "twitter:alice": alice,
+  });
+  const result = await listDirectoryProfiles(db, { limit: "10" });
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["alice", "zoe"],
+  );
+  assert.equal(result.body.total, 2);
+  assert.equal(result.body.profiles[0].picture, "https://cdn.example/alice.png");
+  assert.equal(
+    result.body.profiles[1].picture,
+    "https://pbs.twimg.com/profile_images/1/zoe.jpg",
+  );
+  assert.equal(db.reads[0].order, "listingKey");
+  assert.equal(db.reads[1].order, "handle");
+  const next = await listDirectoryProfiles(db, {
+    limit: "10",
+    cursor: "twitter:alice",
+  });
+  assert.deepEqual(
+    next.body.profiles.map((profile) => profile.handle),
+    ["zoe"],
+  );
+});
+
 test("lists curated handles before the alphabetical tail without repeating them", async () => {
   const db = fakeDatabase({
     "twitter:zoe": handleRecord("zoe"),
     "twitter:alice": handleRecord("alice"),
     "twitter:jack": handleRecord("jack"),
-    "twitter:hodlonaut": handleRecord("hodlonaut"),
+    "twitter:lopp": handleRecord("lopp"),
   });
   const first = await listDirectoryProfiles(db, { limit: "3" });
   assert.equal(first.status, 200);
   assert.deepEqual(
     first.body.profiles.map((profile) => profile.handle),
-    ["jack", "hodlonaut", "alice"],
+    ["jack", "lopp", "alice"],
   );
   assert.equal(first.body.total, 4);
   assert.equal(first.body.nextCursor, "twitter:alice");
@@ -435,18 +472,18 @@ test("resumes a deep page from the curated handle's listing key", async () => {
 
 test("search stays in handle order instead of the curated listing", async () => {
   const db = fakeDatabase({
-    "twitter:ha": handleRecord("ha"),
-    "twitter:hodlonaut": handleRecord("hodlonaut"),
+    "twitter:la": handleRecord("la"),
+    "twitter:lopp": handleRecord("lopp"),
   });
   const browse = await listDirectoryProfiles(db, { limit: "10" });
   assert.deepEqual(
     browse.body.profiles.map((profile) => profile.handle),
-    ["hodlonaut", "ha"],
+    ["lopp", "la"],
   );
-  const search = await listDirectoryProfiles(db, { search: "h", limit: "10" });
+  const search = await listDirectoryProfiles(db, { search: "l", limit: "10" });
   assert.deepEqual(
     search.body.profiles.map((profile) => profile.handle),
-    ["ha", "hodlonaut"],
+    ["la", "lopp"],
   );
   assert.equal(db.reads[1].order, "handle");
 });

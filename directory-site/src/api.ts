@@ -3,7 +3,7 @@ import type { DirectoryProfile } from "./data";
 import { httpsPictureUrl } from "./directory";
 
 export const DEFAULT_DIRECTORY_API_URL =
-  "https://us-central1-gr-prod.cloudfunctions.net/listDirectoryProfiles";
+  "https://us-central1-nostr-components.cloudfunctions.net/listDirectoryProfiles";
 export const DIRECTORY_BATCH_SIZE = 50;
 export const MAX_DIRECT_DIRECTORY_OFFSET = 10_000;
 const REQUEST_TIMEOUT_MS = 15_000;

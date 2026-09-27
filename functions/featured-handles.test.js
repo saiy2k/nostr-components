@@ -15,6 +15,17 @@ test("curated handles fill the first fifty listing slots", () => {
   }
   assert.equal(listingKeyForHandle("Jack"), "0-0000");
   assert.equal(listingKeyForHandle("@donmcallister"), "0-0049");
+  for (const handle of [
+    "criptobastardo",
+    "cameri",
+    "cyberpheus",
+    "madbitcoins",
+  ]) {
+    assert.equal(FEATURED_X_HANDLES.includes(handle), true);
+  }
+  for (const handle of ["jespow", "wongmjane", "hodlonaut", "dilutionproof"]) {
+    assert.equal(FEATURED_X_HANDLES.includes(handle), false);
+  }
   assert.equal(listingKeyForHandle("alice"), "1-twitter:alice");
   const keys = FEATURED_X_HANDLES.map((handle) => listingKeyForHandle(handle));
   assert.deepEqual(keys, [...keys].sort());
