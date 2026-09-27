@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+functions/relays.json
 lib
 !browser-extension/lib/
 !browser-extension/lib/**

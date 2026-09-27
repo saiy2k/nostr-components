@@ -65,8 +65,8 @@ ranking snapshot, and they do not supply YouTube claims. Audience fields show `â
 the misleading client-side "Most followed" sort is not shown, and the Nostr tab
 explains its empty state. A verified mark means X account
 ownership was verified by the projector; a NIP-05 address is profile metadata,
-not a separate NIP-05 verification. The claim form still creates a **local preview**;
-it does not write to Firestore, publish a claim, or verify ownership.
+not a separate NIP-05 verification. The claim dialog publishes a signed claim to
+public relays. It does not write to Firestore or show the account as verified.
 
 To make the two popularity tabs real, a separate metrics job should materialize
 bounded public fields such as `metrics.xFollowers` and
@@ -139,9 +139,8 @@ another collection. Set these in `functions/.env.local` for the emulator, or
    batches rather than applying a deep Firestore offset. Returning to a cached
    page should not fetch the collection again.
 5. Select **Popular on Nostr** and check the explanatory empty state. Return to
-   the X tab. Add a local claim preview: it should be marked **Local preview**, have
-   no verification check, and cause no write request. Refreshing the directory
-   keeps the preview; reloading the page removes it.
+   the X tab. Publishing a claim does not add a local preview row or a verified
+   mark; use the claim dialog checks below.
 6. Block the endpoint in DevTools or stop the Functions emulator, then click
    **Refresh**. Expect an error and **Retry**, with existing rows retained. A page
    reload while it is blocked should show an error rather than sample data.
@@ -176,7 +175,7 @@ before the listing function, then deploy only that function:
 firebase deploy --only firestore:indexes --project YOUR_LIVE_PROJECT_ID
 node backend/relay-directory/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
 node backend/relay-directory/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
-firebase deploy --only functions:listDirectoryProfiles --project YOUR_LIVE_PROJECT_ID
+firebase deploy --only functions:listDirectoryProfiles,functions:checkClaimProof --project YOUR_LIVE_PROJECT_ID
 ```
 
 The backfill refuses to write if any curated handle is missing or not verified.
@@ -236,14 +235,18 @@ relay-directory protocol:
 3. The user pastes the proof tweet URL. The author in the URL must match the
    claimed X handle. A `/photo` or `/video` suffix on that status URL is
    accepted.
-4. The signer signs a kind `10011` NIP-39 event. Other `i` tags already published
-   for that pubkey are kept; only the claimed X identity is replaced. The site
+4. Before signing, the site asks `checkClaimProof` to read the proof tweet.
+   The tweet author must match the handle, and the tweet text must contain the
+   connected npub. That function also returns the relay list the directory
+   crawler is using.
+5. The signer signs a kind `10011` NIP-39 event. Other `i` tags already published
+   for that pubkey are kept, up to 20 identity tags in total. The site
    snapshots the event fields before signing and rejects a signature that does
    not match that snapshot.
-5. A relay listed in `backend/relays.json` must acknowledge the event. An
+6. A relay from that crawler list must acknowledge the event. An
    acknowledgement from any other configured relay is not enough. The existing
-   backend later discovers the event and independently checks the proof tweet
-   before promoting the identity.
+   backend later discovers the event and checks the proof tweet again before
+   promoting the identity.
 
 Claim publication never writes directly to Firestore and does not show the
 account as verified before backend verification. The backend currently verifies

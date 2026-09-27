@@ -1,8 +1,5 @@
 import "./styles.css";
-import {
-  type DirectoryCategory,
-  type DirectoryProfile,
-} from "./data";
+import { type DirectoryCategory, type DirectoryProfile } from "./data";
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
@@ -26,16 +23,16 @@ import {
 import {
   claimProofComposerUrl,
   connectClaimSigner,
-  crawlerCoveredRelays,
-  createClaimEvent,
-  loadExistingClaimEvent,
-  normalizeClaimHandle,
-  parseClaimRelays,
-  publishClaimToCoveredRelays,
-  signClaimEvent,
-  validateProofUrl,
+  // parseGithubProfile,
+  // parseYoutubeChannel,
   type NostrSigner,
 } from "./claim";
+import {
+  CLAIM_COPY,
+  claimDialogAfterClose,
+  submitXClaim,
+  type ClaimStatusState,
+} from "./claim-flow";
 
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 
@@ -368,9 +365,8 @@ async function reloadProfiles(search = query): Promise<void> {
   await loadProfileBatches([0], true);
   if (loadFailed && query === nextQuery) {
     query = previousQuery;
-    const searchInput = document.querySelector<HTMLInputElement>(
-      "#directory-search",
-    );
+    const searchInput =
+      document.querySelector<HTMLInputElement>("#directory-search");
     if (searchInput && searchInput.value.trim() === nextQuery) {
       searchInput.value = previousQuery;
     }
@@ -479,7 +475,14 @@ function renderApp(): void {
             <div class="claim-step-content">
               <strong>Post proof from your X account</strong>
               <p>The proof tweet must contain the connected npub. Its author must match the handle below.</p>
-              <label>X handle<input name="handle" required maxlength="16" pattern="@?[A-Za-z0-9_]{1,15}" placeholder="@satoshi" autocomplete="off" /></label>
+              <div class="claim-account-fields">
+                <label>X handle<input name="handle" required maxlength="16" pattern="@?[A-Za-z0-9_]{1,15}" placeholder="@satoshi" autocomplete="off" /></label>
+                <p class="claim-extra-link">DM me in Nostr to link to your YouTube channel and receive zaps.</p>
+                <!--
+                <label><span>YouTube channel (optional)</span><input name="youtube" type="url" inputmode="url" placeholder="https://www.youtube.com/@satoshi" autocomplete="off" /></label>
+                <label><span>GitHub profile (optional)</span><input name="github" type="url" inputmode="url" placeholder="https://github.com/satoshi" autocomplete="off" /></label>
+                -->
+              </div>
               <a class="secondary-button claim-proof-link" id="claim-proof-link" aria-disabled="true">Open proof text on X</a>
             </div>
           </li>
@@ -661,21 +664,19 @@ function bindEvents(): void {
     }, 300);
   });
 
-  document
-    .querySelector("#profile-results")
-    ?.addEventListener(
-      "error",
-      (event) => {
-        const image = event.target;
-        if (
-          image instanceof HTMLImageElement &&
-          image.classList.contains("avatar-image")
-        ) {
-          image.remove();
-        }
-      },
-      true,
-    );
+  document.querySelector("#profile-results")?.addEventListener(
+    "error",
+    (event) => {
+      const image = event.target;
+      if (
+        image instanceof HTMLImageElement &&
+        image.classList.contains("avatar-image")
+      ) {
+        image.remove();
+      }
+    },
+    true,
+  );
 
   document
     .querySelector("#profile-results")
@@ -731,10 +732,7 @@ function bindEvents(): void {
     setClaimStatus("Waiting for your Nostr signer…", "working");
     try {
       showClaimIdentity(await connectClaimSigner(signer));
-      setClaimStatus(
-        "Signer connected. Post the proof tweet, then paste its URL below.",
-        "success",
-      );
+      setClaimStatus(CLAIM_COPY.signerConnected, "success");
     } catch (error) {
       clearClaimIdentity();
       setClaimStatus(
@@ -759,99 +757,80 @@ function bindEvents(): void {
     event.preventDefault();
     if (publishing) return;
     if (!claimForm.reportValidity()) return;
-    if (!claimIdentity) {
-      setClaimStatus("Connect your Nostr signer before publishing.", "error");
-      return;
-    }
-
-    const signer = browserSigner();
-    if (!signer) {
-      setClaimStatus(
-        "The connected Nostr signer is no longer available.",
-        "error",
-      );
-      return;
-    }
 
     const formData = new FormData(claimForm);
-    const handle = normalizeClaimHandle(String(formData.get("handle") ?? ""));
+    const handleInput = claimForm.elements.namedItem(
+      "handle",
+    ) as HTMLInputElement | null;
     const proofInput = claimForm.elements.namedItem(
       "proofUrl",
     ) as HTMLInputElement | null;
-    const proofUrl = handle
-      ? validateProofUrl(String(formData.get("proofUrl") ?? ""), handle)
-      : null;
-    if (!handle || !proofUrl) {
-      proofInput?.setCustomValidity(
-        "Use a proof tweet URL posted by the same X handle.",
+    /*
+    const youtube = parseYoutubeChannel(String(formData.get("youtube") ?? ""));
+    const github = parseGithubProfile(String(formData.get("github") ?? ""));
+    const youtubeInput = claimForm.elements.namedItem(
+      "youtube",
+    ) as HTMLInputElement | null;
+    const githubInput = claimForm.elements.namedItem(
+      "github",
+    ) as HTMLInputElement | null;
+    if (youtube.status === "invalid") {
+      youtubeInput?.setCustomValidity(
+        "Use a YouTube channel link, such as https://www.youtube.com/@name.",
       );
-      proofInput?.reportValidity();
-      proofInput?.setCustomValidity("");
-      setClaimStatus(
-        "The proof tweet URL must belong to the X handle being claimed.",
-        "error",
-      );
+      youtubeInput?.reportValidity();
+      youtubeInput?.setCustomValidity("");
+      setClaimStatus("The YouTube link must be a channel URL.", "error");
       return;
     }
-
-    publishing = true;
-    if (connectClaimButton) connectClaimButton.disabled = true;
-    if (publishClaimButton) publishClaimButton.disabled = true;
-    setClaimStatus(
-      "Waiting for signature and relay acknowledgement…",
-      "working",
+    if (github.status === "invalid") {
+      githubInput?.setCustomValidity(
+        "Use a GitHub profile link, such as https://github.com/name.",
+      );
+      githubInput?.reportValidity();
+      githubInput?.setCustomValidity("");
+      setClaimStatus("The GitHub link must be a profile URL.", "error");
+      return;
+    }
+    const profileLinks = [youtube, github].flatMap((link) =>
+      link.status === "ok" ? [link.link] : [],
     );
-    try {
-      const currentSigner = await connectClaimSigner(signer);
-      if (!claimIdentity || currentSigner.pubkey !== claimIdentity.pubkey) {
-        clearClaimIdentity();
-        setClaimStatus(
-          "The Nostr signer account changed. Connect again before publishing.",
-          "error",
-        );
-        return;
-      }
-      const relays = parseClaimRelays(
-        import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
-      );
-      const coveredRelays = crawlerCoveredRelays(relays);
-      if (coveredRelays.length === 0) {
-        throw new Error(
-          "Add a claim relay that the directory crawler reads before publishing.",
-        );
-      }
-      const existing = await loadExistingClaimEvent(
-        claimIdentity.pubkey,
-        relays,
-      );
-      const unsigned = createClaimEvent(
-        handle,
-        proofUrl,
-        new Date(),
-        existing && {
-          createdAt: existing.created_at,
-          tags: existing.tags,
-        },
-      );
-      const signed = await signClaimEvent(
-        signer,
-        claimIdentity.pubkey,
-        unsigned,
-      );
-      await publishClaimToCoveredRelays(signed, relays, coveredRelays);
-      setClaimStatus(
-        "Claim published. The directory will show it after the backend verifies the proof tweet.",
-        "success",
-      );
-      showToast("Signed X account claim published to Nostr relays.");
-    } catch (error) {
-      setClaimStatus(
-        error instanceof Error
-          ? error.message
-          : "The signed claim could not be published.",
-        "error",
-      );
-    } finally {
+    */
+
+    let started = false;
+    const result = await submitXClaim({
+      identity: claimIdentity,
+      signer: browserSigner(),
+      handle: String(formData.get("handle") ?? ""),
+      proofUrl: String(formData.get("proofUrl") ?? ""),
+      relayConfig: import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
+      directoryApiUrl,
+      getIdentity: () => claimIdentity,
+      onStart() {
+        started = true;
+        publishing = true;
+        if (connectClaimButton) connectClaimButton.disabled = true;
+        if (publishClaimButton) publishClaimButton.disabled = true;
+        setClaimStatus(CLAIM_COPY.working, "working");
+      },
+    });
+    if (
+      !result.ok &&
+      (result.reason === "invalid-proof" || result.reason === "invalid-handle")
+    ) {
+      const field = result.field === "handle" ? handleInput : proofInput;
+      field?.setCustomValidity(result.fieldMessage);
+      field?.reportValidity();
+      field?.setCustomValidity("");
+    }
+    if (!result.ok && result.reason === "signer-changed") clearClaimIdentity();
+    if (result.ok) {
+      setClaimStatus(result.message, "success");
+      showToast(result.toast);
+    } else {
+      setClaimStatus(result.message, "error");
+    }
+    if (started) {
       publishing = false;
       if (connectClaimButton) connectClaimButton.disabled = false;
       if (publishClaimButton) publishClaimButton.disabled = !claimIdentity;
@@ -863,14 +842,14 @@ function bindEvents(): void {
   });
 
   profileDialog?.addEventListener("close", () => {
-    if (publishing) return;
-    if (publishClaimButton) publishClaimButton.disabled = !claimIdentity;
-    if (claimIdentity && claimStatus?.dataset.state === "success") {
-      setClaimStatus(
-        "Signer connected. Post the proof tweet, then paste its URL below.",
-        "success",
-      );
-    }
+    const next = claimDialogAfterClose({
+      publishing,
+      hasIdentity: claimIdentity !== null,
+      status: (claimStatus?.dataset.state as ClaimStatusState) || "idle",
+    });
+    if (!next) return;
+    if (publishClaimButton) publishClaimButton.disabled = next.publishDisabled;
+    setClaimStatus(next.statusMessage, next.status);
   });
 }
 
@@ -887,7 +866,8 @@ async function copyNpub(
   try {
     window.focus();
     button.focus({ preventScroll: true });
-    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+    if (!navigator.clipboard?.writeText)
+      throw new Error("Clipboard API unavailable");
     await navigator.clipboard.writeText(npub);
     markNpubCopied(button);
   } catch {

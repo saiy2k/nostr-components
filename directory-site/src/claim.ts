@@ -20,7 +20,10 @@ const TWITTER_IDENTITY = /^(?:twitter|x|com\.twitter):([a-z0-9_]{1,15})$/i;
 const MAX_IDENTITY_TAGS = 20;
 const MAX_TAG_VALUES = 10;
 const MAX_TAG_VALUE_LENGTH = 2000;
-const IDENTITY_READ_TIMEOUT_MS = 8_000;
+export const IDENTITY_READ_TIMEOUT_MS = 8_000;
+// nostr-tools treats maxWait as EOSE. That must not beat the outer deadline,
+// or a silent relay looks like a finished identity read.
+const IDENTITY_READ_MAX_WAIT_MS = IDENTITY_READ_TIMEOUT_MS + 60_000;
 const IDENTITY_FUTURE_SKEW_SECONDS = 120;
 const RESERVED_X_HANDLES = new Set([
   "compose",
@@ -65,10 +68,27 @@ export interface ExistingClaimIdentity {
   tags?: ReadonlyArray<readonly string[]>;
 }
 
-export function normalizeClaimHandle(value: string): string | null {
+export interface ProfileIdentityLink {
+  platform: "github" | "youtube";
+  name: string;
+  url: string;
+}
+
+type ParsedProfileLink =
+  | { status: "empty" }
+  | { status: "invalid" }
+  | { status: "ok"; link: ProfileIdentityLink };
+
+export function claimHandleIssue(value: string): "reserved" | "invalid" | null {
   const handle = value.trim().replace(/^@/, "").toLowerCase();
-  return HANDLE_PATTERN.test(handle) && !RESERVED_X_HANDLES.has(handle)
-    ? handle
+  if (!HANDLE_PATTERN.test(handle)) return "invalid";
+  if (RESERVED_X_HANDLES.has(handle)) return "reserved";
+  return null;
+}
+
+export function normalizeClaimHandle(value: string): string | null {
+  return claimHandleIssue(value) === null
+    ? value.trim().replace(/^@/, "").toLowerCase()
     : null;
 }
 
@@ -124,7 +144,19 @@ const CRAWLER_RELAYS = new Set(
 );
 
 export function crawlerCoveredRelays(relays: readonly string[]): string[] {
-  return relays.filter((relay) => CRAWLER_RELAYS.has(relay));
+  return relaysCoveredBy(relays, CRAWLER_RELAYS);
+}
+
+export function relaysCoveredBy(
+  relays: readonly string[],
+  covered: Iterable<string>,
+): string[] {
+  const allowed = new Set<string>();
+  for (const relay of covered) {
+    const normalized = canonicalRelayUrl(relay);
+    if (normalized) allowed.add(normalized);
+  }
+  return relays.filter((relay) => allowed.has(relay));
 }
 
 export function parseClaimRelays(value?: string): string[] {
@@ -156,17 +188,88 @@ export function claimProofComposerUrl(npub: string): string {
   return url.toString();
 }
 
+export function parseGithubProfile(value: string): ParsedProfileLink {
+  return parseProfileLink(value, "github", (url) => {
+    if (
+      !["github.com", "www.github.com"].includes(url.hostname.toLowerCase())
+    ) {
+      return null;
+    }
+    const [login, extra] = url.pathname.split("/").filter(Boolean);
+    if (!login || extra) return null;
+    if (!/^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/i.test(login)) return null;
+    const name = login.toLowerCase();
+    return { platform: "github", name, url: `https://github.com/${name}` };
+  });
+}
+
+export function parseYoutubeChannel(value: string): ParsedProfileLink {
+  return parseProfileLink(value, "youtube", (url) => {
+    if (
+      !["youtube.com", "www.youtube.com", "m.youtube.com"].includes(
+        url.hostname.toLowerCase(),
+      )
+    ) {
+      return null;
+    }
+    const parts = url.pathname.split("/").filter(Boolean);
+    const handle = parts[0]?.startsWith("@") ? parts[0].slice(1) : "";
+    if (handle && parts.length === 1 && /^[a-z0-9._-]{3,30}$/i.test(handle)) {
+      const name = handle.toLowerCase();
+      return {
+        platform: "youtube",
+        name,
+        url: `https://www.youtube.com/@${name}`,
+      };
+    }
+    if (
+      parts.length === 2 &&
+      parts[0] === "channel" &&
+      /^UC[a-zA-Z0-9_-]{22}$/.test(parts[1])
+    ) {
+      return {
+        platform: "youtube",
+        name: parts[1],
+        url: `https://www.youtube.com/channel/${parts[1]}`,
+      };
+    }
+    return null;
+  });
+}
+
+function parseProfileLink(
+  value: string,
+  platform: ProfileIdentityLink["platform"],
+  read: (url: URL) => ProfileIdentityLink | null,
+): ParsedProfileLink {
+  const trimmed = value.trim();
+  if (!trimmed) return { status: "empty" };
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return { status: "invalid" };
+  }
+  if (url.protocol !== "https:" || url.username || url.password || url.port) {
+    return { status: "invalid" };
+  }
+  const link = read(url);
+  if (!link || link.platform !== platform) return { status: "invalid" };
+  return { status: "ok", link };
+}
+
 export function createClaimEvent(
   handle: string,
   proofUrl: string,
   now: Date = new Date(),
   existing?: ExistingClaimIdentity | null,
+  links: readonly ProfileIdentityLink[] = [],
 ): EventTemplate {
   return {
     kind: 10011,
     created_at: claimEventCreatedAt(now, existing?.createdAt),
     content: "",
-    tags: identityTagsForClaim(handle, proofUrl, existing?.tags),
+    tags: identityTagsForClaim(handle, proofUrl, existing?.tags, links),
   };
 }
 
@@ -187,7 +290,9 @@ function identityTagsForClaim(
   handle: string,
   proofUrl: string,
   existingTags: ReadonlyArray<readonly string[]> = [],
+  links: readonly ProfileIdentityLink[] = [],
 ): string[][] {
+  const replacedPlatforms = new Set(links.map((link) => link.platform));
   const kept: string[][] = [];
   for (const tag of existingTags) {
     if (tag[0] !== "i") continue;
@@ -205,14 +310,22 @@ function identityTagsForClaim(
     }
     const match = TWITTER_IDENTITY.exec(tag[1]);
     if (match && match[1].toLowerCase() === handle) continue;
+    const platform = tag[1].slice(0, tag[1].indexOf(":")).toLowerCase();
+    if (replacedPlatforms.has(platform as ProfileIdentityLink["platform"])) {
+      continue;
+    }
     kept.push([...tag]);
   }
-  if (kept.length > MAX_IDENTITY_TAGS) {
+  if (kept.length + 1 + links.length > MAX_IDENTITY_TAGS) {
     throw new Error(
       "The existing Nostr identity has too many linked accounts to update safely.",
     );
   }
-  return [...kept, ["i", `twitter:${handle}`, proofUrl]];
+  return [
+    ...kept,
+    ["i", `twitter:${handle}`, proofUrl],
+    ...links.map((link) => ["i", `${link.platform}:${link.name}`, link.url]),
+  ];
 }
 
 export async function loadExistingClaimEvent(
@@ -220,6 +333,7 @@ export async function loadExistingClaimEvent(
   relays: string[],
   pool: ClaimReadPool = new SimplePool(),
 ): Promise<Event | null> {
+  const author = pubkey.toLowerCase();
   const events: Event[] = [];
   let settled = false;
   let subscription: { close(): void | Promise<void> } | undefined;
@@ -238,7 +352,7 @@ export async function loadExistingClaimEvent(
       }, IDENTITY_READ_TIMEOUT_MS);
       subscription = pool.subscribe(
         relays,
-        { kinds: [10011], authors: [pubkey], limit: 1 },
+        { kinds: [10011], authors: [author], limit: 1 },
         {
           onevent(event) {
             events.push(event);
@@ -256,7 +370,7 @@ export async function loadExistingClaimEvent(
             if (!complete) finish(new Error("unavailable"));
             else finish();
           },
-          maxWait: 5_000,
+          maxWait: IDENTITY_READ_MAX_WAIT_MS,
         },
       );
     });
@@ -269,7 +383,7 @@ export async function loadExistingClaimEvent(
   }
 
   const authored = events.filter(
-    (event) => event.kind === 10011 && event.pubkey?.toLowerCase() === pubkey,
+    (event) => event.kind === 10011 && event.pubkey?.toLowerCase() === author,
   );
   const verified = authored.filter((event) => verifyEvent(event));
   if (authored.length > 0 && verified.length === 0) {
@@ -321,13 +435,13 @@ export async function publishClaimEvent(
   pool: ClaimPool = new SimplePool(),
   requiredRelays: readonly string[] = relays,
 ): Promise<void> {
-  if (
-    requiredRelays.length === 0 ||
-    requiredRelays.some((relay) => !relays.includes(relay))
-  ) {
-    throw new Error("No crawler-covered claim relay is configured.");
-  }
   try {
+    if (
+      requiredRelays.length === 0 ||
+      requiredRelays.some((relay) => !relays.includes(relay))
+    ) {
+      throw new Error("No crawler-covered claim relay is configured.");
+    }
     const publishes = pool.publish(relays, event);
     if (publishes.length === 0) {
       throw new Error("No claim relay is available.");
