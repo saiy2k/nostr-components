@@ -152,13 +152,6 @@ export async function fetchDirectoryPage(
     if (page.offset !== offset) {
       throw new Error("The directory returned the wrong page.");
     }
-    if (
-      request.cursor &&
-      page.nextCursor &&
-      page.nextCursor <= request.cursor
-    ) {
-      throw new Error("The directory returned an invalid page cursor.");
-    }
     return page;
   } catch (error) {
     if (controller.signal.aborted) {
@@ -205,7 +198,12 @@ export async function fetchDirectoryPageAtOffset(
   let anchorOffset = -1;
   let cursor: string | null = null;
   for (const [offset, nextCursor] of cursors) {
-    if (offset < targetOffset && nextCursor && offset > anchorOffset) {
+    if (
+      offset >= MAX_DIRECT_DIRECTORY_OFFSET &&
+      offset < targetOffset &&
+      nextCursor &&
+      offset > anchorOffset
+    ) {
       anchorOffset = offset;
       cursor = nextCursor;
     }

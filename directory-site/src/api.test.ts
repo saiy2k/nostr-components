@@ -214,6 +214,63 @@ describe("directory API", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("accepts a later page whose document id sorts before the cursor", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        '{"profiles":[],"total":100,"offset":50,"nextCursor":"twitter:alice"}',
+      ),
+    );
+    await expect(
+      fetchDirectoryPage(
+        endpoint,
+        { offset: 50, cursor: "twitter:donmcallister" },
+        fetcher,
+      ),
+    ).resolves.toMatchObject({ nextCursor: "twitter:alice" });
+  });
+
+  it("starts deep pages at the direct offset boundary when only early cursors are cached", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      const offset = Number(url.searchParams.get("offset"));
+      const cursor = url.searchParams.get("cursor");
+      if (offset === 10_000 && cursor === null) {
+        return new Response(
+          '{"profiles":[],"total":10101,"offset":10000,"nextCursor":"twitter:alice"}',
+        );
+      }
+      if (cursor === "twitter:donmcallister") {
+        return new Response(
+          '{"profiles":[],"total":10101,"offset":50,"nextCursor":"twitter:aaa"}',
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          profiles: [],
+          total: 10_101,
+          offset,
+          nextCursor: null,
+        }),
+      );
+    });
+
+    await fetchDirectoryPageAtOffset(
+      endpoint,
+      {
+        offset: 10_050,
+        cachedCursors: new Map([[0, "twitter:donmcallister"]]),
+      },
+      () => {},
+      fetcher,
+    );
+
+    const offsets = fetcher.mock.calls.map(([input]) =>
+      Number(new URL(String(input)).searchParams.get("offset")),
+    );
+    expect(offsets[0]).toBe(10_000);
+    expect(offsets).not.toContain(50);
+  });
+
   it("uses keyset cursors to reach batches beyond the direct offset window", async () => {
     const finalProfile = {
       ...profile,
