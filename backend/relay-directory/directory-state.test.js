@@ -594,6 +594,37 @@ describe("kind-0 metadata for NIP-39 identities", () => {
     expect(plan).toEqual({ changed: false, reason: "unchanged" });
   });
 
+  it("updates a stale claim when the active identity already has the kind-0 fields", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          metadata: {
+            picture: "https://cdn.example/existing.png",
+            pubkey: PUBKEY_A,
+            name: "Alice",
+            nip05: "alice@example.com",
+          },
+        },
+        claims: [
+          {
+            claimId: "proof",
+            metadata: { picture: "https://cdn.example/existing.png" },
+          },
+        ],
+      },
+      { name: "Alice", nip05: "alice@example.com" },
+      PUBKEY_A,
+    );
+
+    expect(plan.reason).toBe("updated");
+    expect(plan.claims[0].metadata).toMatchObject({
+      picture: "https://cdn.example/existing.png",
+      name: "Alice",
+      nip05: "alice@example.com",
+    });
+  });
+
   it("skips identities that were not verified from a kind-10011 proof", () => {
     expect(
       planKind0Metadata(

@@ -439,7 +439,16 @@ export function planKind0Metadata(doc, content, pubkey) {
   const incoming = kind0ProfileMetadata(active.pubkey, content);
   if (!incoming) return { changed: false, reason: "no-profile-fields" };
   const metadata = mergeProfileMetadata(active.metadata, incoming);
-  if (metadata === active.metadata) {
+  const matchingClaim = Array.isArray(doc.claims)
+    ? doc.claims.find((claim) => claim?.claimId === active.claimId)
+    : null;
+  const claimMetadata = matchingClaim
+    ? mergeProfileMetadata(matchingClaim.metadata, incoming)
+    : undefined;
+  if (
+    metadata === active.metadata &&
+    claimMetadata === matchingClaim?.metadata
+  ) {
     return { changed: false, reason: "unchanged" };
   }
   return {

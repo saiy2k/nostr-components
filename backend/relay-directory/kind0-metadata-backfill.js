@@ -11,8 +11,6 @@ import {
 } from "./runtime.js";
 import { fetchKind0s, metadataFromKind0 } from "./kind0.js";
 
-const BATCH_LIMIT = 400;
-
 function parseArgs(argv) {
   const options = {
     write: false,
@@ -126,28 +124,30 @@ async function main() {
       planned.push({ row, plan });
     }
     if (options.write) {
-      let batch = db.batch();
-      let pending = 0;
-      for (const { row, plan } of planned) {
-        batch.set(
-          db.collection(options.collection).doc(row.id),
-          stripUndefined({
-            activeIdentity: plan.activeIdentity,
-            claims: plan.claims,
-            updatedAt: FieldValue.serverTimestamp(),
-          }),
-          { merge: true },
-        );
-        pending += 1;
-        stats.wrote += 1;
-        if (pending === BATCH_LIMIT) {
-          await batch.commit();
-          batch = db.batch();
-          pending = 0;
-          console.log(`wrote ${stats.wrote}`);
-        }
+      for (const { row } of planned) {
+        const wrote = await db.runTransaction(async (transaction) => {
+          const ref = db.collection(options.collection).doc(row.id);
+          const snapshot = await transaction.get(ref);
+          if (!snapshot.exists) return false;
+          const data = snapshot.data() || {};
+          const pubkey = String(
+            data.activeIdentity?.pubkey || "",
+          ).toLowerCase();
+          const current = planForProfile(data, profiles.get(pubkey));
+          if (!current.changed) return false;
+          transaction.set(
+            ref,
+            stripUndefined({
+              activeIdentity: current.activeIdentity,
+              claims: current.claims,
+              updatedAt: FieldValue.serverTimestamp(),
+            }),
+            { merge: true },
+          );
+          return true;
+        });
+        if (wrote) stats.wrote += 1;
       }
-      if (pending) await batch.commit();
     }
     console.log(
       JSON.stringify(
