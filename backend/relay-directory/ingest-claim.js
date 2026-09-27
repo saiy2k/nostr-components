@@ -116,11 +116,25 @@ function statusForClaim(data, claimId) {
   return "pending";
 }
 
+function claimRetryIsStillPending(claim, nowMs) {
+  if (!claim || claim.status !== "pending" || claim.retryAt == null) {
+    return false;
+  }
+  const retryAtMs = Date.parse(claim.retryAt);
+  return Number.isFinite(retryAtMs) && retryAtMs > nowMs;
+}
+
 async function projectHandle(db, handle, claimId, collection, config) {
   const id = directoryHandleId(handle);
   const ref = db.collection(collection).doc(id);
   const snapshot = await ref.get();
   if (!snapshot.exists) return "pending";
+  const data = snapshot.data() || {};
+  const nowMs = config.now instanceof Date ? config.now.getTime() : Date.now();
+  const current = (data.claims || []).find((item) => item?.claimId === claimId);
+  if (claimRetryIsStillPending(current, nowMs)) {
+    return statusForClaim(data, claimId);
+  }
   const verify = config.verifyHandleClaims || verifyHandleClaims;
   const args = projectionArgs(config, collection);
   const verification = await verify(snapshot.data() || {}, args, {

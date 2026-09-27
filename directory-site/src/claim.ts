@@ -366,11 +366,17 @@ export async function loadExistingClaimEvent(
             const list = (Array.isArray(reasons) ? reasons : [reasons]).map(
               (reason) => String(reason),
             );
-            const complete =
-              list.length === relays.length &&
-              list.some((reason) => reason === "closed by caller");
-            if (!complete) finish(new Error("unavailable"));
-            else finish();
+            const closedByCaller = list.filter(
+              (reason) => reason === "closed by caller",
+            ).length;
+            const heardFromAll = list.length === relays.length;
+            const fullRead = heardFromAll && closedByCaller === list.length;
+            // A relay that never connects can still leave one successful empty
+            // read. An identity event from a partial read is not safe to replace.
+            const emptyDespiteFailures =
+              heardFromAll && closedByCaller > 0 && events.length === 0;
+            if (fullRead || emptyDespiteFailures) finish();
+            else finish(new Error("unavailable"));
           },
           maxWait: IDENTITY_READ_MAX_WAIT_MS,
         },

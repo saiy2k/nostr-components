@@ -171,6 +171,38 @@ describe("ingestPublishedClaim", () => {
     expect(seen).toEqual(["alice"]);
   });
 
+  it("does not verify again while the claim retry time is still in the future", async () => {
+    const event = signedClaim();
+    const db = fakeFirestore();
+    let checks = 0;
+    const config = {
+      relays: [RELAY],
+      verifyHandleClaims: async (handleData) => {
+        checks += 1;
+        const claim = handleData.claims[0];
+        return {
+          results: [
+            {
+              claimId: claim.claimId,
+              identityStatus: "retry_later",
+              retryReason: "temporary_verification_failure",
+            },
+          ],
+          proofTweetsAttempted: 1,
+          attemptedClaimIds: [claim.claimId],
+          deferReason: "temporary_verification_failure",
+        };
+      },
+    };
+    await expect(
+      ingestPublishedClaim(db, { event, relay: RELAY, handle: "alice" }, config),
+    ).resolves.toMatchObject({ ok: true, handle: "alice", status: "pending" });
+    await expect(
+      ingestPublishedClaim(db, { event, relay: RELAY, handle: "alice" }, config),
+    ).resolves.toMatchObject({ ok: true, handle: "alice", status: "pending" });
+    expect(checks).toBe(1);
+  });
+
   it("rejects a claimed handle that is not on the event", async () => {
     const db = fakeFirestore();
     await expect(
