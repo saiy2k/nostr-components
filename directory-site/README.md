@@ -65,8 +65,9 @@ ranking snapshot, and they do not supply YouTube claims. Audience fields show `â
 the misleading client-side "Most followed" sort is not shown, and the Nostr tab
 explains its empty state. A verified mark means X account
 ownership was verified by the projector; a NIP-05 address is profile metadata,
-not a separate NIP-05 verification. The claim dialog publishes a signed claim to
-public relays. It does not write to Firestore or show the account as verified.
+not a separate NIP-05 verification. The claim dialog does not write to
+Firestore itself. After a relay acknowledges the signed claim, `ingestClaim`
+can verify that handle and project it immediately.
 
 To make the two popularity tabs real, a separate metrics job should materialize
 bounded public fields such as `metrics.xFollowers` and
@@ -178,6 +179,10 @@ node backend/relay-directory/listing-key-backfill.js --write --project YOUR_LIVE
 firebase deploy --only functions:listDirectoryProfiles,functions:checkClaimProof,functions:ingestClaim --project YOUR_LIVE_PROJECT_ID
 ```
 
+`ingestClaim` runs as `relay-directory-crawler@YOUR_LIVE_PROJECT_ID.iam.gserviceaccount.com`.
+That account is chosen from the Firebase project at deploy time. It needs
+permission to write `nostrDirectoryHandles` in that project.
+
 The backfill refuses to write if any curated handle is missing or not verified.
 Run it from the repository root with Application Default Credentials that can
 read and update `nostrDirectoryHandles`.
@@ -276,6 +281,7 @@ independently.
 3. Confirm a proof URL from a different handle is rejected before signing.
 4. Paste a proof tweet URL from the matching handle, approve the kind `10011`
    event in the signer, and confirm at least one configured relay acknowledges it.
-5. Run the directory crawler/backfill and confirm its independent proof check
-   promotes the claim before the account appears as verified. A relay
-   acknowledgement alone must never add a verified row.
+5. After the relay acknowledges the event, `ingestClaim` verifies that handle.
+   A verified result can show the account without waiting for the daily crawler.
+   A relay acknowledgement alone must never add a verified row. The crawler
+   remains the retry path when that call does not finish.

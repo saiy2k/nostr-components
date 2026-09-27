@@ -15,6 +15,7 @@ import {
   buildHandleProjectionWrites,
 } from "./projection-state.js";
 import { commitFirestoreWrites, DEFAULT_COLLECTIONS } from "./runtime.js";
+import { normalizeTwitterHandle } from "./utils.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -203,7 +204,13 @@ export async function ingestPublishedClaim(db, input = {}, config = {}) {
     await commitFirestoreWrites(db, planned.writes);
   }
 
-  const primary = claims[0];
+  const requested = normalizeTwitterHandle(input.handle);
+  const primary = requested
+    ? claims.find((claim) => claim.handle === requested)
+    : claims.length === 1
+      ? claims[0]
+      : null;
+  if (!primary) return { ok: false, error: "no-claim" };
   let status = "pending";
   try {
     status = await projectHandle(

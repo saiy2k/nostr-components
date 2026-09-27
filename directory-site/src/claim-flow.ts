@@ -163,6 +163,7 @@ export async function fetchIngestClaim(input: {
   directoryApiUrl: string;
   event: Event;
   relay: string;
+  handle: string;
   fetchImpl?: typeof fetch;
 }): Promise<
   | { ok: true; handle: string; status: ClaimIngestStatus }
@@ -182,7 +183,11 @@ export async function fetchIngestClaim(input: {
     const response = await fetchImpl(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ event: input.event, relay: input.relay }),
+      body: JSON.stringify({
+        event: input.event,
+        relay: input.relay,
+        handle: input.handle,
+      }),
       signal: AbortSignal.timeout(20_000),
     });
     const body = (await response.json().catch(() => null)) as {
@@ -234,6 +239,7 @@ export async function submitXClaim(input: {
   ingestClaim?: (args: {
     event: Event;
     relay: string;
+    handle: string;
   }) => Promise<
     | { ok: true; handle: string; status: ClaimIngestStatus }
     | { ok: false; message: string }
@@ -326,11 +332,12 @@ export async function submitXClaim(input: {
     const publish = input.publish ?? publishClaimToCoveredRelays;
     const relay = await publish(signed, relays, coveredRelays);
     const ingested = input.ingestClaim
-      ? await input.ingestClaim({ event: signed, relay })
+      ? await input.ingestClaim({ event: signed, relay, handle })
       : await fetchIngestClaim({
           directoryApiUrl: input.directoryApiUrl ?? DEFAULT_DIRECTORY_API_URL,
           event: signed,
           relay,
+          handle,
         });
     const ingestStatus = ingested.ok ? ingested.status : "pending";
     return {

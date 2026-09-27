@@ -45,6 +45,9 @@ export const lookupDirectoryHandle = onRequest(
   handleDirectoryLookup,
 );
 
+const ingestProjectId =
+  process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
+
 export const ingestClaim = onRequest(
   {
     region: "us-central1",
@@ -52,8 +55,11 @@ export const ingestClaim = onRequest(
     invoker: "public",
     maxInstances: 5,
     timeoutSeconds: 60,
-    serviceAccount:
-      "relay-directory-crawler@nostr-components.iam.gserviceaccount.com",
+    ...(ingestProjectId
+      ? {
+          serviceAccount: `relay-directory-crawler@${ingestProjectId}.iam.gserviceaccount.com`,
+        }
+      : {}),
   },
   createIngestClaimHandler({ createDb: defaultIngestDb }),
 );

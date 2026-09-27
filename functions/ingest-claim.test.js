@@ -46,7 +46,11 @@ test("ingests the posted event and does not cache the result", async () => {
     {
       method: "POST",
       rawBody: Buffer.from("{}"),
-      body: { event: { kind: 10011 }, relay: "wss://relay.damus.io/" },
+      body: {
+        event: { kind: 10011 },
+        relay: "wss://relay.damus.io/",
+        handle: "alice",
+      },
     },
     response,
   );
@@ -59,6 +63,7 @@ test("ingests the posted event and does not cache the result", async () => {
   });
   assert.equal(seen[0].db.id, "db");
   assert.equal(seen[0].input.relay, "wss://relay.damus.io/");
+  assert.equal(seen[0].input.handle, "alice");
 });
 
 test("rejects an oversized ingest body", async () => {

@@ -100,7 +100,7 @@ describe("ingestPublishedClaim", () => {
     const seen = [];
     const result = await ingestPublishedClaim(
       db,
-      { event, relay: "wss://relay.damus.io/" },
+      { event, relay: "wss://relay.damus.io/", handle: "@Alice" },
       {
         relays: ["wss://relay.damus.io"],
         verifyHandleClaims: async (handleData) => {
@@ -132,6 +132,54 @@ describe("ingestPublishedClaim", () => {
     expect(stored.data().handle).toBe("alice");
     expect(stored.data().activeIdentity.status).toBe("verified");
     expect(stored.data().activeIdentity.claimId).toBe(event.id);
+  });
+
+  it("projects the claimed handle when the event also links another account", async () => {
+    const event = signedClaim([
+      ["i", "twitter:bob", "https://x.com/bob/status/1234567890123"],
+      ["i", "twitter:alice", PROOF],
+    ]);
+    const db = fakeFirestore();
+    const seen = [];
+    const result = await ingestPublishedClaim(
+      db,
+      { event, relay: RELAY, handle: "alice" },
+      {
+        relays: [RELAY],
+        verifyHandleClaims: async (handleData) => {
+          seen.push(handleData.handle);
+          const claim = handleData.claims.find(
+            (item) => item.handle === "alice",
+          );
+          return {
+            results: [
+              {
+                claimId: claim.claimId,
+                identityStatus: "verified",
+                verificationMethod: "nip39_proof_tweet",
+              },
+            ],
+            proofTweetsAttempted: 1,
+            attemptedClaimIds: [claim.claimId],
+            deferReason: null,
+          };
+        },
+      },
+    );
+
+    expect(result).toEqual({ ok: true, handle: "alice", status: "verified" });
+    expect(seen).toEqual(["alice"]);
+  });
+
+  it("rejects a claimed handle that is not on the event", async () => {
+    const db = fakeFirestore();
+    await expect(
+      ingestPublishedClaim(
+        db,
+        { event: signedClaim(), relay: RELAY, handle: "carol" },
+        { relays: [RELAY] },
+      ),
+    ).resolves.toEqual({ ok: false, error: "no-claim" });
   });
 
   it("rejects a relay the crawler does not read", async () => {

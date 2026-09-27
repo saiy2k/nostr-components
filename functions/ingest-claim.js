@@ -35,7 +35,7 @@ export function createIngestClaimHandler(options = {}) {
       const db = options.db || (await options.createDb());
       const result = await ingest(
         db,
-        { event: body.event, relay: body.relay },
+        { event: body.event, relay: body.relay, handle: body.handle },
         options.config,
       );
       response.set("Cache-Control", "no-store");
@@ -49,9 +49,18 @@ export function createIngestClaimHandler(options = {}) {
   };
 }
 
+let ingestDbPromise;
 export async function defaultIngestDb() {
-  const { createFirestore, firestoreConfigFromEnv } = await loadRuntime();
-  return createFirestore(firestoreConfigFromEnv());
+  ingestDbPromise ??= loadRuntime().then(
+    ({ createFirestore, firestoreConfigFromEnv }) =>
+      createFirestore(firestoreConfigFromEnv()),
+  );
+  try {
+    return await ingestDbPromise;
+  } catch (error) {
+    ingestDbPromise = undefined;
+    throw error;
+  }
 }
 
 async function loadRuntime() {
