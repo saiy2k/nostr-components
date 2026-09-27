@@ -50,8 +50,14 @@ gcloud services enable \
   cloudscheduler.googleapis.com
 
 if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" >/dev/null 2>&1; then
-  gcloud iam service-accounts create relay-directory-crawler \
-    --display-name="Relay Directory Crawler"
+  SERVICE_ACCOUNT_ID="${SERVICE_ACCOUNT%%@*}"
+  SERVICE_ACCOUNT_DOMAIN="${SERVICE_ACCOUNT#*@}"
+  if [ "${SERVICE_ACCOUNT_DOMAIN}" != "${PROJECT_ID}.iam.gserviceaccount.com" ]; then
+    echo "SERVICE_ACCOUNT ${SERVICE_ACCOUNT} does not exist and is not in ${PROJECT_ID}." >&2
+    exit 1
+  fi
+  gcloud iam service-accounts create "${SERVICE_ACCOUNT_ID}" \
+    --display-name="Relay Directory Crawler (${SERVICE_ACCOUNT_ID})"
 fi
 
 if [ "${CREATE_SCHEDULER}" = "true" ]; then

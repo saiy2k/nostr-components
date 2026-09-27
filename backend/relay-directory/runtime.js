@@ -31,7 +31,11 @@ export function parseRelaysJson(data) {
     let entry;
     if (typeof item === "string") {
       entry = { rank: index + 1, url: item.trim() };
-    } else if (item && typeof item === "object" && typeof item.url === "string") {
+    } else if (
+      item &&
+      typeof item === "object" &&
+      typeof item.url === "string"
+    ) {
       const rank = Number.isFinite(item.rank) ? item.rank : index + 1;
       entry = { rank, url: item.url.trim() };
     } else {
@@ -100,12 +104,16 @@ export function loadRelaysFromFile(filePath = DEFAULT_RELAYS_FILE) {
 export const DEFAULT_COLLECTIONS = {
   handles: "nostrDirectoryHandles",
   projectionRuns: "relayProjectionRuns",
+  liveRuns: "relayLiveListenerRuns",
+  events: "nostrIdentityEvents",
+  queue: "nostrProjectionQueue",
   state: "relayCrawlerState",
   gaps: "relayCrawlerGaps",
   handleWriteFailures: "nostrDirectoryHandleWriteFailures",
 };
 
 const BATCH_WRITE_LIMIT = 450;
+const CREATE_IF_MISSING_CONCURRENCY = 20;
 
 export function firestoreConfigFromEnv(env = process.env) {
   return {
@@ -120,6 +128,12 @@ export function firestoreConfigFromEnv(env = process.env) {
     firestoreProjectionRunsCollection:
       env.FIRESTORE_PROJECTION_RUNS_COLLECTION ||
       DEFAULT_COLLECTIONS.projectionRuns,
+    firestoreLiveRunsCollection:
+      env.FIRESTORE_LIVE_RUNS_COLLECTION || DEFAULT_COLLECTIONS.liveRuns,
+    firestoreEventsCollection:
+      env.FIRESTORE_EVENTS_COLLECTION || DEFAULT_COLLECTIONS.events,
+    firestoreQueueCollection:
+      env.FIRESTORE_QUEUE_COLLECTION || DEFAULT_COLLECTIONS.queue,
     firestoreStateCollection:
       env.FIRESTORE_STATE_COLLECTION || DEFAULT_COLLECTIONS.state,
     firestoreGapsCollection:
@@ -128,6 +142,14 @@ export function firestoreConfigFromEnv(env = process.env) {
       env.FIRESTORE_HANDLE_WRITE_FAILURES_COLLECTION ||
       DEFAULT_COLLECTIONS.handleWriteFailures,
   };
+}
+
+export function takeOptionValue(argv, index, flagName) {
+  const value = argv[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    throw new Error(`${flagName} requires a value.`);
+  }
+  return { value, nextIndex: index + 1 };
 }
 
 export async function createFirestore(args, FirestoreCtor = Firestore) {
@@ -160,14 +182,54 @@ export async function terminateFirestore(db, { timeoutMs = 5000 } = {}) {
 }
 
 export async function commitFirestoreWrites(db, writes) {
-  for (let i = 0; i < writes.length; i += BATCH_WRITE_LIMIT) {
+  const normalWrites = [];
+  const createIfMissingWrites = [];
+
+  for (const write of writes) {
+    if (write.operation === "createIfMissing") {
+      createIfMissingWrites.push(write);
+    } else {
+      normalWrites.push(write);
+    }
+  }
+
+  // Commit source/state documents before making create-only queue documents
+  // visible. Consumers can never observe a queue item whose source event has
+  // not been durably written yet.
+  for (let i = 0; i < normalWrites.length; i += BATCH_WRITE_LIMIT) {
     const batch = db.batch();
-    for (const write of writes.slice(i, i + BATCH_WRITE_LIMIT)) {
+    for (const write of normalWrites.slice(i, i + BATCH_WRITE_LIMIT)) {
       batch.set(db.collection(write.collection).doc(write.id), write.data, {
         merge: true,
       });
     }
     await batch.commit();
+  }
+
+  for (
+    let i = 0;
+    i < createIfMissingWrites.length;
+    i += CREATE_IF_MISSING_CONCURRENCY
+  ) {
+    await Promise.all(
+      createIfMissingWrites
+        .slice(i, i + CREATE_IF_MISSING_CONCURRENCY)
+        .map((write) => createFirestoreDocIfMissing(db, write)),
+    );
+  }
+}
+
+async function createFirestoreDocIfMissing(db, write) {
+  try {
+    await db.collection(write.collection).doc(write.id).create(write.data);
+  } catch (error) {
+    if (
+      error?.code === 6 ||
+      /already exists/i.test(String(error?.message || ""))
+    ) {
+      return;
+    }
+    throw error;
   }
 }
 
@@ -369,4 +431,12 @@ export function runMain(moduleUrl, main) {
       // NDK/Firestore can leave open handles; Cloud Run batch jobs must exit.
       process.exit(process.exitCode ?? 0);
     });
+}
+
+export function runCli(moduleUrl, parseArgs, runner) {
+  if (!isMainModule(moduleUrl)) return;
+  runner(parseArgs(process.argv.slice(2))).catch((error) => {
+    console.error(error.stack || error.message || error);
+    process.exitCode = 1;
+  });
 }

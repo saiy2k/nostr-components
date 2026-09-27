@@ -2,7 +2,11 @@
 
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { firestoreTimestampToMs, runMain } from "./runtime.js";
+import {
+  commitFirestoreWrites,
+  firestoreTimestampToMs,
+  runMain,
+} from "./runtime.js";
 
 const ORIGINAL_ARGV = [...process.argv];
 
@@ -42,4 +46,54 @@ describe("firestoreTimestampToMs", () => {
       expect(firestoreTimestampToMs(value)).toBeNull();
     },
   );
+});
+
+describe("commitFirestoreWrites", () => {
+  it("commits normal documents before exposing create-only queue documents", async () => {
+    const calls = [];
+    const db = {
+      batch() {
+        return {
+          set(ref) {
+            calls.push(`set:${ref.path}`);
+          },
+          async commit() {
+            calls.push("commit");
+          },
+        };
+      },
+      collection(collection) {
+        return {
+          doc(id) {
+            return {
+              path: `${collection}/${id}`,
+              async create() {
+                calls.push(`create:${collection}/${id}`);
+              },
+            };
+          },
+        };
+      },
+    };
+
+    await commitFirestoreWrites(db, [
+      {
+        operation: "createIfMissing",
+        collection: "queue",
+        id: "event-1",
+        data: { status: "pending" },
+      },
+      {
+        collection: "events",
+        id: "event-1",
+        data: { id: "event-1" },
+      },
+    ]);
+
+    expect(calls).toEqual([
+      "set:events/event-1",
+      "commit",
+      "create:queue/event-1",
+    ]);
+  });
 });
