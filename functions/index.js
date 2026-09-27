@@ -4,6 +4,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { lookupDirectoryHandle as lookupDirectoryRecord } from './lookup.js';
+import { createDirectoryListHandler } from './directory.js';
 
 initializeApp();
 const db = getFirestore();
@@ -40,4 +41,21 @@ export const lookupDirectoryHandle = onRequest(
     timeoutSeconds: 10
   },
   handleDirectoryLookup
+);
+
+export const listDirectoryProfiles = onRequest(
+  {
+    region: 'us-central1',
+    cors: true,
+    invoker: 'public',
+    maxInstances: 10,
+    timeoutSeconds: 10
+  },
+  createDirectoryListHandler(
+    getFirestore(process.env.FIRESTORE_DATABASE || '(default)'),
+    {
+      collection:
+        process.env.FIRESTORE_HANDLES_COLLECTION || 'nostrDirectoryHandles'
+    }
+  )
 );

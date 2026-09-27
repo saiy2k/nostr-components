@@ -1,0 +1,61 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "nostrDirectoryHandles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pendingClaimCount",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nextAttemptAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "nostrDirectoryHandles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "nextAttemptAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pendingClaimCount",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "nostrDirectoryHandles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "activeIdentity.status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "handle",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "nostrDirectoryHandles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "activeIdentity.status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "listingKey",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -162,6 +162,45 @@ describe("identity claim extraction", () => {
     expect(claims[0].metadata.about).toContain("_wir_de");
   });
 
+  it("stores an https kind-0 picture and drops any other picture URL", async () => {
+    const claims = await extractIdentityClaims(
+      [
+        {
+          id: "event-picture",
+          kind: 0,
+          pubkey: PUBKEY_A,
+          created_at: 100,
+          content: JSON.stringify({
+            name: "Alice",
+            about: "https://x.com/alice",
+            picture: "https://CDN.Example/a.png",
+          }),
+          tags: [],
+        },
+        {
+          id: "event-bad-picture",
+          kind: 0,
+          pubkey: PUBKEY_A,
+          created_at: 101,
+          content: JSON.stringify({
+            name: "Alice",
+            about: "https://x.com/alice",
+            picture: "javascript:alert(1)",
+          }),
+          tags: [],
+        },
+      ],
+      "wss://relay.example",
+    );
+
+    expect(claims.find((claim) => claim.claimId === "event-picture").metadata.picture).toBe(
+      "https://cdn.example/a.png",
+    );
+    expect(
+      claims.find((claim) => claim.claimId === "event-bad-picture").metadata.picture,
+    ).toBeUndefined();
+  });
+
   it("accepts plain @handles only when FxTwitter confirms the profile", async () => {
     const requestedUrls = [];
     const event = {
