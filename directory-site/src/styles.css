@@ -978,7 +978,8 @@ svg {
 
 .site-footer nav {
   display: flex;
-  gap: 34px;
+  flex-wrap: wrap;
+  gap: 12px 34px;
   color: var(--accent);
   font-size: 12px;
   font-weight: 580;

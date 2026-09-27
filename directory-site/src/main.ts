@@ -434,7 +434,8 @@ function renderApp(): void {
       <div class="shell footer-inner">
         <div class="footer-brand">${brandMark()}<strong>Nostr Atlas</strong><i aria-hidden="true"></i><span>Built to help creators receive zaps on X.com and YouTube.</span></div>
         <nav aria-label="Footer navigation">
-          <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noreferrer">About Nostr</a>
+          <a href="https://nostr.how/en/what-is-nostr" target="_blank" rel="noreferrer">What is Nostr?</a>
+          <a href="https://www.youtube.com/watch?v=0YDj1QdL2Zs" target="_blank" rel="noreferrer">Explainer video</a>
           <a href="https://github.com/saiy2k/nostr-components" target="_blank" rel="noreferrer">GitHub</a>
         </nav>
       </div>
