@@ -6,7 +6,6 @@ import {
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
-  formatFollowers,
   getPaginationPageList,
   getRequiredBatchOffsets,
   getVisibleProfiles,
@@ -36,6 +35,7 @@ let profileBatches = new Map<number, DirectoryProfile[]>();
 let batchNextCursors = new Map<number, string | null>();
 let previewProfiles: DirectoryProfile[] = [];
 let totalProfiles = 0;
+let directoryTotal = 0;
 let loading = false;
 let loaded = false;
 let loadFailed = false;
@@ -96,9 +96,6 @@ function profileRow(profile: DirectoryProfile): string {
         <span>${escapeHtml(truncateNpub(profile.npub))}</span>
         ${icon.copy()}
       </button>
-      <span class="followers"${profile.followers === null ? ' title="Audience count unavailable"' : ""}><strong>${formatFollowers(profile.followers)}</strong><span class="mobile-only"> audience</span></span>
-      <span class="verified-cell">${profile.verified ? icon.check() : "—"}<span class="sr-only">${verificationLabel}</span></span>
-      <span class="youtube-cell">${profile.youtube ? escapeHtml(profile.youtube) : "—"}</span>
       <a class="profile-link" href="https://njump.me/${safeNpub}" target="_blank" rel="noreferrer">
         <span>Open Nostr profile</span>${icon.external()}
       </a>
@@ -288,7 +285,7 @@ function renderDirectoryStatus(): void {
       ? "Could not load creator claims. Check your connection and retry. Local previews are kept."
       : loading
         ? "Loading verified creator claims…"
-        : `${totalProfiles} verified X ${totalProfiles === 1 ? "account" : "accounts"} in the directory; ${cachedProfiles} cached in this browser. Audience counts, popularity rankings, and YouTube claims are not available yet.`;
+        : `${directoryTotal} verified X ${directoryTotal === 1 ? "account" : "accounts"} in the directory; ${cachedProfiles} cached in this browser.`;
   }
   if (refresh) {
     refresh.disabled = loading;
@@ -304,10 +301,6 @@ async function loadProfileBatches(
   if (reset) {
     loadGeneration = generation;
     pendingLoads = 0;
-    profileBatches = new Map();
-    batchNextCursors = new Map();
-    totalProfiles = 0;
-    loaded = false;
   }
   if (offsets.length === 0) {
     renderProfiles();
@@ -320,7 +313,7 @@ async function loadProfileBatches(
   renderProfiles();
   try {
     const pages: DirectoryPage[] = [];
-    const workingCursors = new Map(batchNextCursors);
+    const workingCursors = reset ? new Map() : new Map(batchNextCursors);
     for (const offset of [...offsets].sort((a, b) => a - b)) {
       await fetchDirectoryPageAtOffset(
         directoryApiUrl,
@@ -333,11 +326,16 @@ async function loadProfileBatches(
     }
     if (generation !== loadGeneration) return;
 
+    if (reset) {
+      profileBatches = new Map();
+      batchNextCursors = new Map();
+    }
     for (const page of pages) {
       profileBatches.set(page.offset, page.profiles);
       batchNextCursors.set(page.offset, page.nextCursor);
     }
     totalProfiles = pages[0]?.total ?? 0;
+    if (!query) directoryTotal = totalProfiles;
     loaded = true;
   } catch (error) {
     if (generation !== loadGeneration) return;
@@ -353,9 +351,22 @@ async function loadProfileBatches(
 }
 
 async function reloadProfiles(search = query): Promise<void> {
-  query = search.trim();
-  currentPage = 1;
+  const nextQuery = search.trim();
+  const previousQuery = query;
+  query = nextQuery;
   await loadProfileBatches([0], true);
+  if (loadFailed && query === nextQuery) {
+    query = previousQuery;
+    const searchInput = document.querySelector<HTMLInputElement>(
+      "#directory-search",
+    );
+    if (searchInput && searchInput.value.trim() === nextQuery) {
+      searchInput.value = previousQuery;
+    }
+    renderProfiles();
+    return;
+  }
+  if (!loadFailed) currentPage = 1;
 }
 
 async function ensureCurrentPageLoaded(): Promise<void> {
@@ -397,7 +408,7 @@ function renderApp(): void {
 
         <div class="profile-table" role="region" aria-label="Creator claim directory" tabindex="0">
           <div class="table-header" aria-hidden="true">
-            <span>Creator</span><span>Nostr address</span><span>npub (click to copy)</span><span>Audience</span><span>X verified</span><span>YouTube channel</span><span></span>
+            <span>Creator</span><span>Nostr address</span><span>npub (click to copy)</span><span></span>
           </div>
           <div id="profile-results"></div>
         </div>
@@ -470,8 +481,9 @@ function bindEvents(): void {
   document
     .querySelector("#refresh-directory")
     ?.addEventListener("click", () => {
-      if (loadFailed && loaded) void ensureCurrentPageLoaded();
-      else void reloadProfiles();
+      if (loadFailed && loaded && requiredBatchOffsets().length > 0) {
+        void ensureCurrentPageLoaded();
+      } else void reloadProfiles();
     });
 
   const paginationNav = document.querySelector("#directory-pagination");
@@ -650,24 +662,27 @@ function bindEvents(): void {
   });
 }
 
+function markNpubCopied(button: HTMLButtonElement): void {
+  button.classList.add("copied");
+  showToast("Nostr public key copied to clipboard.");
+  window.setTimeout(() => button.classList.remove("copied"), 1400);
+}
+
 async function copyNpub(
   npub: string,
   button: HTMLButtonElement,
 ): Promise<void> {
   try {
-    if (!navigator.clipboard) throw new Error("Clipboard API unavailable");
+    window.focus();
+    button.focus({ preventScroll: true });
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
     await navigator.clipboard.writeText(npub);
-    button.classList.add("copied");
-    showToast("Nostr public key copied to clipboard.");
-    window.setTimeout(() => button.classList.remove("copied"), 1400);
+    markNpubCopied(button);
   } catch {
     if (copyWithSelection(npub)) {
-      button.classList.add("copied");
-      showToast("Nostr public key copied to clipboard.");
-      window.setTimeout(() => button.classList.remove("copied"), 1400);
+      markNpubCopied(button);
       return;
     }
-
     showToast("Nostr public key could not be copied.");
   }
 }
@@ -677,13 +692,24 @@ function copyWithSelection(value: string): boolean {
   textarea.value = value;
   textarea.setAttribute("readonly", "");
   textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  textarea.style.pointerEvents = "none";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.width = "2em";
+  textarea.style.height = "2em";
+  textarea.style.padding = "0";
+  textarea.style.border = "none";
+  textarea.style.outline = "none";
+  textarea.style.boxShadow = "none";
+  textarea.style.background = "transparent";
   document.body.append(textarea);
+  textarea.focus({ preventScroll: true });
   textarea.select();
+  textarea.setSelectionRange(0, value.length);
 
   try {
     return document.execCommand("copy");
+  } catch {
+    return false;
   } finally {
     textarea.remove();
   }

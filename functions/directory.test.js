@@ -156,6 +156,19 @@ test("rejects unverified, malformed, mismatched, or unsupported records", () => 
   assert.equal(publicDirectoryProfile("other:alice", valid), null);
 });
 
+test("uses the active claim NIP-05 when the identity metadata has none", () => {
+  const data = handleRecord("alice");
+  delete data.activeIdentity.metadata;
+  data.activeIdentity.claimId = "claim-1";
+  data.claims = [
+    { claimId: "claim-1", metadata: { nip05: "alice@example.com" } },
+  ];
+  assert.equal(
+    publicDirectoryProfile("twitter:alice", data).nip05,
+    "alice@example.com",
+  );
+});
+
 test("handles absent metadata and bounds display fields", () => {
   const data = handleRecord("alice");
   delete data.activeIdentity.metadata;

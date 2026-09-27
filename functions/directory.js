@@ -42,8 +42,22 @@ export function publicDirectoryProfile(id, data) {
     pubkey: active.pubkey.toLowerCase(),
     verified: true,
     name: boundedString(active.metadata?.name, 100) || handle,
-    nip05: boundedString(active.metadata?.nip05, 255),
+    nip05: profileNip05(data, active),
   };
+}
+
+function profileNip05(data, active) {
+  const direct = boundedString(active.metadata?.nip05, 255);
+  if (direct) return direct;
+  const claims = Array.isArray(data?.claims) ? data.claims : [];
+  const activeClaim = claims.find(
+    (claim) => claim?.claimId && claim.claimId === active.claimId,
+  );
+  for (const claim of [activeClaim, ...claims]) {
+    const nip05 = boundedString(claim?.metadata?.nip05, 255);
+    if (nip05) return nip05;
+  }
+  return "";
 }
 
 export function directorySearchFilter(value) {

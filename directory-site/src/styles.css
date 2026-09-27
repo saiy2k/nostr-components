@@ -628,9 +628,9 @@ svg {
 
 .table-header,
 .profile-row {
-  min-width: 1240px;
+  min-width: 860px;
   display: grid;
-  grid-template-columns: 2fr 1.4fr 1.6fr 0.75fr 0.68fr 1.15fr 0.78fr;
+  grid-template-columns: 2.2fr 1.6fr 1.8fr 0.9fr;
   align-items: center;
   column-gap: 18px;
   border-bottom: 1px solid var(--line);
@@ -724,13 +724,11 @@ svg {
   text-underline-offset: 3px;
 }
 
-.verified-mark,
-.verified-cell {
+.verified-mark {
   color: var(--accent);
 }
 
-.verified-mark svg,
-.verified-cell svg {
+.verified-mark svg {
   width: 18px;
   stroke: currentColor;
   stroke-width: 1.65;
@@ -756,17 +754,6 @@ svg {
   color: var(--accent-hover);
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-
-.followers strong {
-  font-weight: 620;
-}
-
-.youtube-cell {
-  overflow: hidden;
-  color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .npub-copy {
@@ -812,10 +799,6 @@ svg {
   stroke-width: 1.55;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.mobile-only {
-  display: none;
 }
 
 @media (min-width: 761px) {
@@ -1330,29 +1313,11 @@ svg {
     font-size: 15px;
   }
 
-  .profile-handle,
-  .followers {
+  .profile-handle {
     font-size: 12px;
   }
 
-  .followers {
-    grid-column: 1;
-    grid-row: 2;
-    padding-left: 70px;
-    color: var(--muted);
-  }
-
-  .followers strong {
-    font-weight: 500;
-  }
-
-  .mobile-only {
-    display: inline;
-  }
-
-  .nip05-link,
-  .verified-cell,
-  .youtube-cell {
+  .nip05-link {
     display: none;
   }
 
