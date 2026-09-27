@@ -3,6 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { nip19 } from "nostr-tools";
+import { listingKeyForHandle } from "./featured-handles.js";
 import {
   createDirectoryListHandler,
   directorySearchFilter,
@@ -14,6 +15,7 @@ function handleRecord(handle, overrides = {}) {
   return {
     platform: "twitter",
     handle,
+    listingKey: listingKeyForHandle(handle),
     claims: [{ evidence: "private-evidence" }],
     activeIdentity: {
       status: "verified",
@@ -79,17 +81,28 @@ function fakeDatabase(records) {
         async get() {
           let entries = matchingEntries().sort((a, b) => {
             if (operation.order === "handle") {
-              const byHandle = String(a[1].handle).localeCompare(String(b[1].handle));
+              const byHandle = String(a[1].handle).localeCompare(
+                String(b[1].handle),
+              );
               if (byHandle !== 0) return byHandle;
+            }
+            if (operation.order === "listingKey") {
+              return String(a[1].listingKey).localeCompare(
+                String(b[1].listingKey),
+              );
             }
             return a[0].localeCompare(b[0]);
           });
           if (operation.cursor) {
-            entries = entries.filter(([id, data]) =>
-              operation.order === "handle"
-                ? String(data.handle) > operation.cursor
-                : id > operation.cursor,
-            );
+            entries = entries.filter(([id, data]) => {
+              if (operation.order === "handle") {
+                return String(data.handle) > operation.cursor;
+              }
+              if (operation.order === "listingKey") {
+                return String(data.listingKey) > operation.cursor;
+              }
+              return id > operation.cursor;
+            });
           }
           return {
             docs: entries
@@ -101,15 +114,21 @@ function fakeDatabase(records) {
       };
 
       function matchingEntries() {
-        return Object.entries(records).filter(([, data]) =>
-          operation.filters.every(([field, operator, value]) => {
+        return Object.entries(records).filter(([, data]) => {
+          if (
+            operation.order === "listingKey" &&
+            typeof data.listingKey !== "string"
+          ) {
+            return false;
+          }
+          return operation.filters.every(([field, operator, value]) => {
             const current = nestedValue(data, field);
             if (operator === "==") return current === value;
             if (operator === ">=") return String(current ?? "") >= value;
             if (operator === "<=") return String(current ?? "") <= value;
             throw new Error(`unexpected operator ${operator}`);
-          }),
-        );
+          });
+        });
       }
 
       return query;
@@ -352,8 +371,84 @@ test("uses a validated document cursor instead of a billed offset for deep pages
     ["bob"],
   );
   assert.equal(result.body.nextCursor, "twitter:bob");
-  assert.equal(db.reads[0].cursor, "twitter:alice");
+  assert.equal(db.reads[0].order, "listingKey");
+  assert.equal(db.reads[0].cursor, listingKeyForHandle("alice"));
   assert.equal(db.reads[0].offset, 0);
+});
+
+test("lists curated handles before the alphabetical tail without repeating them", async () => {
+  const db = fakeDatabase({
+    "twitter:zoe": handleRecord("zoe"),
+    "twitter:alice": handleRecord("alice"),
+    "twitter:jack": handleRecord("jack"),
+    "twitter:hodlonaut": handleRecord("hodlonaut"),
+  });
+  const first = await listDirectoryProfiles(db, { limit: "3" });
+  assert.equal(first.status, 200);
+  assert.deepEqual(
+    first.body.profiles.map((profile) => profile.handle),
+    ["jack", "hodlonaut", "alice"],
+  );
+  assert.equal(first.body.total, 4);
+  assert.equal(first.body.nextCursor, "twitter:alice");
+  const rest = await listDirectoryProfiles(db, { limit: "10", offset: "3" });
+  assert.deepEqual(
+    rest.body.profiles.map((profile) => profile.handle),
+    ["zoe"],
+  );
+});
+
+test("skips curated handles that are missing or not verified", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:jack": handleRecord("jack", {
+      activeIdentity: { status: "pending" },
+    }),
+    "twitter:zoe": handleRecord("zoe"),
+  });
+  const result = await listDirectoryProfiles(db, { limit: "10" });
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["alice", "zoe"],
+  );
+  assert.equal(result.body.total, 2);
+});
+
+test("resumes a deep page from the curated handle's listing key", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:jack": handleRecord("jack"),
+    "twitter:zoe": handleRecord("zoe"),
+  });
+  const result = await listDirectoryProfiles(db, {
+    limit: "1",
+    offset: "10001",
+    cursor: "twitter:jack",
+  });
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["alice"],
+  );
+  assert.equal(result.body.nextCursor, "twitter:alice");
+  assert.equal(db.reads[0].cursor, "0-0000");
+});
+
+test("search stays in handle order instead of the curated listing", async () => {
+  const db = fakeDatabase({
+    "twitter:ha": handleRecord("ha"),
+    "twitter:hodlonaut": handleRecord("hodlonaut"),
+  });
+  const browse = await listDirectoryProfiles(db, { limit: "10" });
+  assert.deepEqual(
+    browse.body.profiles.map((profile) => profile.handle),
+    ["hodlonaut", "ha"],
+  );
+  const search = await listDirectoryProfiles(db, { search: "h", limit: "10" });
+  assert.deepEqual(
+    search.body.profiles.map((profile) => profile.handle),
+    ["ha", "hodlonaut"],
+  );
+  assert.equal(db.reads[1].order, "handle");
 });
 
 test("parses handle prefixes, X URLs, NIP-05, and npub searches", () => {

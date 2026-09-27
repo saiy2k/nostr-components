@@ -485,6 +485,7 @@ describe("projection writes", () => {
     expect(Object.keys(writes[0].data).sort()).toEqual([
       "activeIdentity",
       "claims",
+      "listingKey",
       "nextAttemptAt",
       "pendingClaimCount",
       "projectedAt",
@@ -492,6 +493,7 @@ describe("projection writes", () => {
       "rejectedClaimTombstones",
       "updatedAt",
     ]);
+    expect(writes[0].data.listingKey).toBe("1-twitter:alice");
     expect(writes[0].data.handle).toBeUndefined();
     expect(writes[0].data.activeIdentity).toMatchObject({
       claimId: "claim",

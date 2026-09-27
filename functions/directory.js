@@ -2,6 +2,7 @@
 
 import { FieldPath } from "firebase-admin/firestore";
 import { nip19 } from "nostr-tools";
+import { listingKeyForHandle } from "./featured-handles.js";
 import { normalizeTwitterHandle } from "./lookup.js";
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -198,6 +199,9 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
   let query = db
     .collection(options.collection || "nostrDirectoryHandles")
     .where("activeIdentity.status", "==", "verified");
+  // Unfiltered browse puts the curated handles first. Search stays on the
+  // matched field so a lookup is not rearranged by that pin list.
+  const browseByListingKey = !search;
   if (search?.prefix) {
     query = query
       .where(search.field, ">=", search.value)
@@ -205,13 +209,21 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
       .orderBy(search.field);
   } else {
     if (search) query = query.where(search.field, "==", search.value);
-    query = query.orderBy(FieldPath.documentId());
+    query = query.orderBy(
+      browseByListingKey ? "listingKey" : FieldPath.documentId(),
+    );
   }
 
   const countSnapshot = await query.count().get();
   const total = countSnapshot.data().count;
   if (cursor !== undefined) {
-    query = query.startAfter(search?.prefix ? cursor.slice(8) : cursor);
+    query = query.startAfter(
+      search?.prefix
+        ? cursor.slice(8)
+        : browseByListingKey
+          ? listingKeyForHandle(cursor.slice(8))
+          : cursor,
+    );
   } else if (offset > 0) {
     query = query.offset(offset);
   }

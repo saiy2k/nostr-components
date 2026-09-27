@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { FieldValue } from "@google-cloud/firestore";
+import { listingKeyForHandle } from "../../functions/featured-handles.js";
 import {
   DEFAULT_COLLECTIONS,
   firestoreTimestampToMs,
@@ -219,19 +220,26 @@ export function applyProjectionResults(handleData, results, options = {}) {
 }
 
 export function buildHandleProjectionWrites(
-  { id },
+  { id, data },
   transition,
   options = {},
 ) {
   if (!transition?.changed) return [];
   const handlesCollection =
     options.firestoreHandlesCollection || DEFAULT_COLLECTIONS.handles;
+  const handle =
+    data?.handle ||
+    transition.state.activeIdentity?.handle ||
+    (String(id).startsWith("twitter:") ? String(id).slice(8) : "");
   return [
     {
       collection: handlesCollection,
       id,
       data: stripUndefined({
         ...transition.state,
+        listingKey: /^[a-z0-9_]{1,15}$/.test(handle)
+          ? listingKeyForHandle(handle)
+          : undefined,
         projectedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       }),

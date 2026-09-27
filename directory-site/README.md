@@ -39,11 +39,18 @@ to Firestore. The browser caches all fetched 50-record batches and cursors.
 The optional `search` parameter performs an exact, server-side lookup by X handle
 (including `@handle` and X/Twitter profile URLs), NIP-05 address, or npub. It does
 not download the collection or filter only browser-cached rows. The unfiltered
-query uses `activeIdentity.status == verified`, ordered by document ID. Search
-adds an equality filter for the normalized identifier. Keep the corresponding
-Firestore fields indexed; Firebase will report any additional index required by
-the selected project. Successful responses may be cached for 60 seconds; errors
-are not cached.
+query uses `activeIdentity.status == verified`, ordered by `listingKey`. The first
+50 keys (`0-0000` through `0-0049`) are the curated X handles in
+`functions/featured-handles.js`, which fills the first five pages at the default
+page size of 10. Every other verified handle uses `1-` plus its document id, so
+the rest of the directory stays in handle order. A curated handle that is missing
+or not verified is skipped. Search keeps its own handle, NIP-05, or npub order
+and does not apply this pin list. `listingKey` must be backfilled before the
+listing function is deployed, because documents without that field are excluded.
+The composite index is `activeIdentity.status` plus `listingKey` in
+`firestore.indexes.json`. Deploying that file reconciles the project's composite
+indexes, so merge any indexes already in the project into the file first.
+Successful responses may be cached for 60 seconds; errors are not cached.
 
 The directory table includes page navigation (Previous, Next, and numbered page
 buttons) and customizable page sizes (10, 25, or 50 claims per page, defaulting
@@ -108,9 +115,11 @@ another collection. Set these in `functions/.env.local` for the emulator, or
 
 1. Start the function and site using the commands above. In DevTools Network,
    confirm `listDirectoryProfiles?limit=50&offset=0` returns HTTP 200 with
-   `profiles`, `total`, and `offset`. The page should show real verified X records,
-   or an honest empty state if the database has none. Loading should never briefly
-   show demo rows.
+   `profiles`, `total`, and `offset`. Those 50 profiles are the curated handles,
+   in list order, and `offset=50` continues with the alphabetical tail without
+   repeating them. The page should show real verified X records, or an honest
+   empty state if the database has none. Loading should never briefly show demo
+   rows.
 2. Compare a returned `twitter:HANDLE` with the same document in Firestore:
    `activeIdentity.status` must be `verified`, the API `pubkey` must match the active
    key, and the displayed name/NIP-05 must match available metadata. Missing
@@ -159,11 +168,19 @@ curl -i -X POST 'http://127.0.0.1:5001/gr-prod/us-central1/listDirectoryProfiles
 ## Deploy the read API
 
 The repository's default Firebase project is for Storybook. Always specify the
-directory project and deploy only the new function:
+directory project. Deploy the `listingKey` index and backfill every handle
+before the listing function, then deploy only that function:
 
 ```sh
+firebase deploy --only firestore:indexes --project YOUR_LIVE_PROJECT_ID
+node backend/relay-directory/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
+node backend/relay-directory/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
 firebase deploy --only functions:listDirectoryProfiles --project YOUR_LIVE_PROJECT_ID
 ```
+
+The backfill refuses to write if any curated handle is missing or not verified.
+Run it from the repository root with Application Default Credentials that can
+read and update `nostrDirectoryHandles`.
 
 The function's runtime service account needs Firestore read access in that
 project/database. It is a public GET API with CORS enabled, following Firebase's
