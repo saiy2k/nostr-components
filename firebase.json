@@ -5,7 +5,7 @@
   "functions": {
     "source": "functions",
     "predeploy": [
-      "cp backend/relays.json functions/relays.json"
+      "node functions/prepare-ingest-sources.mjs"
     ]
   },
   "hosting": {

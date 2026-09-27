@@ -6,6 +6,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { lookupDirectoryHandle as lookupDirectoryRecord } from "./lookup.js";
 import { createDirectoryListHandler } from "./directory.js";
 import { createClaimProofHandler } from "./claim-proof.js";
+import { createIngestClaimHandler, defaultIngestDb } from "./ingest-claim.js";
 
 initializeApp();
 const db = getFirestore();
@@ -42,6 +43,19 @@ export const lookupDirectoryHandle = onRequest(
     timeoutSeconds: 10,
   },
   handleDirectoryLookup,
+);
+
+export const ingestClaim = onRequest(
+  {
+    region: "us-central1",
+    cors: true,
+    invoker: "public",
+    maxInstances: 5,
+    timeoutSeconds: 60,
+    serviceAccount:
+      "relay-directory-crawler@nostr-components.iam.gserviceaccount.com",
+  },
+  createIngestClaimHandler({ createDb: defaultIngestDb }),
 );
 
 export const checkClaimProof = onRequest(

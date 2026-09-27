@@ -366,7 +366,7 @@ export async function loadExistingClaimEvent(
             );
             const complete =
               list.length === relays.length &&
-              list.every((reason) => reason === "closed by caller");
+              list.some((reason) => reason === "closed by caller");
             if (!complete) finish(new Error("unavailable"));
             else finish();
           },
@@ -434,7 +434,7 @@ export async function publishClaimEvent(
   relays: string[],
   pool: ClaimPool = new SimplePool(),
   requiredRelays: readonly string[] = relays,
-): Promise<void> {
+): Promise<string> {
   try {
     if (
       requiredRelays.length === 0 ||
@@ -447,16 +447,17 @@ export async function publishClaimEvent(
       throw new Error("No claim relay is available.");
     }
     const settled = await Promise.allSettled(publishes);
-    const requiredAcknowledged = relays.some(
+    const acknowledged = relays.find(
       (relay, index) =>
         requiredRelays.includes(relay) &&
         settled[index]?.status === "fulfilled",
     );
-    if (!requiredAcknowledged) {
+    if (!acknowledged) {
       throw new Error(
         "No crawler-covered relay acknowledged the signed claim.",
       );
     }
+    return acknowledged;
   } catch (error) {
     if (
       error instanceof Error &&
@@ -474,6 +475,6 @@ export function publishClaimToCoveredRelays(
   event: Event,
   relays: string[],
   coveredRelays: readonly string[],
-): Promise<void> {
+): Promise<string> {
   return publishClaimEvent(event, relays, new SimplePool(), coveredRelays);
 }

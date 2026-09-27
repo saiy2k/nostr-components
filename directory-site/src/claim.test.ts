@@ -392,7 +392,25 @@ describe("signed NIP-39 claim", () => {
         ["wss://one.example/", "wss://two.example/"],
         partial,
       ),
-    ).rejects.toThrow("Could not read the existing Nostr identity");
+    ).resolves.toMatchObject({ id: newer.id });
+
+    const partialEmpty = {
+      subscribe: vi.fn((_relays, _filter, params) => {
+        params.onclose([
+          "Received network error or non-101 status code.",
+          "closed by caller",
+        ]);
+        return { close: vi.fn() };
+      }),
+      close: vi.fn(),
+    };
+    await expect(
+      loadExistingClaimEvent(
+        pubkey,
+        ["wss://one.example/", "wss://two.example/"],
+        partialEmpty,
+      ),
+    ).resolves.toBeNull();
   });
 
   it("succeeds after one relay acknowledges and always closes the pool", async () => {
@@ -410,9 +428,9 @@ describe("signed NIP-39 claim", () => {
       close: vi.fn(),
     };
     const relays = ["wss://one.example/", "wss://two.example/"];
-    await expect(
-      publishClaimEvent(event, relays, pool),
-    ).resolves.toBeUndefined();
+    await expect(publishClaimEvent(event, relays, pool)).resolves.toBe(
+      "wss://two.example/",
+    );
     expect(pool.close).toHaveBeenCalledWith(relays);
   });
 
@@ -470,7 +488,7 @@ describe("signed NIP-39 claim", () => {
     };
     await expect(
       publishClaimEvent(event, relays, pool, ["wss://relay.damus.io/"]),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe("wss://relay.damus.io/");
     expect(pool.close).toHaveBeenCalledWith(relays);
   });
 
@@ -1098,6 +1116,15 @@ describe("claim publish flow", () => {
     const order: string[] = [];
     const publish = vi.fn(async () => {
       order.push("publish");
+      return "wss://relay.damus.io/";
+    });
+    const ingest = vi.fn(async () => {
+      order.push("ingest");
+      return {
+        ok: true as const,
+        handle: "alice",
+        status: "verified" as const,
+      };
     });
     const proof = vi.fn(async () => {
       order.push("proof");
@@ -1120,14 +1147,43 @@ describe("claim publish flow", () => {
         return null;
       }),
       publish,
+      ingestClaim: ingest,
     });
     expect(result).toEqual({
       ok: true,
-      message: CLAIM_COPY.published,
+      message: CLAIM_COPY.verified,
       toast: CLAIM_COPY.publishedToast,
+      ingestStatus: "verified",
     });
-    expect(result.ok && result.message).toContain("backend verifies");
-    expect(order).toEqual(["proof", "read", "sign", "publish"]);
+    expect(order).toEqual(["proof", "read", "sign", "publish", "ingest"]);
+  });
+
+  it("keeps a published claim when ingest cannot finish", async () => {
+    const { secret, signer, identity } = await identityFor();
+    signer.signEvent.mockImplementation(async (event: EventTemplate) =>
+      finalizeEvent(event, secret),
+    );
+    await expect(
+      submitXClaim({
+        identity,
+        signer,
+        handle: "alice",
+        proofUrl: PROOF,
+        relayConfig: "wss://relay.damus.io",
+        now: NOW,
+        readProof,
+        loadExisting: vi.fn().mockResolvedValue(null),
+        publish: vi.fn(async () => "wss://relay.damus.io/"),
+        ingestClaim: vi.fn(async () => ({
+          ok: false as const,
+          message: CLAIM_COPY.published,
+        })),
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      ingestStatus: "pending",
+      message: CLAIM_COPY.published,
+    });
   });
 
   it("does not sign when the proof tweet omits the npub", async () => {

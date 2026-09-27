@@ -175,7 +175,7 @@ before the listing function, then deploy only that function:
 firebase deploy --only firestore:indexes --project YOUR_LIVE_PROJECT_ID
 node backend/relay-directory/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
 node backend/relay-directory/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
-firebase deploy --only functions:listDirectoryProfiles,functions:checkClaimProof --project YOUR_LIVE_PROJECT_ID
+firebase deploy --only functions:listDirectoryProfiles,functions:checkClaimProof,functions:ingestClaim --project YOUR_LIVE_PROJECT_ID
 ```
 
 The backfill refuses to write if any curated handle is missing or not verified.
@@ -244,9 +244,10 @@ relay-directory protocol:
    snapshots the event fields before signing and rejects a signature that does
    not match that snapshot.
 6. A relay from that crawler list must acknowledge the event. An
-   acknowledgement from any other configured relay is not enough. The existing
-   backend later discovers the event and checks the proof tweet again before
-   promoting the identity.
+   acknowledgement from any other configured relay is not enough.
+7. The site then sends that signed event to `ingestClaim`, which writes and
+   projects only that handle. The daily crawler remains the catch-up path when
+   this call cannot finish.
 
 Claim publication never writes directly to Firestore and does not show the
 account as verified before backend verification. The backend currently verifies

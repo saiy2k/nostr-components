@@ -825,8 +825,11 @@ function bindEvents(): void {
     }
     if (!result.ok && result.reason === "signer-changed") clearClaimIdentity();
     if (result.ok) {
-      setClaimStatus(result.message, "success");
-      showToast(result.toast);
+      setClaimStatus(
+        result.message,
+        result.ingestStatus === "rejected" ? "error" : "success",
+      );
+      if (result.ingestStatus !== "rejected") showToast(result.toast);
     } else {
       setClaimStatus(result.message, "error");
     }

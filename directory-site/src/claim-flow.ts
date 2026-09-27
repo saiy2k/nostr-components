@@ -32,8 +32,9 @@ export const CLAIM_COPY = {
   noCoveredRelay:
     "Add a claim relay that the directory crawler reads before publishing.",
   working: "Waiting for signature and relay acknowledgement…",
-  published:
-    "Claim published. The directory will show it after the backend verifies the proof tweet.",
+  published: "Claim published. The directory will finish checking it shortly.",
+  verified: "Your X account is verified. The directory can show it.",
+  rejected: "The proof check rejected this claim.",
   publishedToast: "Signed X account claim published to Nostr relays.",
   publishFailed: "The signed claim could not be published.",
   signerConnected:
@@ -58,8 +59,15 @@ const PROOF_ERRORS: Record<string, string> = {
   "invalid-handle": CLAIM_COPY.invalidHandle,
 };
 
+export type ClaimIngestStatus = "verified" | "rejected" | "pending";
+
 export type ClaimSubmitResult =
-  | { ok: true; message: string; toast: string }
+  | {
+      ok: true;
+      message: string;
+      toast: string;
+      ingestStatus: ClaimIngestStatus;
+    }
   | {
       ok: false;
       reason: "missing-identity" | "missing-signer" | "failed";
@@ -79,20 +87,31 @@ export type ClaimSubmitResult =
       clearIdentity: true;
     };
 
-export function claimProofEndpoint(directoryApiUrl: string): string {
+function directoryFunctionUrl(
+  directoryApiUrl: string,
+  functionName: string,
+): string {
   const url = new URL(directoryApiUrl);
   if (!url.pathname.endsWith("/listDirectoryProfiles")) {
     throw new Error(
-      "The directory API URL cannot be used to check a proof tweet.",
+      "The directory API URL cannot be used to reach directory functions.",
     );
   }
   url.pathname = url.pathname.replace(
     /\/listDirectoryProfiles$/,
-    "/checkClaimProof",
+    `/${functionName}`,
   );
   url.search = "";
   url.hash = "";
   return url.toString();
+}
+
+export function claimProofEndpoint(directoryApiUrl: string): string {
+  return directoryFunctionUrl(directoryApiUrl, "checkClaimProof");
+}
+
+export function claimIngestEndpoint(directoryApiUrl: string): string {
+  return directoryFunctionUrl(directoryApiUrl, "ingestClaim");
 }
 
 export async function fetchClaimProof(input: {
@@ -140,6 +159,58 @@ export async function fetchClaimProof(input: {
   }
 }
 
+export async function fetchIngestClaim(input: {
+  directoryApiUrl: string;
+  event: Event;
+  relay: string;
+  fetchImpl?: typeof fetch;
+}): Promise<
+  | { ok: true; handle: string; status: ClaimIngestStatus }
+  | { ok: false; message: string }
+> {
+  let endpoint: string;
+  try {
+    endpoint = claimIngestEndpoint(input.directoryApiUrl);
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : CLAIM_COPY.published,
+    };
+  }
+  const fetchImpl = input.fetchImpl ?? fetch;
+  try {
+    const response = await fetchImpl(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event: input.event, relay: input.relay }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const body = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      handle?: string;
+      status?: string;
+    } | null;
+    if (
+      !response.ok ||
+      !body?.ok ||
+      (body.status !== "verified" &&
+        body.status !== "rejected" &&
+        body.status !== "pending")
+    ) {
+      return { ok: false, message: CLAIM_COPY.published };
+    }
+    return { ok: true, handle: body.handle || "", status: body.status };
+  } catch {
+    return { ok: false, message: CLAIM_COPY.published };
+  }
+}
+
+function ingestMessage(status: ClaimIngestStatus): string {
+  if (status === "verified") return CLAIM_COPY.verified;
+  if (status === "rejected") return CLAIM_COPY.rejected;
+  return CLAIM_COPY.published;
+}
+
 export async function submitXClaim(input: {
   identity: ClaimIdentity | null;
   signer: NostrSigner | null;
@@ -159,7 +230,14 @@ export async function submitXClaim(input: {
     event: Event,
     relays: string[],
     coveredRelays: readonly string[],
-  ) => Promise<void>;
+  ) => Promise<string>;
+  ingestClaim?: (args: {
+    event: Event;
+    relay: string;
+  }) => Promise<
+    | { ok: true; handle: string; status: ClaimIngestStatus }
+    | { ok: false; message: string }
+  >;
 }): Promise<ClaimSubmitResult> {
   if (!input.identity) {
     return {
@@ -246,11 +324,20 @@ export async function submitXClaim(input: {
     );
     const signed = await signClaimEvent(signer, identity.pubkey, unsigned);
     const publish = input.publish ?? publishClaimToCoveredRelays;
-    await publish(signed, relays, coveredRelays);
+    const relay = await publish(signed, relays, coveredRelays);
+    const ingested = input.ingestClaim
+      ? await input.ingestClaim({ event: signed, relay })
+      : await fetchIngestClaim({
+          directoryApiUrl: input.directoryApiUrl ?? DEFAULT_DIRECTORY_API_URL,
+          event: signed,
+          relay,
+        });
+    const ingestStatus = ingested.ok ? ingested.status : "pending";
     return {
       ok: true,
-      message: CLAIM_COPY.published,
+      message: ingestMessage(ingestStatus),
       toast: CLAIM_COPY.publishedToast,
+      ingestStatus,
     };
   } catch (error) {
     return {
