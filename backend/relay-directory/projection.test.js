@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { nip19 } from "nostr-tools";
+import { finalizeEvent, generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
 import {
   checkZapSupport,
   lightningAddressToLnurlp,
@@ -731,6 +731,110 @@ describe("external verification", () => {
         verificationMethod: "nip39_proof_tweet",
       }),
     ]);
+  });
+
+  it("saves kind-0 profile metadata when a kind-10011 proof verifies", async () => {
+    const secret = generateSecretKey();
+    const pubkey = getPublicKey(secret);
+    const npub = nip19.npubEncode(pubkey);
+    const event = finalizeEvent(
+      {
+        kind: 0,
+        created_at: 1_700_000_000,
+        tags: [],
+        content: JSON.stringify({
+          name: "Alice",
+          nip05: "alice@example.com",
+          lud16: "alice@example.com",
+          picture: "https://cdn.example/alice.png",
+        }),
+      },
+      secret,
+    );
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 404);
+      return fxTwitterTweet({
+        text: `My Nostr profile is ${npub}`,
+        author: { id: "x-user-1", screen_name: "alice" },
+      });
+    });
+    const fetchKind0s = vi.fn(
+      async () => new Map([[pubkey, { event, transient: false }]]),
+    );
+    const handleData = {
+      handle: "alice",
+      claims: [
+        {
+          ...pendingClaim("proof", pubkey, 100),
+          sourceKind: 10011,
+          metadata: { xPicture: "https://pbs.twimg.com/a.jpg" },
+        },
+      ],
+      pendingClaimCount: 1,
+    };
+    const verification = await verifyHandleClaims(
+      handleData,
+      projectionArgs({ checkZaps: false, fetchKind0s }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(fetchKind0s).toHaveBeenCalledWith([pubkey], []);
+    expect(verification.results[0]).toMatchObject({
+      identityStatus: "verified",
+      metadata: {
+        name: "Alice",
+        nip05: "alice@example.com",
+        lud16: "alice@example.com",
+        picture: "https://cdn.example/alice.png",
+      },
+    });
+    const transition = applyProjectionResults(
+      handleData,
+      verification.results,
+      { now: NOW },
+    );
+    expect(transition.state.activeIdentity.metadata).toMatchObject({
+      nip05: "alice@example.com",
+      name: "Alice",
+      xPicture: "https://pbs.twimg.com/a.jpg",
+      picture: "https://cdn.example/alice.png",
+    });
+    expect(
+      transition.state.claims.find((claim) => claim.claimId === "proof")
+        .metadata.nip05,
+    ).toBe("alice@example.com");
+  });
+
+  it("still verifies a kind-10011 proof when the kind-0 lookup fails", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 404);
+      return fxTwitterTweet({
+        text: `My Nostr profile is ${NPUB_A}`,
+        author: { id: "x-user-1", screen_name: "alice" },
+      });
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const verification = await verifyHandleClaims(
+      {
+        handle: "alice",
+        claims: [pendingClaim("proof", PUBKEY_A, 100)],
+      },
+      projectionArgs({
+        checkZaps: false,
+        fetchKind0s: async () => {
+          throw new Error("relay down");
+        },
+      }),
+      { proofsRemaining: 1 },
+    );
+
+    expect(verification.results[0]).toMatchObject({
+      claimId: "proof",
+      identityStatus: "verified",
+    });
+    expect(verification.results[0].metadata).toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("keeps the tweet failure terminal when profile and proof tweet are gone", async () => {

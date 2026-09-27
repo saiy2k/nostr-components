@@ -7,6 +7,7 @@ import {
   firestoreTimestampToMs,
   stripUndefined,
 } from "./runtime.js";
+import { mergeProfileMetadata } from "./directory-state.js";
 import {
   claimRecency,
   compareClaimsNewestFirst,
@@ -275,6 +276,7 @@ function verifiedClaim(current, result, nowIso) {
     proofSource: result.proofSource,
     nostrIdentifier: result.nostrIdentifier,
     xUserId: result.xUserId,
+    metadata: mergeProfileMetadata(clean.metadata, result.metadata),
     zappable: result.zappable,
     zapReason: result.zapReason,
     lud16: result.lud16,

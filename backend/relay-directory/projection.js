@@ -12,6 +12,11 @@ import {
   projectionHandleIsDue,
 } from "./projection-state.js";
 import {
+  kind0ProfileMetadata,
+  mergeProfileMetadata,
+} from "./directory-state.js";
+import { fetchKind0s, metadataFromKind0 } from "./kind0.js";
+import {
   buildRunSummaryWrite,
   commitFirestoreWrites,
   createFirestore,
@@ -19,6 +24,7 @@ import {
   DEFAULT_COLLECTIONS,
   finishRunMetrics,
   firestoreConfigFromEnv,
+  loadRelaysFromFile,
   logRunSummary,
   runMain,
   writeJson,
@@ -69,6 +75,7 @@ export function loadProjectionConfig(env = process.env) {
       "MAX_RETRY_ATTEMPTS",
       DEFAULT_MAX_RETRY_ATTEMPTS,
     ),
+    relays: projectionRelays(env),
   };
   validateProjectionArgs(args);
   return args;
@@ -107,6 +114,20 @@ function validateProjectionArgs(args) {
   }
   if (!Number.isInteger(args.maxRetryAttempts) || args.maxRetryAttempts <= 0) {
     throw new Error("MAX_RETRY_ATTEMPTS must be a positive integer.");
+  }
+}
+
+function projectionRelays(env) {
+  const configured = String(env.RELAYS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (configured.length) return configured;
+  if (env.RELAYS === "") return [];
+  try {
+    return loadRelaysFromFile(env.RELAYS_FILE || undefined);
+  } catch {
+    return [];
   }
 }
 
@@ -456,6 +477,11 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     }
   }
 
+  const kind0Metadata =
+    args.verifyTweets && !stopRun
+      ? await kind0MetadataByPubkey(pending, args)
+      : new Map();
+
   if (args.verifyTweets && !stopRun) {
     for (const claim of pending) {
       if (completedClaimIds.has(claim.claimId) || !claim.proofTweetId) continue;
@@ -464,7 +490,16 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       attemptedClaimIds.add(claim.claimId);
       let result = await verifyTweetCandidate(claim, args.timeoutMs);
       if (result.identityStatus === "verified") {
-        result = await enrichVerifiedResult(result, claim.metadata, args);
+        const metadata = mergeProfileMetadata(
+          claim.metadata,
+          kind0Metadata.get(String(claim.pubkey || "").toLowerCase()),
+        );
+        if (metadata) result = { ...result, metadata };
+        result = await enrichVerifiedResult(
+          result,
+          metadata || claim.metadata,
+          args,
+        );
       }
       results.push({ ...result, claimId: claim.claimId });
       if (result.identityStatus === "retry_later") {
@@ -505,6 +540,37 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
     deferReason,
     attemptedClaimIds: [...attemptedClaimIds],
   };
+}
+
+async function kind0MetadataByPubkey(claims, args) {
+  const pubkeys = [
+    ...new Set(
+      (claims || [])
+        .filter((claim) => claim?.proofTweetId && isHexPubkey(claim.pubkey))
+        .map((claim) => String(claim.pubkey).toLowerCase()),
+    ),
+  ];
+  if (!pubkeys.length) return new Map();
+  if (typeof args?.fetchKind0s !== "function" && !args?.relays?.length) {
+    return new Map();
+  }
+  try {
+    const loadKind0s = args.fetchKind0s || fetchKind0s;
+    const profiles = await loadKind0s(pubkeys, args.relays || []);
+    const metadata = new Map();
+    for (const pubkey of pubkeys) {
+      const event = profiles?.get?.(pubkey)?.event;
+      if (!event || String(event.pubkey || "").toLowerCase() !== pubkey) {
+        continue;
+      }
+      const fields = kind0ProfileMetadata(pubkey, metadataFromKind0(event));
+      if (fields) metadata.set(pubkey, fields);
+    }
+    return metadata;
+  } catch (error) {
+    console.warn(`Kind-0 metadata lookup failed: ${error?.message || error}`);
+    return new Map();
+  }
 }
 
 async function enrichVerifiedResult(result, metadata, args) {
