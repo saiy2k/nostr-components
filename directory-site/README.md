@@ -240,7 +240,8 @@ relay-directory protocol:
    for that pubkey are kept; only the claimed X identity is replaced. The site
    snapshots the event fields before signing and rejects a signature that does
    not match that snapshot.
-5. At least one configured Nostr relay must acknowledge the event. The existing
+5. A relay listed in `backend/relays.json` must acknowledge the event. An
+   acknowledgement from any other configured relay is not enough. The existing
    backend later discovers the event and independently checks the proof tweet
    before promoting the identity.
 

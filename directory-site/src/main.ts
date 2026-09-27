@@ -26,11 +26,12 @@ import {
 import {
   claimProofComposerUrl,
   connectClaimSigner,
+  crawlerCoveredRelays,
   createClaimEvent,
   loadExistingClaimEvent,
   normalizeClaimHandle,
   parseClaimRelays,
-  publishClaimEvent,
+  publishClaimToCoveredRelays,
   signClaimEvent,
   validateProofUrl,
   type NostrSigner,
@@ -813,6 +814,12 @@ function bindEvents(): void {
       const relays = parseClaimRelays(
         import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
       );
+      const coveredRelays = crawlerCoveredRelays(relays);
+      if (coveredRelays.length === 0) {
+        throw new Error(
+          "Add a claim relay that the directory crawler reads before publishing.",
+        );
+      }
       const existing = await loadExistingClaimEvent(
         claimIdentity.pubkey,
         relays,
@@ -831,7 +838,7 @@ function bindEvents(): void {
         claimIdentity.pubkey,
         unsigned,
       );
-      await publishClaimEvent(signed, relays);
+      await publishClaimToCoveredRelays(signed, relays, coveredRelays);
       setClaimStatus(
         "Claim published. The directory will show it after the backend verifies the proof tweet.",
         "success",

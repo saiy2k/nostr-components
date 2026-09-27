@@ -5,6 +5,7 @@ import {
   type Event,
   type EventTemplate,
 } from "nostr-tools";
+import crawlerRelayDirectory from "../../backend/relays.json";
 
 export const DEFAULT_CLAIM_RELAYS = [
   "wss://relay.damus.io",
@@ -96,6 +97,36 @@ export function validateProofUrl(value: string, handle: string): string | null {
   return `https://x.com/${handle}/status/${match[2]}`;
 }
 
+function canonicalRelayUrl(value: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (
+    url.protocol !== "wss:" ||
+    url.pathname !== "/" ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
+    return null;
+  }
+  return url.toString();
+}
+
+const CRAWLER_RELAYS = new Set(
+  crawlerRelayDirectory
+    .map((entry) => canonicalRelayUrl(entry.url))
+    .filter((url): url is string => url !== null),
+);
+
+export function crawlerCoveredRelays(relays: readonly string[]): string[] {
+  return relays.filter((relay) => CRAWLER_RELAYS.has(relay));
+}
+
 export function parseClaimRelays(value?: string): string[] {
   const candidates = value?.trim()
     ? value.split(",").map((relay) => relay.trim())
@@ -103,24 +134,9 @@ export function parseClaimRelays(value?: string): string[] {
   const relays: string[] = [];
 
   for (const candidate of candidates) {
-    let url: URL;
-    try {
-      url = new URL(candidate);
-    } catch {
-      continue;
-    }
-    if (
-      url.protocol !== "wss:" ||
-      url.pathname !== "/" ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash
-    ) {
-      continue;
-    }
-    const normalized = url.toString();
-    if (!relays.includes(normalized)) relays.push(normalized);
+    const normalized = canonicalRelayUrl(candidate);
+    if (!normalized || relays.includes(normalized)) continue;
+    relays.push(normalized);
     if (relays.length === 5) break;
   }
 
@@ -234,11 +250,10 @@ export async function loadExistingClaimEvent(
             const list = (Array.isArray(reasons) ? reasons : [reasons]).map(
               (reason) => String(reason),
             );
-            const readARelay = list.some(
-              (reason) => reason === "closed by caller",
-            );
-            if (!readARelay && events.length === 0)
-              finish(new Error("unavailable"));
+            const complete =
+              list.length === relays.length &&
+              list.every((reason) => reason === "closed by caller");
+            if (!complete) finish(new Error("unavailable"));
             else finish();
           },
           maxWait: 5_000,
@@ -304,27 +319,47 @@ export async function publishClaimEvent(
   event: Event,
   relays: string[],
   pool: ClaimPool = new SimplePool(),
+  requiredRelays: readonly string[] = relays,
 ): Promise<void> {
+  if (
+    requiredRelays.length === 0 ||
+    requiredRelays.some((relay) => !relays.includes(relay))
+  ) {
+    throw new Error("No crawler-covered claim relay is configured.");
+  }
   try {
     const publishes = pool.publish(relays, event);
     if (publishes.length === 0) {
       throw new Error("No claim relay is available.");
     }
-    await new Promise<void>((resolve, reject) => {
-      let failures = 0;
-      for (const publish of publishes) {
-        publish
-          .then(() => resolve())
-          .catch(() => {
-            failures += 1;
-            if (failures === publishes.length)
-              reject(new Error("all rejected"));
-          });
-      }
-    });
-  } catch {
+    const settled = await Promise.allSettled(publishes);
+    const requiredAcknowledged = relays.some(
+      (relay, index) =>
+        requiredRelays.includes(relay) &&
+        settled[index]?.status === "fulfilled",
+    );
+    if (!requiredAcknowledged) {
+      throw new Error(
+        "No crawler-covered relay acknowledged the signed claim.",
+      );
+    }
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith("No crawler-covered")
+    ) {
+      throw error;
+    }
     throw new Error("No claim relay acknowledged the signed claim.");
   } finally {
     pool.close(relays);
   }
+}
+
+export function publishClaimToCoveredRelays(
+  event: Event,
+  relays: string[],
+  coveredRelays: readonly string[],
+): Promise<void> {
+  return publishClaimEvent(event, relays, new SimplePool(), coveredRelays);
 }

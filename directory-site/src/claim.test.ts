@@ -9,6 +9,7 @@ import {
   claimProofComposerUrl,
   claimProofText,
   connectClaimSigner,
+  crawlerCoveredRelays,
   createClaimEvent,
   loadExistingClaimEvent,
   normalizeClaimHandle,
@@ -66,6 +67,17 @@ describe("claim input validation", () => {
       ),
     ).toEqual(["wss://one.example/"]);
     expect(() => parseClaimRelays("ws://bad.example")).toThrow("No valid");
+    expect(crawlerCoveredRelays(parseClaimRelays())).toEqual([
+      "wss://relay.damus.io/",
+      "wss://nos.lol/",
+      "wss://relay.primal.net/",
+    ]);
+    expect(
+      crawlerCoveredRelays([
+        "wss://relay.damus.io/",
+        "wss://not-covered.example/",
+      ]),
+    ).toEqual(["wss://relay.damus.io/"]);
   });
 });
 
@@ -294,6 +306,22 @@ describe("signed NIP-39 claim", () => {
     await expect(
       loadExistingClaimEvent(pubkey, relays, empty),
     ).resolves.toBeNull();
+
+    const partial = {
+      subscribe: vi.fn((_relays, _filter, params) => {
+        params.onevent(newer);
+        params.onclose(["connection timed out", "closed by caller"]);
+        return { close: vi.fn() };
+      }),
+      close: vi.fn(),
+    };
+    await expect(
+      loadExistingClaimEvent(
+        pubkey,
+        ["wss://one.example/", "wss://two.example/"],
+        partial,
+      ),
+    ).rejects.toThrow("Could not read the existing Nostr identity");
   });
 
   it("succeeds after one relay acknowledges and always closes the pool", async () => {
@@ -328,8 +356,29 @@ describe("signed NIP-39 claim", () => {
     };
     const relays = ["wss://one.example/"];
     await expect(publishClaimEvent(event, relays, pool)).rejects.toThrow(
-      "No claim relay acknowledged",
+      "No crawler-covered relay acknowledged",
     );
+    expect(pool.close).toHaveBeenCalledWith(relays);
+  });
+
+  it("does not treat an uncovered relay acknowledgement as success", async () => {
+    const event = finalizeEvent(
+      createClaimEvent("alice", "https://x.com/alice/status/1234567890123"),
+      generateSecretKey(),
+    );
+    const relays = ["wss://relay.damus.io/", "wss://not-covered.example/"];
+    const pool = {
+      publish: vi
+        .fn()
+        .mockReturnValue([
+          Promise.reject(new Error("rejected")),
+          Promise.resolve("ok"),
+        ]),
+      close: vi.fn(),
+    };
+    await expect(
+      publishClaimEvent(event, relays, pool, ["wss://relay.damus.io/"]),
+    ).rejects.toThrow("No crawler-covered relay acknowledged");
     expect(pool.close).toHaveBeenCalledWith(relays);
   });
 });
