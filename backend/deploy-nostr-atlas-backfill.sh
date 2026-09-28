@@ -124,6 +124,15 @@ if [ "${CREATE_SCHEDULER}" = "true" ]; then
     --description="Triggers ${JOB_NAME} Cloud Run Job on a schedule"
   )
 
+  if gcloud scheduler jobs describe "${SCHEDULER_JOB_NAME}" \
+    --location="${SCHEDULER_REGION}" >/dev/null 2>&1; then
+    gcloud scheduler jobs update http "${SCHEDULER_JOB_NAME}" "${SCHEDULER_ARGS[@]}"
+    echo "Updated Cloud Scheduler job ${SCHEDULER_JOB_NAME} (${SCHEDULE} ${SCHEDULE_TIME_ZONE})."
+  else
+    gcloud scheduler jobs create http "${SCHEDULER_JOB_NAME}" "${SCHEDULER_ARGS[@]}"
+    echo "Created Cloud Scheduler job ${SCHEDULER_JOB_NAME} (${SCHEDULE} ${SCHEDULE_TIME_ZONE})."
+  fi
+
   PREVIOUS_SCHEDULER_JOB_NAME="${PREVIOUS_SCHEDULER_JOB_NAME:-relay-directory-backfill-daily}"
   if [ "${PREVIOUS_SCHEDULER_JOB_NAME}" != "${SCHEDULER_JOB_NAME}" ] \
     && gcloud scheduler jobs describe "${PREVIOUS_SCHEDULER_JOB_NAME}" \
@@ -136,15 +145,6 @@ if [ "${CREATE_SCHEDULER}" = "true" ]; then
         --location="${SCHEDULER_REGION}"
       echo "Paused previous Cloud Scheduler job ${PREVIOUS_SCHEDULER_JOB_NAME}."
     fi
-  fi
-
-  if gcloud scheduler jobs describe "${SCHEDULER_JOB_NAME}" \
-    --location="${SCHEDULER_REGION}" >/dev/null 2>&1; then
-    gcloud scheduler jobs update http "${SCHEDULER_JOB_NAME}" "${SCHEDULER_ARGS[@]}"
-    echo "Updated Cloud Scheduler job ${SCHEDULER_JOB_NAME} (${SCHEDULE} ${SCHEDULE_TIME_ZONE})."
-  else
-    gcloud scheduler jobs create http "${SCHEDULER_JOB_NAME}" "${SCHEDULER_ARGS[@]}"
-    echo "Created Cloud Scheduler job ${SCHEDULER_JOB_NAME} (${SCHEDULE} ${SCHEDULE_TIME_ZONE})."
   fi
 else
   echo "Skipping Cloud Scheduler (CREATE_SCHEDULER=${CREATE_SCHEDULER})."

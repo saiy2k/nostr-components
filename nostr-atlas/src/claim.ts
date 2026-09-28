@@ -22,6 +22,7 @@ export const CLAIM_CLIENT_TAG = ["client", "Nostr Atlas"] as const;
 const MAX_TAG_VALUES = 10;
 const MAX_TAG_VALUE_LENGTH = 2000;
 export const IDENTITY_READ_TIMEOUT_MS = 8_000;
+export const CLAIM_PUBLISH_TIMEOUT_MS = 8_000;
 // nostr-tools treats maxWait as EOSE. That must not beat the outer deadline,
 // or a silent relay looks like a finished identity read.
 const IDENTITY_READ_MAX_WAIT_MS = IDENTITY_READ_TIMEOUT_MS + 60_000;
@@ -382,12 +383,12 @@ export async function loadExistingClaimEvent(
             ).length;
             const heardFromAll = list.length === relays.length;
             const fullRead = heardFromAll && closedByCaller === list.length;
-            // One dead relay must not block a claim. Use a verified event from
-            // a relay that finished, or an empty result when none returned one.
+            // One dead relay must not discard a verified identity another
+            // relay already returned. An empty result still requires every
+            // relay to finish, so a failed relay cannot look like a missing
+            // identity.
             const usablePartial =
-              heardFromAll &&
-              closedByCaller > 0 &&
-              (events.length === 0 || verifiedSeen());
+              heardFromAll && closedByCaller > 0 && verifiedSeen();
             if (fullRead || usablePartial) finish();
             else finish(new Error("unavailable"));
           },
@@ -450,6 +451,36 @@ export async function signClaimEvent(
   return signed;
 }
 
+function firstCoveredAcknowledgement(
+  publishes: Promise<string>[],
+  relays: string[],
+  requiredRelays: readonly string[],
+): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (relay?: string) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(relay);
+    };
+    const timer = setTimeout(() => finish(), CLAIM_PUBLISH_TIMEOUT_MS);
+    let remaining = publishes.length;
+    publishes.forEach((publish, index) => {
+      const relay = relays[index];
+      publish.then(
+        () => {
+          if (requiredRelays.includes(relay)) finish(relay);
+          else if (--remaining === 0) finish();
+        },
+        () => {
+          if (--remaining === 0) finish();
+        },
+      );
+    });
+  });
+}
+
 export async function publishClaimEvent(
   event: Event,
   relays: string[],
@@ -467,11 +498,10 @@ export async function publishClaimEvent(
     if (publishes.length === 0) {
       throw new Error("No claim relay is available.");
     }
-    const settled = await Promise.allSettled(publishes);
-    const acknowledged = relays.find(
-      (relay, index) =>
-        requiredRelays.includes(relay) &&
-        settled[index]?.status === "fulfilled",
+    const acknowledged = await firstCoveredAcknowledgement(
+      publishes,
+      relays,
+      requiredRelays,
     );
     if (!acknowledged) {
       throw new Error(

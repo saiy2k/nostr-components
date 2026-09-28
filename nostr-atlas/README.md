@@ -58,8 +58,8 @@ Successful responses may be cached for 60 seconds; errors are not cached.
 The directory table includes page navigation (Previous, Next, and numbered page
 buttons) and customizable page sizes (10, 25, or 50 claims per page, defaulting
 to 10). Fetched batches stay in memory until the page is reloaded. A failed load
-shows **Retry**, which reloads the current page. Local previews disappear when
-the page is reloaded. API failures never display sample data as real records.
+shows **Retry**, which reloads the current page. API failures never display
+sample data as real records.
 
 The current crawler projection contains verified X identities. The public handle
 documents do not currently store X follower counts, Nostr follower counts, or a
@@ -67,8 +67,10 @@ ranking snapshot, and they do not supply YouTube claims. Audience fields show `â
 the misleading client-side "Most followed" sort is not shown, and the Nostr tab
 explains its empty state. A verified mark means X account
 ownership was verified by the projector; a NIP-05 address is profile metadata,
-not a separate NIP-05 verification. The claim form still creates a **local preview**;
-it does not write to Firestore, publish a claim, or verify ownership.
+not a separate NIP-05 verification. The claim form signs a kind-10011 event,
+publishes it to Nostr relays, and asks `ingestClaim` to record it. That request
+does not by itself mark the account verified; the directory shows it after the
+proof check succeeds.
 
 To make the two popularity tabs real, a separate metrics job should materialize
 bounded public fields such as `metrics.xFollowers` and
@@ -179,7 +181,7 @@ before the listing function, then deploy the renamed read APIs:
 firebase deploy --only firestore:indexes --project YOUR_LIVE_PROJECT_ID
 node backend/nostr-atlas/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
 node backend/nostr-atlas/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
-firebase deploy --only functions:listAtlasProfiles,functions:lookupAtlasHandle --project YOUR_LIVE_PROJECT_ID
+firebase deploy --only functions:listAtlasProfiles,functions:lookupAtlasHandle,functions:checkClaimProof,functions:ingestClaim --project YOUR_LIVE_PROJECT_ID
 ```
 
 The backfill refuses to write if any curated handle is missing or not verified.
@@ -191,7 +193,8 @@ project/database. It is a public GET API with CORS enabled, following Firebase's
 [HTTP function configuration](https://firebase.google.com/docs/functions/http-events).
 Use the function URL printed by deployment as `VITE_ATLAS_API_URL` if it
 differs from the default. This command adds `lookupAtlasHandle` and leaves the
-previous `lookupDirectoryHandle` deployment in place for older extensions.
+previous `lookupDirectoryHandle` deployment in place for older extensions. It
+also deploys `checkClaimProof` and `ingestClaim`, which the claim form calls.
 Database rules are not changed.
 
 ## Deploy the site

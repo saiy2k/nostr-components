@@ -8,6 +8,7 @@ import {
 } from "nostr-tools";
 import { SimplePool, useWebSocketImplementation } from "nostr-tools/pool";
 import {
+  CLAIM_PUBLISH_TIMEOUT_MS,
   claimProofComposerUrl,
   claimProofText,
   connectClaimSigner,
@@ -413,7 +414,7 @@ describe("signed NIP-39 claim", () => {
         ["wss://one.example/", "wss://two.example/"],
         partialEmpty,
       ),
-    ).resolves.toBeNull();
+    ).rejects.toThrow("Could not read the existing Nostr identity");
   });
 
   it("succeeds after one relay acknowledges and always closes the pool", async () => {
@@ -435,6 +436,48 @@ describe("signed NIP-39 claim", () => {
       "wss://two.example/",
     );
     expect(pool.close).toHaveBeenCalledWith(relays);
+  });
+
+  it("returns after a covered relay acknowledges without waiting for a stalled relay", async () => {
+    const event = finalizeEvent(
+      createClaimEvent("alice", "https://x.com/alice/status/1234567890123"),
+      generateSecretKey(),
+    );
+    const pool = {
+      publish: vi
+        .fn()
+        .mockReturnValue([new Promise<string>(() => {}), Promise.resolve("ok")]),
+      close: vi.fn(),
+    };
+    const relays = ["wss://one.example/", "wss://two.example/"];
+    await expect(publishClaimEvent(event, relays, pool)).resolves.toBe(
+      "wss://two.example/",
+    );
+    expect(pool.close).toHaveBeenCalledWith(relays);
+  });
+
+  it("stops waiting when no covered relay acknowledges before the deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const event = finalizeEvent(
+        createClaimEvent("alice", "https://x.com/alice/status/1234567890123"),
+        generateSecretKey(),
+      );
+      const pool = {
+        publish: vi.fn().mockReturnValue([new Promise<string>(() => {})]),
+        close: vi.fn(),
+      };
+      const relays = ["wss://one.example/"];
+      const pending = publishClaimEvent(event, relays, pool);
+      const assertion = expect(pending).rejects.toThrow(
+        "No crawler-covered relay acknowledged",
+      );
+      await vi.advanceTimersByTimeAsync(CLAIM_PUBLISH_TIMEOUT_MS);
+      await assertion;
+      expect(pool.close).toHaveBeenCalledWith(relays);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reports when every relay rejects and still closes the pool", async () => {

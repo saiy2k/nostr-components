@@ -102,7 +102,7 @@ Handle field:
 
 ## Posted proof for this round
 
-Use this public post. The matching secret is `CLAIM_TEST_NSEC` in `directory-site/.env.local`. Leave that secret out of this file and out of any commit. `checkClaimProof` on `https://us-central1-nostr-components.cloudfunctions.net` already accepts this pair. The X bio has no npub, and the post is not a reply, a quote, or protected.
+Use this public post. The matching secret is `CLAIM_TEST_NSEC` in `nostr-atlas/.env.local`. Leave that secret out of this file and out of any commit. `checkClaimProof` on `https://us-central1-nostr-components.cloudfunctions.net` already accepts this pair. The X bio has no npub, and the post is not a reply, a quote, or protected.
 
 - Handle: `grayfaceofindia`
 - Proof: `https://x.com/grayfaceofindia/status/2104276147907481649`
