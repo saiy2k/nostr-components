@@ -3,7 +3,10 @@
     "indexes": "firestore.indexes.json"
   },
   "functions": {
-    "source": "functions"
+    "source": "functions",
+    "predeploy": [
+      "node functions/prepare-ingest-sources.mjs"
+    ]
   },
   "hosting": {
     "target": "storybook",

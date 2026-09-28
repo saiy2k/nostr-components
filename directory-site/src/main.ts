@@ -1,8 +1,5 @@
 import "./styles.css";
-import {
-  type DirectoryCategory,
-  type DirectoryProfile,
-} from "./data";
+import { type DirectoryCategory, type DirectoryProfile } from "./data";
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
@@ -23,6 +20,19 @@ import {
   fetchDirectoryPageAtOffset,
   type DirectoryPage,
 } from "./api";
+import {
+  claimProofComposerUrl,
+  connectClaimSigner,
+  // parseGithubProfile,
+  // parseYoutubeChannel,
+  type NostrSigner,
+} from "./claim";
+import {
+  CLAIM_COPY,
+  claimDialogAfterClose,
+  submitXClaim,
+  type ClaimStatusState,
+} from "./claim-flow";
 
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 
@@ -48,6 +58,7 @@ const sort: DirectorySort = "followers";
 let currentPage = 1;
 let pageSize = DEFAULT_PAGE_SIZE;
 let searchTimer: number | null = null;
+let claimIdentity: { pubkey: string; npub: string } | null = null;
 
 const escapeHtml = (value: string): string =>
   value.replace(
@@ -354,9 +365,8 @@ async function reloadProfiles(search = query): Promise<void> {
   await loadProfileBatches([0], true);
   if (loadFailed && query === nextQuery) {
     query = previousQuery;
-    const searchInput = document.querySelector<HTMLInputElement>(
-      "#directory-search",
-    );
+    const searchInput =
+      document.querySelector<HTMLInputElement>("#directory-search");
     if (searchInput && searchInput.value.trim() === nextQuery) {
       searchInput.value = previousQuery;
     }
@@ -386,7 +396,7 @@ function renderApp(): void {
           <h1 id="hero-heading">Receive zaps on X.com and YouTube.</h1>
           <p>Claim the accounts people already know, connect them to your Nostr identity, and give supporters a clear path to zap you across the web.</p>
           <button class="primary-button hero-cta" type="button" data-open-profile-dialog>
-            ${icon.plusUser()}<span>Claim your X or YouTube account</span>
+            ${icon.plusUser()}<span>Claim your X account</span>
           </button>
           <form class="hero-search" id="hero-search" role="search">
             <label class="sr-only" for="directory-search">Search verified accounts</label>
@@ -442,20 +452,55 @@ function renderApp(): void {
     </footer>
 
     <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
-      <form method="dialog" class="dialog-card" id="add-profile-form">
+      <form method="dialog" class="dialog-card claim-dialog-card" id="claim-account-form">
         <div class="dialog-heading">
-          <div><h2 id="profile-dialog-title">Preview a creator claim</h2><p>See how an X or YouTube account could appear with your Nostr identity. This stays in your browser.</p></div>
-          <button class="icon-button" value="cancel" type="submit" aria-label="Close claim preview">${icon.close()}</button>
+          <div><h2 id="profile-dialog-title">Claim your X account</h2><p>Publish a signed NIP-39 proof so the directory can verify your X account without receiving your private key.</p></div>
+          <button class="icon-button" type="button" data-close-claim-dialog aria-label="Close claim dialog">${icon.close()}</button>
         </div>
-        <div class="form-grid">
-          <label>Creator name<input name="name" required maxlength="50" placeholder="Satoshi" /></label>
-          <label>X or YouTube handle<input name="handle" required maxlength="50" placeholder="@satoshi" /></label>
-          <label>Nostr address (NIP-05)<input name="nip05" required maxlength="100" placeholder="satoshi@example.com" /></label>
-          <label class="full-field">Nostr public key<input name="npub" required minlength="20" pattern="npub1.+" placeholder="npub1…" /><small>Nostr public keys begin with npub1.</small></label>
+        <ol class="claim-steps">
+          <li>
+            <span class="claim-step-number">1</span>
+            <div class="claim-step-content">
+              <strong>Connect your Nostr signer</strong>
+              <p>Use a NIP-07 browser extension. Nostr Atlas asks it to sign the claim; your private key never enters this site.</p>
+              <button class="secondary-button" type="button" id="connect-claim-signer">Connect Nostr signer</button>
+              <div class="claim-identity">
+                <code id="claim-npub">Not connected</code>
+                <button class="text-button" type="button" id="copy-claim-npub" disabled>Copy npub</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="claim-step-number">2</span>
+            <div class="claim-step-content">
+              <strong>Post proof from your X account</strong>
+              <p>The proof tweet must contain the connected npub. Its author must match the handle below.</p>
+              <div class="claim-account-fields">
+                <label>X handle<input name="handle" required maxlength="16" pattern="@?[A-Za-z0-9_]{1,15}" placeholder="@satoshi" autocomplete="off" /></label>
+                <p class="claim-extra-link">DM me in Nostr to link to your YouTube channel and receive zaps.</p>
+                <!--
+                <label><span>YouTube channel (optional)</span><input name="youtube" type="url" inputmode="url" placeholder="https://www.youtube.com/@satoshi" autocomplete="off" /></label>
+                <label><span>GitHub profile (optional)</span><input name="github" type="url" inputmode="url" placeholder="https://github.com/satoshi" autocomplete="off" /></label>
+                -->
+              </div>
+              <a class="secondary-button claim-proof-link" id="claim-proof-link" aria-disabled="true">Open proof text on X</a>
+            </div>
+          </li>
+          <li>
+            <span class="claim-step-number">3</span>
+            <div class="claim-step-content">
+              <strong>Sign and publish the claim</strong>
+              <label>Proof tweet URL<input name="proofUrl" required type="url" inputmode="url" placeholder="https://x.com/satoshi/status/…" /></label>
+              <p>The signed event is published to public Nostr relays. Verification runs asynchronously, so the account may take time to appear.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="claim-status" id="claim-status" role="status" aria-live="polite">
+          Connect a signer to begin.
         </div>
         <div class="dialog-actions">
-          <button class="secondary-button" value="cancel" type="submit">Cancel</button>
-          <button class="primary-button" value="default" type="submit">Add claim to preview</button>
+          <button class="secondary-button" type="button" data-close-claim-dialog>Cancel</button>
+          <button class="primary-button" value="default" type="submit" id="publish-claim" disabled>Sign and publish claim</button>
         </div>
       </form>
     </dialog>
@@ -540,8 +585,65 @@ function bindEvents(): void {
     document.querySelector<HTMLInputElement>("#directory-search");
   const profileDialog =
     document.querySelector<HTMLDialogElement>("#profile-dialog");
-  const addProfileForm =
-    document.querySelector<HTMLFormElement>("#add-profile-form");
+  const claimForm = document.querySelector<HTMLFormElement>(
+    "#claim-account-form",
+  );
+  const connectClaimButton = document.querySelector<HTMLButtonElement>(
+    "#connect-claim-signer",
+  );
+  const claimNpub = document.querySelector<HTMLElement>("#claim-npub");
+  const copyClaimNpub =
+    document.querySelector<HTMLButtonElement>("#copy-claim-npub");
+  const claimProofLink =
+    document.querySelector<HTMLAnchorElement>("#claim-proof-link");
+  const publishClaimButton =
+    document.querySelector<HTMLButtonElement>("#publish-claim");
+  const claimStatus = document.querySelector<HTMLElement>("#claim-status");
+  let publishing = false;
+
+  const setClaimStatus = (
+    message: string,
+    state: "idle" | "working" | "error" | "success" = "idle",
+  ) => {
+    if (!claimStatus) return;
+    claimStatus.textContent = message;
+    claimStatus.dataset.state = state;
+  };
+
+  const clearClaimIdentity = () => {
+    claimIdentity = null;
+    if (claimNpub) claimNpub.textContent = "Not connected";
+    if (copyClaimNpub) copyClaimNpub.disabled = true;
+    if (publishClaimButton) publishClaimButton.disabled = true;
+    if (claimProofLink) {
+      claimProofLink.removeAttribute("href");
+      claimProofLink.removeAttribute("target");
+      claimProofLink.removeAttribute("rel");
+      claimProofLink.setAttribute("aria-disabled", "true");
+    }
+  };
+
+  const showClaimIdentity = (identity: { pubkey: string; npub: string }) => {
+    claimIdentity = identity;
+    if (claimNpub) claimNpub.textContent = identity.npub;
+    if (copyClaimNpub) copyClaimNpub.disabled = false;
+    if (publishClaimButton && !publishing) publishClaimButton.disabled = false;
+    if (claimProofLink) {
+      claimProofLink.href = claimProofComposerUrl(identity.npub);
+      claimProofLink.target = "_blank";
+      claimProofLink.rel = "noreferrer";
+      claimProofLink.setAttribute("aria-disabled", "false");
+    }
+  };
+
+  const browserSigner = (): NostrSigner | null => {
+    const signer = (window as typeof window & { nostr?: Partial<NostrSigner> })
+      .nostr;
+    return typeof signer?.getPublicKey === "function" &&
+      typeof signer.signEvent === "function"
+      ? (signer as NostrSigner)
+      : null;
+  };
 
   searchForm?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -562,21 +664,19 @@ function bindEvents(): void {
     }, 300);
   });
 
-  document
-    .querySelector("#profile-results")
-    ?.addEventListener(
-      "error",
-      (event) => {
-        const image = event.target;
-        if (
-          image instanceof HTMLImageElement &&
-          image.classList.contains("avatar-image")
-        ) {
-          image.remove();
-        }
-      },
-      true,
-    );
+  document.querySelector("#profile-results")?.addEventListener(
+    "error",
+    (event) => {
+      const image = event.target;
+      if (
+        image instanceof HTMLImageElement &&
+        image.classList.contains("avatar-image")
+      ) {
+        image.remove();
+      }
+    },
+    true,
+  );
 
   document
     .querySelector("#profile-results")
@@ -614,66 +714,151 @@ function bindEvents(): void {
       });
     });
 
-  addProfileForm?.addEventListener("submit", (event) => {
+  claimProofLink?.addEventListener("click", (event) => {
+    if (!claimIdentity) event.preventDefault();
+  });
+
+  connectClaimButton?.addEventListener("click", async () => {
+    const signer = browserSigner();
+    if (!signer) {
+      setClaimStatus(
+        "No NIP-07 signer was found. Install or unlock a Nostr browser extension, then retry.",
+        "error",
+      );
+      return;
+    }
+
+    connectClaimButton.disabled = true;
+    setClaimStatus("Waiting for your Nostr signer…", "working");
+    try {
+      showClaimIdentity(await connectClaimSigner(signer));
+      setClaimStatus(CLAIM_COPY.signerConnected, "success");
+    } catch (error) {
+      clearClaimIdentity();
+      setClaimStatus(
+        error instanceof Error
+          ? error.message
+          : "The Nostr signer could not be connected.",
+        "error",
+      );
+    } finally {
+      connectClaimButton.disabled = false;
+    }
+  });
+
+  copyClaimNpub?.addEventListener("click", () => {
+    if (claimIdentity) void copyNpub(claimIdentity.npub, copyClaimNpub);
+  });
+
+  claimForm
+    ?.querySelectorAll<HTMLButtonElement>("[data-close-claim-dialog]")
+    .forEach((button) => {
+      button.addEventListener("click", () => profileDialog?.close());
+    });
+
+  claimForm?.addEventListener("submit", async (event) => {
     const submitter = (event as SubmitEvent)
       .submitter as HTMLButtonElement | null;
     if (submitter?.value === "cancel") return;
     event.preventDefault();
-    if (!addProfileForm.reportValidity()) return;
+    if (publishing) return;
+    if (!claimForm.reportValidity()) return;
 
-    const formData = new FormData(addProfileForm);
-    const name = String(formData.get("name") ?? "").trim();
-    const handle = String(formData.get("handle") ?? "").trim();
-    const categoryValue = String(
-      formData.get("category") ?? "Popular on X.com",
-    ) as DirectoryProfile["category"];
-    const npub = String(formData.get("npub") ?? "").trim();
+    const formData = new FormData(claimForm);
+    const handleInput = claimForm.elements.namedItem(
+      "handle",
+    ) as HTMLInputElement | null;
+    const proofInput = claimForm.elements.namedItem(
+      "proofUrl",
+    ) as HTMLInputElement | null;
+    /*
+    const youtube = parseYoutubeChannel(String(formData.get("youtube") ?? ""));
+    const github = parseGithubProfile(String(formData.get("github") ?? ""));
+    const youtubeInput = claimForm.elements.namedItem(
+      "youtube",
+    ) as HTMLInputElement | null;
+    const githubInput = claimForm.elements.namedItem(
+      "github",
+    ) as HTMLInputElement | null;
+    if (youtube.status === "invalid") {
+      youtubeInput?.setCustomValidity(
+        "Use a YouTube channel link, such as https://www.youtube.com/@name.",
+      );
+      youtubeInput?.reportValidity();
+      youtubeInput?.setCustomValidity("");
+      setClaimStatus("The YouTube link must be a channel URL.", "error");
+      return;
+    }
+    if (github.status === "invalid") {
+      githubInput?.setCustomValidity(
+        "Use a GitHub profile link, such as https://github.com/name.",
+      );
+      githubInput?.reportValidity();
+      githubInput?.setCustomValidity("");
+      setClaimStatus("The GitHub link must be a profile URL.", "error");
+      return;
+    }
+    const profileLinks = [youtube, github].flatMap((link) =>
+      link.status === "ok" ? [link.link] : [],
+    );
+    */
 
-    previewProfiles = [
-      {
-        id: `preview-${Date.now()}`,
-        name,
-        handle: handle.startsWith("@") ? handle : `@${handle}`,
-        nip05: String(formData.get("nip05") ?? "").trim(),
-        category: categoryValue,
-        followers: null,
-        verified: false,
-        npub,
-        youtube: "",
-        picture: "",
-        avatar: {
-          initials: name
-            .split(/\s+/)
-            .map((part) => part[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase(),
-          foreground: "#ffffff",
-          background: "#7456f6",
-        },
+    let started = false;
+    const result = await submitXClaim({
+      identity: claimIdentity,
+      signer: browserSigner(),
+      handle: String(formData.get("handle") ?? ""),
+      proofUrl: String(formData.get("proofUrl") ?? ""),
+      relayConfig: import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
+      directoryApiUrl,
+      getIdentity: () => claimIdentity,
+      onStart() {
+        started = true;
+        publishing = true;
+        if (connectClaimButton) connectClaimButton.disabled = true;
+        if (publishClaimButton) publishClaimButton.disabled = true;
+        setClaimStatus(CLAIM_COPY.working, "working");
       },
-      ...previewProfiles,
-    ];
-    category = categoryValue;
-    query = "";
-    currentPage = 1;
-    if (searchInput) searchInput.value = "";
-    profileDialog?.close();
-    addProfileForm.reset();
-    document
-      .querySelectorAll<HTMLButtonElement>("[data-category]")
-      .forEach((tab) => {
-        const selected = tab.dataset.category === categoryValue;
-        tab.classList.toggle("selected", selected);
-        tab.setAttribute("aria-selected", String(selected));
-      });
-    renderProfiles();
-    void ensureCurrentPageLoaded();
-    showToast(`${name} was added to your local claim preview.`);
+    });
+    if (
+      !result.ok &&
+      (result.reason === "invalid-proof" || result.reason === "invalid-handle")
+    ) {
+      const field = result.field === "handle" ? handleInput : proofInput;
+      field?.setCustomValidity(result.fieldMessage);
+      field?.reportValidity();
+      field?.setCustomValidity("");
+    }
+    if (!result.ok && result.reason === "signer-changed") clearClaimIdentity();
+    if (result.ok) {
+      setClaimStatus(
+        result.message,
+        result.ingestStatus === "rejected" ? "error" : "success",
+      );
+      if (result.ingestStatus !== "rejected") showToast(result.toast);
+    } else {
+      setClaimStatus(result.message, "error");
+    }
+    if (started) {
+      publishing = false;
+      if (connectClaimButton) connectClaimButton.disabled = false;
+      if (publishClaimButton) publishClaimButton.disabled = !claimIdentity;
+    }
   });
 
   profileDialog?.addEventListener("click", (event) => {
     if (event.target === profileDialog) profileDialog.close();
+  });
+
+  profileDialog?.addEventListener("close", () => {
+    const next = claimDialogAfterClose({
+      publishing,
+      hasIdentity: claimIdentity !== null,
+      status: (claimStatus?.dataset.state as ClaimStatusState) || "idle",
+    });
+    if (!next) return;
+    if (publishClaimButton) publishClaimButton.disabled = next.publishDisabled;
+    setClaimStatus(next.statusMessage, next.status);
   });
 }
 
@@ -690,7 +875,8 @@ async function copyNpub(
   try {
     window.focus();
     button.focus({ preventScroll: true });
-    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+    if (!navigator.clipboard?.writeText)
+      throw new Error("Clipboard API unavailable");
     await navigator.clipboard.writeText(npub);
     markNpubCopied(button);
   } catch {

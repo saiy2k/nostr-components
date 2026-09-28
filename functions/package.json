@@ -11,6 +11,7 @@
     "test": "node --test *.test.js"
   },
   "dependencies": {
+    "@google-cloud/firestore": "8.6.0",
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.4.0",
     "nostr-tools": "^2.7.2"
