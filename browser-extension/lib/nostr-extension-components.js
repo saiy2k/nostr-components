@@ -6832,6 +6832,9 @@
           this.serial++;
           const id = params?.id || "count:" + this.serial;
           const ret = new Promise((resolve, reject) => {
+            if (this.openCountRequests.size >= 100) {
+              throw new Error("Too many concurrent COUNT requests open on this relay connection");
+            }
             this.openCountRequests.set(id, { resolve, reject });
           });
           this.send('["COUNT","' + id + '",' + JSON.stringify(filters).substring(1));
