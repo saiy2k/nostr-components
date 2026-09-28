@@ -171,13 +171,13 @@ curl -i -X POST 'http://127.0.0.1:5001/nostr-components/us-central1/listAtlasPro
 
 The repository's default Firebase project is for Storybook. Always specify the
 directory project. Deploy the `listingKey` index and backfill every handle
-before the listing function, then deploy only that function:
+before the listing function, then deploy the renamed read APIs:
 
 ```sh
 firebase deploy --only firestore:indexes --project YOUR_LIVE_PROJECT_ID
 node backend/nostr-atlas/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
 node backend/nostr-atlas/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
-firebase deploy --only functions:listAtlasProfiles --project YOUR_LIVE_PROJECT_ID
+firebase deploy --only functions:listAtlasProfiles,functions:lookupAtlasHandle --project YOUR_LIVE_PROJECT_ID
 ```
 
 The backfill refuses to write if any curated handle is missing or not verified.
@@ -188,8 +188,9 @@ The function's runtime service account needs Firestore read access in that
 project/database. It is a public GET API with CORS enabled, following Firebase's
 [HTTP function configuration](https://firebase.google.com/docs/functions/http-events).
 Use the function URL printed by deployment as `VITE_ATLAS_API_URL` if it
-differs from the default. The existing extension lookup is not redeployed by this
-command. Database rules are not changed.
+differs from the default. This command adds `lookupAtlasHandle` and leaves the
+previous `lookupDirectoryHandle` deployment in place for older extensions.
+Database rules are not changed.
 
 ## Deploy the site
 

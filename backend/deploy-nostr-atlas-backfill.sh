@@ -2,6 +2,7 @@
 set -euo pipefail
 
 BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPOSITORY_ROOT="$(cd "${BACKEND_DIR}/.." && pwd)"
 
 if [ -z "${PROJECT_ID:-}" ]; then
   echo "PROJECT_ID is required." >&2
@@ -85,7 +86,7 @@ fi
 gcloud builds submit \
   --config "${BACKEND_DIR}/cloudbuild.yaml" \
   --substitutions "_IMAGE=${IMAGE}" \
-  "${BACKEND_DIR}"
+  "${REPOSITORY_ROOT}"
 
 ENV_VARS="^@^GOOGLE_CLOUD_PROJECT=${PROJECT_ID}@FIRESTORE_PROJECT=${PROJECT_ID}@FIRESTORE_DATABASE=${FIRESTORE_DATABASE}@FIRESTORE_HANDLES_COLLECTION=${FIRESTORE_HANDLES_COLLECTION}@FIRESTORE_STATE_COLLECTION=${FIRESTORE_STATE_COLLECTION}@FIRESTORE_GAPS_COLLECTION=${FIRESTORE_GAPS_COLLECTION}@FIRESTORE_HANDLE_WRITE_FAILURES_COLLECTION=${FIRESTORE_HANDLE_WRITE_FAILURES_COLLECTION}@BACKFILL_TIMEOUT_MS=${BACKFILL_TIMEOUT_MS}@BACKFILL_MAX_PAGES=${BACKFILL_MAX_PAGES}@BACKFILL_PAGE_LIMIT=${BACKFILL_PAGE_LIMIT}@BACKFILL_MAX_PAGE_LIMIT=${BACKFILL_MAX_PAGE_LIMIT}@BACKFILL_SINCE=${BACKFILL_SINCE}@BACKFILL_STATE_PREFIX=${BACKFILL_STATE_PREFIX}@MAX_PENDING_CLAIMS=${MAX_PENDING_CLAIMS}@MAX_INACTIVE_VERIFIED_CLAIMS=${MAX_INACTIVE_VERIFIED_CLAIMS}@MAX_REJECTION_TOMBSTONES=${MAX_REJECTION_TOMBSTONES}@X_MENTION_CHECK_TIMEOUT_MS=${X_MENTION_CHECK_TIMEOUT_MS}"
 if [ -n "${RELAYS:-}" ]; then
@@ -122,6 +123,20 @@ if [ "${CREATE_SCHEDULER}" = "true" ]; then
     --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform"
     --description="Triggers ${JOB_NAME} Cloud Run Job on a schedule"
   )
+
+  PREVIOUS_SCHEDULER_JOB_NAME="${PREVIOUS_SCHEDULER_JOB_NAME:-relay-directory-backfill-daily}"
+  if [ "${PREVIOUS_SCHEDULER_JOB_NAME}" != "${SCHEDULER_JOB_NAME}" ] \
+    && gcloud scheduler jobs describe "${PREVIOUS_SCHEDULER_JOB_NAME}" \
+      --location="${SCHEDULER_REGION}" >/dev/null 2>&1; then
+    PREVIOUS_SCHEDULER_STATE="$(gcloud scheduler jobs describe "${PREVIOUS_SCHEDULER_JOB_NAME}" \
+      --location="${SCHEDULER_REGION}" \
+      --format='value(state)')"
+    if [ "${PREVIOUS_SCHEDULER_STATE}" = "ENABLED" ]; then
+      gcloud scheduler jobs pause "${PREVIOUS_SCHEDULER_JOB_NAME}" \
+        --location="${SCHEDULER_REGION}"
+      echo "Paused previous Cloud Scheduler job ${PREVIOUS_SCHEDULER_JOB_NAME}."
+    fi
+  fi
 
   if gcloud scheduler jobs describe "${SCHEDULER_JOB_NAME}" \
     --location="${SCHEDULER_REGION}" >/dev/null 2>&1; then
