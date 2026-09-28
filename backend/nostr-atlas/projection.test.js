@@ -1702,9 +1702,13 @@ describe("projection execution", () => {
         handlesDeferred: 1,
         deferReasons: { timeout: 1 },
       });
-      expect(
-        loggedProjectionEvent(logSpy, "projection_handle_result"),
-      ).toMatchObject({ deferredReason: "timeout" });
+      const result = loggedProjectionEvent(logSpy, "projection_handle_result");
+      expect(result).toMatchObject({
+        event: "projection_handle_result",
+        deferredReason: "timeout",
+      });
+      expect(result.message).toContain("handle=alice");
+      expect(result.message).toContain("defer=timeout");
     } finally {
       logSpy.mockRestore();
     }
@@ -1739,9 +1743,14 @@ describe("projection execution", () => {
         retryLater: 1,
         rejected: 0,
       });
-      expect(
-        loggedProjectionEvent(logSpy, "projection_handle_result"),
-      ).toMatchObject({ deferredReason: "http_500" });
+      const result = loggedProjectionEvent(logSpy, "projection_handle_result");
+      expect(result).toMatchObject({
+        event: "projection_handle_result",
+        deferredReason: "http_500",
+      });
+      expect(result.message).toContain("handle=alice");
+      expect(result.message).toContain("defer=http_500");
+      expect(result.message).toContain("outcomes=retry_later:http_500");
     } finally {
       logSpy.mockRestore();
     }
@@ -1763,6 +1772,59 @@ describe("projection execution", () => {
 
     expect(output.stats.stoppedReason).toBe("run_deadline_reached");
     expect(verifyClaims).not.toHaveBeenCalled();
+  });
+
+  it("prints handle progress and outcomes on the Cloud Run log line", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const handle = dueHandle("alice", "claim-a", PUBKEY_A);
+    handle.claims.push({
+      ...handle.claims[0],
+      claimId: "claim-b",
+      pubkey: PUBKEY_B,
+    });
+    handle.pendingClaimCount = 2;
+
+    try {
+      await runProjection(projectionArgs(), null, {
+        db: fakeFirestore([handle]),
+        verifyHandleClaims: vi.fn(async (handleData) =>
+          verificationOutput({
+            results: handleData.claims.map((claim) => ({
+              claimId: claim.claimId,
+              identityStatus: "rejected",
+              rejectionReason: "x_bio_does_not_link_claimed_pubkey",
+            })),
+            xProfilesFailed: 1,
+            xProfileFailures: { http_403: 1 },
+            xBioIdentifiersResolved: 1,
+          }),
+        ),
+      });
+
+      expect(loggedProjectionEvent(logSpy, "projection_run_begin")).toMatchObject({
+        event: "projection_run_begin",
+        message: "projection_run_begin",
+      });
+      expect(loggedProjectionEvent(logSpy, "projection_handle_begin").message).toBe(
+        "projection_handle_begin handle=alice index=1 pending=2 withProof=2 status=pending pubkeys=7e7e9c42,8e7e9c42 proofsLeft=10",
+      );
+      const result = loggedProjectionEvent(logSpy, "projection_handle_result");
+      expect(result.event).toBe("projection_handle_result");
+      expect(result.handle).toBe("alice");
+      expect(result.message).toContain("handle=alice");
+      expect(result.message).toContain("changed=true");
+      expect(result.message).toContain("rejected=2");
+      expect(result.message).toContain("status=complete");
+      expect(result.message).toContain("xFailed=1");
+      expect(result.message).toContain("xFail=http_403");
+      expect(result.message).toContain("bioIds=1");
+      expect(result.message).toContain(
+        "outcomes=rejected:x_bio_does_not_link_claimed_pubkey*2",
+      );
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 });
 
@@ -1967,7 +2029,7 @@ function loggedProjectionEvent(logSpy, message) {
         return null;
       }
     })
-    .find((entry) => entry?.message === message);
+    .find((entry) => entry?.event === message || entry?.message === message);
 }
 
 function fakeFirestore(handles, writes = []) {
