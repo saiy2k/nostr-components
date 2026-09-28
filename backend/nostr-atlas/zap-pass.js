@@ -19,6 +19,7 @@ import {
 
 const LNURL_CONCURRENCY = 8;
 const LNURL_TIMEOUT_MS = 8000;
+const LNURL_MAX_BODY_BYTES = 64 * 1024;
 
 export function isPrivateAddress(address) {
   const version = isIP(address);
@@ -55,6 +56,12 @@ export async function fetchPublicHttps(url, options = {}) {
   }
   const chosen = records[0];
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (settle, value) => {
+      if (settled) return;
+      settled = true;
+      settle(value);
+    };
     const req = https.request(
       {
         host: chosen.address,
@@ -66,11 +73,20 @@ export async function fetchPublicHttps(url, options = {}) {
       },
       (res) => {
         const chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
+        let size = 0;
+        res.on("data", (chunk) => {
+          size += chunk.length;
+          if (size > LNURL_MAX_BODY_BYTES) {
+            req.destroy(new Error("response-too-large"));
+            return;
+          }
+          chunks.push(chunk);
+        });
         res.on("end", () => {
+          if (settled) return;
           const body = Buffer.concat(chunks).toString("utf8");
           const status = res.statusCode || 0;
-          resolve({
+          finish(resolve, {
             ok: status >= 200 && status < 300,
             status,
             json: async () => JSON.parse(body),
@@ -80,7 +96,7 @@ export async function fetchPublicHttps(url, options = {}) {
     );
     const abort = () => req.destroy(new Error("aborted"));
     options.signal?.addEventListener("abort", abort, { once: true });
-    req.on("error", reject);
+    req.on("error", (error) => finish(reject, error));
     req.setTimeout(LNURL_TIMEOUT_MS, () => req.destroy(new Error("timeout")));
     req.end();
   });
