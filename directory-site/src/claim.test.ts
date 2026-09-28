@@ -876,6 +876,34 @@ describe("existing identity reads", () => {
     }
   });
 
+  it("keeps a verified identity when another relay never answers", async () => {
+    vi.useFakeTimers();
+    try {
+      const secret = generateSecretKey();
+      const pubkey = getPublicKey(secret);
+      const event = finalizeEvent(
+        createClaimEvent("alice", "https://x.com/alice/status/1234567890123"),
+        secret,
+      );
+      const relays = ["wss://live.example/", "wss://dead.example/"];
+      const close = vi.fn();
+      const pool = {
+        subscribe: vi.fn((_relays, _filter, params) => {
+          params.onevent(event);
+          return { close };
+        }),
+        close: vi.fn(),
+      };
+      const pending = loadExistingClaimEvent(pubkey, relays, pool);
+      await vi.advanceTimersByTimeAsync(IDENTITY_READ_TIMEOUT_MS);
+      await expect(pending).resolves.toMatchObject({ id: event.id });
+      expect(close).toHaveBeenCalled();
+      expect(pool.close).toHaveBeenCalledWith(relays);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not treat a silent open relay as a finished identity read", async () => {
     vi.useFakeTimers();
     class SilentSocket {

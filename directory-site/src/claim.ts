@@ -341,6 +341,13 @@ export async function loadExistingClaimEvent(
   let subscription: { close(): void | Promise<void> } | undefined;
   try {
     await new Promise<void>((resolve, reject) => {
+      const verifiedSeen = () =>
+        events.some(
+          (event) =>
+            event.kind === 10011 &&
+            event.pubkey?.toLowerCase() === author &&
+            verifyEvent(event),
+        );
       const finish = (error?: Error) => {
         if (settled) return;
         settled = true;
@@ -350,7 +357,11 @@ export async function loadExistingClaimEvent(
       };
       const timer = setTimeout(() => {
         void subscription?.close();
-        finish(new Error("timeout"));
+        // A relay that never answers must not discard an identity another
+        // relay already returned. An empty result still requires every relay
+        // to finish, so a silent relay cannot look like a missing identity.
+        if (verifiedSeen()) finish();
+        else finish(new Error("timeout"));
       }, IDENTITY_READ_TIMEOUT_MS);
       subscription = pool.subscribe(
         relays,
@@ -369,12 +380,6 @@ export async function loadExistingClaimEvent(
             const closedByCaller = list.filter(
               (reason) => reason === "closed by caller",
             ).length;
-            const verifiedSeen = events.some(
-              (event) =>
-                event.kind === 10011 &&
-                event.pubkey?.toLowerCase() === author &&
-                verifyEvent(event),
-            );
             const heardFromAll = list.length === relays.length;
             const fullRead = heardFromAll && closedByCaller === list.length;
             // One dead relay must not block a claim. Use a verified event from
@@ -382,7 +387,7 @@ export async function loadExistingClaimEvent(
             const usablePartial =
               heardFromAll &&
               closedByCaller > 0 &&
-              (events.length === 0 || verifiedSeen);
+              (events.length === 0 || verifiedSeen());
             if (fullRead || usablePartial) finish();
             else finish(new Error("unavailable"));
           },
