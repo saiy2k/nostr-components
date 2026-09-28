@@ -5,7 +5,7 @@ service cloud.firestore {
   // Do not deploy this file to sat-the-standard. That project has its own rules.
   //
   // Nostr Atlas and the browser extension do not use the Firestore client SDK.
-  // Atlas reads a public HTTPS API. The extension calls lookupDirectoryHandle.
+  // Atlas reads a public HTTPS API. The extension calls lookupAtlasHandle.
   // Those functions and the Cloud Run crawler use the Admin SDK, which ignores
   // these rules. Client reads would expose pending claims, evidence, tombstones,
   // and lightning addresses that the API strips out.

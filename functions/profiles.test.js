@@ -1,0 +1,619 @@
+// SPDX-License-Identifier: MIT
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { nip19 } from "nostr-tools";
+import { listingKeyForHandle } from "./featured-handles.js";
+import {
+  createAtlasListHandler,
+  directorySearchFilter,
+  listAtlasProfiles,
+  publicDirectoryProfile,
+} from "./profiles.js";
+
+function handleRecord(handle, overrides = {}) {
+  return {
+    platform: "twitter",
+    handle,
+    listingKey: listingKeyForHandle(handle),
+    claims: [{ evidence: "private-evidence" }],
+    activeIdentity: {
+      status: "verified",
+      pubkey: "A".repeat(64),
+      npub: "npub1incorrect",
+      metadata: {
+        name: "Alice",
+        nip05: "alice@example.com",
+        about: "not-public-here",
+      },
+      lud16: "do-not-expose@example.com",
+    },
+    ...overrides,
+  };
+}
+
+function fakeDatabase(records) {
+  const reads = [];
+
+  function nestedValue(value, path) {
+    return path.split(".").reduce((current, key) => current?.[key], value);
+  }
+
+  return {
+    reads,
+    collection(name) {
+      const operation = { name, filters: [], offset: 0 };
+      reads.push(operation);
+      const query = {
+        where(field, operator, value) {
+          operation.filters.push([field, operator, value]);
+          operation.filter ||= [field, operator, value];
+          return this;
+        },
+        orderBy(field) {
+          operation.order = field;
+          return this;
+        },
+        offset(offset) {
+          operation.offset = offset;
+          return this;
+        },
+        startAfter(cursor) {
+          operation.cursor = cursor;
+          return this;
+        },
+        select(...fields) {
+          operation.fields = fields;
+          return this;
+        },
+        limit(limit) {
+          operation.limit = limit;
+          return this;
+        },
+        count() {
+          operation.counted = true;
+          return {
+            async get() {
+              return { data: () => ({ count: matchingEntries().length }) };
+            },
+          };
+        },
+        async get() {
+          let entries = matchingEntries().sort((a, b) => {
+            if (operation.order === "handle") {
+              const byHandle = String(a[1].handle).localeCompare(
+                String(b[1].handle),
+              );
+              if (byHandle !== 0) return byHandle;
+            }
+            if (operation.order === "listingKey") {
+              return String(a[1].listingKey).localeCompare(
+                String(b[1].listingKey),
+              );
+            }
+            return a[0].localeCompare(b[0]);
+          });
+          if (operation.cursor) {
+            entries = entries.filter(([id, data]) => {
+              if (operation.order === "handle") {
+                return String(data.handle) > operation.cursor;
+              }
+              if (operation.order === "listingKey") {
+                return String(data.listingKey) > operation.cursor;
+              }
+              return id > operation.cursor;
+            });
+          }
+          return {
+            docs: entries
+              .slice(operation.offset)
+              .slice(0, operation.limit)
+              .map(([id, data]) => ({ id, data: () => data })),
+          };
+        },
+      };
+
+      function matchingEntries() {
+        return Object.entries(records).filter(([, data]) => {
+          if (
+            operation.order === "listingKey" &&
+            typeof data.listingKey !== "string"
+          ) {
+            return false;
+          }
+          return operation.filters.every(([field, operator, value]) => {
+            const current = nestedValue(data, field);
+            if (operator === "==") return current === value;
+            if (operator === ">=") return String(current ?? "") >= value;
+            if (operator === "<=") return String(current ?? "") <= value;
+            throw new Error(`unexpected operator ${operator}`);
+          });
+        });
+      }
+
+      return query;
+    },
+  };
+}
+
+test("exposes an allowlist of current identity fields, never evidence or payment data", () => {
+  assert.deepEqual(
+    publicDirectoryProfile("twitter:alice", handleRecord("alice")),
+    {
+      id: "twitter:alice",
+      platform: "twitter",
+      handle: "alice",
+      pubkey: "a".repeat(64),
+      verified: true,
+      name: "Alice",
+      nip05: "alice@example.com",
+      picture: "",
+    },
+  );
+});
+
+test("prefers a Nostr https picture and falls back to the stored X avatar", () => {
+  const nostr = "https://cdn.example/alice.png";
+  const xPicture =
+    "https://pbs.twimg.com/profile_images/1/alice_200x200.jpg";
+  const data = handleRecord("alice");
+  data.activeIdentity.metadata.picture = nostr;
+  data.activeIdentity.metadata.xPicture = xPicture;
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, nostr);
+
+  data.activeIdentity.metadata.picture = "HTTPS://CDN.Example/a.png";
+  assert.equal(
+    publicDirectoryProfile("twitter:alice", data).picture,
+    "https://cdn.example/a.png",
+  );
+
+  data.activeIdentity.metadata.picture = "javascript:alert(1)";
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, xPicture);
+
+  data.activeIdentity.metadata.picture = "http://cdn.example/alice.png";
+  data.activeIdentity.metadata.xPicture = "https://user:pass@cdn.example/x.png";
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, "");
+
+  data.activeIdentity.metadata.xPicture = `https://cdn.example/${"a".repeat(2000)}.png`;
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, "");
+});
+
+test("does not publish a picture that exists only on a claim", () => {
+  const data = handleRecord("alice");
+  data.activeIdentity.claimId = "claim-1";
+  data.claims = [
+    {
+      claimId: "claim-1",
+      metadata: { picture: "https://cdn.example/claim-only.png" },
+    },
+  ];
+  assert.equal(publicDirectoryProfile("twitter:alice", data).picture, "");
+});
+
+test("rejects unverified, malformed, mismatched, or unsupported records", () => {
+  const valid = handleRecord("alice");
+  for (const data of [
+    { ...valid, activeIdentity: null },
+    {
+      ...valid,
+      activeIdentity: { ...valid.activeIdentity, status: "pending" },
+    },
+    {
+      ...valid,
+      activeIdentity: { ...valid.activeIdentity, pubkey: "bad-key" },
+    },
+    { ...valid, platform: "youtube" },
+    { ...valid, handle: "bob" },
+  ]) {
+    assert.equal(publicDirectoryProfile("twitter:alice", data), null);
+  }
+  assert.equal(
+    publicDirectoryProfile("twitter:home", handleRecord("home")),
+    null,
+  );
+  assert.equal(publicDirectoryProfile("other:alice", valid), null);
+});
+
+test("uses the active claim NIP-05 when the identity metadata has none", () => {
+  const data = handleRecord("alice");
+  delete data.activeIdentity.metadata;
+  data.activeIdentity.claimId = "claim-1";
+  data.claims = [
+    { claimId: "claim-1", metadata: { nip05: "alice@example.com" } },
+  ];
+  assert.equal(
+    publicDirectoryProfile("twitter:alice", data).nip05,
+    "alice@example.com",
+  );
+});
+
+test("handles absent metadata and bounds display fields", () => {
+  const data = handleRecord("alice");
+  delete data.activeIdentity.metadata;
+  assert.equal(publicDirectoryProfile("twitter:alice", data).name, "alice");
+  assert.equal(publicDirectoryProfile("twitter:alice", data).nip05, "");
+  data.activeIdentity.metadata = {
+    name: "n".repeat(120),
+    nip05: "x".repeat(300),
+  };
+  assert.equal(publicDirectoryProfile("twitter:alice", data).name.length, 100);
+  assert.equal(publicDirectoryProfile("twitter:alice", data).nip05.length, 255);
+});
+
+test("returns database totals and supports arbitrary page offsets", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:bob": handleRecord("bob", {
+      activeIdentity: { status: "pending" },
+    }),
+    "twitter:carol": handleRecord("carol"),
+    "twitter:dave": handleRecord("dave"),
+  });
+  const first = await listAtlasProfiles(db, { limit: "2" });
+  assert.deepEqual(
+    first.body.profiles.map((p) => p.handle),
+    ["alice", "carol"],
+  );
+  assert.equal(first.body.total, 3);
+  assert.equal(first.body.offset, 0);
+  assert.equal(first.body.nextCursor, "twitter:carol");
+  const second = await listAtlasProfiles(db, {
+    limit: "2",
+    offset: "2",
+  });
+  assert.deepEqual(
+    second.body.profiles.map((p) => p.handle),
+    ["dave"],
+  );
+  assert.equal(second.body.total, 3);
+  assert.equal(second.body.offset, 2);
+  assert.equal(second.body.nextCursor, null);
+  assert.equal(db.reads[0].limit, 3);
+  assert.equal(db.reads[0].offset, 0);
+  assert.equal(db.reads[1].offset, 2);
+  assert.deepEqual(db.reads[0].filter, [
+    "activeIdentity.status",
+    "==",
+    "verified",
+  ]);
+  assert.equal(db.reads[0].name, "nostrDirectoryHandles");
+  assert.equal(db.reads[0].fields.includes("claims"), false);
+  assert.equal(
+    db.reads[0].fields.includes("activeIdentity.metadata.picture"),
+    true,
+  );
+  assert.equal(
+    db.reads[0].fields.includes("activeIdentity.metadata.xPicture"),
+    true,
+  );
+});
+
+test("omits malformed profiles while retaining the Firestore verified total", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice", {
+      activeIdentity: { status: "verified", pubkey: "invalid" },
+    }),
+    "twitter:bob": handleRecord("bob"),
+  });
+  const result = await listAtlasProfiles(db, { limit: "1" });
+  assert.deepEqual(result.body.profiles, []);
+  assert.equal(result.body.total, 2);
+  assert.equal(result.body.offset, 0);
+});
+
+test("empty collections are successful and collection overrides stay server controlled", async () => {
+  const db = fakeDatabase({});
+  assert.deepEqual(
+    await listAtlasProfiles(
+      db,
+      { collection: "ignored" },
+      { collection: "testHandles" },
+    ),
+    {
+      status: 200,
+      body: { profiles: [], total: 0, offset: 0, nextCursor: null },
+    },
+  );
+  assert.equal(db.reads[0].name, "testHandles");
+  assert.equal(db.reads[0].order, "listingKey");
+  assert.equal(db.reads[1].name, "testHandles");
+  assert.equal(db.reads[1].order, "handle");
+  assert.equal(db.reads[1].limit, 51);
+});
+
+test("rejects invalid limits, offsets, searches, and obsolete cursors before reading Firestore", async () => {
+  const db = fakeDatabase({});
+  for (const limit of [
+    "0",
+    "101",
+    "-1",
+    "1.5",
+    "1e2",
+    "abc",
+    "",
+    ["2"],
+    {},
+    2,
+  ]) {
+    assert.equal((await listAtlasProfiles(db, { limit })).status, 400);
+  }
+  for (const cursor of [
+    "",
+    "twitter:alice/claims/secret",
+    "../private",
+    ["twitter:alice"],
+    {},
+    2,
+  ]) {
+    assert.equal((await listAtlasProfiles(db, { cursor })).status, 400);
+  }
+  for (const offset of ["-1", "1.5", "10001", "", ["2"], {}, 2]) {
+    assert.equal((await listAtlasProfiles(db, { offset })).status, 400);
+  }
+  for (const search of ["x".repeat(256), ["alice"], {}, 2]) {
+    assert.equal((await listAtlasProfiles(db, { search })).status, 400);
+  }
+  assert.equal(db.reads.length, 0);
+});
+
+test("uses a validated document cursor instead of a billed offset for deep pages", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:bob": handleRecord("bob"),
+    "twitter:carol": handleRecord("carol"),
+  });
+  const result = await listAtlasProfiles(db, {
+    limit: "1",
+    offset: "10001",
+    cursor: "twitter:alice",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.offset, 10001);
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["bob"],
+  );
+  assert.equal(result.body.nextCursor, "twitter:bob");
+  assert.equal(db.reads[0].order, "listingKey");
+  assert.equal(db.reads[0].cursor, listingKeyForHandle("alice"));
+  assert.equal(db.reads[0].offset, 0);
+});
+
+test("lists verified profiles in handle order when listing keys are absent", async () => {
+  const alice = handleRecord("alice", { listingKey: undefined });
+  alice.activeIdentity.metadata.picture = "https://cdn.example/alice.png";
+  const zoe = handleRecord("zoe", { listingKey: undefined });
+  zoe.activeIdentity.metadata.xPicture =
+    "https://pbs.twimg.com/profile_images/1/zoe.jpg";
+  const db = fakeDatabase({
+    "twitter:zoe": zoe,
+    "twitter:alice": alice,
+  });
+  const result = await listAtlasProfiles(db, { limit: "10" });
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["alice", "zoe"],
+  );
+  assert.equal(result.body.total, 2);
+  assert.equal(result.body.profiles[0].picture, "https://cdn.example/alice.png");
+  assert.equal(
+    result.body.profiles[1].picture,
+    "https://pbs.twimg.com/profile_images/1/zoe.jpg",
+  );
+  assert.equal(db.reads[0].order, "listingKey");
+  assert.equal(db.reads[1].order, "handle");
+  const next = await listAtlasProfiles(db, {
+    limit: "10",
+    cursor: "twitter:alice",
+  });
+  assert.deepEqual(
+    next.body.profiles.map((profile) => profile.handle),
+    ["zoe"],
+  );
+});
+
+test("lists curated handles before the alphabetical tail without repeating them", async () => {
+  const db = fakeDatabase({
+    "twitter:zoe": handleRecord("zoe"),
+    "twitter:alice": handleRecord("alice"),
+    "twitter:jack": handleRecord("jack"),
+    "twitter:lopp": handleRecord("lopp"),
+  });
+  const first = await listAtlasProfiles(db, { limit: "3" });
+  assert.equal(first.status, 200);
+  assert.deepEqual(
+    first.body.profiles.map((profile) => profile.handle),
+    ["jack", "lopp", "alice"],
+  );
+  assert.equal(first.body.total, 4);
+  assert.equal(first.body.nextCursor, "twitter:alice");
+  const rest = await listAtlasProfiles(db, { limit: "10", offset: "3" });
+  assert.deepEqual(
+    rest.body.profiles.map((profile) => profile.handle),
+    ["zoe"],
+  );
+});
+
+test("skips curated handles that are missing or not verified", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:jack": handleRecord("jack", {
+      activeIdentity: { status: "pending" },
+    }),
+    "twitter:zoe": handleRecord("zoe"),
+  });
+  const result = await listAtlasProfiles(db, { limit: "10" });
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["alice", "zoe"],
+  );
+  assert.equal(result.body.total, 2);
+});
+
+test("resumes a deep page from the curated handle's listing key", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:jack": handleRecord("jack"),
+    "twitter:zoe": handleRecord("zoe"),
+  });
+  const result = await listAtlasProfiles(db, {
+    limit: "1",
+    offset: "10001",
+    cursor: "twitter:jack",
+  });
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["alice"],
+  );
+  assert.equal(result.body.nextCursor, "twitter:alice");
+  assert.equal(db.reads[0].cursor, "0-0000");
+});
+
+test("search stays in handle order instead of the curated listing", async () => {
+  const db = fakeDatabase({
+    "twitter:la": handleRecord("la"),
+    "twitter:lopp": handleRecord("lopp"),
+  });
+  const browse = await listAtlasProfiles(db, { limit: "10" });
+  assert.deepEqual(
+    browse.body.profiles.map((profile) => profile.handle),
+    ["lopp", "la"],
+  );
+  const search = await listAtlasProfiles(db, { search: "l", limit: "10" });
+  assert.deepEqual(
+    search.body.profiles.map((profile) => profile.handle),
+    ["la", "lopp"],
+  );
+  assert.equal(db.reads[1].order, "handle");
+});
+
+test("parses handle prefixes, X URLs, NIP-05, and npub searches", () => {
+  const pubkey = "a".repeat(64);
+  assert.deepEqual(directorySearchFilter("@Alice"), {
+    field: "handle",
+    value: "alice",
+    prefix: true,
+  });
+  assert.deepEqual(directorySearchFilter("ly"), {
+    field: "handle",
+    value: "ly",
+    prefix: true,
+  });
+  assert.deepEqual(directorySearchFilter("https://x.com/Alice"), {
+    field: "handle",
+    value: "alice",
+    prefix: true,
+  });
+  assert.deepEqual(directorySearchFilter("alice@example.com"), {
+    field: "activeIdentity.metadata.nip05",
+    value: "alice@example.com",
+  });
+  assert.deepEqual(directorySearchFilter(nip19.npubEncode(pubkey)), {
+    field: "activeIdentity.pubkey",
+    value: pubkey,
+  });
+  assert.deepEqual(directorySearchFilter("npub1invalid"), {
+    matchesNothing: true,
+  });
+});
+
+test("searches the whole verified collection before paginating", async () => {
+  const pubkey = "b".repeat(64);
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:bob": handleRecord("bob", {
+      activeIdentity: {
+        status: "verified",
+        pubkey,
+        metadata: { name: "Bob", nip05: "bob@example.com" },
+      },
+    }),
+  });
+
+  for (const search of ["@bob", "bob@example.com", nip19.npubEncode(pubkey)]) {
+    const result = await listAtlasProfiles(db, { search });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.total, 1);
+    assert.deepEqual(
+      result.body.profiles.map((profile) => profile.handle),
+    ["bob"],
+  );
+  }
+});
+
+test("lists every verified handle that starts with the typed prefix", async () => {
+  const db = fakeDatabase({
+    "twitter:alice": handleRecord("alice"),
+    "twitter:ly": handleRecord("ly"),
+    "twitter:lynaldencontact": handleRecord("lynaldencontact"),
+    "twitter:lynn": handleRecord("lynn"),
+    "twitter:blyn": handleRecord("blyn"),
+  });
+  const result = await listAtlasProfiles(db, { search: "LY", limit: "10" });
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.profiles.map((profile) => profile.handle),
+    ["ly", "lynaldencontact", "lynn"],
+  );
+  assert.equal(result.body.total, 3);
+  assert.equal(db.reads[0].order, "handle");
+});
+
+function responseRecorder() {
+  return {
+    headers: {},
+    statusCode: null,
+    body: null,
+    set(name, value) {
+      this.headers[name] = value;
+      return this;
+    },
+    status(value) {
+      this.statusCode = value;
+      return this;
+    },
+    json(value) {
+      this.body = value;
+      return this;
+    },
+  };
+}
+
+test("HTTP handler is read only and caches only successful responses", async () => {
+  const db = fakeDatabase({});
+  const handler = createAtlasListHandler(db);
+  for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
+    const response = responseRecorder();
+    await handler({ method, query: {} }, response);
+    assert.equal(response.statusCode, 405);
+    assert.equal(response.headers.Allow, "GET");
+    assert.equal(response.headers["Cache-Control"], "no-store");
+  }
+  assert.equal(db.reads.length, 0);
+  const response = responseRecorder();
+  await handler({ method: "GET", query: {} }, response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(
+    response.headers["Cache-Control"],
+    "public, max-age=60, s-maxage=60",
+  );
+  const invalid = responseRecorder();
+  await handler({ method: "GET", query: { limit: "1000" } }, invalid);
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(invalid.headers["Cache-Control"], "no-store");
+});
+
+test("Firestore failures return a retryable error without internal details", async (context) => {
+  context.mock.method(console, "error", () => {});
+  const handler = createAtlasListHandler({
+    collection() {
+      throw new Error("private-project-details");
+    },
+  });
+  const response = responseRecorder();
+  await handler({ method: "GET", query: {} }, response);
+  assert.equal(response.statusCode, 503);
+  assert.deepEqual(response.body, { error: "directory_unavailable" });
+  assert.equal(response.headers["Cache-Control"], "no-store");
+});

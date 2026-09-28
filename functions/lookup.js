@@ -22,7 +22,7 @@ export function normalizeTwitterHandle(value) {
   return handle;
 }
 
-export function directoryHandleId(handle) {
+export function handleDocumentId(handle) {
   const normalized = normalizeTwitterHandle(handle);
   return normalized ? 'twitter:' + normalized : null;
 }
@@ -68,14 +68,14 @@ export function publicDirectoryResponse(handle, data) {
   return response;
 }
 
-export async function lookupDirectoryHandle(db, value, options = {}) {
+export async function lookupAtlasHandle(db, value, options = {}) {
   const handle = normalizeTwitterHandle(value);
   if (!handle) {
     return { status: 400, body: { error: 'invalid_handle' } };
   }
 
   const collection = options.collection || 'nostrDirectoryHandles';
-  const snapshot = await db.collection(collection).doc(directoryHandleId(handle)).get();
+  const snapshot = await db.collection(collection).doc(handleDocumentId(handle)).get();
   if (!snapshot.exists) {
     return {
       status: 404,

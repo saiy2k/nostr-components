@@ -1,0 +1,5 @@
+.git
+**/node_modules
+**/.env
+**/*.log
+backend/nostr-atlas/**/*.test.js

@@ -8,6 +8,9 @@
       "hosting": {
         "storybook": [
           "nostr-component"
+        ],
+        "atlas": [
+          "nostr-atlas"
         ]
       }
     }

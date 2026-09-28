@@ -3,15 +3,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  directoryHandleId,
-  lookupDirectoryHandle,
+  handleDocumentId,
+  lookupAtlasHandle,
   normalizeTwitterHandle,
   publicDirectoryResponse
 } from './lookup.js';
 
 test('normalizes X handles and creates the production Firestore document id', function () {
   assert.equal(normalizeTwitterHandle('@Jack'), 'jack');
-  assert.equal(directoryHandleId('Jack'), 'twitter:jack');
+  assert.equal(handleDocumentId('Jack'), 'twitter:jack');
   assert.equal(normalizeTwitterHandle('home'), null);
 });
 
@@ -57,7 +57,7 @@ test('reads nostrDirectoryHandles by twitter handle', async function () {
     }
   };
 
-  const result = await lookupDirectoryHandle(db, 'Alice');
+  const result = await lookupAtlasHandle(db, 'Alice');
   assert.deepEqual(reads, [{ collection: 'nostrDirectoryHandles', id: 'twitter:alice' }]);
   assert.equal(result.status, 200);
   assert.equal(result.body.verified, false);

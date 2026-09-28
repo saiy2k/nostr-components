@@ -3,7 +3,7 @@ steps:
     args:
       - build
       - -f
-      - Dockerfile
+      - backend/Dockerfile
       - -t
       - ${_IMAGE}
       - .

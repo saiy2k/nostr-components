@@ -1,0 +1,619 @@
+// SPDX-License-Identifier: MIT
+
+import { FieldValue } from "@google-cloud/firestore";
+import { nip19 } from "nostr-tools";
+import { DEFAULT_COLLECTIONS, stripUndefined } from "./runtime.js";
+import { httpsPictureUrl } from "./picture-url.js";
+import {
+  compareClaimsNewestFirst,
+  extractTweetId,
+  firestoreSafeId,
+  matchTwitterTag,
+  normalizeTwitterHandle,
+  X_PROFILE_LINK,
+} from "./utils.js";
+
+export {
+  DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+  DEFAULT_MAX_PENDING_CLAIMS,
+  DEFAULT_MAX_REJECTION_TOMBSTONES,
+} from "./utils.js";
+import {
+  DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
+  DEFAULT_MAX_PENDING_CLAIMS,
+  DEFAULT_MAX_REJECTION_TOMBSTONES,
+} from "./utils.js";
+
+const HANDLE_READ_CONCURRENCY = 50;
+
+const X_MENTION = /(?:^|[\s([{"'])@([A-Za-z0-9_]{1,15})\b/g;
+
+export async function extractIdentityClaims(
+  events,
+  relay,
+  now = new Date(),
+  options = {},
+) {
+  const claims = new Map();
+  const discoveredAt = now.toISOString();
+  const mentionValidationCache = options.mentionValidationCache || new Map();
+
+  for (const event of events) {
+    const byHandle = new Map();
+    const metadata = event.kind === 0 ? safeJson(event.content) : null;
+
+    for (const tag of event.tags || []) {
+      if (tag[0] !== "i" || !tag[1]) continue;
+      const match = matchTwitterTag(tag[1]);
+      if (!match) continue;
+      const handle = normalizeTwitterHandle(match[1]);
+      const proofTweetId = extractTweetId(tag[2]);
+      if (!handle || !proofTweetId) continue;
+      byHandle.set(handle, {
+        handle,
+        proofTweetId,
+        sources: ["event.i_tag"],
+        evidence: [
+          {
+            source: "event.i_tag",
+            value: (tag || [])
+              .slice(0, 10)
+              .map((value) => String(value).slice(0, 2000)),
+          },
+        ],
+      });
+    }
+
+    if (metadata) {
+      const metadataCandidates = extractMetadataXHandles(metadata);
+      const acceptedCandidates = await filterExistingMentionHandles(
+        metadataCandidates,
+        mentionValidationCache,
+        options,
+      );
+      for (const { handle, source, evidence } of acceptedCandidates) {
+        const current = byHandle.get(handle) || {
+          handle,
+          proofTweetId: null,
+          sources: [],
+          evidence: [],
+        };
+        current.sources = [...new Set([...current.sources, source])];
+        current.evidence = mergeEvidence(current.evidence, evidence);
+        byHandle.set(handle, current);
+      }
+    }
+
+    for (const candidate of byHandle.values()) {
+      const claim = stripUndefined({
+        claimId: event.id,
+        platform: "twitter",
+        handle: candidate.handle,
+        pubkey: event.pubkey,
+        npub: nip19.npubEncode(event.pubkey),
+        proofTweetId: candidate.proofTweetId,
+        sources: candidate.sources.sort(),
+        evidence: candidate.evidence,
+        status: "pending",
+        sourceEventId: event.id,
+        sourceKind: event.kind,
+        sourceCreatedAt: event.created_at,
+        sourceRelay: relay,
+        signatureVerified: true,
+        discoveredAt,
+        metadata: metadata
+          ? profileMetadata(event.pubkey, metadata)
+          : undefined,
+        sourceEvent:
+          event.kind === 10011 ? boundedSourceEvent(event) : undefined,
+      });
+      claims.set(`${candidate.handle}:${event.id}`, claim);
+    }
+  }
+
+  return [...claims.values()].sort(compareClaimsNewestFirst);
+}
+
+export function mergeHandleClaims(existing, incomingClaims = [], options = {}) {
+  const maxPendingClaims =
+    options.maxPendingClaims ?? DEFAULT_MAX_PENDING_CLAIMS;
+  const maxInactiveVerifiedClaims =
+    options.maxInactiveVerifiedClaims ?? DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS;
+  const maxRejectionTombstones =
+    options.maxRejectionTombstones ?? DEFAULT_MAX_REJECTION_TOMBSTONES;
+  const activeClaimId = existing?.activeIdentity?.claimId || null;
+  const tombstones = normalizeTombstones(existing).slice(
+    0,
+    maxRejectionTombstones,
+  );
+  const rejectedIds = new Set(tombstones.map((item) => item.claimId));
+  const currentClaims = (existing?.claims || []).filter(
+    (claim) => claim?.claimId && claim.status !== "rejected",
+  );
+  const claimsById = new Map(
+    currentClaims.map((claim) => [claim.claimId, claim]),
+  );
+  let added = 0;
+  let skippedExisting = 0;
+  let skippedRejected = 0;
+
+  for (const claim of incomingClaims) {
+    if (rejectedIds.has(claim.claimId)) {
+      skippedRejected += 1;
+      continue;
+    }
+    if (claimsById.has(claim.claimId)) {
+      skippedExisting += 1;
+      continue;
+    }
+    claimsById.set(claim.claimId, claim);
+    added += 1;
+  }
+
+  const allClaims = [...claimsById.values()];
+  const active = activeClaimId
+    ? allClaims.find((claim) => claim.claimId === activeClaimId)
+    : null;
+  const pending = allClaims
+    .filter(
+      (claim) => claim.claimId !== activeClaimId && claim.status === "pending",
+    )
+    .sort(compareClaimsNewestFirst)
+    .slice(0, maxPendingClaims);
+  const inactiveVerified = allClaims
+    .filter(
+      (claim) => claim.claimId !== activeClaimId && claim.status === "verified",
+    )
+    .sort(compareClaimsNewestFirst)
+    .slice(0, maxInactiveVerifiedClaims);
+  const retainedClaims = [active, ...pending, ...inactiveVerified]
+    .filter(Boolean)
+    .sort(compareClaimsNewestFirst);
+  const retainedIds = new Set(retainedClaims.map((claim) => claim.claimId));
+  const retainedIncoming = incomingClaims.filter((claim) =>
+    retainedIds.has(claim.claimId),
+  ).length;
+  const changed =
+    !sameClaims(currentClaims, retainedClaims) ||
+    !sameTombstones(existing?.rejectedClaimTombstones || [], tombstones);
+
+  return {
+    changed,
+    claims: retainedClaims,
+    rejectedClaimTombstones: tombstones,
+    pendingClaimCount: retainedClaims.filter(
+      (claim) => claim.status === "pending",
+    ).length,
+    stats: {
+      added: Math.min(added, retainedIncoming),
+      evicted: Math.max(0, allClaims.length - retainedClaims.length),
+      skippedExisting,
+      skippedRejected,
+    },
+  };
+}
+
+export async function planDirectoryHandleWrites(db, claims, options = {}) {
+  const collection =
+    options.firestoreHandlesCollection || DEFAULT_COLLECTIONS.handles;
+  const handleStateCache = options.handleStateCache || new Map();
+  const grouped = groupClaimsByHandle(claims);
+  const groupedEntries = [...grouped.entries()];
+  const writes = [];
+  const stats = {
+    handlesRead: 0,
+    handlesChanged: 0,
+    claimsAdded: 0,
+    claimsEvicted: 0,
+    claimsSkippedExisting: 0,
+    claimsSkippedRejected: 0,
+  };
+
+  for (
+    let index = 0;
+    index < groupedEntries.length;
+    index += HANDLE_READ_CONCURRENCY
+  ) {
+    await Promise.all(
+      groupedEntries
+        .slice(index, index + HANDLE_READ_CONCURRENCY)
+        .filter(([handle]) => !handleStateCache.has(handle))
+        .map(async ([handle]) => {
+          const id = handleDocumentId(handle);
+          const snapshot = await db.collection(collection).doc(id).get();
+          handleStateCache.set(
+            handle,
+            snapshot.exists ? snapshot.data() || {} : null,
+          );
+          stats.handlesRead += 1;
+        }),
+    );
+  }
+
+  for (const [handle, handleClaims] of groupedEntries) {
+    const id = handleDocumentId(handle);
+    const cached = handleStateCache.get(handle);
+    const built = buildMergedHandleWrite(cached, handleClaims, handle, options);
+    stats.claimsAdded += built.merged.stats.added;
+    stats.claimsEvicted += built.merged.stats.evicted;
+    stats.claimsSkippedExisting += built.merged.stats.skippedExisting;
+    stats.claimsSkippedRejected += built.merged.stats.skippedRejected;
+    if (!built.changed) continue;
+
+    stats.handlesChanged += 1;
+    // Cache is updated only after a successful Firestore commit so a failed
+    // write cannot poison later cursors that share this map.
+    writes.push({
+      collection,
+      id,
+      handle,
+      incomingClaims: handleClaims,
+      nextCacheState: built.nextCacheState,
+      data: built.data,
+    });
+  }
+
+  return { writes, stats };
+}
+
+export function handleDocumentId(handle) {
+  return firestoreSafeId(`twitter:${normalizeTwitterHandle(handle)}`);
+}
+
+/** Re-merge incoming claims onto a fresh handle doc. `existing` is null when the doc is absent. */
+export function buildMergedHandleWrite(existing, incomingClaims, handle, options = {}) {
+  const existed = existing != null;
+  const merged = mergeHandleClaims(existed ? existing : {}, incomingClaims, options);
+  if (!merged.changed) return { changed: false, merged };
+  const projectionStatus =
+    merged.pendingClaimCount > 0
+      ? "pending"
+      : existing?.projectionStatus || "complete";
+  const nextCacheState = {
+    ...(existed ? existing : {}),
+    platform: "twitter",
+    handle,
+    claims: merged.claims,
+    rejectedClaimTombstones: merged.rejectedClaimTombstones,
+    pendingClaimCount: merged.pendingClaimCount,
+    projectionStatus,
+  };
+  return {
+    changed: true,
+    merged,
+    nextCacheState,
+    data: stripUndefined({
+      platform: "twitter",
+      handle,
+      activeIdentity: existed ? undefined : existing?.activeIdentity || null,
+      claims: merged.claims,
+      rejectedClaimTombstones: merged.rejectedClaimTombstones,
+      pendingClaimCount: merged.pendingClaimCount,
+      projectionStatus,
+      nextAttemptAt:
+        merged.pendingClaimCount > 0
+          ? FieldValue.serverTimestamp()
+          : undefined,
+      createdAt: existed ? undefined : FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+  };
+}
+
+function groupClaimsByHandle(claims) {
+  const grouped = new Map();
+  for (const claim of claims) {
+    const handle = normalizeTwitterHandle(claim.handle);
+    if (!handle) continue;
+    const current = grouped.get(handle) || [];
+    current.push({ ...claim, handle });
+    grouped.set(handle, current);
+  }
+  return grouped;
+}
+
+export function extractMetadataXHandles(metadata) {
+  const results = new Map();
+  for (const field of ["twitter", "x"]) {
+    const handle = normalizeTwitterHandle(metadata[field]);
+    if (handle) {
+      results.set(`${handle}:${field}`, {
+        handle,
+        source: `kind0.${field}`,
+        evidence: {
+          source: `kind0.${field}`,
+          value: boundedString(metadata[field], 2000) || "",
+        },
+        requiresExistenceCheck: false,
+      });
+    }
+  }
+  for (const field of ["website", "about"]) {
+    for (const match of String(metadata[field] || "").matchAll(
+      X_PROFILE_LINK,
+    )) {
+      const handle = normalizeTwitterHandle(match[1]);
+      if (handle) {
+        results.set(`${handle}:${field}`, {
+          handle,
+          source: `kind0.${field}`,
+          evidence: {
+            source: `kind0.${field}`,
+            value: match[0],
+          },
+          requiresExistenceCheck: false,
+        });
+      }
+    }
+  }
+  for (const match of String(metadata.about || "").matchAll(X_MENTION)) {
+    const handle = normalizeTwitterHandle(match[1]);
+    if (!handle || results.has(`${handle}:about`)) continue;
+    results.set(`${handle}:about-mention`, {
+      handle,
+      source: "kind0.about_mention",
+      evidence: {
+        source: "kind0.about_mention",
+        value: `@${match[1]}`,
+      },
+      requiresExistenceCheck: true,
+    });
+  }
+  return [...results.values()];
+}
+
+const PROFILE_METADATA_FIELDS = [
+  "name",
+  "nip05",
+  "picture",
+  "lud16",
+  "lud06",
+  "website",
+  "about",
+];
+
+function optionalText(value, length) {
+  const text = boundedString(value, length);
+  return text || undefined;
+}
+
+export function profileMetadata(pubkey, metadata) {
+  return stripUndefined({
+    pubkey,
+    name: optionalText(metadata?.name || metadata?.display_name, 100),
+    nip05: optionalText(metadata?.nip05, 255),
+    picture: httpsPictureUrl(metadata?.picture) || undefined,
+    lud16: optionalText(metadata?.lud16, 255),
+    lud06: optionalText(metadata?.lud06, 2000),
+    website: optionalText(metadata?.website, 2000),
+    about: optionalText(metadata?.about, 4000),
+  });
+}
+
+export function kind0ProfileMetadata(pubkey, metadata) {
+  const fields = profileMetadata(pubkey, metadata);
+  return PROFILE_METADATA_FIELDS.some((key) => fields[key]) ? fields : null;
+}
+
+export function mergeProfileMetadata(current, incoming) {
+  if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
+    return current;
+  }
+  const base =
+    current && typeof current === "object" && !Array.isArray(current)
+      ? current
+      : null;
+  const merged = { ...(base || {}) };
+  let changed = false;
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value !== "string" || !value || merged[key] === value) continue;
+    merged[key] = value;
+    changed = true;
+  }
+  return changed ? merged : current;
+}
+
+export function isNip39Identity(identity) {
+  if (!identity || identity.status !== "verified") return false;
+  if (Number(identity.sourceKind) === 10011) return true;
+  if ((identity.verificationMethods || []).includes("nip39_proof_tweet")) {
+    return true;
+  }
+  return Boolean(
+    identity.proofTweetId && (identity.sources || []).includes("event.i_tag"),
+  );
+}
+
+export function kind0Timestamp(value) {
+  if (value == null || value === "") return null;
+  const time = Number(value);
+  return Number.isFinite(time) ? time : null;
+}
+
+export function isOlderKind0(storedCreatedAt, incomingCreatedAt) {
+  const stored = kind0Timestamp(storedCreatedAt);
+  const incoming = kind0Timestamp(incomingCreatedAt);
+  return stored != null && incoming != null && incoming < stored;
+}
+
+export function newerKind0CreatedAt(storedCreatedAt, incomingCreatedAt) {
+  const stored = kind0Timestamp(storedCreatedAt);
+  const incoming = kind0Timestamp(incomingCreatedAt);
+  if (incoming == null) return stored ?? undefined;
+  if (stored == null || incoming >= stored) return incoming;
+  return stored;
+}
+
+function stampKind0(entity, metadata, createdAt) {
+  const stamped = { ...entity, metadata };
+  const time = kind0Timestamp(createdAt);
+  if (time != null) stamped.kind0CreatedAt = time;
+  return stamped;
+}
+
+// Kind 10011 proofs have no profile content. Copy the author's kind-0 fields
+// onto that verified identity without erasing values the kind 0 omits, and
+// without replacing those fields with an older kind 0.
+export function planKind0Metadata(doc, content, pubkey, createdAt) {
+  const active = doc?.activeIdentity;
+  if (!isNip39Identity(active)) return { changed: false, reason: "not-nip39" };
+  if (content == null) return { changed: false, reason: "no-kind0" };
+  if (
+    String(pubkey || "").toLowerCase() !==
+    String(active.pubkey || "").toLowerCase()
+  ) {
+    return { changed: false, reason: "pubkey-mismatch" };
+  }
+  if (isOlderKind0(active.kind0CreatedAt, createdAt)) {
+    return { changed: false, reason: "stale-kind0" };
+  }
+  const incoming = kind0ProfileMetadata(active.pubkey, content);
+  if (!incoming) return { changed: false, reason: "no-profile-fields" };
+  const incomingAt = kind0Timestamp(createdAt);
+  const metadata = mergeProfileMetadata(active.metadata, incoming);
+  const matchingClaim = Array.isArray(doc.claims)
+    ? doc.claims.find((claim) => claim?.claimId === active.claimId)
+    : null;
+  const claimMetadata = matchingClaim
+    ? mergeProfileMetadata(matchingClaim.metadata, incoming)
+    : undefined;
+  const activeAt = newerKind0CreatedAt(active.kind0CreatedAt, incomingAt);
+  const claimAt = matchingClaim
+    ? newerKind0CreatedAt(matchingClaim.kind0CreatedAt, incomingAt)
+    : undefined;
+  if (
+    metadata === active.metadata &&
+    kind0Timestamp(active.kind0CreatedAt) === kind0Timestamp(activeAt) &&
+    (!matchingClaim ||
+      (claimMetadata === matchingClaim.metadata &&
+        kind0Timestamp(matchingClaim.kind0CreatedAt) === kind0Timestamp(claimAt)))
+  ) {
+    return { changed: false, reason: "unchanged" };
+  }
+  return {
+    changed: true,
+    reason: "updated",
+    activeIdentity: stampKind0(active, metadata, activeAt),
+    claims: Array.isArray(doc.claims)
+      ? doc.claims.map((claim) =>
+          claim?.claimId === active.claimId
+            ? stampKind0(
+                claim,
+                mergeProfileMetadata(claim.metadata, incoming),
+                newerKind0CreatedAt(claim.kind0CreatedAt, incomingAt),
+              )
+            : claim,
+        )
+      : undefined,
+  };
+}
+
+async function filterExistingMentionHandles(candidates, cache, options) {
+  return Promise.all(
+    candidates.map(async (candidate) => {
+      if (!candidate.requiresExistenceCheck) return candidate;
+      if (!cache.has(candidate.handle)) {
+        const exists = await checkXHandleExists(candidate.handle, options);
+        if (exists === null) return candidate;
+        cache.set(candidate.handle, exists);
+      }
+      return (await cache.get(candidate.handle)) ? candidate : null;
+    }),
+  ).then((values) => values.filter(Boolean));
+}
+
+export async function checkXHandleExists(handle, options = {}) {
+  const fetchImpl = options.fetchImpl || fetch;
+  const timeoutMs = options.xMentionCheckTimeoutMs || 5000;
+  const normalizedHandle = String(handle || "").toLowerCase();
+  try {
+    const response = await fetchImpl(
+      `https://api.fxtwitter.com/2/profile/${encodeURIComponent(handle)}`,
+      {
+        headers: { "User-Agent": "nostr-atlas/0.1" },
+        signal: AbortSignal.timeout(timeoutMs),
+      },
+    );
+    if (response.status === 404) return false;
+    if (!response.ok) return null;
+    const json = await response.json();
+    const code = Number(json?.code);
+    if (code === 404) return false;
+    if (code !== 200) return null;
+    const screenName = String(json?.user?.screen_name || "").toLowerCase();
+    if (!json?.user?.id || !screenName) return null;
+    return screenName === normalizedHandle ? true : null;
+  } catch (error) {
+    options.onXLookupError?.(error, handle);
+    return null;
+  }
+}
+
+function mergeEvidence(current, evidence) {
+  const values = [...(current || []), evidence].filter(Boolean);
+  const unique = new Map(values.map((item) => [JSON.stringify(item), item]));
+  return [...unique.values()];
+}
+
+function boundedSourceEvent(event) {
+  return {
+    id: event.id,
+    kind: event.kind,
+    pubkey: event.pubkey,
+    created_at: event.created_at,
+    content: boundedString(event.content, 2000) || "",
+    // Firestore rejects nested arrays (string[][]); store tags as maps.
+    // Keep well under the 1 MiB doc limit even with many claims per handle.
+    tags: (event.tags || []).slice(0, 40).map((tag) => ({
+      values: (tag || [])
+        .slice(0, 8)
+        .map((value) => String(value).slice(0, 256)),
+    })),
+    sig: boundedString(event.sig, 128),
+  };
+}
+
+function boundedString(value, maxLength) {
+  if (value === undefined || value === null || value === "") return null;
+  return String(value).slice(0, maxLength);
+}
+
+function safeJson(content) {
+  try {
+    const value = JSON.parse(content || "{}");
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function normalizeTombstones(existing) {
+  const values = existing?.rejectedClaimTombstones || [];
+  const byId = new Map();
+  for (const value of values) {
+    if (!value?.claimId) continue;
+    byId.set(value.claimId, value);
+  }
+  for (const claim of existing?.claims || []) {
+    if (claim?.status !== "rejected" || !claim.claimId) continue;
+    byId.set(claim.claimId, {
+      claimId: claim.claimId,
+      rejectedAt: claim.verifiedAt || claim.updatedAt || null,
+      reason: claim.rejectionReason || "rejected",
+    });
+  }
+  return [...byId.values()].sort((a, b) =>
+    String(b.rejectedAt || "").localeCompare(String(a.rejectedAt || "")),
+  );
+}
+
+function sameClaims(left, right) {
+  return (
+    JSON.stringify([...left].sort(compareClaimsNewestFirst)) ===
+    JSON.stringify([...right].sort(compareClaimsNewestFirst))
+  );
+}
+
+function sameTombstones(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
