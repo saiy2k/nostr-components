@@ -369,13 +369,21 @@ export async function loadExistingClaimEvent(
             const closedByCaller = list.filter(
               (reason) => reason === "closed by caller",
             ).length;
+            const verifiedSeen = events.some(
+              (event) =>
+                event.kind === 10011 &&
+                event.pubkey?.toLowerCase() === author &&
+                verifyEvent(event),
+            );
             const heardFromAll = list.length === relays.length;
             const fullRead = heardFromAll && closedByCaller === list.length;
-            // A relay that never connects can still leave one successful empty
-            // read. An identity event from a partial read is not safe to replace.
-            const emptyDespiteFailures =
-              heardFromAll && closedByCaller > 0 && events.length === 0;
-            if (fullRead || emptyDespiteFailures) finish();
+            // One dead relay must not block a claim. Use a verified event from
+            // a relay that finished, or an empty result when none returned one.
+            const usablePartial =
+              heardFromAll &&
+              closedByCaller > 0 &&
+              (events.length === 0 || verifiedSeen);
+            if (fullRead || usablePartial) finish();
             else finish(new Error("unavailable"));
           },
           maxWait: IDENTITY_READ_MAX_WAIT_MS,

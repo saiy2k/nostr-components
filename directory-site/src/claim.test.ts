@@ -395,7 +395,7 @@ describe("signed NIP-39 claim", () => {
         ["wss://one.example/", "wss://two.example/"],
         partial,
       ),
-    ).rejects.toThrow("Could not read the existing Nostr identity");
+    ).resolves.toMatchObject({ id: newer.id });
 
     const partialEmpty = {
       subscribe: vi.fn((_relays, _filter, params) => {
