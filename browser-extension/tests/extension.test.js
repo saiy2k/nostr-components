@@ -909,7 +909,7 @@ describe('Firestore directory cache', function () {
               found: true,
               verified: true,
               handle: message.handle,
-              activeIdentity: { npub: 'npub1expiring' }
+              activeIdentity: { npub: 'npub1expiring', zappable: true }
             }
           };
         }
@@ -930,8 +930,63 @@ describe('Firestore directory cache', function () {
     await extension.directory.lookup('ExpiryUser');
     expect(requested).toHaveLength(1);
 
-    now += 24 * 60 * 60 * 1000 + 1;
+    // After 1 hour, verified and zappable entry should still be cached (24h TTL)
+    now += 60 * 60 * 1000 + 1;
     await extension.directory.lookup('ExpiryUser');
+    expect(requested).toHaveLength(1);
+
+    // After 24 hours + 1ms from start, cache expires and re-fetches
+    now = 1000 + 24 * 60 * 60 * 1000 + 1;
+    await extension.directory.lookup('ExpiryUser');
+    expect(requested).toHaveLength(2);
+  });
+
+  it('expires verified but non-zappable directory records after one hour', async function () {
+    let now = 1000;
+    vi.spyOn(Date, 'now').mockImplementation(function () {
+      return now;
+    });
+    const stored = {};
+    const requested = [];
+    globalThis.browser = {
+      runtime: {
+        async sendMessage(message) {
+          requested.push(message);
+          return {
+            ok: true,
+            result: {
+              found: true,
+              verified: true,
+              handle: message.handle,
+              activeIdentity: { npub: 'npub1nonzappable', zappable: false }
+            }
+          };
+        }
+      },
+      storage: {
+        local: {
+          async get(key) {
+            return { [key]: stored[key] };
+          },
+          async set(next) {
+            Object.assign(stored, next);
+          }
+        }
+      }
+    };
+
+    await extension.directory.lookup('NonZappableUser');
+    await extension.directory.lookup('NonZappableUser');
+    expect(requested).toHaveLength(1);
+
+    // Still cached after 30 minutes
+    now += 30 * 60 * 1000;
+    await extension.directory.lookup('NonZappableUser');
+    expect(requested).toHaveLength(1);
+
+    // Re-resolves after 1 hour (MISS_TTL_MS)
+    now = 1000 + 60 * 60 * 1000 + 1;
+    await extension.directory.lookup('NonZappableUser');
     expect(requested).toHaveLength(2);
   });
 });
