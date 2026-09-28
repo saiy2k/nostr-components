@@ -987,6 +987,14 @@ svg {
   font-size: 12px;
 }
 
+.footer-credit {
+  margin: 0;
+  padding-bottom: 22px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .site-footer nav {
   display: flex;
   gap: 34px;
@@ -1397,7 +1405,11 @@ svg {
     align-items: flex-start;
     flex-direction: column;
     padding-top: 28px;
-    padding-bottom: 30px;
+    padding-bottom: 16px;
+  }
+
+  .footer-credit {
+    padding-bottom: 28px;
   }
 
   .footer-brand {
