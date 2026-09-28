@@ -808,15 +808,133 @@ function printProjectionSummary(output, args) {
   if (args.out) console.log(`  output:               ${args.out}`);
 }
 
-function logProjectionEvent(message, fields = {}) {
+// Cloud Run's log list shows jsonPayload.message only. Handle events put the
+// scan line there; `event` stays the stable name for log queries.
+function logProjectionEvent(event, fields = {}) {
+  const details = { ...fields };
+  delete details.message;
+  const entry = {
+    event,
+    module: "projection",
+    ...details,
+  };
   console.log(
     JSON.stringify({
       severity: "INFO",
-      message,
-      module: "projection",
-      ...fields,
+      message: projectionEventMessage(event, entry),
+      ...entry,
     }),
   );
+}
+
+function projectionEventMessage(event, fields) {
+  if (event === "projection_handle_begin") {
+    return formatHandleBeginMessage(fields);
+  }
+  if (event === "projection_handle_result") {
+    return formatHandleResultMessage(fields);
+  }
+  return event;
+}
+
+function formatHandleBeginMessage(fields) {
+  const parts = [
+    "projection_handle_begin",
+    `handle=${logToken(fields.handle)}`,
+    `index=${fields.handlesDueIndex}`,
+    `pending=${fields.pendingClaimCount}`,
+    `withProof=${countClaimsWithProof(fields.pendingClaims)}`,
+    `status=${logToken(fields.projectionStatus)}`,
+  ];
+  const pubkeys = formatPubkeyPrefixes(fields.pendingClaims);
+  if (pubkeys) parts.push(`pubkeys=${pubkeys}`);
+  if (fields.activePubkey) {
+    parts.push(`active=${logToken(String(fields.activePubkey).slice(0, 8))}`);
+  }
+  if (fields.proofsRemaining != null) {
+    parts.push(`proofsLeft=${fields.proofsRemaining}`);
+  }
+  return parts.join(" ");
+}
+
+function formatHandleResultMessage(fields) {
+  const transition = fields.transition || {};
+  const verification = fields.verification || {};
+  const parts = [
+    "projection_handle_result",
+    `handle=${logToken(fields.handle)}`,
+    `durationMs=${fields.durationMs}`,
+    `changed=${fields.changed === true}`,
+    `writes=${fields.firestoreWrites}`,
+    `verified=${transition.verified ?? 0}`,
+    `rejected=${transition.rejected ?? 0}`,
+    `retryLater=${transition.retryLater ?? 0}`,
+    `status=${logToken(transition.projectionStatus)}`,
+    `xFailed=${verification.xProfilesFailed || 0}`,
+  ];
+  if (transition.pendingDropped) {
+    parts.push(`pendingDropped=${transition.pendingDropped}`);
+  }
+  if (fields.activeChanged) parts.push("activeChanged=true");
+  if (verification.xBioIdentifiersResolved) {
+    parts.push(`bioIds=${verification.xBioIdentifiersResolved}`);
+  }
+  if (fields.deferredReason) {
+    parts.push(`defer=${logToken(fields.deferredReason)}`);
+  }
+  const xFail = formatCountMap(verification.xProfileFailures);
+  if (xFail) parts.push(`xFail=${xFail}`);
+  const outcomes = formatResultOutcomes(fields.results);
+  if (outcomes) parts.push(`outcomes=${outcomes}`);
+  if (verification.stoppedReason) {
+    parts.push(`stopped=${logToken(verification.stoppedReason)}`);
+  }
+  return parts.join(" ");
+}
+
+function countClaimsWithProof(claims) {
+  return (claims || []).filter((claim) => claim?.proofTweetId).length;
+}
+
+function formatPubkeyPrefixes(claims) {
+  const prefixes = (claims || [])
+    .map((claim) => claim?.pubkey)
+    .filter(Boolean)
+    .map((pubkey) => String(pubkey).slice(0, 8));
+  if (!prefixes.length) return "";
+  const shown = prefixes.slice(0, 3).map((prefix) => logToken(prefix));
+  const extra = prefixes.length - shown.length;
+  return extra > 0 ? `${shown.join(",")} +${extra}` : shown.join(",");
+}
+
+function formatResultOutcomes(results) {
+  const counts = {};
+  for (const result of results || []) {
+    const status = result.identityStatus || "unknown";
+    const reason =
+      result.rejectionReason ||
+      result.retryReason ||
+      result.verificationMethod ||
+      "";
+    const key = reason ? `${status}:${reason}` : status;
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  return formatCountMap(counts);
+}
+
+function formatCountMap(counts) {
+  return Object.entries(counts || {})
+    .filter(([, count]) => count)
+    .map(([key, count]) =>
+      count > 1 ? `${logToken(key)}*${count}` : logToken(key),
+    )
+    .join(",");
+}
+
+function logToken(value) {
+  if (value == null || value === "") return "-";
+  const text = String(value);
+  return /^[A-Za-z0-9_.:@+-]+$/.test(text) ? text : JSON.stringify(text);
 }
 
 function summarizePendingClaimForLog(claim) {
