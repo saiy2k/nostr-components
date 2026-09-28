@@ -1,0 +1,123 @@
+{
+  "tts_provider": "kokoro",
+  "voice_id": "af_sky",
+  "bgm": null,
+  "bgm_pending": false,
+  "bgm_provider": null,
+  "bgm_pid": null,
+  "bgm_log": null,
+  "bgm_mode": null,
+  "bgm_target_duration_s": null,
+  "bgm_seed_duration_s": null,
+  "bgm_loop_count": null,
+  "voices": [
+    {
+      "id": "02",
+      "path": "assets/voice/02.wav",
+      "duration_s": 1.259,
+      "words": [
+        {
+          "id": "w0",
+          "text": "on",
+          "start": 0.17,
+          "end": 0.22
+        },
+        {
+          "id": "w1",
+          "text": "the",
+          "start": 0.22,
+          "end": 0.43
+        },
+        {
+          "id": "w2",
+          "text": "posts.",
+          "start": 0.56,
+          "end": 1.12
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "path": "assets/voice/03.wav",
+      "duration_s": 1.237,
+      "words": [
+        {
+          "id": "w0",
+          "text": "on",
+          "start": 0.16,
+          "end": 0.16
+        },
+        {
+          "id": "w1",
+          "text": "the",
+          "start": 0.16,
+          "end": 0.4
+        },
+        {
+          "id": "w2",
+          "text": "videos.",
+          "start": 0.4,
+          "end": 1.06
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "path": "assets/voice/04.wav",
+      "duration_s": 1.045,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Zap",
+          "start": 0.1,
+          "end": 0.35
+        },
+        {
+          "id": "w1",
+          "text": "them.",
+          "start": 0.5,
+          "end": 1
+        }
+      ]
+    }
+  ],
+  "sfx": [
+    {
+      "id": "01",
+      "name": "impact-bass-2",
+      "file": "assets/sfx/impact-bass-2.mp3",
+      "source": "local",
+      "offset_s": 0,
+      "duration_s": 2.59,
+      "volume": 0.35
+    },
+    {
+      "id": "02",
+      "name": "click",
+      "file": "assets/sfx/click.mp3",
+      "source": "local",
+      "offset_s": 0,
+      "duration_s": 0.37,
+      "volume": 0.35
+    },
+    {
+      "id": "03",
+      "name": "click",
+      "file": "assets/sfx/click.mp3",
+      "source": "local",
+      "offset_s": 0,
+      "duration_s": 0.37,
+      "volume": 0.35
+    },
+    {
+      "id": "04",
+      "name": "sparkle",
+      "file": "assets/sfx/sparkle.mp3",
+      "source": "local",
+      "offset_s": 0,
+      "duration_s": 1.8,
+      "volume": 0.35
+    }
+  ],
+  "total_duration_s": 3.541
+}

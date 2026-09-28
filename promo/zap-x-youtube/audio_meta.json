@@ -1,0 +1,120 @@
+{
+  "bgm": {
+    "path": "assets/bgm/bed.mp3",
+    "volume": 0.16,
+    "query": "slow dark luxury pulse",
+    "duration_s": 34.038
+  },
+  "bgm_pending": false,
+  "voices": [
+    {
+      "frame": 1,
+      "path": "assets/voice/01.wav",
+      "duration_s": 1.301,
+      "words": [
+        { "id": "w0", "text": "It's", "start": 0.04, "end": 0.24 },
+        { "id": "w1", "text": "already", "start": 0.33, "end": 0.68 },
+        { "id": "w2", "text": "there.", "start": 0.68, "end": 1.11 }
+      ]
+    },
+    {
+      "frame": 2,
+      "path": "assets/voice/02.wav",
+      "duration_s": 1.259,
+      "words": [
+        {
+          "id": "w0",
+          "text": "on",
+          "start": 0.17,
+          "end": 0.22
+        },
+        {
+          "id": "w1",
+          "text": "the",
+          "start": 0.22,
+          "end": 0.43
+        },
+        {
+          "id": "w2",
+          "text": "posts.",
+          "start": 0.56,
+          "end": 1.12
+        }
+      ]
+    },
+    {
+      "frame": 3,
+      "path": "assets/voice/03.wav",
+      "duration_s": 1.237,
+      "words": [
+        {
+          "id": "w0",
+          "text": "on",
+          "start": 0.16,
+          "end": 0.16
+        },
+        {
+          "id": "w1",
+          "text": "the",
+          "start": 0.16,
+          "end": 0.4
+        },
+        {
+          "id": "w2",
+          "text": "videos.",
+          "start": 0.4,
+          "end": 1.06
+        }
+      ]
+    },
+    {
+      "frame": 4,
+      "path": "assets/voice/04.wav",
+      "duration_s": 1.045,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Zap",
+          "start": 0.1,
+          "end": 0.35
+        },
+        {
+          "id": "w1",
+          "text": "them.",
+          "start": 0.5,
+          "end": 1
+        }
+      ]
+    }
+  ],
+  "sfx": [
+    {
+      "frame": 1,
+      "file": "assets/sfx/impact-bass-2.mp3",
+      "offset_s": 0.15,
+      "duration_s": 2.59,
+      "volume": 0.35
+    },
+    {
+      "frame": 2,
+      "file": "assets/sfx/click.mp3",
+      "offset_s": 6.4,
+      "duration_s": 0.37,
+      "volume": 0.35
+    },
+    {
+      "frame": 3,
+      "file": "assets/sfx/click.mp3",
+      "offset_s": 4.2,
+      "duration_s": 0.37,
+      "volume": 0.35
+    },
+    {
+      "frame": 4,
+      "file": "assets/sfx/sparkle.mp3",
+      "offset_s": 4.35,
+      "duration_s": 1.8,
+      "volume": 0.35
+    }
+  ]
+}

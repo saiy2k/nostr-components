@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          color: #f6f1e6;
+          font-family: "Playfair Display", Georgia, serif;
+        }
+        .ground {
+          position: absolute;
+          inset: 0;
+          background: #070709;
+        }
+        .card {
+          position: absolute;
+          left: 36px;
+          top: 36px;
+          width: 1008px;
+          height: 820px;
+          border-radius: 36px;
+          background: #121218;
+          border: 1px solid rgba(255, 200, 0, 0.35);
+          overflow: hidden;
+        }
+        .headline {
+          position: absolute;
+          left: 48px;
+          top: 48px;
+          margin: 0;
+          font-size: 92px;
+          font-weight: 400;
+          letter-spacing: -0.04em;
+        }
+        .avatar {
+          position: absolute;
+          left: 48px;
+          top: 230px;
+          width: 88px;
+          height: 88px;
+          border-radius: 50%;
+          background: #2a2418;
+          border: 2px solid rgba(255, 200, 0, 0.45);
+        }
+        .name {
+          position: absolute;
+          left: 160px;
+          top: 246px;
+          width: 280px;
+          height: 22px;
+          border-radius: 999px;
+          background: rgba(246, 241, 230, 0.22);
+        }
+        .handle {
+          position: absolute;
+          left: 160px;
+          top: 282px;
+          width: 160px;
+          height: 16px;
+          border-radius: 999px;
+          background: rgba(246, 241, 230, 0.1);
+        }
+        .bar {
+          position: absolute;
+          left: 48px;
+          height: 22px;
+          border-radius: 999px;
+          background: rgba(246, 241, 230, 0.16);
+        }
+        .like {
+          position: absolute;
+          left: 48px;
+          top: 680px;
+          width: 72px;
+          height: 72px;
+        }
+        .pill {
+          position: absolute;
+          left: 150px;
+          top: 668px;
+          width: 320px;
+          height: 96px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          border-radius: 999px;
+          border: 2px solid #ffc800;
+          background: #101014;
+          font-family: Montserrat, sans-serif;
+          font-size: 36px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+        .bolt { width: 44px; height: 44px; flex: none; }
+        .bloom {
+          position: absolute;
+          left: 120px;
+          top: 630px;
+          width: 380px;
+          height: 180px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255, 200, 0, 0.55), transparent 70%);
+          opacity: 0;
+        }
+        .sheen {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 180px;
+          height: 820px;
+          background: linear-gradient(90deg, transparent, rgba(255, 200, 0, 0.16), transparent);
+          opacity: 0;
+        }
+      </style>
+      <div
+        id="root"
+        data-composition-id="02-x"
+        data-width="1080"
+        data-height="1080"
+        data-duration="11"
+      >
+        <div id="x-ground" class="clip ground" data-start="0" data-duration="11" data-track-index="1"></div>
+        <div class="card" id="x-card">
+          <div class="sheen" id="x-sheen"></div>
+          <h2 class="headline">On X.</h2>
+          <div class="avatar"></div>
+          <div class="name"></div>
+          <div class="handle"></div>
+          <div class="bar" style="top: 370px; width: 860px"></div>
+          <div class="bar" style="top: 414px; width: 760px"></div>
+          <div class="bar" style="top: 458px; width: 640px"></div>
+          <svg class="like" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9z" fill="none" stroke="#F6F1E6" stroke-width="1.4"/>
+          </svg>
+        </div>
+        <div class="bloom" id="x-bloom"></div>
+        <div class="pill" id="x-pill">
+          <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800" />
+          </svg>
+          <span>Zap</span>
+        </div>
+      </div>
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(
+          "#x-pill",
+          { x: 160, y: -220, scale: 1.35 },
+          { x: 0, y: 0, scale: 1, duration: 1.5, ease: "power3.inOut" },
+          0.15,
+        );
+        tl.fromTo("#x-sheen", { x: -200, opacity: 0 }, { x: 1000, opacity: 1, duration: 1.4, ease: "power2.inOut", immediateRender: false }, 3.2);
+        tl.to("#x-sheen", { opacity: 0, duration: 0.25 }, 4.62);
+        tl.fromTo("#x-pill", { scale: 1 }, { scale: 0.9, duration: 0.12, ease: "power2.in", immediateRender: false }, 6.4);
+        tl.fromTo("#x-pill", { scale: 0.9 }, { scale: 1, duration: 0.42, ease: "power3.out", immediateRender: false }, 6.53);
+        tl.fromTo("#x-bloom", { opacity: 0 }, { opacity: 1, duration: 0.16, ease: "power2.out", immediateRender: false }, 6.45);
+        tl.to("#x-bloom", { opacity: 0, duration: 0.6, ease: "power2.out" }, 6.8);
+        tl.to({}, { duration: 11 }, 0);
+        window.__timelines["02-x"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

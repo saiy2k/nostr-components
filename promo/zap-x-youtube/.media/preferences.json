@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "preferences": {
+    "destination": {
+      "value": "x-feed",
+      "confirmed_in": [
+        "zap-x-youtube"
+      ],
+      "updated_at": "2026-09-27T17:42:14.330Z"
+    },
+    "aspect": {
+      "value": "1080x1080",
+      "confirmed_in": [
+        "zap-x-youtube"
+      ],
+      "updated_at": "2026-09-27T17:42:14.395Z"
+    },
+    "language": {
+      "value": "en",
+      "confirmed_in": [
+        "zap-x-youtube"
+      ],
+      "updated_at": "2026-09-27T17:42:14.461Z"
+    },
+    "flow": {
+      "value": "automation",
+      "confirmed_in": [
+        "zap-x-youtube"
+      ],
+      "updated_at": "2026-09-27T17:42:14.527Z"
+    },
+    "storyboard": {
+      "value": "yes",
+      "confirmed_in": [
+        "zap-x-youtube"
+      ],
+      "updated_at": "2026-09-27T17:42:14.592Z"
+    }
+  },
+  "sightings": {}
+}

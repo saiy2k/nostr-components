@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          color: #f6f1e6;
+          font-family: Montserrat, sans-serif;
+        }
+        .ground {
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(circle at 50% 48%, rgba(255, 200, 0, 0.28), transparent 36%),
+            #070709;
+        }
+        .bloom {
+          position: absolute;
+          left: 220px;
+          top: 250px;
+          width: 640px;
+          height: 640px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255, 200, 0, 0.55), transparent 62%);
+        }
+        .pill {
+          position: absolute;
+          left: 250px;
+          top: 456px;
+          width: 580px;
+          height: 168px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 22px;
+          border-radius: 999px;
+          border: 2px solid #ffc800;
+          background: #14110c;
+          box-shadow: 0 0 80px rgba(255, 200, 0, 0.28);
+          font-size: 64px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+        .bolt { width: 78px; height: 78px; flex: none; }
+      </style>
+      <div
+        id="root"
+        data-composition-id="01-hook"
+        data-width="1080"
+        data-height="1080"
+        data-duration="3"
+      >
+        <div id="hook-ground" class="clip ground" data-start="0" data-duration="3" data-track-index="1"></div>
+        <div class="bloom" id="hook-bloom"></div>
+        <div class="pill" id="hook-pill">
+          <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800" />
+          </svg>
+          <span>Zap</span>
+        </div>
+      </div>
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo("#hook-bloom", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 1.4, ease: "power3.out" }, 0);
+        tl.fromTo("#hook-pill", { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1, duration: 1.15, ease: "power3.out" }, 0.08);
+        tl.to({}, { duration: 3 }, 0);
+        window.__timelines["01-hook"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

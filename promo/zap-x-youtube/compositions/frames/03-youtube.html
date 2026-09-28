@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          color: #f6f1e6;
+          font-family: "Playfair Display", Georgia, serif;
+        }
+        .ground { position: absolute; inset: 0; background: #070709; }
+        .stage {
+          position: absolute;
+          left: 36px;
+          top: 36px;
+          width: 1008px;
+          height: 820px;
+        }
+        .plate {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1008px;
+          height: 520px;
+          border-radius: 32px;
+          background:
+            radial-gradient(circle at 72% 42%, rgba(255, 200, 0, 0.45), transparent 32%),
+            linear-gradient(155deg, #2a2112 0%, #0e0e12 48%, #1a1208 100%);
+          border: 1px solid rgba(255, 200, 0, 0.3);
+        }
+        .play {
+          position: absolute;
+          left: 470px;
+          top: 220px;
+          width: 0;
+          height: 0;
+          border-left: 72px solid #ffc800;
+          border-top: 44px solid transparent;
+          border-bottom: 44px solid transparent;
+        }
+        .chip {
+          position: absolute;
+          left: 28px;
+          top: 28px;
+          margin: 0;
+          font-family: Montserrat, sans-serif;
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #14110a;
+          background: #ffc800;
+          padding: 10px 16px;
+          border-radius: 999px;
+        }
+        .headline {
+          position: absolute;
+          left: 0;
+          top: 548px;
+          margin: 0;
+          font-size: 72px;
+          font-weight: 400;
+          letter-spacing: -0.04em;
+        }
+        .like {
+          position: absolute;
+          left: 0;
+          top: 680px;
+          width: 72px;
+          height: 72px;
+        }
+        .pill {
+          position: absolute;
+          left: 100px;
+          top: 668px;
+          width: 300px;
+          height: 96px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          border-radius: 999px;
+          border: 2px solid #ffc800;
+          background: #101014;
+          font-family: Montserrat, sans-serif;
+          font-size: 34px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+        .bolt { width: 42px; height: 42px; flex: none; }
+        .bloom {
+          position: absolute;
+          left: 70px;
+          top: 640px;
+          width: 360px;
+          height: 160px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255, 200, 0, 0.5), transparent 70%);
+          opacity: 0;
+        }
+        .count {
+          position: absolute;
+          left: 440px;
+          top: 660px;
+          width: 540px;
+          height: 110px;
+          margin: 0;
+          font-family: "JetBrains Mono", ui-monospace, monospace;
+          font-size: 88px;
+          font-weight: 700;
+          letter-spacing: -0.04em;
+          opacity: 0;
+        }
+        .num { position: absolute; left: 0; top: 0; width: 270px; text-align: right; }
+        #yt-n1, #yt-n2, #yt-n3 { opacity: 0; }
+        .unit {
+          position: absolute;
+          left: 292px;
+          top: 36px;
+          font-family: Montserrat, sans-serif;
+          font-size: 28px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: #9a9386;
+        }
+        .thanks {
+          position: absolute;
+          left: 440px;
+          top: 760px;
+          margin: 0;
+          font-size: 36px;
+          color: #ffc800;
+          opacity: 0;
+        }
+      </style>
+      <div
+        id="root"
+        data-composition-id="03-youtube"
+        data-width="1080"
+        data-height="1080"
+        data-duration="11"
+      >
+        <div id="yt-ground" class="clip ground" data-start="0" data-duration="11" data-track-index="1"></div>
+        <div class="stage" id="yt-stage">
+          <div class="plate"></div>
+          <div class="play"></div>
+          <p class="chip">YouTube</p>
+          <h2 class="headline" id="yt-title">On YouTube.</h2>
+          <svg class="like" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9z" fill="none" stroke="#F6F1E6" stroke-width="1.4"/>
+          </svg>
+          <div class="bloom" id="yt-bloom"></div>
+          <div class="pill" id="yt-pill">
+            <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800" />
+            </svg>
+            <span>Zap</span>
+          </div>
+          <p class="count" id="yt-count">
+            <span class="num" id="yt-n0">0</span>
+            <span class="num" id="yt-n1">21</span>
+            <span class="num" id="yt-n2">210</span>
+            <span class="num" id="yt-n3">1,000</span>
+            <span class="unit">sats</span>
+          </p>
+          <p class="thanks" id="yt-thanks">Thank you</p>
+        </div>
+      </div>
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo("#yt-pill", { scale: 1 }, { scale: 0.9, duration: 0.12, ease: "power2.in", immediateRender: false }, 4.2);
+        tl.fromTo("#yt-pill", { scale: 0.9 }, { scale: 1, duration: 0.42, ease: "power3.out", immediateRender: false }, 4.33);
+        tl.fromTo("#yt-bloom", { opacity: 0 }, { opacity: 1, duration: 0.16, immediateRender: false }, 4.24);
+        tl.to("#yt-bloom", { opacity: 0, duration: 0.55 }, 4.55);
+        tl.fromTo("#yt-count", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, immediateRender: false }, 5.05);
+        tl.set("#yt-n0", { opacity: 0 }, 5.45);
+        tl.set("#yt-n1", { opacity: 1 }, 5.45);
+        tl.set("#yt-n1", { opacity: 0 }, 6.15);
+        tl.set("#yt-n2", { opacity: 1 }, 6.15);
+        tl.set("#yt-n2", { opacity: 0 }, 6.9);
+        tl.set("#yt-n3", { opacity: 1 }, 6.9);
+        tl.fromTo("#yt-thanks", { opacity: 0 }, { opacity: 1, duration: 0.45, immediateRender: false }, 7.6);
+        tl.to({}, { duration: 11 }, 0);
+        window.__timelines["03-youtube"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

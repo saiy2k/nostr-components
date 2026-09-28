@@ -1,0 +1,109 @@
+{
+  "total_duration_s": 32,
+  "width": 1080,
+  "height": 1080,
+  "groups": [
+    {
+      "id": "caption-group-0",
+      "frame": 1,
+      "start": 0.04,
+      "end": 1.23,
+      "text": "It's already there.",
+      "words": [
+        {
+          "id": "caption-word-0-0",
+          "text": "It's",
+          "start": 0.04,
+          "end": 0.24
+        },
+        {
+          "id": "caption-word-0-1",
+          "text": "already",
+          "start": 0.33,
+          "end": 0.68
+        },
+        {
+          "id": "caption-word-0-2",
+          "text": "there.",
+          "start": 0.68,
+          "end": 1.11
+        }
+      ]
+    },
+    {
+      "id": "caption-group-1",
+      "frame": 2,
+      "start": 3.17,
+      "end": 4.24,
+      "text": "on the posts.",
+      "words": [
+        {
+          "id": "caption-word-1-0",
+          "text": "on",
+          "start": 3.17,
+          "end": 3.22
+        },
+        {
+          "id": "caption-word-1-1",
+          "text": "the",
+          "start": 3.22,
+          "end": 3.43
+        },
+        {
+          "id": "caption-word-1-2",
+          "text": "posts.",
+          "start": 3.56,
+          "end": 4.12
+        }
+      ]
+    },
+    {
+      "id": "caption-group-2",
+      "frame": 3,
+      "start": 14.16,
+      "end": 15.18,
+      "text": "on the videos.",
+      "words": [
+        {
+          "id": "caption-word-2-0",
+          "text": "on",
+          "start": 14.16,
+          "end": 14.16
+        },
+        {
+          "id": "caption-word-2-1",
+          "text": "the",
+          "start": 14.16,
+          "end": 14.4
+        },
+        {
+          "id": "caption-word-2-2",
+          "text": "videos.",
+          "start": 14.4,
+          "end": 15.06
+        }
+      ]
+    },
+    {
+      "id": "caption-group-3",
+      "frame": 4,
+      "start": 25.1,
+      "end": 26.12,
+      "text": "Zap them.",
+      "words": [
+        {
+          "id": "caption-word-3-0",
+          "text": "Zap",
+          "start": 25.1,
+          "end": 25.35
+        },
+        {
+          "id": "caption-word-3-1",
+          "text": "them.",
+          "start": 25.5,
+          "end": 26
+        }
+      ]
+    }
+  ]
+}
