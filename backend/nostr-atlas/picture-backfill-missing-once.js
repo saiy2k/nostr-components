@@ -15,10 +15,35 @@ import {
 
 const BATCH_LIMIT = 400;
 const X_AVATAR_CONCURRENCY = 2;
-const COLLECTION = "nostrDirectoryHandles";
-const dryRun = process.argv.includes("--dry-run");
-const unexpected = process.argv.slice(2).find((arg) => arg !== "--dry-run");
-if (unexpected) throw new Error(`Unknown argument: ${unexpected}`);
+
+function optionValue(argv, index, flag) {
+  const value = argv[index + 1];
+  if (typeof value !== "string" || value.startsWith("-")) {
+    throw new Error(`${flag} requires a value.`);
+  }
+  return value;
+}
+
+function parseArgs(argv) {
+  const options = {
+    dryRun: false,
+    project: process.env.FIRESTORE_PROJECT || "nostr-components",
+    database: process.env.FIRESTORE_DATABASE || "(default)",
+    collection:
+      process.env.FIRESTORE_HANDLES_COLLECTION || "nostrDirectoryHandles",
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--dry-run") options.dryRun = true;
+    else if (arg === "--project") {
+      options.project = optionValue(argv, index, arg);
+      index += 1;
+    } else throw new Error(`Unknown argument: ${arg}`);
+  }
+  return options;
+}
+
+const options = parseArgs(process.argv.slice(2));
 
 function rowHandle(row) {
   const fromId = row.id.startsWith("twitter:") ? row.id.slice(8) : "";
@@ -47,8 +72,8 @@ async function mapPool(items, concurrency, fn) {
 
 const relays = loadRelaysFromFile();
 const db = await createFirestore({
-  firestoreProject: "nostr-components",
-  firestoreDatabase: "(default)",
+  firestoreProject: options.project,
+  firestoreDatabase: options.database,
 });
 const stats = {
   verified: 0,
@@ -64,7 +89,7 @@ const stats = {
   wrote: 0,
 };
 try {
-  const snap = await db.collection(COLLECTION).get();
+  const snap = await db.collection(options.collection).get();
   const due = [];
   for (const doc of snap.docs) {
     const data = doc.data() || {};
@@ -141,13 +166,20 @@ try {
       stats.xUpdated += 1;
       planned.push({ row, plan, event: null, avatar: avatars[index] });
     });
-    if (!dryRun) {
+    if (!options.dryRun) {
       for (const item of planned) {
         const wrote = await db.runTransaction(async (tx) => {
-          const ref = db.collection(COLLECTION).doc(item.row.id);
+          const ref = db.collection(options.collection).doc(item.row.id);
           const snap = await tx.get(ref);
           if (!snap.exists) return false;
           const fresh = snap.data() || {};
+          const metadata = fresh.activeIdentity?.metadata || {};
+          if (
+            !item.event &&
+            (httpsPictureUrl(metadata.picture) || httpsPictureUrl(metadata.xPicture))
+          ) {
+            return false;
+          }
           const plan = item.event
             ? planNostrPicture(fresh, item.event)
             : planXPicture(fresh, item.avatar);
@@ -170,7 +202,7 @@ try {
       }
     }
   }
-  console.log(JSON.stringify({ dryRun, ...stats }, null, 2));
+  console.log(JSON.stringify({ dryRun: options.dryRun, ...stats }, null, 2));
 } finally {
   await terminateFirestore(db);
 }

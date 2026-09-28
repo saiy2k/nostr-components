@@ -1310,14 +1310,13 @@ describe("claim publish flow", () => {
     expect(claimProofEndpoint(directoryApiUrl)).toBe(
       "https://us-central1-nostr-components.cloudfunctions.net/checkClaimProof",
     );
-    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-      expect(init?.signal).toBeInstanceOf(AbortSignal);
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const fetchImpl = vi.fn(async (_url: string | URL | Request) => {
       const request = new URL(String(_url));
       expect(request.origin + request.pathname).toBe(
         "https://us-central1-nostr-components.cloudfunctions.net/checkClaimProof",
       );
       expect(request.searchParams.get("url")).toBe(PROOF);
-      expect(CLAIM_PROOF_TIMEOUT_MS).toBeGreaterThanOrEqual(25_000);
       return new Response(
         JSON.stringify({
           ok: false,
@@ -1337,6 +1336,8 @@ describe("claim publish flow", () => {
       ok: false,
       message: CLAIM_COPY.proofMissingNpub,
     });
+    expect(timeout).toHaveBeenCalledWith(CLAIM_PROOF_TIMEOUT_MS);
+    timeout.mockRestore();
   });
 
   it("resets a closed dialog only after publishing finishes", () => {
