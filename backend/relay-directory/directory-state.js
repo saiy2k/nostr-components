@@ -424,9 +424,37 @@ export function isNip39Identity(identity) {
   );
 }
 
+export function kind0Timestamp(value) {
+  if (value == null || value === "") return null;
+  const time = Number(value);
+  return Number.isFinite(time) ? time : null;
+}
+
+export function isOlderKind0(storedCreatedAt, incomingCreatedAt) {
+  const stored = kind0Timestamp(storedCreatedAt);
+  const incoming = kind0Timestamp(incomingCreatedAt);
+  return stored != null && incoming != null && incoming < stored;
+}
+
+export function newerKind0CreatedAt(storedCreatedAt, incomingCreatedAt) {
+  const stored = kind0Timestamp(storedCreatedAt);
+  const incoming = kind0Timestamp(incomingCreatedAt);
+  if (incoming == null) return stored ?? undefined;
+  if (stored == null || incoming >= stored) return incoming;
+  return stored;
+}
+
+function stampKind0(entity, metadata, createdAt) {
+  const stamped = { ...entity, metadata };
+  const time = kind0Timestamp(createdAt);
+  if (time != null) stamped.kind0CreatedAt = time;
+  return stamped;
+}
+
 // Kind 10011 proofs have no profile content. Copy the author's kind-0 fields
-// onto that verified identity without erasing values the kind 0 omits.
-export function planKind0Metadata(doc, content, pubkey) {
+// onto that verified identity without erasing values the kind 0 omits, and
+// without replacing those fields with an older kind 0.
+export function planKind0Metadata(doc, content, pubkey, createdAt) {
   const active = doc?.activeIdentity;
   if (!isNip39Identity(active)) return { changed: false, reason: "not-nip39" };
   if (content == null) return { changed: false, reason: "no-kind0" };
@@ -436,8 +464,12 @@ export function planKind0Metadata(doc, content, pubkey) {
   ) {
     return { changed: false, reason: "pubkey-mismatch" };
   }
+  if (isOlderKind0(active.kind0CreatedAt, createdAt)) {
+    return { changed: false, reason: "stale-kind0" };
+  }
   const incoming = kind0ProfileMetadata(active.pubkey, content);
   if (!incoming) return { changed: false, reason: "no-profile-fields" };
+  const incomingAt = kind0Timestamp(createdAt);
   const metadata = mergeProfileMetadata(active.metadata, incoming);
   const matchingClaim = Array.isArray(doc.claims)
     ? doc.claims.find((claim) => claim?.claimId === active.claimId)
@@ -445,23 +477,31 @@ export function planKind0Metadata(doc, content, pubkey) {
   const claimMetadata = matchingClaim
     ? mergeProfileMetadata(matchingClaim.metadata, incoming)
     : undefined;
+  const activeAt = newerKind0CreatedAt(active.kind0CreatedAt, incomingAt);
+  const claimAt = matchingClaim
+    ? newerKind0CreatedAt(matchingClaim.kind0CreatedAt, incomingAt)
+    : undefined;
   if (
     metadata === active.metadata &&
-    claimMetadata === matchingClaim?.metadata
+    kind0Timestamp(active.kind0CreatedAt) === kind0Timestamp(activeAt) &&
+    (!matchingClaim ||
+      (claimMetadata === matchingClaim.metadata &&
+        kind0Timestamp(matchingClaim.kind0CreatedAt) === kind0Timestamp(claimAt)))
   ) {
     return { changed: false, reason: "unchanged" };
   }
   return {
     changed: true,
     reason: "updated",
-    activeIdentity: { ...active, metadata },
+    activeIdentity: stampKind0(active, metadata, activeAt),
     claims: Array.isArray(doc.claims)
       ? doc.claims.map((claim) =>
           claim?.claimId === active.claimId
-            ? {
-                ...claim,
-                metadata: mergeProfileMetadata(claim.metadata, incoming),
-              }
+            ? stampKind0(
+                claim,
+                mergeProfileMetadata(claim.metadata, incoming),
+                newerKind0CreatedAt(claim.kind0CreatedAt, incomingAt),
+              )
             : claim,
         )
       : undefined,

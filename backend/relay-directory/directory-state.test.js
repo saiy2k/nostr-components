@@ -647,4 +647,81 @@ describe("kind-0 metadata for NIP-39 identities", () => {
       planKind0Metadata(nip39Doc, { nip05: "other@example.com" }, PUBKEY_B),
     ).toEqual({ changed: false, reason: "pubkey-mismatch" });
   });
+
+  it("does not replace a newer profile with an older kind 0", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          kind0CreatedAt: 200,
+          metadata: {
+            nip05: "alice@new.example",
+            picture: "https://cdn.example/existing.png",
+          },
+        },
+        claims: [
+          {
+            claimId: "proof",
+            kind0CreatedAt: 200,
+            metadata: { nip05: "alice@new.example" },
+          },
+        ],
+      },
+      { nip05: "alice@old.example", name: "Old" },
+      PUBKEY_A,
+      100,
+    );
+
+    expect(plan).toEqual({ changed: false, reason: "stale-kind0" });
+  });
+
+  it("replaces profile fields when the kind 0 is newer", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          kind0CreatedAt: 100,
+          metadata: { nip05: "alice@old.example" },
+        },
+      },
+      { nip05: "alice@new.example" },
+      PUBKEY_A,
+      200,
+    );
+
+    expect(plan.reason).toBe("updated");
+    expect(plan.activeIdentity.metadata.nip05).toBe("alice@new.example");
+    expect(plan.activeIdentity.kind0CreatedAt).toBe(200);
+  });
+
+  it("records the kind 0 timestamp while filling a stale claim", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          kind0CreatedAt: 100,
+          metadata: {
+            picture: "https://cdn.example/existing.png",
+            pubkey: PUBKEY_A,
+            name: "Alice",
+            nip05: "alice@example.com",
+          },
+        },
+        claims: [
+          {
+            claimId: "proof",
+            metadata: { picture: "https://cdn.example/existing.png" },
+          },
+        ],
+      },
+      { name: "Alice", nip05: "alice@example.com" },
+      PUBKEY_A,
+      100,
+    );
+
+    expect(plan.reason).toBe("updated");
+    expect(plan.activeIdentity.kind0CreatedAt).toBe(100);
+    expect(plan.claims[0].kind0CreatedAt).toBe(100);
+    expect(plan.claims[0].metadata.nip05).toBe("alice@example.com");
+  });
 });

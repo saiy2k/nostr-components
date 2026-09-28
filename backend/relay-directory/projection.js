@@ -12,10 +12,16 @@ import {
   projectionHandleIsDue,
 } from "./projection-state.js";
 import {
+  isOlderKind0,
   kind0ProfileMetadata,
   mergeProfileMetadata,
 } from "./directory-state.js";
-import { fetchKind0s, metadataFromKind0 } from "./kind0.js";
+import {
+  PROJECTION_KIND0_RELAY_LIMIT,
+  fetchKind0s,
+  metadataFromKind0,
+  relaysForKind0Lookup,
+} from "./kind0.js";
 import {
   buildRunSummaryWrite,
   commitFirestoreWrites,
@@ -490,10 +496,19 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       attemptedClaimIds.add(claim.claimId);
       let result = await verifyTweetCandidate(claim, args.timeoutMs);
       if (result.identityStatus === "verified") {
-        const metadata = mergeProfileMetadata(
-          claim.metadata,
-          kind0Metadata.get(String(claim.pubkey || "").toLowerCase()),
+        let metadata = claim.metadata;
+        const profile = kind0Metadata.get(
+          String(claim.pubkey || "").toLowerCase(),
         );
+        if (
+          profile?.fields &&
+          !isOlderKind0(claim.kind0CreatedAt, profile.createdAt)
+        ) {
+          metadata = mergeProfileMetadata(claim.metadata, profile.fields);
+          if (profile.createdAt != null) {
+            result = { ...result, kind0CreatedAt: profile.createdAt };
+          }
+        }
         if (metadata) result = { ...result, metadata };
         result = await enrichVerifiedResult(
           result,
@@ -556,7 +571,11 @@ async function kind0MetadataByPubkey(claims, args) {
   }
   try {
     const loadKind0s = args.fetchKind0s || fetchKind0s;
-    const profiles = await loadKind0s(pubkeys, args.relays || []);
+    const relays = relaysForKind0Lookup(
+      args.relays || [],
+      PROJECTION_KIND0_RELAY_LIMIT,
+    );
+    const profiles = await loadKind0s(pubkeys, relays, { newest: true });
     const metadata = new Map();
     for (const pubkey of pubkeys) {
       const event = profiles?.get?.(pubkey)?.event;
@@ -564,7 +583,13 @@ async function kind0MetadataByPubkey(claims, args) {
         continue;
       }
       const fields = kind0ProfileMetadata(pubkey, metadataFromKind0(event));
-      if (fields) metadata.set(pubkey, fields);
+      const createdAt = Number(event.created_at);
+      if (fields) {
+        metadata.set(pubkey, {
+          fields,
+          createdAt: Number.isFinite(createdAt) ? createdAt : null,
+        });
+      }
     }
     return metadata;
   } catch (error) {

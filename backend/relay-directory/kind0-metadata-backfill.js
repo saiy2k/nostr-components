@@ -11,7 +11,7 @@ import {
 } from "./runtime.js";
 import { fetchKind0s, metadataFromKind0 } from "./kind0.js";
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const options = {
     write: false,
     handles: [],
@@ -27,14 +27,15 @@ function parseArgs(argv) {
     else if (arg === "--handle") options.handles.push(argv[++index]);
     else throw new Error(`Unknown argument: ${arg}`);
   }
-  options.handles = options.handles
-    .map((handle) =>
-      String(handle || "")
-        .trim()
-        .replace(/^@/, "")
-        .toLowerCase(),
-    )
-    .filter((handle) => /^[a-z0-9_]{1,15}$/.test(handle));
+  options.handles = options.handles.map((handle) =>
+    String(handle || "")
+      .trim()
+      .replace(/^@/, "")
+      .toLowerCase(),
+  );
+  if (options.handles.some((handle) => !/^[a-z0-9_]{1,15}$/.test(handle))) {
+    throw new Error("Invalid --handle value");
+  }
   return options;
 }
 
@@ -43,7 +44,7 @@ function planForProfile(data, profile) {
   if (!event) return planKind0Metadata(data, null, null);
   const content = metadataFromKind0(event);
   if (!content) return { changed: false, reason: "rejected-kind0" };
-  return planKind0Metadata(data, content, event.pubkey);
+  return planKind0Metadata(data, content, event.pubkey, event.created_at);
 }
 
 async function main() {
@@ -60,9 +61,9 @@ async function main() {
     noKind0: 0,
     rejectedKind0: 0,
     noProfileFields: 0,
+    staleKind0: 0,
     wrote: 0,
   };
-  let sample = null;
   try {
     const due = [];
     if (options.handles.length) {
@@ -100,23 +101,17 @@ async function main() {
         ),
       ],
       relays,
+      { newest: true },
     );
     const planned = [];
     for (const row of due) {
       const pubkey = String(row.data.activeIdentity.pubkey || "").toLowerCase();
       const plan = planForProfile(row.data, profiles.get(pubkey));
-      if (row.data.handle === "saiy2k" || row.id === "twitter:saiy2k") {
-        sample = {
-          handle: row.data.handle || row.id,
-          before: row.data.activeIdentity?.metadata || null,
-          after: plan.changed ? plan.activeIdentity.metadata : plan.reason,
-          reason: plan.reason,
-        };
-      }
       if (!plan.changed) {
         if (plan.reason === "no-kind0") stats.noKind0 += 1;
         else if (plan.reason === "rejected-kind0") stats.rejectedKind0 += 1;
         else if (plan.reason === "no-profile-fields") stats.noProfileFields += 1;
+        else if (plan.reason === "stale-kind0") stats.staleKind0 += 1;
         else stats.unchanged += 1;
         continue;
       }
@@ -157,7 +152,6 @@ async function main() {
           collection: options.collection,
           handles: options.handles,
           ...stats,
-          saiy2k: sample,
         },
         null,
         2,
