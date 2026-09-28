@@ -382,7 +382,10 @@ async function reloadProfiles(search = query): Promise<void> {
   query = nextQuery;
   await loadProfileBatches([0], true);
   if (loadFailed && query === nextQuery) {
-    if (!loaded) return;
+    if (!loaded) {
+      syncSearchUrl(query);
+      return;
+    }
     query = previousQuery;
     const searchInput = document.querySelector<HTMLInputElement>(
       "#directory-search",
