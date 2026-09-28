@@ -22,7 +22,9 @@ project should set it to that project's deployed function URL. Without an
 override, the site uses
 `https://us-central1-nostr-components.cloudfunctions.net/listAtlasProfiles`.
 **Deploy the function before building against a new project**, or use the local
-Functions emulator below.
+Functions emulator below. `VITE_DIRECTORY_CLAIM_RELAYS` optionally overrides the
+public relays used when publishing a claim. At least one must appear in
+`backend/relays.json`.
 
 The API reads up to 50 documents per request. `limit` accepts 1–100 and `offset`
 tracks the first logical record in a batch. Every response includes `total`, the
@@ -139,9 +141,9 @@ another collection. Set these in `functions/.env.local` for the emulator, or
    batches rather than applying a deep Firestore offset. Returning to a cached
    page should not fetch the collection again.
 5. Select **Popular on Nostr** and check the explanatory empty state. Return to
-   the X tab. Add a local claim preview: it should be marked **Local preview**, have
-   no verification check, and cause no write request. Reloading the page removes
-   the preview.
+   the X tab. Open **Claim your X account**. The dialog should ask for a signer
+   and a proof tweet. Closing it without publishing should add no row and cause
+   no write request. Live claim checks are in `qa.md`.
 6. Block the endpoint in DevTools or stop the Functions emulator, then open a
    page that is not cached. Expect an error and **Retry**, with existing rows
    retained. A page reload while it is blocked should show an error rather than

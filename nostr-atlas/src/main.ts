@@ -28,6 +28,17 @@ import {
   xProfileUrl,
   type DocumentSeo,
 } from "./seo";
+import {
+  claimProofComposerUrl,
+  connectClaimSigner,
+  type NostrSigner,
+} from "./claim";
+import {
+  CLAIM_COPY,
+  claimDialogAfterClose,
+  submitXClaim,
+  type ClaimStatusState,
+} from "./claim-flow";
 
 const directoryApiUrl =
   import.meta.env.VITE_ATLAS_API_URL?.trim() || DEFAULT_ATLAS_API_URL;
@@ -35,6 +46,7 @@ const siteOrigin = siteOriginFrom(import.meta.env.VITE_SITE_ORIGIN);
 let profileBatches = new Map<number, DirectoryProfile[]>();
 let batchNextCursors = new Map<number, string | null>();
 let previewProfiles: DirectoryProfile[] = [];
+let claimIdentity: { pubkey: string; npub: string } | null = null;
 let totalProfiles = 0;
 let directoryTotal = 0;
 let loading = false;
@@ -518,8 +530,65 @@ function bindEvents(): void {
     document.querySelector<HTMLInputElement>("#directory-search");
   const profileDialog =
     document.querySelector<HTMLDialogElement>("#profile-dialog");
-  const addProfileForm =
-    document.querySelector<HTMLFormElement>("#add-profile-form");
+  const claimForm = document.querySelector<HTMLFormElement>(
+    "#claim-account-form",
+  );
+  const connectClaimButton = document.querySelector<HTMLButtonElement>(
+    "#connect-claim-signer",
+  );
+  const claimNpub = document.querySelector<HTMLElement>("#claim-npub");
+  const copyClaimNpub =
+    document.querySelector<HTMLButtonElement>("#copy-claim-npub");
+  const claimProofLink =
+    document.querySelector<HTMLAnchorElement>("#claim-proof-link");
+  const publishClaimButton =
+    document.querySelector<HTMLButtonElement>("#publish-claim");
+  const claimStatus = document.querySelector<HTMLElement>("#claim-status");
+  let publishing = false;
+
+  const setClaimStatus = (
+    message: string,
+    state: "idle" | "working" | "error" | "success" = "idle",
+  ) => {
+    if (!claimStatus) return;
+    claimStatus.textContent = message;
+    claimStatus.dataset.state = state;
+  };
+
+  const clearClaimIdentity = () => {
+    claimIdentity = null;
+    if (claimNpub) claimNpub.textContent = "Not connected";
+    if (copyClaimNpub) copyClaimNpub.disabled = true;
+    if (publishClaimButton) publishClaimButton.disabled = true;
+    if (claimProofLink) {
+      claimProofLink.removeAttribute("href");
+      claimProofLink.removeAttribute("target");
+      claimProofLink.removeAttribute("rel");
+      claimProofLink.setAttribute("aria-disabled", "true");
+    }
+  };
+
+  const showClaimIdentity = (identity: { pubkey: string; npub: string }) => {
+    claimIdentity = identity;
+    if (claimNpub) claimNpub.textContent = identity.npub;
+    if (copyClaimNpub) copyClaimNpub.disabled = false;
+    if (publishClaimButton && !publishing) publishClaimButton.disabled = false;
+    if (claimProofLink) {
+      claimProofLink.href = claimProofComposerUrl(identity.npub);
+      claimProofLink.target = "_blank";
+      claimProofLink.rel = "noreferrer";
+      claimProofLink.setAttribute("aria-disabled", "false");
+    }
+  };
+
+  const browserSigner = (): NostrSigner | null => {
+    const signer = (window as typeof window & { nostr?: Partial<NostrSigner> })
+      .nostr;
+    return typeof signer?.getPublicKey === "function" &&
+      typeof signer.signEvent === "function"
+      ? (signer as NostrSigner)
+      : null;
+  };
 
   searchForm?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -596,66 +665,120 @@ function bindEvents(): void {
       });
     });
 
-  addProfileForm?.addEventListener("submit", (event) => {
+  claimProofLink?.addEventListener("click", (event) => {
+    if (!claimIdentity) event.preventDefault();
+  });
+
+  connectClaimButton?.addEventListener("click", async () => {
+    const signer = browserSigner();
+    if (!signer) {
+      setClaimStatus(
+        "No NIP-07 signer was found. Install or unlock a Nostr browser extension, then retry.",
+        "error",
+      );
+      return;
+    }
+
+    connectClaimButton.disabled = true;
+    setClaimStatus("Waiting for your Nostr signer…", "working");
+    try {
+      showClaimIdentity(await connectClaimSigner(signer));
+      setClaimStatus(CLAIM_COPY.signerConnected, "success");
+    } catch (error) {
+      clearClaimIdentity();
+      setClaimStatus(
+        error instanceof Error
+          ? error.message
+          : "The Nostr signer could not be connected.",
+        "error",
+      );
+    } finally {
+      connectClaimButton.disabled = false;
+    }
+  });
+
+  copyClaimNpub?.addEventListener("click", () => {
+    if (claimIdentity) void copyNpub(claimIdentity.npub, copyClaimNpub);
+  });
+
+  claimForm
+    ?.querySelectorAll<HTMLButtonElement>("[data-close-claim-dialog]")
+    .forEach((button) => {
+      button.addEventListener("click", () => profileDialog?.close());
+    });
+
+  claimForm?.addEventListener("submit", async (event) => {
     const submitter = (event as SubmitEvent)
       .submitter as HTMLButtonElement | null;
     if (submitter?.value === "cancel") return;
     event.preventDefault();
-    if (!addProfileForm.reportValidity()) return;
+    if (publishing) return;
+    if (!claimForm.reportValidity()) return;
 
-    const formData = new FormData(addProfileForm);
-    const name = String(formData.get("name") ?? "").trim();
-    const handle = String(formData.get("handle") ?? "").trim();
-    const categoryValue = String(
-      formData.get("category") ?? "Popular on X.com",
-    ) as DirectoryProfile["category"];
-    const npub = String(formData.get("npub") ?? "").trim();
+    const formData = new FormData(claimForm);
+    const handleInput = claimForm.elements.namedItem(
+      "handle",
+    ) as HTMLInputElement | null;
+    const proofInput = claimForm.elements.namedItem(
+      "proofUrl",
+    ) as HTMLInputElement | null;
 
-    previewProfiles = [
-      {
-        id: `preview-${Date.now()}`,
-        name,
-        handle: handle.startsWith("@") ? handle : `@${handle}`,
-        nip05: String(formData.get("nip05") ?? "").trim(),
-        category: categoryValue,
-        followers: null,
-        verified: false,
-        npub,
-        youtube: "",
-        picture: "",
-        avatar: {
-          initials: name
-            .split(/\s+/)
-            .map((part) => part[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase(),
-          foreground: "#ffffff",
-          background: "#7456f6",
-        },
+    let started = false;
+    const result = await submitXClaim({
+      identity: claimIdentity,
+      signer: browserSigner(),
+      handle: String(formData.get("handle") ?? ""),
+      proofUrl: String(formData.get("proofUrl") ?? ""),
+      relayConfig: import.meta.env.VITE_DIRECTORY_CLAIM_RELAYS,
+      directoryApiUrl,
+      getIdentity: () => claimIdentity,
+      onStart() {
+        started = true;
+        publishing = true;
+        if (connectClaimButton) connectClaimButton.disabled = true;
+        if (publishClaimButton) publishClaimButton.disabled = true;
+        setClaimStatus(CLAIM_COPY.working, "working");
       },
-      ...previewProfiles,
-    ];
-    category = categoryValue;
-    query = "";
-    currentPage = 1;
-    if (searchInput) searchInput.value = "";
-    profileDialog?.close();
-    addProfileForm.reset();
-    document
-      .querySelectorAll<HTMLButtonElement>("[data-category]")
-      .forEach((tab) => {
-        const selected = tab.dataset.category === categoryValue;
-        tab.classList.toggle("selected", selected);
-        tab.setAttribute("aria-selected", String(selected));
-      });
-    renderProfiles();
-    void ensureCurrentPageLoaded();
-    showToast(`${name} was added to your local claim preview.`);
+    });
+    if (
+      !result.ok &&
+      (result.reason === "invalid-proof" || result.reason === "invalid-handle")
+    ) {
+      const field = result.field === "handle" ? handleInput : proofInput;
+      field?.setCustomValidity(result.fieldMessage);
+      field?.reportValidity();
+      field?.setCustomValidity("");
+    }
+    if (!result.ok && result.reason === "signer-changed") clearClaimIdentity();
+    if (result.ok) {
+      setClaimStatus(
+        result.message,
+        result.ingestStatus === "rejected" ? "error" : "success",
+      );
+      if (result.ingestStatus !== "rejected") showToast(result.toast);
+    } else {
+      setClaimStatus(result.message, "error");
+    }
+    if (started) {
+      publishing = false;
+      if (connectClaimButton) connectClaimButton.disabled = false;
+      if (publishClaimButton) publishClaimButton.disabled = !claimIdentity;
+    }
   });
 
   profileDialog?.addEventListener("click", (event) => {
     if (event.target === profileDialog) profileDialog.close();
+  });
+
+  profileDialog?.addEventListener("close", () => {
+    const next = claimDialogAfterClose({
+      publishing,
+      hasIdentity: claimIdentity !== null,
+      status: (claimStatus?.dataset.state as ClaimStatusState) || "idle",
+    });
+    if (!next) return;
+    if (publishClaimButton) publishClaimButton.disabled = next.publishDisabled;
+    setClaimStatus(next.statusMessage, next.status);
   });
 }
 

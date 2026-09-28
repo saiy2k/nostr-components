@@ -16,6 +16,12 @@ IMAGE_JOB_NAME="${IMAGE_JOB_NAME:-nostr-atlas-crawler}"
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
 IMAGE="gcr.io/${PROJECT_ID}/${IMAGE_JOB_NAME}:${IMAGE_TAG}"
 SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-nostr-atlas-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
+CREATE_SCHEDULER="${CREATE_SCHEDULER:-true}"
+SCHEDULER_JOB_NAME="${SCHEDULER_JOB_NAME:-nostr-atlas-projection-daily}"
+SCHEDULER_REGION="${SCHEDULER_REGION:-${REGION}}"
+SCHEDULE="${SCHEDULE:-0 8 * * *}"
+SCHEDULE_TIME_ZONE="${SCHEDULE_TIME_ZONE:-Etc/UTC}"
+SCHEDULER_SERVICE_ACCOUNT="${SCHEDULER_SERVICE_ACCOUNT:-nostr-atlas-scheduler@${PROJECT_ID}.iam.gserviceaccount.com}"
 FIRESTORE_DATABASE="${FIRESTORE_DATABASE:-(default)}"
 FIRESTORE_HANDLES_COLLECTION="${FIRESTORE_HANDLES_COLLECTION:-nostrDirectoryHandles}"
 FIRESTORE_PROJECTION_RUNS_COLLECTION="${FIRESTORE_PROJECTION_RUNS_COLLECTION:-relayProjectionRuns}"
@@ -76,6 +82,49 @@ DEPLOY_ARGS=(
 )
 
 gcloud run jobs deploy "${DEPLOY_ARGS[@]}"
+
+if [ "${CREATE_SCHEDULER}" = "true" ]; then
+  gcloud run jobs add-iam-policy-binding "${JOB_NAME}" \
+    --region "${REGION}" \
+    --member="serviceAccount:${SCHEDULER_SERVICE_ACCOUNT}" \
+    --role="roles/run.invoker" \
+    --quiet >/dev/null
+
+  SCHEDULER_URI="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB_NAME}:run"
+  SCHEDULER_ARGS=(
+    --location="${SCHEDULER_REGION}"
+    --schedule="${SCHEDULE}"
+    --time-zone="${SCHEDULE_TIME_ZONE}"
+    --uri="${SCHEDULER_URI}"
+    --http-method=POST
+    --oauth-service-account-email="${SCHEDULER_SERVICE_ACCOUNT}"
+    --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform"
+    --description="Triggers ${JOB_NAME} Cloud Run Job on a schedule"
+  )
+
+  PREVIOUS_SCHEDULER_JOB_NAME="${PREVIOUS_SCHEDULER_JOB_NAME:-relay-directory-projection-daily}"
+  if [ "${PREVIOUS_SCHEDULER_JOB_NAME}" != "${SCHEDULER_JOB_NAME}" ] \
+    && gcloud scheduler jobs describe "${PREVIOUS_SCHEDULER_JOB_NAME}" \
+      --location="${SCHEDULER_REGION}" >/dev/null 2>&1; then
+    PREVIOUS_SCHEDULER_STATE="$(gcloud scheduler jobs describe "${PREVIOUS_SCHEDULER_JOB_NAME}" \
+      --location="${SCHEDULER_REGION}" \
+      --format='value(state)')"
+    if [ "${PREVIOUS_SCHEDULER_STATE}" = "ENABLED" ]; then
+      gcloud scheduler jobs pause "${PREVIOUS_SCHEDULER_JOB_NAME}" \
+        --location="${SCHEDULER_REGION}"
+      echo "Paused previous Cloud Scheduler job ${PREVIOUS_SCHEDULER_JOB_NAME}."
+    fi
+  fi
+
+  if gcloud scheduler jobs describe "${SCHEDULER_JOB_NAME}" \
+    --location="${SCHEDULER_REGION}" >/dev/null 2>&1; then
+    gcloud scheduler jobs update http "${SCHEDULER_JOB_NAME}" "${SCHEDULER_ARGS[@]}"
+    echo "Updated Cloud Scheduler job ${SCHEDULER_JOB_NAME} (${SCHEDULE} ${SCHEDULE_TIME_ZONE})."
+  else
+    gcloud scheduler jobs create http "${SCHEDULER_JOB_NAME}" "${SCHEDULER_ARGS[@]}"
+    echo "Created Cloud Scheduler job ${SCHEDULER_JOB_NAME} (${SCHEDULE} ${SCHEDULE_TIME_ZONE})."
+  fi
+fi
 
 if [ "${RUN_AFTER_DEPLOY:-false}" = "true" ]; then
   gcloud run jobs execute "${JOB_NAME}" --region "${REGION}"
