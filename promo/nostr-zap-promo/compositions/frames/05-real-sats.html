@@ -1,0 +1,134 @@
+<template>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    @font-face {
+      font-family: "Barlow";
+      src: url("assets/fonts/Barlow-900.woff2") format("woff2");
+      font-weight: 900;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      src: url("assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+      font-weight: 600;
+      font-style: normal;
+      font-display: block;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      color: #f0ece5;
+      font-family: "Barlow", sans-serif;
+    }
+    #f05-real-sats-ground {
+      position: absolute;
+      inset: 0;
+      background: #0a0a0a;
+    }
+    #f05-real-sats-l1 {
+      position: absolute;
+      left: 7.4cqw;
+      top: 23.77cqw;
+      margin: 0 0 0 -0.033em;
+      font-family: "Barlow", sans-serif;
+      font-weight: 900;
+      font-size: 13cqw;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+      color: #f0ece5;
+      transform-origin: 0% 50%;
+    }
+    #f05-real-sats-clause {
+      position: absolute;
+      left: 7.4cqw;
+      top: 38.28cqw;
+      margin: 0 0 0 -0.025em;
+      font-family: "Barlow", sans-serif;
+      font-weight: 900;
+      font-size: 10.2cqw;
+      line-height: 0.9;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+      color: #ffc800;
+    }
+    .f05-real-sats-clause-line {
+      display: block;
+    }
+    #f05-real-sats-kicker {
+      position: absolute;
+      left: 7.4cqw;
+      top: 62.13cqw;
+      display: flex;
+      align-items: center;
+      gap: 1.7cqw;
+      white-space: nowrap;
+    }
+    #f05-real-sats-rule {
+      flex: none;
+      width: 36px;
+      height: 2px;
+      background: #ffc800;
+      transform-origin: 0% 50%;
+    }
+    #f05-real-sats-kicker-text {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 600;
+      font-size: 2.6cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #888880;
+    }
+  </style>
+  <div data-hf-id="hf-svca" id="root" data-composition-id="05-real-sats" data-width="1080" data-height="1080" data-duration="3.5">
+    <div data-hf-id="hf-ivwe" id="f05-real-sats-ground" class="clip" data-start="0" data-duration="3.5" data-track-index="0"></div>
+    <div data-hf-id="hf-e40u" id="f05-real-sats-l1">real sats.</div>
+    <div data-hf-id="hf-42k5" id="f05-real-sats-clause">
+      <span data-hf-id="hf-rznx" id="f05-real-sats-clause-a" class="f05-real-sats-clause-line" data-layout-allow-overlap="">straight to</span>
+      <span data-hf-id="hf-2nv0" id="f05-real-sats-clause-b" class="f05-real-sats-clause-line">the creator.</span>
+    </div>
+    <div data-hf-id="hf-uva9" id="f05-real-sats-kicker">
+      <span data-hf-id="hf-txiv" id="f05-real-sats-rule"></span>
+      <span data-hf-id="hf-ue3c" id="f05-real-sats-kicker-text">PEER-TO-PEER · NO PLATFORM CUT</span>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo(
+      "#f05-real-sats-l1",
+      { opacity: 0, y: 26, scale: 0.95 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: "power3.out" },
+      0
+    );
+
+    tl.fromTo(
+      ".f05-real-sats-clause-line",
+      { opacity: 0, y: 56 },
+      { opacity: 1, y: 0, duration: 0.6, ease: "power3.out", stagger: 0.08 },
+      1.0
+    );
+
+    tl.fromTo(
+      "#f05-real-sats-rule",
+      { scaleX: 0 },
+      { scaleX: 1, duration: 0.35, ease: "power3.out" },
+      1.5
+    );
+
+    tl.fromTo(
+      "#f05-real-sats-kicker-text",
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+      1.6
+    );
+
+    tl.to({}, { duration: 3.5 }, 0);
+
+    window.__timelines["05-real-sats"] = tl;
+  </script>
+</template>

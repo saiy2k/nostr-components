@@ -1,0 +1,9 @@
+# Regenerable HyperFrames caches and outputs
+.thumbnails/
+.waveform-cache/
+.hyperframes/preview/
+.hyperframes/frame-packets/
+.hyperframes/history-id
+.hyperframes/hf-ids-stamped.json
+snapshots/
+renders/

@@ -1,0 +1,48 @@
+SOURCE: no website capture. Product facts come from the repository
+(browser-extension/manifest.json, README.md, content.js, lib/dom.js,
+lib/youtube-dom.js, src/nostr-zap-button/*). User brief: "Do a sexy promo video to
+promote 'zap button for x.com and youtube'. Max len: 30s."
+
+PRODUCT
+Name: Nostr Like & Zap (browser extension, v0.7.1, Manifest V3, MIT licensed)
+One-liner (manifest): "Adds Nostr Like and Zap actions to posts on X and YouTube."
+README: "Adds Nostr Like and Zap actions next to posts on X and videos on YouTube.
+Likes publish Nostr kind-17 reactions using your existing signer (Alby, nos2x, or
+any other NIP-07 extension)." "Open a post on x.com or a video on youtube.com.
+Nostr actions appear beside the site's own Like control."
+Zap availability: "X Zaps appear only for a verified, zappable directory identity.
+YouTube Zaps appear only when the creator-owned channel identity area explicitly
+contains a checksum-valid lowercase npub."
+Install link used by the project's own Nostr Atlas site:
+https://github.com/saiy2k/nostr-components/tree/main/browser-extension
+Nostr Atlas hero: "Receive zaps on X.com and YouTube." Step 3: "Supporters with our
+extension installed can zap you on X.com and YouTube."
+Project tagline (README): "Embed Nostr anywhere on the internet, a Zap Button for
+every webpage." "Spread Nostr Everywhere!"
+
+PRODUCT UI (from source)
+- Zap icon: yellow lightning bolt, fill #FFC800, SVG path "M13 2L3 14h7v8l10-12h-7z"
+  (24x24 viewBox), "Yellow lightning regardless of text color".
+- X: a compact Like + Zap slot is inserted right after X's native heart in the
+  tweet action row (reply / repost / like / [nostr like + zap] / views / bookmark /
+  share). Compact zap: transparent 34px round button, 20px bolt, hover tint
+  rgba(255,200,0,0.12), optional compact sats count (13px).
+- YouTube: a 40px-tall pill (radius 9999px, bg rgba(255,255,255,0.1) on dark)
+  with a 22px bolt and a sats count, placed right after the like/dislike pill.
+- Zap dialog: header "Send a Zap"; amount presets "21 ⚡", "100 ⚡", "1000 ⚡";
+  "Custom sats" input + "Update Zap" (purple #7f00ff); "Comment (optional)" + "Add";
+  QR invoice; "Copy invoice"; "Open in wallet" (WebLN); success overlay
+  "⚡ Thank you!". Button text when zapped: "Zapped".
+- Full zap button: "Zap" label, "54 ⚡ sats received".
+
+VIDEO COPY (approved concept "Strike", no voice-over)
+you liked it.
+they got nothing.
+don't just like it.
+zap it.
+right on x.
+right on youtube.
+real sats. straight to the creator.
+nostr like & zap
+free browser extension for x & youtube
+github.com/saiy2k/nostr-components

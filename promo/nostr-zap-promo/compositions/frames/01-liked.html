@@ -1,0 +1,381 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Barlow";
+      src: url("assets/fonts/Barlow-900.woff2") format("woff2");
+      font-weight: 900;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Inter";
+      src: url("assets/fonts/Inter-700.woff2") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      src: url("assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+      font-weight: 600;
+      font-style: normal;
+      font-display: block;
+    }
+
+    #root {
+      position: relative;
+      width: 1080px;
+      height: 1080px;
+      overflow: hidden;
+    }
+
+    #f01-liked-bg {
+      position: absolute;
+      inset: 0;
+      background: #0a0a0a;
+    }
+
+    .f01-liked-unit {
+      position: absolute;
+      z-index: 1;
+      left: 0;
+      right: 0;
+      top: 210px;
+      height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 44px;
+    }
+
+    .f01-liked-heart-slot {
+      position: relative;
+      flex: none;
+      width: 240px;
+      height: 240px;
+    }
+
+    .f01-liked-burst {
+      position: absolute;
+      left: -120px;
+      top: -120px;
+      width: 480px;
+      height: 480px;
+    }
+
+    .f01-liked-ring-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .f01-liked-ring {
+      opacity: 0;
+    }
+
+    .f01-liked-dot {
+      position: absolute;
+      left: 231px;
+      top: 231px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #f91880;
+      opacity: 0;
+    }
+
+    .f01-liked-heart {
+      position: absolute;
+      inset: 0;
+    }
+
+    .f01-liked-heart svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .f01-liked-heart-filled {
+      opacity: 0;
+    }
+
+    .f01-liked-count {
+      flex: none;
+      display: grid;
+      font-family: "Inter", sans-serif;
+      font-weight: 700;
+      font-size: 120px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: #71767b;
+      white-space: nowrap;
+    }
+
+    .f01-liked-count > span {
+      grid-area: 1 / 1;
+      justify-self: start;
+    }
+
+    .f01-liked-count-probe {
+      visibility: hidden;
+    }
+
+    .f01-liked-line {
+      position: absolute;
+      z-index: 1;
+      left: 60px;
+      right: 60px;
+      top: 598px;
+      height: 96px;
+      font-family: "Barlow", sans-serif;
+      font-weight: 900;
+      font-size: 96px;
+      line-height: 96px;
+      letter-spacing: -0.03em;
+      color: #f0ece5;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .f01-liked-line-b {
+      opacity: 0;
+    }
+
+    .f01-liked-word {
+      display: inline-block;
+    }
+
+    .f01-liked-muted {
+      color: #888880;
+    }
+
+    .f01-liked-readout {
+      position: absolute;
+      z-index: 1;
+      left: 0;
+      right: 0;
+      top: 750px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+    }
+
+    .f01-liked-stub {
+      width: 36px;
+      height: 2px;
+      background: #282826;
+    }
+
+    .f01-liked-readout-text {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 600;
+      font-size: 30px;
+      line-height: 30px;
+      letter-spacing: 0.14em;
+      padding-left: 0.14em;
+      text-transform: uppercase;
+      color: #888880;
+      white-space: nowrap;
+    }
+  </style>
+
+  <div data-hf-id="hf-hb8b" id="root" data-composition-id="01-liked" data-start="0" data-duration="4" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-8kul" id="f01-liked-bg" class="clip" data-start="0" data-duration="4" data-track-index="0"></div>
+
+    <div data-hf-id="hf-3jru" class="f01-liked-unit">
+      <div data-hf-id="hf-z8fp" class="f01-liked-heart-slot">
+        <div data-hf-id="hf-izgo" class="f01-liked-burst" data-layout-ignore="" aria-hidden="true">
+          <svg data-hf-id="hf-t1c7" class="f01-liked-ring-svg" viewBox="0 0 480 480">
+            <circle data-hf-id="hf-lw0c" class="f01-liked-ring" cx="240" cy="240" r="56" fill="none" stroke="#F91880" stroke-width="8" />
+          </svg>
+          <span data-hf-id="hf-24ee" class="f01-liked-dot"></span>
+          <span data-hf-id="hf-giiy" class="f01-liked-dot"></span>
+          <span data-hf-id="hf-gwtz" class="f01-liked-dot"></span>
+          <span data-hf-id="hf-hb50" class="f01-liked-dot"></span>
+          <span data-hf-id="hf-hpg1" class="f01-liked-dot"></span>
+          <span data-hf-id="hf-i3r2" class="f01-liked-dot"></span>
+        </div>
+        <div data-hf-id="hf-0blg" class="f01-liked-heart">
+          <svg data-hf-id="hf-hbvq" class="f01-liked-heart-outline" viewBox="0 0 24 24" fill="none" stroke="#71767B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path data-hf-id="hf-2bye" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+          </svg>
+          <svg data-hf-id="hf-atl2" class="f01-liked-heart-filled" viewBox="0 0 24 24" aria-hidden="true">
+            <path data-hf-id="hf-t37d" fill="#F91880" stroke="#F91880" stroke-width="1.9" stroke-linejoin="round" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+          </svg>
+        </div>
+      </div>
+      <div data-hf-id="hf-z7xp" class="f01-liked-count">
+        <span data-hf-id="hf-wphf" class="f01-liked-count-probe" data-layout-ignore="" aria-hidden="true">12,399</span>
+        <span data-hf-id="hf-n2hg" class="f01-liked-count-probe" data-layout-ignore="" aria-hidden="true">12,400</span>
+        <span data-hf-id="hf-abba" class="f01-liked-count-text">12,399</span>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-3p4i" class="f01-liked-line f01-liked-line-a">
+      <span data-hf-id="hf-97qq" class="f01-liked-word f01-liked-w1">you</span>
+      <span data-hf-id="hf-2h4t" class="f01-liked-word f01-liked-w2">liked</span>
+      <span data-hf-id="hf-dxjy" class="f01-liked-word f01-liked-w3">it.</span>
+    </div>
+    <div data-hf-id="hf-nv55" class="f01-liked-line f01-liked-line-b">they got <span data-hf-id="hf-youn" class="f01-liked-muted">nothing.</span></div>
+
+    <div data-hf-id="hf-oviw" class="f01-liked-readout">
+      <div data-hf-id="hf-pqik" class="f01-liked-stub"></div>
+      <div data-hf-id="hf-v3ls" class="f01-liked-readout-text">0 SATS RECEIVED</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+
+    const DURATION = 4;
+    const BEAT = 0.5;
+    const T_LIKE = BEAT;
+    const WORD_BEATS = [2 * BEAT, 2.5 * BEAT, 3 * BEAT];
+    const T_CUT = 5 * BEAT;
+    const T_READOUT = 6 * BEAT;
+
+    const X_GREY = "#71767B";
+    const X_PINK = "#F91880";
+
+    // Each state holds from its t until the next entry's t; swaps are instant.
+    const SEQUENCE = [
+      { t: 0, liked: false, count: "12,399", line: "a" },
+      { t: T_LIKE, liked: true, count: "12,400", line: "a" },
+      { t: T_CUT, liked: false, count: "12,400", line: "b" },
+    ];
+
+    function stateAt(time) {
+      for (let i = SEQUENCE.length - 1; i >= 0; i--) {
+        if (time >= SEQUENCE[i].t) return SEQUENCE[i];
+      }
+      return SEQUENCE[0];
+    }
+
+    const heartOutline = document.querySelector(".f01-liked-heart-outline");
+    const heartFilled = document.querySelector(".f01-liked-heart-filled");
+    const countText = document.querySelector(".f01-liked-count-text");
+    const lineA = document.querySelector(".f01-liked-line-a");
+    const lineB = document.querySelector(".f01-liked-line-b");
+
+    function renderState(time) {
+      const s = stateAt(time);
+      heartOutline.style.opacity = s.liked ? "0" : "1";
+      heartFilled.style.opacity = s.liked ? "1" : "0";
+      countText.textContent = s.count;
+      countText.style.color = s.liked ? X_PINK : X_GREY;
+      lineA.style.opacity = s.line === "a" ? "1" : "0";
+      lineB.style.opacity = s.line === "b" ? "1" : "0";
+    }
+
+    const DOT_COUNT = 6;
+    const DOT_X0 = [];
+    const DOT_Y0 = [];
+    const DOT_X1 = [];
+    const DOT_Y1 = [];
+    const DOT_S0 = [];
+    for (let i = 0; i < DOT_COUNT; i++) {
+      const deg = -90 + i * 60 + (((i * 7) % 5) - 2) * 4;
+      const rad = (deg * Math.PI) / 180;
+      const reach = 186 + (i % 3) * 12;
+      DOT_X0.push(Math.cos(rad) * 60);
+      DOT_Y0.push(Math.sin(rad) * 60);
+      DOT_X1.push(Math.cos(rad) * reach);
+      DOT_Y1.push(Math.sin(rad) * reach);
+      DOT_S0.push(1 + (i % 2) * 0.25);
+    }
+
+    const tl = gsap.timeline({ paused: true });
+
+    const driver = { t: 0 };
+    tl.to(
+      driver,
+      {
+        t: DURATION,
+        duration: DURATION,
+        ease: "none",
+        onUpdate: () => renderState(driver.t),
+      },
+      0,
+    );
+
+    tl.fromTo(
+      ".f01-liked-heart",
+      { scale: 1 },
+      { scale: 0.85, duration: 0.1, ease: "power2.out" },
+      T_LIKE,
+    );
+    // immediateRender:false keeps this tween's from-values off the heart until it starts.
+    tl.fromTo(
+      ".f01-liked-heart",
+      { scale: 0.85 },
+      { scale: 1, duration: 0.6, ease: "power3.out", immediateRender: false },
+      T_LIKE + 0.1,
+    );
+
+    tl.fromTo(
+      ".f01-liked-ring",
+      { attr: { r: 56, "stroke-width": 8 } },
+      { attr: { r: 158, "stroke-width": 1.5 }, duration: 0.4, ease: "power3.out" },
+      T_LIKE,
+    );
+    tl.fromTo(
+      ".f01-liked-ring",
+      { opacity: 1 },
+      { opacity: 0, duration: 0.4, ease: "power1.in", immediateRender: false },
+      T_LIKE,
+    );
+
+    tl.fromTo(
+      ".f01-liked-dot",
+      { x: (i) => DOT_X0[i], y: (i) => DOT_Y0[i] },
+      { x: (i) => DOT_X1[i], y: (i) => DOT_Y1[i], duration: 0.4, ease: "expo.out" },
+      T_LIKE,
+    );
+    tl.fromTo(
+      ".f01-liked-dot",
+      { opacity: 1, scale: (i) => DOT_S0[i] },
+      { opacity: 0, scale: 0.4, duration: 0.4, ease: "power2.in", immediateRender: false },
+      T_LIKE,
+    );
+
+    tl.fromTo(
+      ".f01-liked-w1",
+      { opacity: 0, scale: 1.6, filter: "blur(10px)" },
+      { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.45, ease: "power4.out" },
+      WORD_BEATS[0],
+    );
+    tl.fromTo(
+      ".f01-liked-w2",
+      { opacity: 0, y: -110 },
+      { opacity: 1, y: 0, duration: 0.4, ease: "expo.out" },
+      WORD_BEATS[1],
+    );
+    tl.fromTo(
+      ".f01-liked-w3",
+      { opacity: 0, x: 150, rotation: 6 },
+      { opacity: 1, x: 0, rotation: 0, duration: 0.45, ease: "circ.out" },
+      WORD_BEATS[2],
+    );
+
+    tl.fromTo(
+      ".f01-liked-stub",
+      { scaleX: 0 },
+      { scaleX: 1, duration: 0.4, ease: "power3.out" },
+      T_READOUT,
+    );
+    tl.fromTo(
+      ".f01-liked-readout-text",
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+      T_READOUT,
+    );
+
+    window.__timelines["01-liked"] = tl;
+  </script>
+</template>
