@@ -40,7 +40,11 @@ MAX_REJECTION_TOMBSTONES="${MAX_REJECTION_TOMBSTONES:-100}"
 MAX_RETRY_ATTEMPTS="${MAX_RETRY_ATTEMPTS:-5}"
 
 gcloud config set project "${PROJECT_ID}"
-gcloud services enable run.googleapis.com firestore.googleapis.com cloudbuild.googleapis.com
+gcloud services enable \
+  run.googleapis.com \
+  firestore.googleapis.com \
+  cloudbuild.googleapis.com \
+  cloudscheduler.googleapis.com
 
 if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" >/dev/null 2>&1; then
   SERVICE_ACCOUNT_ID="${SERVICE_ACCOUNT%%@*}"
@@ -84,6 +88,17 @@ DEPLOY_ARGS=(
 gcloud run jobs deploy "${DEPLOY_ARGS[@]}"
 
 if [ "${CREATE_SCHEDULER}" = "true" ]; then
+  if ! gcloud iam service-accounts describe "${SCHEDULER_SERVICE_ACCOUNT}" >/dev/null 2>&1; then
+    SCHEDULER_SA_ID="${SCHEDULER_SERVICE_ACCOUNT%%@*}"
+    SCHEDULER_SA_DOMAIN="${SCHEDULER_SERVICE_ACCOUNT#*@}"
+    if [ "${SCHEDULER_SA_DOMAIN}" != "${PROJECT_ID}.iam.gserviceaccount.com" ]; then
+      echo "SCHEDULER_SERVICE_ACCOUNT ${SCHEDULER_SERVICE_ACCOUNT} does not exist and is not in ${PROJECT_ID}." >&2
+      exit 1
+    fi
+    gcloud iam service-accounts create "${SCHEDULER_SA_ID}" \
+      --display-name="Nostr Atlas Scheduler"
+  fi
+
   gcloud run jobs add-iam-policy-binding "${JOB_NAME}" \
     --region "${REGION}" \
     --member="serviceAccount:${SCHEDULER_SERVICE_ACCOUNT}" \
