@@ -189,7 +189,19 @@ project/database. It is a public GET API with CORS enabled, following Firebase's
 [HTTP function configuration](https://firebase.google.com/docs/functions/http-events).
 Use the function URL printed by deployment as `VITE_DIRECTORY_API_URL` if it
 differs from the default. The existing extension lookup is not redeployed by this
-command. No hosting target or database rules are changed.
+command. Database rules are not changed.
+
+## Deploy the site
+
+From the repository root, after `npm ci`:
+
+```sh
+npm run build:atlas
+firebase deploy --only hosting:atlas --project nostr-components
+```
+
+This publishes `nostr-atlas/dist` to https://nostr-atlas.web.app. It does not
+deploy Cloud Functions or the Storybook hosting target.
 
 ## Run against the deployed API
 

@@ -8,38 +8,51 @@
       "node functions/prepare-ingest-sources.mjs"
     ]
   },
-  "hosting": {
-    "target": "storybook",
-    "public": "storybook-static",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "headers": [
-      {
-        "source": "/dist/**",
-        "headers": [
-          {
-            "key": "Access-Control-Allow-Origin",
-            "value": "*"
-          },
-          {
-            "key": "Access-Control-Allow-Methods",
-            "value": "GET, HEAD, OPTIONS"
-          }
-        ]
-      }
-    ],
-    "rewrites": [
-      {
-        "source": "/dist/**",
-        "destination": "/dist/**"
-      },
-      {
-        "source": "/images/**",
-        "destination": "/images/**"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
+  "hosting": [
+    {
+      "target": "storybook",
+      "public": "storybook-static",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "/dist/**",
+          "headers": [
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "*"
+            },
+            {
+              "key": "Access-Control-Allow-Methods",
+              "value": "GET, HEAD, OPTIONS"
+            }
+          ]
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "/dist/**",
+          "destination": "/dist/**"
+        },
+        {
+          "source": "/images/**",
+          "destination": "/images/**"
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    {
+      "target": "atlas",
+      "public": "nostr-atlas/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    }
+  ]
 }
