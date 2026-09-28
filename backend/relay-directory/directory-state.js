@@ -362,17 +362,150 @@ export function extractMetadataXHandles(metadata) {
   return [...results.values()];
 }
 
-function profileMetadata(pubkey, metadata) {
+const PROFILE_METADATA_FIELDS = [
+  "name",
+  "nip05",
+  "picture",
+  "lud16",
+  "lud06",
+  "website",
+  "about",
+];
+
+function optionalText(value, length) {
+  const text = boundedString(value, length);
+  return text || undefined;
+}
+
+export function profileMetadata(pubkey, metadata) {
   return stripUndefined({
     pubkey,
-    name: boundedString(metadata.name || metadata.display_name, 100),
-    nip05: boundedString(metadata.nip05, 255),
-    picture: httpsPictureUrl(metadata.picture) || undefined,
-    lud16: boundedString(metadata.lud16, 255),
-    lud06: boundedString(metadata.lud06, 2000),
-    website: boundedString(metadata.website, 2000),
-    about: boundedString(metadata.about, 4000),
+    name: optionalText(metadata?.name || metadata?.display_name, 100),
+    nip05: optionalText(metadata?.nip05, 255),
+    picture: httpsPictureUrl(metadata?.picture) || undefined,
+    lud16: optionalText(metadata?.lud16, 255),
+    lud06: optionalText(metadata?.lud06, 2000),
+    website: optionalText(metadata?.website, 2000),
+    about: optionalText(metadata?.about, 4000),
   });
+}
+
+export function kind0ProfileMetadata(pubkey, metadata) {
+  const fields = profileMetadata(pubkey, metadata);
+  return PROFILE_METADATA_FIELDS.some((key) => fields[key]) ? fields : null;
+}
+
+export function mergeProfileMetadata(current, incoming) {
+  if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
+    return current;
+  }
+  const base =
+    current && typeof current === "object" && !Array.isArray(current)
+      ? current
+      : null;
+  const merged = { ...(base || {}) };
+  let changed = false;
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value !== "string" || !value || merged[key] === value) continue;
+    merged[key] = value;
+    changed = true;
+  }
+  return changed ? merged : current;
+}
+
+export function isNip39Identity(identity) {
+  if (!identity || identity.status !== "verified") return false;
+  if (Number(identity.sourceKind) === 10011) return true;
+  if ((identity.verificationMethods || []).includes("nip39_proof_tweet")) {
+    return true;
+  }
+  return Boolean(
+    identity.proofTweetId && (identity.sources || []).includes("event.i_tag"),
+  );
+}
+
+export function kind0Timestamp(value) {
+  if (value == null || value === "") return null;
+  const time = Number(value);
+  return Number.isFinite(time) ? time : null;
+}
+
+export function isOlderKind0(storedCreatedAt, incomingCreatedAt) {
+  const stored = kind0Timestamp(storedCreatedAt);
+  const incoming = kind0Timestamp(incomingCreatedAt);
+  return stored != null && incoming != null && incoming < stored;
+}
+
+export function newerKind0CreatedAt(storedCreatedAt, incomingCreatedAt) {
+  const stored = kind0Timestamp(storedCreatedAt);
+  const incoming = kind0Timestamp(incomingCreatedAt);
+  if (incoming == null) return stored ?? undefined;
+  if (stored == null || incoming >= stored) return incoming;
+  return stored;
+}
+
+function stampKind0(entity, metadata, createdAt) {
+  const stamped = { ...entity, metadata };
+  const time = kind0Timestamp(createdAt);
+  if (time != null) stamped.kind0CreatedAt = time;
+  return stamped;
+}
+
+// Kind 10011 proofs have no profile content. Copy the author's kind-0 fields
+// onto that verified identity without erasing values the kind 0 omits, and
+// without replacing those fields with an older kind 0.
+export function planKind0Metadata(doc, content, pubkey, createdAt) {
+  const active = doc?.activeIdentity;
+  if (!isNip39Identity(active)) return { changed: false, reason: "not-nip39" };
+  if (content == null) return { changed: false, reason: "no-kind0" };
+  if (
+    String(pubkey || "").toLowerCase() !==
+    String(active.pubkey || "").toLowerCase()
+  ) {
+    return { changed: false, reason: "pubkey-mismatch" };
+  }
+  if (isOlderKind0(active.kind0CreatedAt, createdAt)) {
+    return { changed: false, reason: "stale-kind0" };
+  }
+  const incoming = kind0ProfileMetadata(active.pubkey, content);
+  if (!incoming) return { changed: false, reason: "no-profile-fields" };
+  const incomingAt = kind0Timestamp(createdAt);
+  const metadata = mergeProfileMetadata(active.metadata, incoming);
+  const matchingClaim = Array.isArray(doc.claims)
+    ? doc.claims.find((claim) => claim?.claimId === active.claimId)
+    : null;
+  const claimMetadata = matchingClaim
+    ? mergeProfileMetadata(matchingClaim.metadata, incoming)
+    : undefined;
+  const activeAt = newerKind0CreatedAt(active.kind0CreatedAt, incomingAt);
+  const claimAt = matchingClaim
+    ? newerKind0CreatedAt(matchingClaim.kind0CreatedAt, incomingAt)
+    : undefined;
+  if (
+    metadata === active.metadata &&
+    kind0Timestamp(active.kind0CreatedAt) === kind0Timestamp(activeAt) &&
+    (!matchingClaim ||
+      (claimMetadata === matchingClaim.metadata &&
+        kind0Timestamp(matchingClaim.kind0CreatedAt) === kind0Timestamp(claimAt)))
+  ) {
+    return { changed: false, reason: "unchanged" };
+  }
+  return {
+    changed: true,
+    reason: "updated",
+    activeIdentity: stampKind0(active, metadata, activeAt),
+    claims: Array.isArray(doc.claims)
+      ? doc.claims.map((claim) =>
+          claim?.claimId === active.claimId
+            ? stampKind0(
+                claim,
+                mergeProfileMetadata(claim.metadata, incoming),
+                newerKind0CreatedAt(claim.kind0CreatedAt, incomingAt),
+              )
+            : claim,
+        )
+      : undefined,
+  };
 }
 
 async function filterExistingMentionHandles(candidates, cache, options) {

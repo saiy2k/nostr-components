@@ -7,6 +7,7 @@ import {
   extractIdentityClaims,
   mergeHandleClaims,
   planDirectoryHandleWrites,
+  planKind0Metadata,
 } from "./directory-state.js";
 import { normalizeTwitterHandle } from "./utils.js";
 
@@ -500,5 +501,227 @@ describe("directory handle write planning", () => {
 
     expect(planned.writes[0].nextCacheState.claims).toHaveLength(1);
     expect(handleStateCache.get("alice")).toBeNull();
+  });
+});
+
+describe("kind-0 metadata for NIP-39 identities", () => {
+  const nip39Doc = {
+    activeIdentity: {
+      claimId: "proof",
+      status: "verified",
+      pubkey: PUBKEY_A,
+      sourceKind: 10011,
+      verificationMethods: ["nip39_proof_tweet"],
+      metadata: { picture: "https://cdn.example/existing.png" },
+    },
+    claims: [
+      {
+        claimId: "proof",
+        status: "verified",
+        pubkey: PUBKEY_A,
+        metadata: { xPicture: "https://pbs.twimg.com/a.jpg" },
+      },
+      {
+        claimId: "other",
+        status: "verified",
+        metadata: { name: "Other" },
+      },
+    ],
+  };
+
+  it("copies kind-0 profile fields onto a kind-10011 identity and its claim", () => {
+    const plan = planKind0Metadata(
+      nip39Doc,
+      {
+        name: "Alice",
+        display_name: "Ignored when name is set",
+        nip05: "alice@example.com",
+        lud16: "alice@example.com",
+        picture: "http://cdn.example/insecure.png",
+        about: "Bitcoin",
+      },
+      PUBKEY_A,
+    );
+
+    expect(plan.reason).toBe("updated");
+    expect(plan.activeIdentity.metadata).toEqual({
+      picture: "https://cdn.example/existing.png",
+      pubkey: PUBKEY_A,
+      name: "Alice",
+      nip05: "alice@example.com",
+      lud16: "alice@example.com",
+      about: "Bitcoin",
+    });
+    expect(plan.claims[0].metadata).toEqual({
+      xPicture: "https://pbs.twimg.com/a.jpg",
+      pubkey: PUBKEY_A,
+      name: "Alice",
+      nip05: "alice@example.com",
+      lud16: "alice@example.com",
+      about: "Bitcoin",
+    });
+    expect(plan.claims[1].metadata).toEqual({ name: "Other" });
+  });
+
+  it("leaves a stored field in place when the kind 0 omits it", () => {
+    const plan = planKind0Metadata(
+      nip39Doc,
+      { nip05: "alice@example.com" },
+      PUBKEY_A,
+    );
+    expect(plan.activeIdentity.metadata.picture).toBe(
+      "https://cdn.example/existing.png",
+    );
+    expect(plan.activeIdentity.metadata.nip05).toBe("alice@example.com");
+  });
+
+  it("does not rewrite an identity that already has the same kind-0 fields", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          metadata: {
+            picture: "https://cdn.example/existing.png",
+            pubkey: PUBKEY_A,
+            name: "Alice",
+            nip05: "alice@example.com",
+          },
+        },
+      },
+      { name: "Alice", nip05: "alice@example.com" },
+      PUBKEY_A,
+    );
+    expect(plan).toEqual({ changed: false, reason: "unchanged" });
+  });
+
+  it("updates a stale claim when the active identity already has the kind-0 fields", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          metadata: {
+            picture: "https://cdn.example/existing.png",
+            pubkey: PUBKEY_A,
+            name: "Alice",
+            nip05: "alice@example.com",
+          },
+        },
+        claims: [
+          {
+            claimId: "proof",
+            metadata: { picture: "https://cdn.example/existing.png" },
+          },
+        ],
+      },
+      { name: "Alice", nip05: "alice@example.com" },
+      PUBKEY_A,
+    );
+
+    expect(plan.reason).toBe("updated");
+    expect(plan.claims[0].metadata).toMatchObject({
+      picture: "https://cdn.example/existing.png",
+      name: "Alice",
+      nip05: "alice@example.com",
+    });
+  });
+
+  it("skips identities that were not verified from a kind-10011 proof", () => {
+    expect(
+      planKind0Metadata(
+        {
+          activeIdentity: {
+            claimId: "kind0",
+            status: "verified",
+            pubkey: PUBKEY_A,
+            sourceKind: 0,
+          },
+        },
+        { nip05: "alice@example.com" },
+        PUBKEY_A,
+      ),
+    ).toEqual({ changed: false, reason: "not-nip39" });
+  });
+
+  it("skips a kind 0 that belongs to a different pubkey", () => {
+    expect(
+      planKind0Metadata(nip39Doc, { nip05: "other@example.com" }, PUBKEY_B),
+    ).toEqual({ changed: false, reason: "pubkey-mismatch" });
+  });
+
+  it("does not replace a newer profile with an older kind 0", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          kind0CreatedAt: 200,
+          metadata: {
+            nip05: "alice@new.example",
+            picture: "https://cdn.example/existing.png",
+          },
+        },
+        claims: [
+          {
+            claimId: "proof",
+            kind0CreatedAt: 200,
+            metadata: { nip05: "alice@new.example" },
+          },
+        ],
+      },
+      { nip05: "alice@old.example", name: "Old" },
+      PUBKEY_A,
+      100,
+    );
+
+    expect(plan).toEqual({ changed: false, reason: "stale-kind0" });
+  });
+
+  it("replaces profile fields when the kind 0 is newer", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          kind0CreatedAt: 100,
+          metadata: { nip05: "alice@old.example" },
+        },
+      },
+      { nip05: "alice@new.example" },
+      PUBKEY_A,
+      200,
+    );
+
+    expect(plan.reason).toBe("updated");
+    expect(plan.activeIdentity.metadata.nip05).toBe("alice@new.example");
+    expect(plan.activeIdentity.kind0CreatedAt).toBe(200);
+  });
+
+  it("records the kind 0 timestamp while filling a stale claim", () => {
+    const plan = planKind0Metadata(
+      {
+        activeIdentity: {
+          ...nip39Doc.activeIdentity,
+          kind0CreatedAt: 100,
+          metadata: {
+            picture: "https://cdn.example/existing.png",
+            pubkey: PUBKEY_A,
+            name: "Alice",
+            nip05: "alice@example.com",
+          },
+        },
+        claims: [
+          {
+            claimId: "proof",
+            metadata: { picture: "https://cdn.example/existing.png" },
+          },
+        ],
+      },
+      { name: "Alice", nip05: "alice@example.com" },
+      PUBKEY_A,
+      100,
+    );
+
+    expect(plan.reason).toBe("updated");
+    expect(plan.activeIdentity.kind0CreatedAt).toBe(100);
+    expect(plan.claims[0].kind0CreatedAt).toBe(100);
+    expect(plan.claims[0].metadata.nip05).toBe("alice@example.com");
   });
 });

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { FieldValue } from "@google-cloud/firestore";
-import { metadataFromKind0, fetchKind0s } from "./zap-pass.js";
+import { metadataFromKind0, fetchKind0s } from "./kind0.js";
 import {
   fetchXAvatarUrl,
   httpsPictureUrl,

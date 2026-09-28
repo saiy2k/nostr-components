@@ -8,6 +8,10 @@ import {
   stripUndefined,
 } from "./runtime.js";
 import {
+  mergeProfileMetadata,
+  newerKind0CreatedAt,
+} from "./directory-state.js";
+import {
   claimRecency,
   compareClaimsNewestFirst,
   isHexPubkey,
@@ -275,6 +279,11 @@ function verifiedClaim(current, result, nowIso) {
     proofSource: result.proofSource,
     nostrIdentifier: result.nostrIdentifier,
     xUserId: result.xUserId,
+    metadata: mergeProfileMetadata(clean.metadata, result.metadata),
+    kind0CreatedAt: newerKind0CreatedAt(
+      clean.kind0CreatedAt,
+      result.kind0CreatedAt,
+    ),
     zappable: result.zappable,
     zapReason: result.zapReason,
     lud16: result.lud16,
