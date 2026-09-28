@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  applyDocumentSeo,
   DEFAULT_SITE_ORIGIN,
   HOME_DESCRIPTION,
   HOME_TITLE,
@@ -52,5 +53,26 @@ describe("Nostr Atlas homepage SEO", () => {
     expect(html).toContain('id="hero-heading"');
     expect(html).not.toContain('id="profile-page"');
     expect(html).not.toContain("/x/");
+  });
+
+  it("regenerates the marked SEO block for another origin at build time", () => {
+    const html = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../index.html"),
+      "utf8",
+    );
+    const updated = applyDocumentSeo(
+      html,
+      homeDocumentSeo("https://atlas.example"),
+    );
+    expect(updated).toContain(
+      '<link rel="canonical" href="https://atlas.example/"',
+    );
+    expect(updated).toContain('content="https://atlas.example/og.png"');
+    expect(updated).toContain(HOME_TITLE);
+    // Only the marked block is replaced; the page body stays untouched.
+    expect(updated).toContain('id="hero-heading"');
+    expect(() =>
+      applyDocumentSeo("<html></html>", homeDocumentSeo(DEFAULT_SITE_ORIGIN)),
+    ).toThrow(/SEO markers/);
   });
 });

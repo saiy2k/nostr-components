@@ -174,18 +174,6 @@ function renderProfiles(): void {
 
   results.setAttribute("aria-busy", String(loading));
   const waitingForPage = loading && items.length === 0;
-  const keepPublishedRows =
-    !results.dataset.hydrated &&
-    results.querySelector(".profile-row") !== null &&
-    (waitingForPage || (loadFailed && !loaded));
-  if (keepPublishedRows) {
-    if (loadFailed) {
-      resultCount.textContent =
-        "Showing published accounts. Live results could not be refreshed.";
-    }
-    renderDirectoryStatus();
-    return;
-  }
   const missingPage = pagination.totalItems > 0 && items.length === 0;
   const emptyTitle = waitingForPage
     ? "Loading verified accounts…"
@@ -198,7 +186,6 @@ function renderProfiles(): void {
       ? "Please retry using the button below."
       : "Try an X handle, NIP-05 address, or npub. A partial handle lists every match.";
 
-  results.dataset.hydrated = "true";
   results.innerHTML = items.length
     ? items.map(profileRow).join("")
     : `

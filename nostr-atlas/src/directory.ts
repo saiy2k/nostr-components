@@ -142,21 +142,34 @@ export function getRequiredBatchOffsets(
 
 export function profileAvatarHtml(profile: DirectoryProfile): string {
   const style = `--avatar-bg:${escapeHtml(profile.avatar.background)};--avatar-fg:${escapeHtml(profile.avatar.foreground)}`;
-  const picture = safePictureUrl(profile.picture);
+  const picture = httpsPictureUrl(profile.picture);
   if (picture) {
     return `<span class="avatar" style="${style}"><img class="avatar-image" src="${escapeHtml(picture)}" alt="" /></span>`;
   }
   return `<span class="avatar" aria-hidden="true" style="${style}">${escapeHtml(profile.avatar.initials)}</span>`;
 }
 
-function safePictureUrl(value: string | undefined): string | null {
-  if (!value) return null;
+const PICTURE_MAX_LENGTH = 2000;
+
+export function httpsPictureUrl(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > PICTURE_MAX_LENGTH) return "";
   try {
-    const url = new URL(value);
-    if (url.protocol !== "https:") return null;
-    return url.toString();
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:") return "";
+    if (url.username || url.password) return "";
+    if (!url.hostname) return "";
+    const serialized = url.toString();
+    if (
+      !serialized.startsWith("https://") ||
+      serialized.length > PICTURE_MAX_LENGTH
+    ) {
+      return "";
+    }
+    return serialized;
   } catch {
-    return null;
+    return "";
   }
 }
 
