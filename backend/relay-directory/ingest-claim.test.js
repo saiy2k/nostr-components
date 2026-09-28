@@ -25,6 +25,7 @@ function fakeFirestore() {
   const projected = [];
   const db = {
     projected,
+    store: documents,
     collection(collection) {
       return {
         doc(id) {
@@ -32,6 +33,7 @@ function fakeFirestore() {
             collection,
             id,
             get: async () => {
+              await db.onGet?.(`${collection}/${id}`);
               const data = documents.get(`${collection}/${id}`);
               return {
                 exists: data !== undefined,
@@ -74,6 +76,8 @@ function fakeFirestore() {
   return db;
 }
 
+const onRelay = async () => true;
+
 describe("ingestPublishedClaim", () => {
   it("rejects an event whose signature does not verify", async () => {
     const signed = signedClaim();
@@ -89,7 +93,7 @@ describe("ingestPublishedClaim", () => {
       ingestPublishedClaim(
         db,
         { event, relay: RELAY },
-        { relays: [RELAY], verifyHandleClaims },
+        { relays: [RELAY], eventOnRelay: onRelay, verifyHandleClaims },
       ),
     ).resolves.toEqual({ ok: false, error: "invalid-event" });
   });
@@ -103,6 +107,7 @@ describe("ingestPublishedClaim", () => {
       { event, relay: "wss://relay.damus.io/", handle: "@Alice" },
       {
         relays: ["wss://relay.damus.io"],
+        eventOnRelay: onRelay,
         verifyHandleClaims: async (handleData) => {
           seen.push(handleData.handle);
           const claim = handleData.claims[0];
@@ -146,6 +151,7 @@ describe("ingestPublishedClaim", () => {
       { event, relay: RELAY, handle: "alice" },
       {
         relays: [RELAY],
+        eventOnRelay: onRelay,
         verifyHandleClaims: async (handleData) => {
           seen.push(handleData.handle);
           const claim = handleData.claims.find(
@@ -177,6 +183,7 @@ describe("ingestPublishedClaim", () => {
     let checks = 0;
     const config = {
       relays: [RELAY],
+      eventOnRelay: onRelay,
       verifyHandleClaims: async (handleData) => {
         checks += 1;
         const claim = handleData.claims[0];
@@ -205,13 +212,80 @@ describe("ingestPublishedClaim", () => {
 
   it("rejects a claimed handle that is not on the event", async () => {
     const db = fakeFirestore();
+    const event = signedClaim();
     await expect(
       ingestPublishedClaim(
         db,
-        { event: signedClaim(), relay: RELAY, handle: "carol" },
-        { relays: [RELAY] },
+        { event, relay: RELAY, handle: "carol" },
+        { relays: [RELAY], eventOnRelay: onRelay },
       ),
     ).resolves.toEqual({ ok: false, error: "no-claim" });
+    const stored = await db
+      .collection("nostrDirectoryHandles")
+      .doc(directoryHandleId("alice"))
+      .get();
+    expect(stored.exists).toBe(false);
+  });
+
+  it("does not persist a claim the covered relay does not have", async () => {
+    const db = fakeFirestore();
+    const event = signedClaim();
+    await expect(
+      ingestPublishedClaim(
+        db,
+        { event, relay: RELAY, handle: "alice" },
+        { relays: [RELAY], eventOnRelay: async () => false },
+      ),
+    ).resolves.toEqual({ ok: false, error: "event-not-on-relay" });
+    const stored = await db
+      .collection("nostrDirectoryHandles")
+      .doc(directoryHandleId("alice"))
+      .get();
+    expect(stored.exists).toBe(false);
+  });
+
+  it("keeps a claim written after the planning read", async () => {
+    const first = signedClaim();
+    const second = signedClaim([
+      ["i", "twitter:alice", "https://x.com/alice/status/2234567890123"],
+    ]);
+    const db = fakeFirestore();
+    const quiet = {
+      relays: [RELAY],
+      eventOnRelay: onRelay,
+      verifyHandleClaims: async () => ({
+        results: [],
+        proofTweetsAttempted: 0,
+        attemptedClaimIds: [],
+        deferReason: null,
+      }),
+    };
+    await ingestPublishedClaim(
+      db,
+      { event: first, relay: RELAY, handle: "alice" },
+      quiet,
+    );
+    let reads = 0;
+    db.onGet = async (key) => {
+      reads += 1;
+      if (reads !== 2) return;
+      const current = db.store.get(key);
+      current.claims = [
+        ...(current.claims || []),
+        { claimId: "racer", handle: "alice", status: "pending" },
+      ];
+    };
+    await ingestPublishedClaim(
+      db,
+      { event: second, relay: RELAY, handle: "alice" },
+      quiet,
+    );
+    const stored = await db
+      .collection("nostrDirectoryHandles")
+      .doc(directoryHandleId("alice"))
+      .get();
+    const ids = stored.data().claims.map((claim) => claim.claimId);
+    expect(ids).toEqual(expect.arrayContaining([first.id, second.id, "racer"]));
   });
 
   it("rejects a relay the crawler does not read", async () => {

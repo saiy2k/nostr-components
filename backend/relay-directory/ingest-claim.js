@@ -3,8 +3,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateEvent, verifyEvent } from "nostr-tools";
+import { SimplePool, validateEvent, verifyEvent } from "nostr-tools";
 import {
+  buildMergedHandleWrite,
   directoryHandleId,
   extractIdentityClaims,
   planDirectoryHandleWrites,
@@ -14,7 +15,7 @@ import {
   applyProjectionResults,
   buildHandleProjectionWrites,
 } from "./projection-state.js";
-import { commitFirestoreWrites, DEFAULT_COLLECTIONS } from "./runtime.js";
+import { DEFAULT_COLLECTIONS } from "./runtime.js";
 import { normalizeTwitterHandle } from "./utils.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -172,6 +173,40 @@ async function projectHandle(db, handle, claimId, collection, config) {
   return statusForClaim(committed, claimId);
 }
 
+export async function claimEventOnRelay(relay, eventId, timeoutMs = 8_000) {
+  const pool = new SimplePool();
+  try {
+    const found = await pool.querySync(
+      [relay],
+      { ids: [eventId], kinds: [10011] },
+      { maxWait: timeoutMs },
+    );
+    return Array.isArray(found) && found.some((event) => event?.id === eventId);
+  } catch {
+    return false;
+  } finally {
+    pool.close([relay]);
+  }
+}
+
+async function commitIngestWrites(db, writes, options) {
+  for (const write of writes) {
+    const ref = db.collection(write.collection).doc(write.id);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const existing = snap.exists ? snap.data() || {} : null;
+      const built = buildMergedHandleWrite(
+        existing,
+        write.incomingClaims,
+        write.handle,
+        options,
+      );
+      if (!built.changed) return;
+      tx.set(ref, built.data, { merge: true });
+    });
+  }
+}
+
 export async function ingestPublishedClaim(db, input = {}, config = {}) {
   const event = claimEvent(input.event);
   if (!event || event.kind !== 10011) {
@@ -193,6 +228,14 @@ export async function ingestPublishedClaim(db, input = {}, config = {}) {
     return { ok: false, error: "relay-not-covered" };
   }
 
+  const eventOnRelay = config.eventOnRelay || claimEventOnRelay;
+  const seenOnRelay = await eventOnRelay(
+    relay,
+    event.id,
+    config.timeoutMs ?? 8_000,
+  );
+  if (!seenOnRelay) return { ok: false, error: "event-not-on-relay" };
+
   const claims = await extractIdentityClaims(
     [event],
     relay,
@@ -206,18 +249,6 @@ export async function ingestPublishedClaim(db, input = {}, config = {}) {
     return { ok: false, error: "no-claim" };
   }
 
-  const collection =
-    config.firestoreHandlesCollection || DEFAULT_COLLECTIONS.handles;
-  const planned = await planDirectoryHandleWrites(db, claims, {
-    firestoreHandlesCollection: collection,
-    maxPendingClaims: config.maxPendingClaims ?? 20,
-    maxInactiveVerifiedClaims: config.maxInactiveVerifiedClaims ?? 10,
-    maxRejectionTombstones: config.maxRejectionTombstones ?? 100,
-  });
-  if (planned.writes.length > 0) {
-    await commitFirestoreWrites(db, planned.writes);
-  }
-
   const requested = normalizeTwitterHandle(input.handle);
   const primary = requested
     ? claims.find((claim) => claim.handle === requested)
@@ -225,6 +256,20 @@ export async function ingestPublishedClaim(db, input = {}, config = {}) {
       ? claims[0]
       : null;
   if (!primary) return { ok: false, error: "no-claim" };
+
+  const collection =
+    config.firestoreHandlesCollection || DEFAULT_COLLECTIONS.handles;
+  const mergeOptions = {
+    firestoreHandlesCollection: collection,
+    maxPendingClaims: config.maxPendingClaims ?? 20,
+    maxInactiveVerifiedClaims: config.maxInactiveVerifiedClaims ?? 10,
+    maxRejectionTombstones: config.maxRejectionTombstones ?? 100,
+  };
+  const planned = await planDirectoryHandleWrites(db, claims, mergeOptions);
+  if (planned.writes.length > 0) {
+    await commitIngestWrites(db, planned.writes, mergeOptions);
+  }
+
   let status = "pending";
   try {
     status = await projectHandle(
