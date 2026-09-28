@@ -1,4 +1,4 @@
-# Nostr Atlas directory site
+# Nostr Atlas
 
 Nostr Atlas is a self-contained Vite + TypeScript site for creator account
 claims. It is designed to connect the X and YouTube accounts an audience already
@@ -55,9 +55,9 @@ Successful responses may be cached for 60 seconds; errors are not cached.
 
 The directory table includes page navigation (Previous, Next, and numbered page
 buttons) and customizable page sizes (10, 25, or 50 claims per page, defaulting
-to 10). **Refresh** clears the cached batches and reloads the current search from
-the first page. Local previews survive a refresh but disappear when the page is
-reloaded. API failures never display sample data as real records.
+to 10). Fetched batches stay in memory until the page is reloaded. A failed load
+shows **Retry**, which reloads the current page. Local previews disappear when
+the page is reloaded. API failures never display sample data as real records.
 
 The current crawler projection contains verified X identities. The public handle
 documents do not currently store X follower counts, Nostr follower counts, or a
@@ -65,9 +65,8 @@ ranking snapshot, and they do not supply YouTube claims. Audience fields show `â
 the misleading client-side "Most followed" sort is not shown, and the Nostr tab
 explains its empty state. A verified mark means X account
 ownership was verified by the projector; a NIP-05 address is profile metadata,
-not a separate NIP-05 verification. The claim dialog does not write to
-Firestore itself. After a relay acknowledges the signed claim, `ingestClaim`
-can verify that handle and project it immediately.
+not a separate NIP-05 verification. The claim form still creates a **local preview**;
+it does not write to Firestore, publish a claim, or verify ownership.
 
 To make the two popularity tabs real, a separate metrics job should materialize
 bounded public fields such as `metrics.xFollowers` and
@@ -98,11 +97,11 @@ If local credentials already exist, the login step is unnecessary.
 In a second terminal, from the repository root:
 
 ```sh
-VITE_DIRECTORY_API_URL=http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles npm run dev:directory
+VITE_DIRECTORY_API_URL=http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles npm run dev:atlas
 ```
 
 Open the URL printed by Vite. For a persistent endpoint override, copy
-`directory-site/.env.example` to `directory-site/.env.local`, set its URL, and
+`nostr-atlas/.env.example` to `nostr-atlas/.env.local`, set its URL, and
 restart Vite. Never put a service-account key or other credentials in a `VITE_*`
 variable; these values are bundled into the public site.
 
@@ -140,11 +139,13 @@ another collection. Set these in `functions/.env.local` for the emulator, or
    batches rather than applying a deep Firestore offset. Returning to a cached
    page should not fetch the collection again.
 5. Select **Popular on Nostr** and check the explanatory empty state. Return to
-   the X tab. Publishing a claim does not add a local preview row or a verified
-   mark; use the claim dialog checks below.
-6. Block the endpoint in DevTools or stop the Functions emulator, then click
-   **Refresh**. Expect an error and **Retry**, with existing rows retained. A page
-   reload while it is blocked should show an error rather than sample data.
+   the X tab. Add a local claim preview: it should be marked **Local preview**, have
+   no verification check, and cause no write request. Reloading the page removes
+   the preview.
+6. Block the endpoint in DevTools or stop the Functions emulator, then open a
+   page that is not cached. Expect an error and **Retry**, with existing rows
+   retained. A page reload while it is blocked should show an error rather than
+   sample data.
    Restore the endpoint and retry. For a timeout check, throttle or stall the
    request; it should stop after about 15 seconds.
 7. To check an empty directory, set `FIRESTORE_HANDLES_COLLECTION` to an unused
@@ -176,12 +177,8 @@ before the listing function, then deploy only that function:
 firebase deploy --only firestore:indexes --project YOUR_LIVE_PROJECT_ID
 node backend/relay-directory/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
 node backend/relay-directory/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
-firebase deploy --only functions:listDirectoryProfiles,functions:checkClaimProof,functions:ingestClaim --project YOUR_LIVE_PROJECT_ID
+firebase deploy --only functions:listDirectoryProfiles --project YOUR_LIVE_PROJECT_ID
 ```
-
-`ingestClaim` runs as `relay-directory-crawler@YOUR_LIVE_PROJECT_ID.iam.gserviceaccount.com`.
-That account is chosen from the Firebase project at deploy time. It needs
-permission to write `nostrDirectoryHandles` in that project.
 
 The backfill refuses to write if any curated handle is missing or not verified.
 Run it from the repository root with Application Default Credentials that can
@@ -199,7 +196,7 @@ command. No hosting target or database rules are changed.
 From the repository root:
 
 ```sh
-npm run dev:directory
+npm run dev:atlas
 ```
 
 Then open the URL printed by Vite.
@@ -207,81 +204,30 @@ Then open the URL printed by Vite.
 ## Build
 
 ```sh
-npm run build:directory
+npm run build:atlas
 ```
 
-The deployable static site is written to `directory-site/dist/`.
+The deployable static site is written to `nostr-atlas/dist/`.
+
+## SEO
+
+The public origin is `https://nostr-atlas.web.app`. Set `VITE_SITE_ORIGIN` when the site is served from another origin. The homepage HTML already contains the title, description, canonical URL, and social tags. `build:atlas` also writes `robots.txt` and a sitemap for that one page. There are no per-account URLs. Search query strings such as `?q=` stay canonical to the homepage.
 
 Vite captures `VITE_DIRECTORY_API_URL` at build time. If `.env.local` points to the
 emulator, override it when building for deployment:
 
 ```sh
-VITE_DIRECTORY_API_URL=https://us-central1-YOUR_LIVE_PROJECT_ID.cloudfunctions.net/listDirectoryProfiles npm run build:directory
+VITE_DIRECTORY_API_URL=https://us-central1-YOUR_LIVE_PROJECT_ID.cloudfunctions.net/listDirectoryProfiles npm run build:atlas
 ```
 
 ## Code checks
 
 ```sh
 npm run test:functions
-npx vitest run directory-site/src
-npx tsc --project directory-site/tsconfig.json
-npm run build:directory
+npx vitest run nostr-atlas/src
+npx tsc --project nostr-atlas/tsconfig.json
+npm run build:atlas
 ```
 
 These cover the API contract, public field filtering, pagination, error handling,
 frontend mapping, TypeScript, and the static build. They do not launch a browser.
-
-The claim dialog publishes a real X-account claim through the existing
-relay-directory protocol:
-
-1. The user connects a NIP-07 browser signer. No private key is requested or
-   stored by the site.
-2. The dialog shows the signer's npub and opens an X composer with proof text.
-3. The user pastes the proof tweet URL. The author in the URL must match the
-   claimed X handle. A `/photo` or `/video` suffix on that status URL is
-   accepted.
-4. Before signing, the site asks `checkClaimProof` to read the proof tweet.
-   The tweet author must match the handle, and the tweet text must contain the
-   connected npub. That function also returns the relay list the directory
-   crawler is using.
-5. The signer signs a kind `10011` NIP-39 event. Other `i` tags already published
-   for that pubkey are kept, up to 20 identity tags in total. The event includes
-   a `client` tag, `Nostr Atlas`, so the stored claim shows that this site
-   created it. The site snapshots the event fields before signing and rejects a
-   signature that does not match that snapshot.
-6. A relay from that crawler list must acknowledge the event. An
-   acknowledgement from any other configured relay is not enough.
-7. The site then sends that signed event to `ingestClaim`, which writes and
-   projects only that handle. The daily crawler remains the catch-up path when
-   this call cannot finish.
-
-Claim publication never writes directly to Firestore and does not show the
-account as verified before backend verification. The backend currently verifies
-X claims only, so the dialog does not pretend to support YouTube claims.
-
-By default, claims are published to three public relays already covered by the
-directory crawler. A deployment can override them with up to five comma-separated
-secure root relay URLs:
-
-```sh
-VITE_DIRECTORY_CLAIM_RELAYS=wss://relay.damus.io,wss://nos.lol npm run build:directory
-```
-
-The crawler/backfill must read at least one configured relay and run after the
-claim is published. Publication is therefore not proof that verification has
-completed. The Firestore-backed directory listing can replace `src/data.ts`
-independently.
-
-## Claim dialog checks
-
-1. Open the dialog without a NIP-07 extension and confirm it gives an actionable
-   error without asking for a secret key.
-2. Connect an unlocked signer, confirm the displayed npub belongs to the active
-   account, and check that the X composer text contains that exact npub.
-3. Confirm a proof URL from a different handle is rejected before signing.
-4. Paste a proof tweet URL from the matching handle, approve the kind `10011`
-   event in the signer, and confirm at least one configured relay acknowledges it.
-5. After the relay acknowledges the event, `ingestClaim` verifies that handle.
-   A verified result can show the account without waiting for the daily crawler.
-   A relay acknowledgement alone must never add a verified row. The crawler
-   remains the retry path when that call does not finish.

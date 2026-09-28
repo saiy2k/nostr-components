@@ -9,11 +9,11 @@ export const icon = {
     </svg>`,
   chevronLeft: () => `
     <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-      <path d="m12 14-4-4 4-4" />
+      <path d="m12 5-5 5 5 5" />
     </svg>`,
   chevronRight: () => `
     <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-      <path d="m8 6 4 4-4 4" />
+      <path d="m8 5 5 5-5 5" />
     </svg>`,
   check: () => `
     <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- seo:start -->
+    <title>Nostr Atlas — Receive zaps on X.com and YouTube</title>
+    <meta name="description" content="Nostr Atlas lists verified X accounts linked to Nostr public keys, so supporters can find a creator and send Lightning zaps on X and YouTube." />
+    <link rel="canonical" href="https://nostr-atlas.web.app/" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Nostr Atlas" />
+    <meta property="og:title" content="Nostr Atlas — Receive zaps on X.com and YouTube" />
+    <meta property="og:description" content="Nostr Atlas lists verified X accounts linked to Nostr public keys, so supporters can find a creator and send Lightning zaps on X and YouTube." />
+    <meta property="og:url" content="https://nostr-atlas.web.app/" />
+    <meta property="og:image" content="https://nostr-atlas.web.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Nostr Atlas — Receive zaps on X.com and YouTube" />
+    <meta name="twitter:description" content="Nostr Atlas lists verified X accounts linked to Nostr public keys, so supporters can find a creator and send Lightning zaps on X and YouTube." />
+    <meta name="twitter:image" content="https://nostr-atlas.web.app/og.png" />
+    <script type="application/ld+json" id="seo-jsonld">{"@context":"https://schema.org","@type":"WebSite","name":"Nostr Atlas","url":"https://nostr-atlas.web.app/","description":"Nostr Atlas lists verified X accounts linked to Nostr public keys, so supporters can find a creator and send Lightning zaps on X and YouTube.","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://nostr-atlas.web.app/?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
+    <!-- seo:end -->
+  </head>
+  <body>
+    <a class="skip-link" href="#directory">Skip to creator claims</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="/" aria-label="Nostr Atlas home">
+          <svg class="brand-mark" aria-hidden="true" viewBox="0 0 36 36" fill="none">
+            <path d="M18 2.5c.8 9.7 5.8 14.7 15.5 15.5C23.8 18.8 18.8 23.8 18 33.5 17.2 23.8 12.2 18.8 2.5 18 12.2 17.2 17.2 12.2 18 2.5Z" />
+          </svg>
+          <span>Nostr Atlas</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero shell" aria-labelledby="hero-heading">
+        <div class="hero-copy">
+          <h1 id="hero-heading">Receive zaps on X.com and YouTube.</h1>
+          <p>Claim the accounts people already know, connect them to your Nostr identity, and give supporters a clear path to zap you across the web.</p>
+          <button class="primary-button hero-cta" type="button" data-open-profile-dialog>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <circle cx="9" cy="7" r="3" />
+              <path d="M3.5 19v-2.2c0-2.1 1.7-3.8 3.8-3.8h3.4c1.4 0 2.6.7 3.3 1.8M18 13v6M15 16h6" />
+            </svg>
+            <span>Claim your X or YouTube account</span>
+          </button>
+          <form class="hero-search" id="hero-search" role="search">
+            <label class="sr-only" for="directory-search">Search verified accounts</label>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <circle cx="10.8" cy="10.8" r="6.4" />
+              <path d="m16 16 4.2 4.2" />
+            </svg>
+            <input id="directory-search" type="search" name="q" autocomplete="off" maxlength="255" placeholder="Search X handle, NIP-05, or npub" />
+            <button type="submit" aria-label="Search verified accounts">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12h14M14 7l5 5-5 5" />
+              </svg>
+            </button>
+          </form>
+        </div>
+        <div class="hero-network">
+          <svg class="network-graphic" aria-label="A network connecting creator accounts to Nostr" viewBox="0 0 620 310" fill="none" role="img">
+            <g class="network-lines">
+              <path d="M48 124 145 58l90 49 93-64 86 62 111-45" />
+              <path d="m48 124 71 80 116-97 80 95 99-97 111 72" />
+              <path d="m119 204 107 52 89-54 95 57 115-82" />
+              <path d="M145 58 119 204M235 107l-9 149M328 43l-13 159M414 105l-4 154" />
+              <path class="dashed" d="m48 124 178 132M145 58l170 144M235 107l175 152M328 43l197 134" />
+            </g>
+            <g class="network-nodes">
+              <circle cx="48" cy="124" r="7" />
+              <circle cx="145" cy="58" r="8" />
+              <circle cx="119" cy="204" r="8" />
+              <circle cx="235" cy="107" r="9" />
+              <circle cx="226" cy="256" r="7" />
+              <circle cx="328" cy="43" r="7" />
+              <circle class="network-core" cx="315" cy="202" r="28" />
+              <circle cx="414" cy="105" r="10" />
+              <circle cx="410" cy="259" r="8" />
+              <circle cx="525" cy="60" r="7" />
+              <circle cx="525" cy="177" r="9" />
+            </g>
+            <path class="core-star" d="M315 186c.5 10 5 14.5 15 16-10 1.5-14.5 6-15 16-.5-10-5-14.5-15-16 10-1.5 14.5-6 15-16Z" />
+          </svg>
+        </div>
+      </section>
+
+      <section class="directory shell" id="directory" aria-label="Verified accounts">
+        <div class="directory-heading-row">
+          <p id="result-count" aria-live="polite">Verified X accounts</p>
+        </div>
+
+        <div class="profile-table" role="region" aria-label="Verified accounts" tabindex="0">
+          <div class="table-header" aria-hidden="true">
+            <span>X account</span><span>Nostr address</span><span>npub (click to copy)</span><span></span>
+          </div>
+          <div id="profile-results"></div>
+        </div>
+        <nav class="directory-pagination" id="directory-pagination" aria-label="Directory pagination" hidden></nav>
+        <div class="directory-data-controls">
+          <p id="directory-status" role="status" aria-live="polite"></p>
+          <div class="directory-data-actions">
+            <button class="secondary-button" type="button" id="retry-directory" hidden>Retry</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="how-it-works" id="how-it-works" aria-labelledby="steps-heading">
+        <div class="shell steps-layout">
+          <h2 id="steps-heading">From X or YouTube<br />to Nostr zaps</h2>
+          <ol class="steps-list">
+            <li><span class="step-number">1</span><span><strong>Claim</strong><small>Start with the X or YouTube account your audience already recognizes.</small></span></li>
+            <li><span class="step-number">2</span><span><strong>Connect</strong><small>Associate it with your Nostr public key and NIP-05 address.</small></span></li>
+            <li><span class="step-number">3</span><span><strong>Receive zaps</strong><small>Supporters with <a href="https://github.com/saiy2k/nostr-components/tree/main/browser-extension" target="_blank" rel="noreferrer">our extension</a> installed can zap you on X.com and YouTube.</small></span></li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="about">
+      <div class="shell footer-inner">
+        <div class="footer-brand">
+          <svg class="brand-mark" aria-hidden="true" viewBox="0 0 36 36" fill="none">
+            <path d="M18 2.5c.8 9.7 5.8 14.7 15.5 15.5C23.8 18.8 18.8 23.8 18 33.5 17.2 23.8 12.2 18.8 2.5 18 12.2 17.2 17.2 12.2 18 2.5Z" />
+          </svg>
+          <strong>Nostr Atlas</strong><i aria-hidden="true"></i><span>Built to help creators receive zaps on X.com and YouTube.</span>
+        </div>
+        <nav aria-label="Footer navigation">
+          <a href="https://nostr.how/en/what-is-nostr" target="_blank" rel="noreferrer">What is Nostr?</a>
+          <a href="https://www.youtube.com/watch?v=0YDj1QdL2Zs" target="_blank" rel="noreferrer">Explainer video</a>
+          <a href="https://github.com/saiy2k/nostr-components" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </footer>
+
+    <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
+      <form method="dialog" class="dialog-card" id="add-profile-form">
+        <div class="dialog-heading">
+          <div><h2 id="profile-dialog-title">Preview a creator claim</h2><p>See how an X or YouTube account could appear with your Nostr identity. This stays in your browser.</p></div>
+          <button class="icon-button" value="cancel" type="submit" aria-label="Close claim preview">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="form-grid">
+          <label>Creator name<input name="name" required maxlength="50" placeholder="Satoshi" /></label>
+          <label>X or YouTube handle<input name="handle" required maxlength="50" placeholder="@satoshi" /></label>
+          <label>Nostr address (NIP-05)<input name="nip05" required maxlength="100" placeholder="satoshi@example.com" /></label>
+          <label class="full-field">Nostr public key<input name="npub" required minlength="20" pattern="npub1.+" placeholder="npub1…" /><small>Nostr public keys begin with npub1.</small></label>
+        </div>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel" type="submit">Cancel</button>
+          <button class="primary-button" value="default" type="submit">Add claim to preview</button>
+        </div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <noscript>Search works with JavaScript. Verified accounts linked from this page can still be opened.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
