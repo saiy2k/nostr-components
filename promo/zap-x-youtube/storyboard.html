@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Zap button promo — storyboard v1</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --canvas: #070709;
+        --ink: #f6f1e6;
+        --gold: #ffc800;
+        --mist: #9a9386;
+        --card: #14141a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: Georgia, "Iowan Old Style", Palatino, serif;
+      }
+      header {
+        padding: 48px 6vw 12px;
+      }
+      h1 {
+        margin: 0;
+        font-weight: 400;
+        font-size: 42px;
+        letter-spacing: -0.03em;
+      }
+      .dek { margin: 10px 0 0; color: var(--mist); font-family: system-ui, sans-serif; font-size: 16px; }
+      .tag {
+        display: inline-block;
+        margin-top: 16px;
+        padding: 6px 10px;
+        border: 1px solid rgba(255, 200, 0, 0.45);
+        color: var(--gold);
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        padding: 28px 6vw 64px;
+      }
+      .cell { display: flex; flex-direction: column; gap: 10px; }
+      .stage {
+        aspect-ratio: 1 / 1;
+        container-type: inline-size;
+        background:
+          radial-gradient(ellipse at 50% 42%, rgba(255, 200, 0, 0.16), transparent 46%),
+          var(--canvas);
+        border: 1px solid rgba(255, 200, 0, 0.22);
+        position: relative;
+        overflow: hidden;
+      }
+      .word {
+        position: absolute;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 12cqw;
+        letter-spacing: -0.04em;
+      }
+      .pill {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 1.2cqw;
+        height: 7cqw;
+        padding: 0 2.4cqw;
+        border-radius: 999px;
+        border: 1px solid var(--gold);
+        background: var(--card);
+        color: var(--ink);
+        font-family: system-ui, sans-serif;
+        font-size: 2.2cqw;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .bolt { width: 2.4cqw; height: 2.4cqw; }
+      .card {
+        position: absolute;
+        left: 14%;
+        top: 13%;
+        width: 72%;
+        height: 48%;
+        border-radius: 2.6cqw;
+        background: var(--card);
+        border: 1px solid rgba(255, 200, 0, 0.28);
+      }
+      .bar {
+        position: absolute;
+        left: 8%;
+        height: 1.6cqw;
+        border-radius: 999px;
+        background: rgba(246, 241, 230, 0.14);
+      }
+      .plate {
+        position: absolute;
+        left: 8%;
+        top: 16%;
+        width: 84%;
+        height: 42%;
+        border-radius: 1.6cqw;
+        background: #0c0c10;
+        border: 1px solid rgba(255, 200, 0, 0.2);
+      }
+      .play {
+        position: absolute;
+        left: 46%;
+        top: 32%;
+        width: 0;
+        height: 0;
+        border-left: 2.4cqw solid var(--gold);
+        border-top: 1.4cqw solid transparent;
+        border-bottom: 1.4cqw solid transparent;
+      }
+      .like {
+        position: absolute;
+        width: 3.2cqw;
+        height: 3.2cqw;
+        border-radius: 50%;
+        border: 1px solid rgba(246, 241, 230, 0.35);
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .meta span:last-child { color: var(--mist); }
+      .note { margin: 0; color: var(--mist); font-family: system-ui, sans-serif; font-size: 15px; line-height: 1.45; }
+      .chip {
+        align-self: flex-start;
+        padding: 4px 8px;
+        border: 1px solid rgba(255, 200, 0, 0.4);
+        color: var(--gold);
+        font-family: system-ui, sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Zap button promo v1</h1>
+      <p class="dek">The button is already there. You want to press it.</p>
+      <div class="tag">1080×1080 · 32s · 4 beats</div>
+    </header>
+    <main>
+      <article class="cell">
+        <div class="stage" id="frame-01">
+          <div class="word" style="top: 22%">ZAP</div>
+          <div class="pill" style="left: 38%; top: 46%">
+            <svg class="bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>
+            Zap
+          </div>
+        </div>
+        <div class="meta"><span>01 · Hook</span><span>0:00–0:03</span></div>
+        <p class="note"><strong>First motion.</strong> The pill is already in frame and eases forward. ZAP fades in above it. Seam: cut, pill stays centered.</p>
+        <span class="chip">Cut</span>
+      </article>
+      <article class="cell">
+        <div class="stage" id="frame-02">
+          <div class="card">
+            <div class="bar" style="top: 22%; width: 46%"></div>
+            <div class="bar" style="top: 34%; width: 70%"></div>
+            <div class="bar" style="top: 46%; width: 58%"></div>
+            <div class="like" style="left: 8%; top: 78%"></div>
+          </div>
+          <div class="word" style="top: 8%; font-size: 8cqw">On X.</div>
+          <div class="pill" style="left: 28%; top: 62%; transform: scale(0.72); transform-origin: left top">
+            <svg class="bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>
+            Zap
+          </div>
+        </div>
+        <div class="meta"><span>02 · X</span><span>0:03–0:14</span></div>
+        <p class="note"><strong>First motion.</strong> ZAP leaves. The pill travels down into the row and is pressed. Seam: cut, pill stays in the row.</p>
+        <span class="chip">Cut</span>
+      </article>
+      <article class="cell">
+        <div class="stage" id="frame-03">
+          <div class="card">
+            <div class="plate"></div>
+            <div class="play"></div>
+            <div class="like" style="left: 8%; top: 78%"></div>
+          </div>
+          <div class="word" style="top: 8%; font-size: 7cqw">On YouTube.</div>
+          <div class="pill" style="left: 28%; top: 62%; transform: scale(0.72); transform-origin: left top">
+            <svg class="bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>
+            Zap
+          </div>
+          <div class="word" style="top: 74%; font-size: 5cqw; font-family: ui-monospace, monospace">1,000 sats</div>
+        </div>
+        <div class="meta"><span>03 · YouTube</span><span>0:14–0:25</span></div>
+        <p class="note"><strong>First motion.</strong> The surface becomes a video. The pill does not move, then it is pressed and the sats count. Seam: cut, same row.</p>
+        <span class="chip">Cut</span>
+      </article>
+      <article class="cell">
+        <div class="stage" id="frame-04">
+          <div class="pill" style="left: 36%; top: 34%; height: 8cqw">
+            <svg class="bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800"/></svg>
+            Zap
+          </div>
+          <div class="word" style="top: 52%; font-size: 7.2cqw">Send sats.</div>
+          <div class="word" style="top: 64%; font-size: 6cqw; color: #ffc800">Right there.</div>
+        </div>
+        <div class="meta"><span>04 · Hold</span><span>0:25–0:32</span></div>
+        <p class="note"><strong>First motion.</strong> The pill returns to center. The line lands. One gold sweep, then a still hold.</p>
+        <span class="chip">Cut</span>
+      </article>
+      <article class="cell">
+        <div class="stage" id="frame-seams" style="padding: 8cqw; font-family: system-ui, sans-serif">
+          <div class="word" style="position: static; text-align: left; font-size: 6cqw; margin-bottom: 4cqw">Seams</div>
+          <p class="note">Hook → X · cut · pill centered<br />X → YouTube · cut · pill in the row<br />YouTube → Hold · cut · pill in the row, then it rises</p>
+        </div>
+        <div class="meta"><span>Seam map</span><span>one direction: inward</span></div>
+      </article>
+      <article class="cell">
+        <div class="stage" id="frame-tokens" style="padding: 8cqw; font-family: system-ui, sans-serif">
+          <p class="note"><span class="swatch" style="background:#070709;border:1px solid #333"></span> canvas #070709</p>
+          <p class="note"><span class="swatch" style="background:#f6f1e6"></span> ink #F6F1E6</p>
+          <p class="note"><span class="swatch" style="background:#ffc800"></span> gold #FFC800</p>
+          <p class="note"><span class="swatch" style="background:#14141a;border:1px solid #333"></span> card #14141A</p>
+          <p class="note">Display Georgia stand-in for Playfair. Labels system sans. Bans: logos, QR, tutorial, purple glow.</p>
+        </div>
+        <div class="meta"><span>Tokens</span><span>custom, not a preset</span></div>
+      </article>
+    </main>
+  </body>
+</html>

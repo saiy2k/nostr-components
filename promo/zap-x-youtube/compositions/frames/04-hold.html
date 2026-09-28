@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          color: #f6f1e6;
+          font-family: "Playfair Display", Georgia, serif;
+        }
+        .ground {
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(circle at 50% 42%, rgba(255, 200, 0, 0.22), transparent 42%),
+            #070709;
+        }
+        .pill {
+          position: absolute;
+          left: 250px;
+          top: 250px;
+          width: 580px;
+          height: 168px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 22px;
+          overflow: hidden;
+          border-radius: 999px;
+          border: 2px solid #ffc800;
+          background: #14110c;
+          box-shadow: 0 0 90px rgba(255, 200, 0, 0.25);
+          font-family: Montserrat, sans-serif;
+          font-size: 64px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+        .bolt, .pill span { position: relative; z-index: 1; }
+        .bolt { width: 78px; height: 78px; flex: none; }
+        .sheen {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 140px;
+          height: 168px;
+          background: linear-gradient(90deg, transparent, rgba(255, 248, 220, 0.9), transparent);
+          opacity: 0;
+        }
+        .line {
+          position: absolute;
+          left: 0;
+          right: 0;
+          margin: 0;
+          text-align: center;
+          font-weight: 400;
+          letter-spacing: -0.04em;
+        }
+        .line-a { top: 500px; font-size: 108px; opacity: 0; }
+        .line-b { top: 630px; font-size: 96px; color: #ffc800; opacity: 0; }
+      </style>
+      <div
+        id="root"
+        data-composition-id="04-hold"
+        data-width="1080"
+        data-height="1080"
+        data-duration="7"
+      >
+        <div id="hold-ground" class="clip ground" data-start="0" data-duration="7" data-track-index="1"></div>
+        <div class="pill" id="hold-pill">
+          <div class="sheen" id="hold-sheen"></div>
+          <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800" />
+          </svg>
+          <span>Zap</span>
+        </div>
+        <p class="line line-a" id="hold-a">Send sats.</p>
+        <p class="line line-b" id="hold-b">Right there.</p>
+      </div>
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo("#hold-pill", { scale: 0.82, y: 40 }, { scale: 1, y: 0, duration: 1.1, ease: "power3.out" }, 0.1);
+        tl.fromTo("#hold-a", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, 1.15);
+        tl.fromTo("#hold-b", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, 1.7);
+        tl.fromTo("#hold-sheen", { x: -160, opacity: 0 }, { x: 620, opacity: 1, duration: 0.7, ease: "power2.inOut", immediateRender: false }, 4.35);
+        tl.to("#hold-sheen", { opacity: 0, duration: 0.2 }, 5.06);
+        tl.to({}, { duration: 7 }, 0);
+        window.__timelines["04-hold"] = tl;
+      </script>
+    </template>
+  </body>
+</html>
