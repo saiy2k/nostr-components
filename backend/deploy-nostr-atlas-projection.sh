@@ -5,16 +5,16 @@ BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -z "${PROJECT_ID:-}" ]; then
   echo "PROJECT_ID is required." >&2
-  echo "Example: PROJECT_ID=nostr-components ./deploy-relay-directory-projection.sh" >&2
+  echo "Example: PROJECT_ID=nostr-components ./deploy-nostr-atlas-projection.sh" >&2
   exit 1
 fi
 
 REGION="${REGION:-us-central1}"
-JOB_NAME="${JOB_NAME:-relay-directory-projector}"
-IMAGE_JOB_NAME="${IMAGE_JOB_NAME:-relay-directory-crawler}"
+JOB_NAME="${JOB_NAME:-nostr-atlas-projector}"
+IMAGE_JOB_NAME="${IMAGE_JOB_NAME:-nostr-atlas-crawler}"
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
 IMAGE="gcr.io/${PROJECT_ID}/${IMAGE_JOB_NAME}:${IMAGE_TAG}"
-SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-relay-directory-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
+SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-nostr-atlas-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
 FIRESTORE_DATABASE="${FIRESTORE_DATABASE:-(default)}"
 FIRESTORE_HANDLES_COLLECTION="${FIRESTORE_HANDLES_COLLECTION:-nostrDirectoryHandles}"
 FIRESTORE_PROJECTION_RUNS_COLLECTION="${FIRESTORE_PROJECTION_RUNS_COLLECTION:-relayProjectionRuns}"
@@ -43,7 +43,7 @@ if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" >/dev/null 2>&1; 
     exit 1
   fi
   gcloud iam service-accounts create "${SERVICE_ACCOUNT_ID}" \
-    --display-name="Relay Directory Crawler"
+    --display-name="Nostr Atlas Crawler"
 fi
 
 if [ "${GRANT_DATASTORE_IAM:-false}" = "true" ]; then
@@ -69,7 +69,7 @@ DEPLOY_ARGS=(
   --region "${REGION}"
   --service-account "${SERVICE_ACCOUNT}"
   --set-env-vars "${ENV_VARS}"
-  --args "relay-directory/projection.js"
+  --args "nostr-atlas/projection.js"
   --max-retries 0
   --task-timeout 3600
 )

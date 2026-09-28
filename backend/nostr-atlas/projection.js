@@ -15,7 +15,7 @@ import {
   isOlderKind0,
   kind0ProfileMetadata,
   mergeProfileMetadata,
-} from "./directory-state.js";
+} from "./handle-state.js";
 import {
   PROJECTION_KIND0_RELAY_LIMIT,
   fetchKind0s,

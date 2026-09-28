@@ -14,7 +14,7 @@ afterEach(() => {
 
 describe("job lifecycle", () => {
   it("uses the forced-exit path after a successful run", async () => {
-    process.argv = [process.execPath, "/tmp/relay-directory-job.js"];
+    process.argv = [process.execPath, "/tmp/nostr-atlas-job.js"];
     const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined);
     const runner = vi.fn(async () => {});
 

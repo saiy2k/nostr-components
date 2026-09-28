@@ -8,7 +8,7 @@ component library so the package build and backend jobs remain unchanged.
 
 ## Data connection
 
-The site fetches `listDirectoryProfiles`, an HTTP Firebase Function that reads
+The site fetches `listAtlasProfiles`, an HTTP Firebase Function that reads
 `nostrDirectoryHandles` in Firestore using the Admin SDK. It uses each handle's
 current `activeIdentity`, so pending claims and obsolete identities are excluded.
 The response contains the handle, verified public key, name, NIP-05, and `picture`.
@@ -17,10 +17,10 @@ missing, or an empty string. Claim evidence and payment details stay on the
 server. No Firebase web API key, browser database credentials, or public
 Firestore rules are needed.
 
-`VITE_DIRECTORY_API_URL` selects the endpoint. Builds for a different Firebase
+`VITE_ATLAS_API_URL` selects the endpoint. Builds for a different Firebase
 project should set it to that project's deployed function URL. Without an
 override, the site uses
-`https://us-central1-nostr-components.cloudfunctions.net/listDirectoryProfiles`.
+`https://us-central1-nostr-components.cloudfunctions.net/listAtlasProfiles`.
 **Deploy the function before building against a new project**, or use the local
 Functions emulator below.
 
@@ -97,7 +97,7 @@ If local credentials already exist, the login step is unnecessary.
 In a second terminal, from the repository root:
 
 ```sh
-VITE_DIRECTORY_API_URL=http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles npm run dev:atlas
+VITE_ATLAS_API_URL=http://127.0.0.1:5001/nostr-components/us-central1/listAtlasProfiles npm run dev:atlas
 ```
 
 Open the URL printed by Vite. For a persistent endpoint override, copy
@@ -115,7 +115,7 @@ another collection. Set these in `functions/.env.local` for the emulator, or
 ## Manual test checklist (no automated browser test)
 
 1. Start the function and site using the commands above. In DevTools Network,
-   confirm `listDirectoryProfiles?limit=50&offset=0` returns HTTP 200 with
+   confirm `listAtlasProfiles?limit=50&offset=0` returns HTTP 200 with
    `profiles`, `total`, and `offset`. Those 50 profiles are the curated handles,
    in list order, and `offset=50` continues with the alphabetical tail without
    repeating them. The page should show real verified X records, or an honest
@@ -159,12 +159,12 @@ another collection. Set these in `functions/.env.local` for the emulator, or
 You can also inspect the endpoint without opening a browser:
 
 ```sh
-curl --fail-with-body 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles?limit=2&offset=0'
-curl --fail-with-body 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles?search=%40jack'
+curl --fail-with-body 'http://127.0.0.1:5001/nostr-components/us-central1/listAtlasProfiles?limit=2&offset=0'
+curl --fail-with-body 'http://127.0.0.1:5001/nostr-components/us-central1/listAtlasProfiles?search=%40jack'
 # Expect 400 invalid_limit:
-curl -i 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles?limit=101'
+curl -i 'http://127.0.0.1:5001/nostr-components/us-central1/listAtlasProfiles?limit=101'
 # Expect 405 method_not_allowed:
-curl -i -X POST 'http://127.0.0.1:5001/nostr-components/us-central1/listDirectoryProfiles'
+curl -i -X POST 'http://127.0.0.1:5001/nostr-components/us-central1/listAtlasProfiles'
 ```
 
 ## Deploy the read API
@@ -175,9 +175,9 @@ before the listing function, then deploy only that function:
 
 ```sh
 firebase deploy --only firestore:indexes --project YOUR_LIVE_PROJECT_ID
-node backend/relay-directory/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
-node backend/relay-directory/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
-firebase deploy --only functions:listDirectoryProfiles --project YOUR_LIVE_PROJECT_ID
+node backend/nostr-atlas/listing-key-backfill.js --project YOUR_LIVE_PROJECT_ID
+node backend/nostr-atlas/listing-key-backfill.js --write --project YOUR_LIVE_PROJECT_ID
+firebase deploy --only functions:listAtlasProfiles --project YOUR_LIVE_PROJECT_ID
 ```
 
 The backfill refuses to write if any curated handle is missing or not verified.
@@ -187,7 +187,7 @@ read and update `nostrDirectoryHandles`.
 The function's runtime service account needs Firestore read access in that
 project/database. It is a public GET API with CORS enabled, following Firebase's
 [HTTP function configuration](https://firebase.google.com/docs/functions/http-events).
-Use the function URL printed by deployment as `VITE_DIRECTORY_API_URL` if it
+Use the function URL printed by deployment as `VITE_ATLAS_API_URL` if it
 differs from the default. The existing extension lookup is not redeployed by this
 command. Database rules are not changed.
 
@@ -225,11 +225,11 @@ The deployable static site is written to `nostr-atlas/dist/`.
 
 The public origin is `https://nostr-atlas.web.app`. Set `VITE_SITE_ORIGIN` when the site is served from another origin. The homepage HTML already contains the title, description, canonical URL, and social tags. `build:atlas` also writes `robots.txt` and a sitemap for that one page. There are no per-account URLs. Search query strings such as `?q=` stay canonical to the homepage.
 
-Vite captures `VITE_DIRECTORY_API_URL` at build time. If `.env.local` points to the
+Vite captures `VITE_ATLAS_API_URL` at build time. If `.env.local` points to the
 emulator, override it when building for deployment:
 
 ```sh
-VITE_DIRECTORY_API_URL=https://us-central1-YOUR_LIVE_PROJECT_ID.cloudfunctions.net/listDirectoryProfiles npm run build:atlas
+VITE_ATLAS_API_URL=https://us-central1-YOUR_LIVE_PROJECT_ID.cloudfunctions.net/listAtlasProfiles npm run build:atlas
 ```
 
 ## Code checks

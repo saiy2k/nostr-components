@@ -5,7 +5,7 @@ import { FieldValue } from "@google-cloud/firestore";
 import {
   FEATURED_X_HANDLES,
   listingKeyForHandle,
-} from "../../functions/featured-handles.js";
+} from "./featured-handles.js";
 import {
   createFirestore,
   stripUndefined,

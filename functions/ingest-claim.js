@@ -4,9 +4,9 @@ const MAX_BODY_BYTES = 64 * 1024;
 
 async function loadIngest() {
   try {
-    return await import("./relay-directory/ingest-claim.js");
+    return await import("./nostr-atlas/ingest-claim.js");
   } catch {
-    return await import("../backend/relay-directory/ingest-claim.js");
+    return await import("../backend/nostr-atlas/ingest-claim.js");
   }
 }
 
@@ -65,8 +65,8 @@ export async function defaultIngestDb() {
 
 async function loadRuntime() {
   try {
-    return await import("./relay-directory/runtime.js");
+    return await import("./nostr-atlas/runtime.js");
   } catch {
-    return await import("../backend/relay-directory/runtime.js");
+    return await import("../backend/nostr-atlas/runtime.js");
   }
 }

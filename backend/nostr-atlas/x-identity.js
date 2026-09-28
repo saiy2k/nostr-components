@@ -110,7 +110,7 @@ async function fetchTweetViaFxTwitter(
     : `status/${encodeURIComponent(tweetId)}`;
   try {
     const response = await fetchImpl(`https://api.fxtwitter.com/${path}`, {
-      headers: { "User-Agent": "nostr-components-relay-directory/0.1" },
+      headers: { "User-Agent": "nostr-atlas/0.1" },
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) return httpFailure("fxtwitter-tweet", response);
@@ -362,7 +362,7 @@ async function fetchXProfileViaFxTwitter(handle, timeoutMs, fetchImpl) {
     const response = await fetchImpl(
       `https://api.fxtwitter.com/2/profile/${encodeURIComponent(handle)}`,
       {
-        headers: { "User-Agent": "nostr-components-relay-directory/0.1" },
+        headers: { "User-Agent": "nostr-atlas/0.1" },
         signal: AbortSignal.timeout(timeoutMs),
       },
     );

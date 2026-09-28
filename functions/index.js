@@ -3,8 +3,8 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { onRequest } from "firebase-functions/v2/https";
-import { lookupDirectoryHandle as lookupDirectoryRecord } from "./lookup.js";
-import { createDirectoryListHandler } from "./directory.js";
+import { lookupAtlasHandle as lookupAtlasRecord } from "./lookup.js";
+import { createAtlasListHandler } from "./profiles.js";
 import { createClaimProofHandler } from "./claim-proof.js";
 import { createIngestClaimHandler, defaultIngestDb } from "./ingest-claim.js";
 
@@ -24,18 +24,18 @@ async function handleDirectoryLookup(request, response) {
   }
 
   try {
-    const result = await lookupDirectoryRecord(db, request.query.handle);
+    const result = await lookupAtlasRecord(db, request.query.handle);
     response.set("Cache-Control", "public, max-age=300, s-maxage=300");
     response.status(result.status).json(result.body);
   } catch (error) {
-    console.error("Directory lookup failed", {
+    console.error("Atlas lookup failed", {
       message: error instanceof Error ? error.message : String(error),
     });
     response.status(503).json({ error: "directory_unavailable" });
   }
 }
 
-export const lookupDirectoryHandle = onRequest(
+export const lookupAtlasHandle = onRequest(
   {
     region: "us-central1",
     cors: true,
@@ -57,7 +57,7 @@ export const ingestClaim = onRequest(
     timeoutSeconds: 60,
     ...(ingestProjectId
       ? {
-          serviceAccount: `relay-directory-crawler@${ingestProjectId}.iam.gserviceaccount.com`,
+          serviceAccount: `nostr-atlas-crawler@${ingestProjectId}.iam.gserviceaccount.com`,
         }
       : {}),
   },
@@ -75,7 +75,7 @@ export const checkClaimProof = onRequest(
   createClaimProofHandler(),
 );
 
-export const listDirectoryProfiles = onRequest(
+export const listAtlasProfiles = onRequest(
   {
     region: "us-central1",
     cors: true,
@@ -83,7 +83,7 @@ export const listDirectoryProfiles = onRequest(
     maxInstances: 10,
     timeoutSeconds: 10,
   },
-  createDirectoryListHandler(
+  createAtlasListHandler(
     getFirestore(process.env.FIRESTORE_DATABASE || "(default)"),
     {
       collection:

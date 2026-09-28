@@ -5,24 +5,24 @@ BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -z "${PROJECT_ID:-}" ]; then
   echo "PROJECT_ID is required." >&2
-  echo "Example: PROJECT_ID=nostr-components ./deploy-relay-directory-backfill.sh" >&2
+  echo "Example: PROJECT_ID=nostr-components ./deploy-nostr-atlas-backfill.sh" >&2
   exit 1
 fi
 
 REGION="${REGION:-us-central1}"
-JOB_NAME="${JOB_NAME:-relay-directory-backfill}"
-IMAGE_JOB_NAME="${IMAGE_JOB_NAME:-relay-directory-crawler}"
+JOB_NAME="${JOB_NAME:-nostr-atlas-backfill}"
+IMAGE_JOB_NAME="${IMAGE_JOB_NAME:-nostr-atlas-crawler}"
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
 IMAGE="gcr.io/${PROJECT_ID}/${IMAGE_JOB_NAME}:${IMAGE_TAG}"
-SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-relay-directory-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
+SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-nostr-atlas-crawler@${PROJECT_ID}.iam.gserviceaccount.com}"
 
 # Cloud Scheduler → Cloud Run Job (resumable daily backfill by default).
 CREATE_SCHEDULER="${CREATE_SCHEDULER:-true}"
-SCHEDULER_JOB_NAME="${SCHEDULER_JOB_NAME:-relay-directory-backfill-daily}"
+SCHEDULER_JOB_NAME="${SCHEDULER_JOB_NAME:-nostr-atlas-backfill-daily}"
 SCHEDULER_REGION="${SCHEDULER_REGION:-${REGION}}"
 SCHEDULE="${SCHEDULE:-0 6 * * *}"
 SCHEDULE_TIME_ZONE="${SCHEDULE_TIME_ZONE:-Etc/UTC}"
-SCHEDULER_SERVICE_ACCOUNT="${SCHEDULER_SERVICE_ACCOUNT:-relay-directory-scheduler@${PROJECT_ID}.iam.gserviceaccount.com}"
+SCHEDULER_SERVICE_ACCOUNT="${SCHEDULER_SERVICE_ACCOUNT:-nostr-atlas-scheduler@${PROJECT_ID}.iam.gserviceaccount.com}"
 
 # Relays default to backend/relays.json baked into the image.
 # Set RELAYS=wss://... only to override that file at deploy time.
@@ -50,22 +50,28 @@ gcloud services enable \
   cloudscheduler.googleapis.com
 
 if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" >/dev/null 2>&1; then
-  gcloud iam service-accounts create relay-directory-crawler \
-    --display-name="Relay Directory Crawler"
+  SERVICE_ACCOUNT_ID="${SERVICE_ACCOUNT%%@*}"
+  SERVICE_ACCOUNT_DOMAIN="${SERVICE_ACCOUNT#*@}"
+  if [ "${SERVICE_ACCOUNT_DOMAIN}" != "${PROJECT_ID}.iam.gserviceaccount.com" ]; then
+    echo "SERVICE_ACCOUNT ${SERVICE_ACCOUNT} does not exist and is not in ${PROJECT_ID}." >&2
+    exit 1
+  fi
+  gcloud iam service-accounts create "${SERVICE_ACCOUNT_ID}" \
+    --display-name="Nostr Atlas Crawler"
 fi
 
 if [ "${CREATE_SCHEDULER}" = "true" ]; then
   SCHEDULER_SA_ID="${SCHEDULER_SERVICE_ACCOUNT%%@*}"
   if ! gcloud iam service-accounts describe "${SCHEDULER_SERVICE_ACCOUNT}" >/dev/null 2>&1; then
     gcloud iam service-accounts create "${SCHEDULER_SA_ID}" \
-      --display-name="Relay Directory Backfill Scheduler"
+      --display-name="Nostr Atlas Backfill Scheduler"
   fi
 fi
 
 # Do not silently grant project-wide Datastore access on every deploy.
 # Prefer a dedicated GCP project/Firestore database for this crawler.
 # Opt in only for bootstrap of an isolated project:
-#   GRANT_DATASTORE_IAM=true PROJECT_ID=... ./deploy-relay-directory-backfill.sh
+#   GRANT_DATASTORE_IAM=true PROJECT_ID=... ./deploy-nostr-atlas-backfill.sh
 if [ "${GRANT_DATASTORE_IAM:-false}" = "true" ]; then
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${SERVICE_ACCOUNT}" \

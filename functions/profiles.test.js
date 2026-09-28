@@ -5,11 +5,11 @@ import assert from "node:assert/strict";
 import { nip19 } from "nostr-tools";
 import { listingKeyForHandle } from "./featured-handles.js";
 import {
-  createDirectoryListHandler,
+  createAtlasListHandler,
   directorySearchFilter,
-  listDirectoryProfiles,
+  listAtlasProfiles,
   publicDirectoryProfile,
-} from "./directory.js";
+} from "./profiles.js";
 
 function handleRecord(handle, overrides = {}) {
   return {
@@ -249,7 +249,7 @@ test("returns database totals and supports arbitrary page offsets", async () => 
     "twitter:carol": handleRecord("carol"),
     "twitter:dave": handleRecord("dave"),
   });
-  const first = await listDirectoryProfiles(db, { limit: "2" });
+  const first = await listAtlasProfiles(db, { limit: "2" });
   assert.deepEqual(
     first.body.profiles.map((p) => p.handle),
     ["alice", "carol"],
@@ -257,7 +257,7 @@ test("returns database totals and supports arbitrary page offsets", async () => 
   assert.equal(first.body.total, 3);
   assert.equal(first.body.offset, 0);
   assert.equal(first.body.nextCursor, "twitter:carol");
-  const second = await listDirectoryProfiles(db, {
+  const second = await listAtlasProfiles(db, {
     limit: "2",
     offset: "2",
   });
@@ -295,7 +295,7 @@ test("omits malformed profiles while retaining the Firestore verified total", as
     }),
     "twitter:bob": handleRecord("bob"),
   });
-  const result = await listDirectoryProfiles(db, { limit: "1" });
+  const result = await listAtlasProfiles(db, { limit: "1" });
   assert.deepEqual(result.body.profiles, []);
   assert.equal(result.body.total, 2);
   assert.equal(result.body.offset, 0);
@@ -304,7 +304,7 @@ test("omits malformed profiles while retaining the Firestore verified total", as
 test("empty collections are successful and collection overrides stay server controlled", async () => {
   const db = fakeDatabase({});
   assert.deepEqual(
-    await listDirectoryProfiles(
+    await listAtlasProfiles(
       db,
       { collection: "ignored" },
       { collection: "testHandles" },
@@ -335,7 +335,7 @@ test("rejects invalid limits, offsets, searches, and obsolete cursors before rea
     {},
     2,
   ]) {
-    assert.equal((await listDirectoryProfiles(db, { limit })).status, 400);
+    assert.equal((await listAtlasProfiles(db, { limit })).status, 400);
   }
   for (const cursor of [
     "",
@@ -345,13 +345,13 @@ test("rejects invalid limits, offsets, searches, and obsolete cursors before rea
     {},
     2,
   ]) {
-    assert.equal((await listDirectoryProfiles(db, { cursor })).status, 400);
+    assert.equal((await listAtlasProfiles(db, { cursor })).status, 400);
   }
   for (const offset of ["-1", "1.5", "10001", "", ["2"], {}, 2]) {
-    assert.equal((await listDirectoryProfiles(db, { offset })).status, 400);
+    assert.equal((await listAtlasProfiles(db, { offset })).status, 400);
   }
   for (const search of ["x".repeat(256), ["alice"], {}, 2]) {
-    assert.equal((await listDirectoryProfiles(db, { search })).status, 400);
+    assert.equal((await listAtlasProfiles(db, { search })).status, 400);
   }
   assert.equal(db.reads.length, 0);
 });
@@ -362,7 +362,7 @@ test("uses a validated document cursor instead of a billed offset for deep pages
     "twitter:bob": handleRecord("bob"),
     "twitter:carol": handleRecord("carol"),
   });
-  const result = await listDirectoryProfiles(db, {
+  const result = await listAtlasProfiles(db, {
     limit: "1",
     offset: "10001",
     cursor: "twitter:alice",
@@ -389,7 +389,7 @@ test("lists verified profiles in handle order when listing keys are absent", asy
     "twitter:zoe": zoe,
     "twitter:alice": alice,
   });
-  const result = await listDirectoryProfiles(db, { limit: "10" });
+  const result = await listAtlasProfiles(db, { limit: "10" });
   assert.equal(result.status, 200);
   assert.deepEqual(
     result.body.profiles.map((profile) => profile.handle),
@@ -403,7 +403,7 @@ test("lists verified profiles in handle order when listing keys are absent", asy
   );
   assert.equal(db.reads[0].order, "listingKey");
   assert.equal(db.reads[1].order, "handle");
-  const next = await listDirectoryProfiles(db, {
+  const next = await listAtlasProfiles(db, {
     limit: "10",
     cursor: "twitter:alice",
   });
@@ -420,7 +420,7 @@ test("lists curated handles before the alphabetical tail without repeating them"
     "twitter:jack": handleRecord("jack"),
     "twitter:lopp": handleRecord("lopp"),
   });
-  const first = await listDirectoryProfiles(db, { limit: "3" });
+  const first = await listAtlasProfiles(db, { limit: "3" });
   assert.equal(first.status, 200);
   assert.deepEqual(
     first.body.profiles.map((profile) => profile.handle),
@@ -428,7 +428,7 @@ test("lists curated handles before the alphabetical tail without repeating them"
   );
   assert.equal(first.body.total, 4);
   assert.equal(first.body.nextCursor, "twitter:alice");
-  const rest = await listDirectoryProfiles(db, { limit: "10", offset: "3" });
+  const rest = await listAtlasProfiles(db, { limit: "10", offset: "3" });
   assert.deepEqual(
     rest.body.profiles.map((profile) => profile.handle),
     ["zoe"],
@@ -443,7 +443,7 @@ test("skips curated handles that are missing or not verified", async () => {
     }),
     "twitter:zoe": handleRecord("zoe"),
   });
-  const result = await listDirectoryProfiles(db, { limit: "10" });
+  const result = await listAtlasProfiles(db, { limit: "10" });
   assert.deepEqual(
     result.body.profiles.map((profile) => profile.handle),
     ["alice", "zoe"],
@@ -457,7 +457,7 @@ test("resumes a deep page from the curated handle's listing key", async () => {
     "twitter:jack": handleRecord("jack"),
     "twitter:zoe": handleRecord("zoe"),
   });
-  const result = await listDirectoryProfiles(db, {
+  const result = await listAtlasProfiles(db, {
     limit: "1",
     offset: "10001",
     cursor: "twitter:jack",
@@ -475,12 +475,12 @@ test("search stays in handle order instead of the curated listing", async () => 
     "twitter:la": handleRecord("la"),
     "twitter:lopp": handleRecord("lopp"),
   });
-  const browse = await listDirectoryProfiles(db, { limit: "10" });
+  const browse = await listAtlasProfiles(db, { limit: "10" });
   assert.deepEqual(
     browse.body.profiles.map((profile) => profile.handle),
     ["lopp", "la"],
   );
-  const search = await listDirectoryProfiles(db, { search: "l", limit: "10" });
+  const search = await listAtlasProfiles(db, { search: "l", limit: "10" });
   assert.deepEqual(
     search.body.profiles.map((profile) => profile.handle),
     ["la", "lopp"],
@@ -532,7 +532,7 @@ test("searches the whole verified collection before paginating", async () => {
   });
 
   for (const search of ["@bob", "bob@example.com", nip19.npubEncode(pubkey)]) {
-    const result = await listDirectoryProfiles(db, { search });
+    const result = await listAtlasProfiles(db, { search });
     assert.equal(result.status, 200);
     assert.equal(result.body.total, 1);
     assert.deepEqual(
@@ -550,7 +550,7 @@ test("lists every verified handle that starts with the typed prefix", async () =
     "twitter:lynn": handleRecord("lynn"),
     "twitter:blyn": handleRecord("blyn"),
   });
-  const result = await listDirectoryProfiles(db, { search: "LY", limit: "10" });
+  const result = await listAtlasProfiles(db, { search: "LY", limit: "10" });
   assert.equal(result.status, 200);
   assert.deepEqual(
     result.body.profiles.map((profile) => profile.handle),
@@ -582,7 +582,7 @@ function responseRecorder() {
 
 test("HTTP handler is read only and caches only successful responses", async () => {
   const db = fakeDatabase({});
-  const handler = createDirectoryListHandler(db);
+  const handler = createAtlasListHandler(db);
   for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
     const response = responseRecorder();
     await handler({ method, query: {} }, response);
@@ -606,7 +606,7 @@ test("HTTP handler is read only and caches only successful responses", async () 
 
 test("Firestore failures return a retryable error without internal details", async (context) => {
   context.mock.method(console, "error", () => {});
-  const handler = createDirectoryListHandler({
+  const handler = createAtlasListHandler({
     collection() {
       throw new Error("private-project-details");
     },

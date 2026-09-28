@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { finalizeEvent, generateSecretKey } from "nostr-tools";
-import { directoryHandleId } from "./directory-state.js";
+import { handleDocumentId } from "./handle-state.js";
 import { ingestPublishedClaim } from "./ingest-claim.js";
 
 const RELAY = "wss://relay.damus.io";
@@ -131,7 +131,7 @@ describe("ingestPublishedClaim", () => {
     expect(seen).toEqual(["alice"]);
     const stored = await db
       .collection("nostrDirectoryHandles")
-      .doc(directoryHandleId("alice"))
+      .doc(handleDocumentId("alice"))
       .get();
     expect(stored.exists).toBe(true);
     expect(stored.data().handle).toBe("alice");
@@ -222,7 +222,7 @@ describe("ingestPublishedClaim", () => {
     ).resolves.toEqual({ ok: false, error: "no-claim" });
     const stored = await db
       .collection("nostrDirectoryHandles")
-      .doc(directoryHandleId("alice"))
+      .doc(handleDocumentId("alice"))
       .get();
     expect(stored.exists).toBe(false);
   });
@@ -239,7 +239,7 @@ describe("ingestPublishedClaim", () => {
     ).resolves.toEqual({ ok: false, error: "event-not-on-relay" });
     const stored = await db
       .collection("nostrDirectoryHandles")
-      .doc(directoryHandleId("alice"))
+      .doc(handleDocumentId("alice"))
       .get();
     expect(stored.exists).toBe(false);
   });
@@ -282,7 +282,7 @@ describe("ingestPublishedClaim", () => {
     );
     const stored = await db
       .collection("nostrDirectoryHandles")
-      .doc(directoryHandleId("alice"))
+      .doc(handleDocumentId("alice"))
       .get();
     const ids = stored.data().claims.map((claim) => claim.claimId);
     expect(ids).toEqual(expect.arrayContaining([first.id, second.id, "racer"]));

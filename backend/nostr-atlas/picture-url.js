@@ -50,7 +50,7 @@ export async function fetchXAvatarUrl(handle, options = {}) {
     const response = await fetchImpl(
       `https://api.fxtwitter.com/2/profile/${encodeURIComponent(normalized)}`,
       {
-        headers: { "User-Agent": "nostr-components-relay-directory/0.1" },
+        headers: { "User-Agent": "nostr-atlas/0.1" },
         signal: AbortSignal.timeout(timeoutMs),
       },
     );

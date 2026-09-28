@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { FieldValue } from "@google-cloud/firestore";
-import { listingKeyForHandle } from "../../functions/featured-handles.js";
+import { listingKeyForHandle } from "./featured-handles.js";
 import {
   DEFAULT_COLLECTIONS,
   firestoreTimestampToMs,
@@ -10,7 +10,7 @@ import {
 import {
   mergeProfileMetadata,
   newerKind0CreatedAt,
-} from "./directory-state.js";
+} from "./handle-state.js";
 import {
   claimRecency,
   compareClaimsNewestFirst,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { FieldValue } from "@google-cloud/firestore";
-import { isNip39Identity, planKind0Metadata } from "./directory-state.js";
+import { isNip39Identity, planKind0Metadata } from "./handle-state.js";
 import {
   createFirestore,
   loadRelaysFromFile,

@@ -5,7 +5,7 @@ if (typeof importScripts === 'function') {
 }
 
 const DIRECTORY_LOOKUP_ENDPOINT =
-  'https://us-central1-nostr-components.cloudfunctions.net/lookupDirectoryHandle';
+  'https://us-central1-nostr-components.cloudfunctions.net/lookupAtlasHandle';
 const LOOKUP_TIMEOUT_MS = 5000;
 const ZAP_HTTP_TIMEOUT_MS = 10000;
 const ZAP_HTTP_MAX_BYTES = 64 * 1024;
@@ -15,7 +15,7 @@ function normalizeHandle(value) {
   return /^[a-z0-9_]{1,15}$/.test(handle) ? handle : null;
 }
 
-async function lookupDirectoryHandle(message) {
+async function lookupAtlasHandle(message) {
   const handle = normalizeHandle(message.handle);
   if (!handle) {
     throw new Error('Invalid X handle');
@@ -116,7 +116,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
 
   let operation;
   if (message.type === 'LOOKUP_DIRECTORY_HANDLE') {
-    operation = lookupDirectoryHandle(message);
+    operation = lookupAtlasHandle(message);
   } else if (message.type === 'FETCH_HTTPS_JSON') {
     operation = fetchHttpsJson(message, sender);
   } else {

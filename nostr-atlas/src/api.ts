@@ -3,8 +3,8 @@ import type { DirectoryProfile } from "./data";
 
 export const DIRECTORY_BATCH_SIZE = 50;
 export const DIRECT_OFFSET_LIMIT = 10_000;
-export const DEFAULT_DIRECTORY_API_URL =
-  "https://us-central1-nostr-components.cloudfunctions.net/listDirectoryProfiles";
+export const DEFAULT_ATLAS_API_URL =
+  "https://us-central1-nostr-components.cloudfunctions.net/listAtlasProfiles";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 

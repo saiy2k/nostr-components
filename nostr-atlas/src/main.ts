@@ -16,7 +16,7 @@ import {
 } from "./directory";
 import { icon } from "./icons";
 import {
-  DEFAULT_DIRECTORY_API_URL,
+  DEFAULT_ATLAS_API_URL,
   DIRECTORY_BATCH_SIZE,
   fetchDirectoryPageAtOffset,
   type DirectoryPage,
@@ -30,7 +30,7 @@ import {
 } from "./seo";
 
 const directoryApiUrl =
-  import.meta.env.VITE_DIRECTORY_API_URL?.trim() || DEFAULT_DIRECTORY_API_URL;
+  import.meta.env.VITE_ATLAS_API_URL?.trim() || DEFAULT_ATLAS_API_URL;
 const siteOrigin = siteOriginFrom(import.meta.env.VITE_SITE_ORIGIN);
 let profileBatches = new Map<number, DirectoryProfile[]>();
 let batchNextCursors = new Map<number, string | null>();

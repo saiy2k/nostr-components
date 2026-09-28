@@ -6,10 +6,10 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --chown=node:node relays.json ./relays.json
-COPY --chown=node:node relay-directory ./relay-directory
+COPY --chown=node:node nostr-atlas ./nostr-atlas
 
 ENV NODE_ENV=production
 
 USER node
 ENTRYPOINT ["node"]
-CMD ["relay-directory/backfill.js"]
+CMD ["nostr-atlas/backfill.js"]

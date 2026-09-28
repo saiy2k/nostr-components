@@ -1,6 +1,6 @@
-# Relay directory backend
+# Nostr Atlas backend
 
-The relay-directory backfill and projection jobs are isolated from the frontend
+The Nostr Atlas backfill and projection jobs are isolated from the frontend
 package. They own their dependencies and read runtime configuration from
 environment variables.
 
@@ -21,12 +21,12 @@ Cloud Run deployment scripts (PROJECT_ID is required):
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
-PROJECT_ID=nostr-components backend/deploy-relay-directory-backfill.sh
-PROJECT_ID=nostr-components backend/deploy-relay-directory-projection.sh
+PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh
+PROJECT_ID=nostr-components backend/deploy-nostr-atlas-projection.sh
 ```
 
 By default the deploy script also creates a Cloud Scheduler job
-(`relay-directory-backfill-daily`) that triggers the Cloud Run Job once per day
+(`nostr-atlas-backfill-daily`) that triggers the Cloud Run Job once per day
 at 06:00 UTC (`0 6 * * *`). Each run resumes Firestore cursors and processes up
 to `BACKFILL_MAX_PAGES` pages per relay/kind.
 
@@ -35,15 +35,15 @@ Schedule knobs:
 ```sh
 # Custom cadence (unix-cron) and timezone
 SCHEDULE="0 3 * * *" SCHEDULE_TIME_ZONE="Asia/Kolkata" \
-  PROJECT_ID=nostr-components backend/deploy-relay-directory-backfill.sh
+  PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh
 
 # Deploy the job image only (no scheduler)
 CREATE_SCHEDULER=false PROJECT_ID=nostr-components \
-  backend/deploy-relay-directory-backfill.sh
+  backend/deploy-nostr-atlas-backfill.sh
 
 # Execute once immediately after deploy
 RUN_AFTER_DEPLOY=true PROJECT_ID=nostr-components \
-  backend/deploy-relay-directory-backfill.sh
+  backend/deploy-nostr-atlas-backfill.sh
 ```
 
 Grant project-wide `roles/datastore.user` only when bootstrapping an isolated
@@ -51,19 +51,19 @@ crawler project (not a shared production project):
 
 ```sh
 GRANT_DATASTORE_IAM=true PROJECT_ID=nostr-components \
-  backend/deploy-relay-directory-backfill.sh
+  backend/deploy-nostr-atlas-backfill.sh
 ```
 
 Prefer a dedicated GCP project or Firestore database for this job, and grant the
-`relay-directory-crawler` service account least-privilege access to that database
-only. The scheduler uses a separate `relay-directory-scheduler` service account
+`nostr-atlas-crawler` service account least-privilege access to that database
+only. The scheduler uses a separate `nostr-atlas-scheduler` service account
 with `roles/run.invoker` on the Cloud Run Job.
 
 Relay connections and subscriptions use NDK. The jobs retain explicit event
 validation, pagination, deduplication, Firestore writes, and checkpoint logic.
 
 Run projection after backfill because it consumes the handle documents created
-by backfill. `deploy-relay-directory-projection.sh` creates an unscheduled job;
+by backfill. `deploy-nostr-atlas-projection.sh` creates an unscheduled job;
 execute it manually, or set `RUN_AFTER_DEPLOY=true` to run it once immediately.
 X bio scans, NIP-39 proof-tweet checks, and backfill `@mention` existence
 checks all use FxTwitter's public API (`api.fxtwitter.com`); no X bearer token

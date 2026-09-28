@@ -219,7 +219,7 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
         .slice(index, index + HANDLE_READ_CONCURRENCY)
         .filter(([handle]) => !handleStateCache.has(handle))
         .map(async ([handle]) => {
-          const id = directoryHandleId(handle);
+          const id = handleDocumentId(handle);
           const snapshot = await db.collection(collection).doc(id).get();
           handleStateCache.set(
             handle,
@@ -231,7 +231,7 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
   }
 
   for (const [handle, handleClaims] of groupedEntries) {
-    const id = directoryHandleId(handle);
+    const id = handleDocumentId(handle);
     const cached = handleStateCache.get(handle);
     const built = buildMergedHandleWrite(cached, handleClaims, handle, options);
     stats.claimsAdded += built.merged.stats.added;
@@ -256,7 +256,7 @@ export async function planDirectoryHandleWrites(db, claims, options = {}) {
   return { writes, stats };
 }
 
-export function directoryHandleId(handle) {
+export function handleDocumentId(handle) {
   return firestoreSafeId(`twitter:${normalizeTwitterHandle(handle)}`);
 }
 
@@ -530,7 +530,7 @@ export async function checkXHandleExists(handle, options = {}) {
     const response = await fetchImpl(
       `https://api.fxtwitter.com/2/profile/${encodeURIComponent(handle)}`,
       {
-        headers: { "User-Agent": "nostr-components-relay-directory/0.1" },
+        headers: { "User-Agent": "nostr-atlas/0.1" },
         signal: AbortSignal.timeout(timeoutMs),
       },
     );

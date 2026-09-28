@@ -167,7 +167,7 @@ function validatedInteger(value, fallback, maximum, error) {
   return Number(value);
 }
 
-export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
+export async function listAtlasProfiles(db, parameters = {}, options = {}) {
   const cursor = parameters.cursor;
   if (
     cursor !== undefined &&
@@ -265,7 +265,7 @@ export async function listDirectoryProfiles(db, parameters = {}, options = {}) {
   };
 }
 
-export function createDirectoryListHandler(db, options = {}) {
+export function createAtlasListHandler(db, options = {}) {
   return async function handleDirectoryList(request, response) {
     response.set("Cache-Control", "no-store");
     if (request.method !== "GET") {
@@ -274,7 +274,7 @@ export function createDirectoryListHandler(db, options = {}) {
       return;
     }
     try {
-      const result = await listDirectoryProfiles(db, request.query, options);
+      const result = await listAtlasProfiles(db, request.query, options);
       if (result.status === 200) {
         response.set("Cache-Control", "public, max-age=60, s-maxage=60");
       }

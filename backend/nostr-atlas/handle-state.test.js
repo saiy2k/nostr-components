@@ -3,12 +3,12 @@
 import { describe, expect, it } from "vitest";
 import {
   checkXHandleExists,
-  directoryHandleId,
+  handleDocumentId,
   extractIdentityClaims,
   mergeHandleClaims,
   planDirectoryHandleWrites,
   planKind0Metadata,
-} from "./directory-state.js";
+} from "./handle-state.js";
 import { normalizeTwitterHandle } from "./utils.js";
 
 const PUBKEY_A =
@@ -452,7 +452,7 @@ describe("directory handle write planning", () => {
     expect(first.writes).toHaveLength(1);
     expect(first.writes[0]).toMatchObject({
       collection: "handles",
-      id: directoryHandleId("alice"),
+      id: handleDocumentId("alice"),
       handle: "alice",
       data: {
         handle: "alice",

@@ -1268,7 +1268,7 @@ describe("top-level cursor coordination", () => {
       },
       new Uint8Array(32).fill(2),
     );
-    db.failWritesForIds.add(directoryHandleIdFor("bob"));
+    db.failWritesForIds.add(handleDocumentIdFor("bob"));
 
     const summary = await runBackfillCursor(
       db,
@@ -1499,7 +1499,7 @@ describe("top-level cursor coordination", () => {
   });
 });
 
-function directoryHandleIdFor(handle) {
+function handleDocumentIdFor(handle) {
   return `twitter:${handle}`;
 }
 

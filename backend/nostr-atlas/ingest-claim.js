@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 import { SimplePool, validateEvent, verifyEvent } from "nostr-tools";
 import {
   buildMergedHandleWrite,
-  directoryHandleId,
+  handleDocumentId,
   extractIdentityClaims,
   planDirectoryHandleWrites,
-} from "./directory-state.js";
+} from "./handle-state.js";
 import { verifyHandleClaims } from "./projection.js";
 import {
   applyProjectionResults,
@@ -126,7 +126,7 @@ function claimRetryIsStillPending(claim, nowMs) {
 }
 
 async function projectHandle(db, handle, claimId, collection, config) {
-  const id = directoryHandleId(handle);
+  const id = handleDocumentId(handle);
   const ref = db.collection(collection).doc(id);
   const snapshot = await ref.get();
   if (!snapshot.exists) return "pending";

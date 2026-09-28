@@ -16,7 +16,7 @@ import {
   buildMergedHandleWrite,
   extractIdentityClaims,
   planDirectoryHandleWrites,
-} from "./directory-state.js";
+} from "./handle-state.js";
 import {
   DEFAULT_RELAYS_FILE,
   IDENTITY_KINDS,
