@@ -1,0 +1,221 @@
+<template>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    @font-face { font-family: "Roboto"; font-weight: 400; font-style: normal; font-display: block; src: url("assets/fonts/Roboto-400.woff2") format("woff2"); }
+    @font-face { font-family: "Roboto"; font-weight: 500; font-style: normal; font-display: block; src: url("assets/fonts/Roboto-500.woff2") format("woff2"); }
+    @font-face { font-family: "Roboto"; font-weight: 700; font-style: normal; font-display: block; src: url("assets/fonts/Roboto-700.woff2") format("woff2"); }
+    @font-face { font-family: "Barlow"; font-weight: 900; font-style: normal; font-display: block; src: url("assets/fonts/Barlow-900.woff2") format("woff2"); }
+
+    #root { position: relative; width: 1080px; height: 1080px; overflow: hidden; font-family: "Roboto", sans-serif; color: #F1F1F1; -webkit-font-smoothing: antialiased; }
+    #root * { box-sizing: border-box; }
+
+    [id="f04-on-youtube-ground"] { position: absolute; inset: 0; background: #0F0F0F; }
+    [id="f04-on-youtube-scene"] { position: absolute; inset: 0; overflow: hidden; }
+    [id="f04-on-youtube-world"] { position: absolute; left: 0; top: 0; width: 1080px; height: 1080px; transform-origin: 50% 50%; }
+
+    [class~="f04-on-youtube-player"] { position: absolute; left: 90px; top: 170px; width: 900px; height: 506px; border-radius: 18px; overflow: hidden; background: #000; }
+    [class~="f04-on-youtube-still"] { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    [class~="f04-on-youtube-progress"] { position: absolute; left: 18px; right: 18px; bottom: 16px; height: 4px; background: rgba(255, 255, 255, 0.28); }
+    [class~="f04-on-youtube-buffer"] { position: absolute; left: 0; top: 0; width: 61%; height: 100%; background: rgba(255, 255, 255, 0.42); }
+    [class~="f04-on-youtube-played"] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #FF0000; transform-origin: 0% 50%; }
+    [class~="f04-on-youtube-scrubber"] { position: absolute; left: -7px; top: -5px; width: 14px; height: 14px; border-radius: 50%; background: #FF0000; }
+
+    [class~="f04-on-youtube-title"] { position: absolute; left: 90px; top: 700px; font-weight: 700; font-size: 30px; line-height: 40px; color: #F1F1F1; white-space: nowrap; }
+
+    [data-dof-depth] { filter: blur(var(--dof, 0px)); }
+
+    [class~="f04-on-youtube-channel"] { position: absolute; left: 90px; top: 756px; height: 56px; display: flex; align-items: center; }
+    [class~="f04-on-youtube-avatar"] { display: block; flex: none; width: 56px; height: 56px; border-radius: 50%; }
+    [class~="f04-on-youtube-channel-text"] { margin-left: 16px; display: flex; flex-direction: column; }
+    [class~="f04-on-youtube-channel-name"] { font-weight: 500; font-size: 24px; line-height: 30px; color: #F1F1F1; white-space: nowrap; }
+    [class~="f04-on-youtube-channel-subs"] { font-weight: 400; font-size: 19px; line-height: 24px; color: #AAAAAA; white-space: nowrap; }
+    [class~="f04-on-youtube-subscribe"] { margin-left: 34px; height: 48px; padding: 0 22px; border-radius: 999px; background: #F1F1F1; color: #0F0F0F; font-weight: 500; font-size: 20px; line-height: 48px; white-space: nowrap; }
+
+    [class~="f04-on-youtube-actions"] { position: absolute; left: 90px; top: 830px; height: 48px; display: flex; align-items: center; gap: 12px; }
+    [class~="f04-on-youtube-pill"] { flex: none; height: 48px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); display: flex; align-items: center; color: #F1F1F1; }
+    [class~="f04-on-youtube-icon"] { display: block; flex: none; width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    [class~="f04-on-youtube-label"] { font-weight: 500; font-size: 20px; line-height: 48px; white-space: nowrap; }
+    [class~="f04-on-youtube-likes"] { width: 168px; }
+    [class~="f04-on-youtube-seg-like"] { width: 105px; height: 48px; padding-left: 20px; display: flex; align-items: center; gap: 8px; }
+    [class~="f04-on-youtube-divider"] { flex: none; width: 1px; height: 28px; background: rgba(255, 255, 255, 0.2); }
+    [class~="f04-on-youtube-seg-dislike"] { width: 62px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    [class~="f04-on-youtube-zap"] { position: relative; z-index: 1; width: 116px; gap: 3px; }
+    [class~="f04-on-youtube-zap-btn"] { flex: none; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    [class~="f04-on-youtube-bolt"] { display: block; width: 30px; height: 30px; }
+    [class~="f04-on-youtube-count"] { display: block; flex: none; width: 51px; font-weight: 500; font-size: 20px; line-height: 48px; font-variant-numeric: tabular-nums; white-space: nowrap; transform-origin: 0% 50%; }
+    [class~="f04-on-youtube-textpill"] { padding: 0 22px 0 18px; gap: 8px; }
+    [class~="f04-on-youtube-more"] { width: 48px; justify-content: center; }
+
+    [class~="f04-on-youtube-fx"] { position: absolute; z-index: 2; left: 0; top: 0; width: 1080px; height: 1080px; pointer-events: none; }
+    [class~="f04-on-youtube-ring"] { position: absolute; left: 264px; top: 824px; width: 128px; height: 60px; border-radius: 999px; border: 1.4px solid #FFC800; opacity: 0; }
+    [class~="f04-on-youtube-ripple"] { position: absolute; left: 254px; top: 814px; width: 80px; height: 80px; border-radius: 50%; border: 1.2px solid rgba(241, 241, 241, 0.9); opacity: 0; }
+    [class~="f04-on-youtube-sparks"] { position: absolute; left: 294px; top: 854px; width: 0; height: 0; }
+    [class~="f04-on-youtube-spark"] { position: absolute; top: -1px; height: 2px; border-radius: 1px; background: #FFC800; transform-origin: 100% 50%; opacity: 0; }
+    [class~="f04-on-youtube-cursor"] { position: absolute; z-index: 3; left: -5.667px; top: -3.542px; width: 34px; height: 34px; transform-origin: 5.667px 3.542px; pointer-events: none; }
+    [class~="f04-on-youtube-cursor"] svg { display: block; width: 34px; height: 34px; overflow: visible; }
+
+    [id="f04-on-youtube-headline"] { position: absolute; inset: 0; pointer-events: none; }
+    [class~="f04-on-youtube-hl-row"] { position: absolute; left: 90px; top: 38px; height: 100px; display: flex; align-items: center; gap: 22px; }
+    [class~="f04-on-youtube-hl-logo"] { display: block; flex: none; position: relative; top: 11px; width: 56px; height: 39.375px; }
+    [class~="f04-on-youtube-hl-text"] { font-family: "Barlow", sans-serif; font-weight: 900; font-size: 80px; line-height: 1; letter-spacing: -0.035em; color: #F0ECE5; white-space: nowrap; text-transform: lowercase; }
+    [class~="f04-on-youtube-hl-word"] { display: inline-block; }
+  </style>
+
+  <div data-hf-id="hf-s97e" id="root" data-composition-id="04-on-youtube" data-start="0" data-duration="6.4" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-5t40" id="f04-on-youtube-ground" class="clip" data-start="0" data-duration="6.4" data-track-index="0"></div>
+
+    <div data-hf-id="hf-nkra" id="f04-on-youtube-scene" class="clip" data-start="0" data-duration="6.4" data-track-index="1">
+      <div data-hf-id="hf-nnt3" id="f04-on-youtube-world" data-layout-allow-overflow="">
+        <div data-hf-id="hf-qlcs" class="f04-on-youtube-player" data-dof-depth="3">
+          <img data-hf-id="hf-1jn2" class="f04-on-youtube-still" src="assets/yt-video-still.svg" alt="">
+          <div data-hf-id="hf-z2e0" class="f04-on-youtube-progress">
+            <div data-hf-id="hf-k0ef" class="f04-on-youtube-buffer"></div>
+            <div data-hf-id="hf-jvy6" id="f04-on-youtube-played" class="f04-on-youtube-played"></div>
+            <div data-hf-id="hf-pt6k" id="f04-on-youtube-scrubber" class="f04-on-youtube-scrubber"></div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-sk5i" class="f04-on-youtube-title" data-dof-depth="3">late night loops — live session #47</div>
+
+        <div data-hf-id="hf-69rx" class="f04-on-youtube-channel" data-dof-depth="2">
+          <img data-hf-id="hf-mjz6" class="f04-on-youtube-avatar" src="assets/yt-channel-avatar.svg" alt="">
+          <div data-hf-id="hf-u9im" class="f04-on-youtube-channel-text">
+            <div data-hf-id="hf-c6pb" class="f04-on-youtube-channel-name">Nova Loops</div>
+            <div data-hf-id="hf-bv1r" class="f04-on-youtube-channel-subs">182K subscribers</div>
+          </div>
+          <div data-hf-id="hf-zyad" class="f04-on-youtube-subscribe">Subscribe</div>
+        </div>
+
+        <div data-hf-id="hf-72hi" class="f04-on-youtube-actions">
+          <div data-hf-id="hf-5bhp" class="f04-on-youtube-pill f04-on-youtube-likes" data-dof-depth="1">
+            <div data-hf-id="hf-p3fc" class="f04-on-youtube-seg-like">
+              <svg data-hf-id="hf-95l4" class="f04-on-youtube-icon" viewBox="0 0 24 24"><path data-hf-id="hf-jur8" d="M7 10v12" /><path data-hf-id="hf-lb3x" d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" /></svg>
+              <span data-hf-id="hf-m6c7" class="f04-on-youtube-label">24K</span>
+            </div>
+            <div data-hf-id="hf-ff5g" class="f04-on-youtube-divider"></div>
+            <div data-hf-id="hf-t9hu" class="f04-on-youtube-seg-dislike">
+              <svg data-hf-id="hf-p2ps" class="f04-on-youtube-icon" viewBox="0 0 24 24"><path data-hf-id="hf-kvn2" d="M17 14V2" /><path data-hf-id="hf-15ax" d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z" /></svg>
+            </div>
+          </div>
+          <div data-hf-id="hf-d5p2" id="f04-on-youtube-zap-pill" class="f04-on-youtube-pill f04-on-youtube-zap">
+            <div data-hf-id="hf-pnex" class="f04-on-youtube-zap-btn">
+              <svg data-hf-id="hf-215e" class="f04-on-youtube-bolt" viewBox="0 0 24 24"><path data-hf-id="hf-e6sx" d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800" /></svg>
+            </div>
+            <span data-hf-id="hf-clvu" id="f04-on-youtube-zap-count" class="f04-on-youtube-count">2,100</span>
+          </div>
+          <div data-hf-id="hf-nl8z" class="f04-on-youtube-pill f04-on-youtube-textpill" data-dof-depth="1">
+            <svg data-hf-id="hf-nvsp" class="f04-on-youtube-icon" viewBox="0 0 24 24"><path data-hf-id="hf-ei2c" d="m15 17 5-5-5-5" /><path data-hf-id="hf-77kj" d="M4 18v-2a4 4 0 0 1 4-4h12" /></svg>
+            <span data-hf-id="hf-iabv" class="f04-on-youtube-label">Share</span>
+          </div>
+          <div data-hf-id="hf-4xwz" class="f04-on-youtube-pill f04-on-youtube-textpill" data-dof-depth="1">
+            <svg data-hf-id="hf-oa3q" class="f04-on-youtube-icon" viewBox="0 0 24 24"><path data-hf-id="hf-l57f" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path data-hf-id="hf-2gea" d="m7 10 5 5 5-5" /><path data-hf-id="hf-orut" d="M12 15V3" /></svg>
+            <span data-hf-id="hf-3ib4" class="f04-on-youtube-label">Download</span>
+          </div>
+          <div data-hf-id="hf-wsmm" class="f04-on-youtube-pill f04-on-youtube-more" data-dof-depth="1">
+            <svg data-hf-id="hf-n36n" class="f04-on-youtube-icon" viewBox="0 0 24 24"><circle data-hf-id="hf-0b8o" cx="5" cy="12" r="1.3" fill="currentColor" /><circle data-hf-id="hf-8w9g" cx="12" cy="12" r="1.3" fill="currentColor" /><circle data-hf-id="hf-ix17" cx="19" cy="12" r="1.3" fill="currentColor" /></svg>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-ksya" class="f04-on-youtube-fx" data-layout-ignore="">
+          <div data-hf-id="hf-gkv4" id="f04-on-youtube-ring" class="f04-on-youtube-ring"></div>
+          <div data-hf-id="hf-ded0" id="f04-on-youtube-ripple" class="f04-on-youtube-ripple"></div>
+          <div data-hf-id="hf-trlr" class="f04-on-youtube-sparks">
+            <div data-hf-id="hf-ln0u" id="f04-on-youtube-spark-0" class="f04-on-youtube-spark" style="width: 8px; left: -8px"></div>
+            <div data-hf-id="hf-zcjj" id="f04-on-youtube-spark-1" class="f04-on-youtube-spark" style="width: 11px; left: -11px"></div>
+            <div data-hf-id="hf-bcjo" id="f04-on-youtube-spark-2" class="f04-on-youtube-spark" style="width: 14px; left: -14px"></div>
+            <div data-hf-id="hf-nfbr" id="f04-on-youtube-spark-3" class="f04-on-youtube-spark" style="width: 8px; left: -8px"></div>
+            <div data-hf-id="hf-c7e0" id="f04-on-youtube-spark-4" class="f04-on-youtube-spark" style="width: 11px; left: -11px"></div>
+            <div data-hf-id="hf-lid5" id="f04-on-youtube-spark-5" class="f04-on-youtube-spark" style="width: 14px; left: -14px"></div>
+            <div data-hf-id="hf-jqpc" id="f04-on-youtube-spark-6" class="f04-on-youtube-spark" style="width: 8px; left: -8px"></div>
+            <div data-hf-id="hf-kkgp" id="f04-on-youtube-spark-7" class="f04-on-youtube-spark" style="width: 11px; left: -11px"></div>
+            <div data-hf-id="hf-tbym" id="f04-on-youtube-spark-8" class="f04-on-youtube-spark" style="width: 14px; left: -14px"></div>
+            <div data-hf-id="hf-xull" id="f04-on-youtube-spark-9" class="f04-on-youtube-spark" style="width: 8px; left: -8px"></div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-ku8b" id="f04-on-youtube-cursor" class="f04-on-youtube-cursor" data-layout-ignore="">
+          <svg data-hf-id="hf-ulu9" viewBox="0 0 24 24"><path data-hf-id="hf-1ek1" fill="#FFFFFF" stroke="#0A0A0A" stroke-width="1.4" stroke-linejoin="round" d="M4 2.5v17.2l4.6-4.4 3 6.7 3.1-1.4-3-6.6h6.4Z" /></svg>
+        </div>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-ovb3" id="f04-on-youtube-headline" class="clip" data-start="0" data-duration="6.4" data-track-index="2">
+      <div data-hf-id="hf-4ogi" class="f04-on-youtube-hl-row">
+        <img data-hf-id="hf-9s5o" id="f04-on-youtube-hl-logo" class="f04-on-youtube-hl-logo" src="assets/youtube-logo.svg" alt="">
+        <div data-hf-id="hf-yvd7" class="f04-on-youtube-hl-text"><span data-hf-id="hf-8cr3" id="f04-on-youtube-hl-w1" class="f04-on-youtube-hl-word">right</span> <span data-hf-id="hf-tj3t" id="f04-on-youtube-hl-w2" class="f04-on-youtube-hl-word">on</span> <span data-hf-id="hf-21t0" id="f04-on-youtube-hl-w3" class="f04-on-youtube-hl-word">youtube.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var el = function (name) { return document.getElementById("f04-on-youtube-" + name); };
+      var tl = gsap.timeline({ paused: true });
+
+      var world = el("world"), pill = el("zap-pill"), count = el("zap-count"), cursor = el("cursor");
+      var ring = el("ring"), ripple = el("ripple"), played = el("played"), scrubber = el("scrubber");
+      var PILL_BG = "rgba(255,255,255,0.1)", PILL_HOVER = "rgba(255,255,255,0.2)";
+
+      // Native tweens only, no onUpdate writes: the runtime's two-pass seek skips the
+      // callbacks of already-completed tweens, which leaves callback-driven state stale.
+
+      // Camera: the zap pill's locked-layout centre (world px), framed at S0 with T = -offset * S0.
+      var PILL_X = 328, PILL_Y = 854, S0 = 5;
+      var T0X = -(PILL_X - 540) * S0, T0Y = -(PILL_Y - 540) * S0;
+
+      // Cursor tip positions (world px): off-frame right at the open, the bolt, beside the pill.
+      var TIP_IN = { x: 452, y: 897 }, TIP_CLICK = { x: 294, y: 855 }, TIP_REST = { x: 392, y: 858 };
+
+      // Scene 1 — cursor glides in, hovers the pill, clicks on the 0.5s beat.
+      tl.fromTo(cursor, { x: TIP_IN.x, y: TIP_IN.y }, { x: TIP_CLICK.x, y: TIP_CLICK.y, duration: 0.42, ease: "power3.out", force3D: false }, 0);
+      tl.fromTo(pill, { backgroundColor: PILL_BG }, { backgroundColor: PILL_HOVER, duration: 0.15, ease: "power1.out" }, 0.1);
+      tl.fromTo(cursor, { scale: 1 }, { scale: 0.85, duration: 0.08, ease: "power2.in", force3D: false }, 0.5);
+      tl.fromTo(cursor, { scale: 0.85 }, { scale: 1, duration: 0.1, ease: "power2.out", force3D: false, immediateRender: false }, 0.58);
+      tl.fromTo(pill, { scale: 1 }, { scale: 0.95, duration: 0.08, ease: "power2.in", force3D: false }, 0.5);
+      tl.fromTo(pill, { scale: 0.95 }, { scale: 1, duration: 0.1, ease: "power2.out", force3D: false, immediateRender: false }, 0.58);
+      tl.fromTo(ripple, { scale: 0.2 }, { scale: 1, duration: 0.6, ease: "power2.out", force3D: false }, 0.52);
+      tl.fromTo(ripple, { opacity: 0 }, { opacity: 0.85, duration: 0.03, ease: "none" }, 0.52);
+      tl.fromTo(ripple, { opacity: 0.85 }, { opacity: 0, duration: 0.57, ease: "power2.out", immediateRender: false }, 0.55);
+
+      // Scene 2 — the count rolls 2,100 → 3,100 while growing into its slot; sparks + one ring pulse.
+      tl.fromTo(count, { textContent: 2100 }, {
+        textContent: 3100, duration: 0.6, ease: "power3.out", immediateRender: false,
+        modifiers: { textContent: function (v) { return Math.round(parseFloat(v)).toLocaleString("en-US"); } }
+      }, 1.0);
+      tl.fromTo(count, { scale: 0.84 }, { scale: 1, duration: 0.6, ease: "power3.out", force3D: false }, 1.0);
+      tl.fromTo(ring, { scale: 0.96 }, { scale: 1.3, duration: 0.75, ease: "power2.out", force3D: false }, 1.0);
+      tl.fromTo(ring, { opacity: 0 }, { opacity: 1, duration: 0.06, ease: "none" }, 1.0);
+      tl.fromTo(ring, { opacity: 1 }, { opacity: 0, duration: 0.64, ease: "power2.out", immediateRender: false }, 1.1);
+      for (var i = 0; i < 10; i++) {
+        var spark = el("spark-" + i);
+        var deg = 40 + (i * 280) / 9 + (((i * 7) % 5) - 2) * 3;
+        var rad = (deg * Math.PI) / 180;
+        var reach = 40 + ((i * 3) % 4) * 7;
+        var at = 1.0 + ((i * 5) % 4) * 0.015;
+        tl.fromTo(spark, { x: Math.cos(rad) * 14, y: Math.sin(rad) * 14, rotation: deg, scaleX: 1 }, { x: Math.cos(rad) * reach, y: Math.sin(rad) * reach, scaleX: 0.2, duration: 0.7, ease: "power3.out", force3D: false }, at);
+        tl.fromTo(spark, { opacity: 0 }, { opacity: 1, duration: 0.04, ease: "none" }, at);
+        tl.fromTo(spark, { opacity: 1 }, { opacity: 0, duration: 0.45, ease: "power2.in", immediateRender: false }, 1.35);
+      }
+
+      // Scene 3 — the one decelerating zoom-out to the locked wide; no camera tween after 3.0s.
+      // Off-focus layers open blurred + dimmed (blur in world px, deeper = softer) and refocus with the pull.
+      tl.fromTo(world, { x: T0X, y: T0Y, scale: S0 }, { x: 0, y: 0, scale: 1, duration: 1.0, ease: "expo.out", force3D: false }, 2.0);
+      Array.prototype.forEach.call(world.querySelectorAll("[data-dof-depth]"), function (layer) {
+        var blur = 1.6 * Number(layer.getAttribute("data-dof-depth"));
+        tl.fromTo(layer, { "--dof": blur + "px", opacity: 0.55 }, { "--dof": "0px", opacity: 1, duration: 1.0, ease: "expo.out" }, 2.0);
+      });
+
+      // Scene 4 — element motion only: headline words on the beat, progress creep, cursor drifts to rest.
+      var rise = function () { return { y: 0, opacity: 1, duration: 0.6, ease: "power3.out", force3D: false }; };
+      tl.fromTo([el("hl-logo"), el("hl-w1")], { y: 34, opacity: 0 }, rise(), 3.0);
+      tl.fromTo(el("hl-w2"), { y: 34, opacity: 0 }, rise(), 3.25);
+      tl.fromTo(el("hl-w3"), { y: 34, opacity: 0 }, rise(), 3.5);
+      tl.fromTo(played, { scaleX: 0.38 }, { scaleX: 0.4, duration: 3.0, ease: "none", force3D: false }, 3.0);
+      tl.fromTo(scrubber, { x: 0.38 * 864 }, { x: 0.4 * 864, duration: 3.0, ease: "none", force3D: false }, 3.0);
+      tl.fromTo(cursor, { x: TIP_CLICK.x, y: TIP_CLICK.y }, { x: TIP_REST.x, y: TIP_REST.y, duration: 1.0, ease: "power2.inOut", force3D: false, immediateRender: false }, 3.75);
+      tl.fromTo(pill, { backgroundColor: PILL_HOVER }, { backgroundColor: PILL_BG, duration: 0.2, ease: "power1.out", immediateRender: false }, 4.58);
+
+      window.__timelines["04-on-youtube"] = tl;
+    })();
+  </script>
+</template>

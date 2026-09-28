@@ -1,0 +1,232 @@
+<template>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    @font-face {
+      font-family: "Barlow";
+      src: url("assets/fonts/Barlow-900.woff2") format("woff2");
+      font-weight: 900;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Barlow";
+      src: url("assets/fonts/Barlow-600.woff2") format("woff2");
+      font-weight: 600;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      src: url("assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+      font-weight: 500;
+      font-style: normal;
+      font-display: block;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      color: #f0ece5;
+      font-family: "Barlow", sans-serif;
+    }
+    .f06-get-it-ground {
+      position: absolute;
+      inset: 0;
+      background: #0a0a0a;
+    }
+    .f06-get-it-mark {
+      position: absolute;
+      left: 390px;
+      top: 152px;
+      width: 300px;
+      height: 300px;
+    }
+    .f06-get-it-bolt {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .f06-get-it-wordmark {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 470px;
+      margin: 0;
+      text-align: center;
+      font-weight: 900;
+      font-size: 108px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+    .f06-get-it-word {
+      display: inline-block;
+    }
+    .f06-get-it-zap {
+      color: #ffc800;
+    }
+    .f06-get-it-avail {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 642px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      font-weight: 600;
+      font-size: 44px;
+      line-height: 1;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    .f06-get-it-x-logo {
+      display: block;
+      width: auto;
+      height: 40px;
+      margin-top: 4px;
+    }
+    .f06-get-it-yt-logo {
+      display: block;
+      width: 44px;
+      height: auto;
+      margin-top: 4px;
+    }
+    .f06-get-it-url {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 720px;
+      text-align: center;
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 34px;
+      line-height: 40px;
+      color: #888880;
+      white-space: nowrap;
+    }
+    .f06-get-it-url-box {
+      position: relative;
+      display: inline-block;
+    }
+    .f06-get-it-url-ghost {
+      visibility: hidden;
+    }
+    .f06-get-it-url-typed {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+    .f06-get-it-caret {
+      display: inline-block;
+      width: 0.3em;
+      height: 0.92em;
+      margin-left: 0.08em;
+      vertical-align: -0.14em;
+      background: #ffc800;
+      opacity: 0;
+    }
+  </style>
+  <div data-hf-id="hf-89bm" id="root" data-composition-id="06-get-it" data-width="1080" data-height="1080" data-duration="4.5">
+    <div data-hf-id="hf-08kz" id="f06-get-it-ground" class="clip f06-get-it-ground" data-start="0" data-duration="4.5" data-track-index="0"></div>
+    <div data-hf-id="hf-sbbc" id="f06-get-it-mark" class="f06-get-it-mark">
+      <svg data-hf-id="hf-lp1i" class="f06-get-it-bolt" viewBox="-0.5 0 24 24" aria-hidden="true">
+        <defs data-hf-id="hf-mh0t">
+          <clippath data-hf-id="hf-1acd" id="f06-get-it-bolt-clip">
+            <path data-hf-id="hf-82nb" d="M13 2L3 14h7v8l10-12h-7z" />
+          </clippath>
+        </defs>
+        <path data-hf-id="hf-jgb2" id="f06-get-it-bolt-fill" d="M13 2L3 14h7v8l10-12h-7z" fill="#FFC800" />
+        <g data-hf-id="hf-vbo1" clip-path="url(#f06-get-it-bolt-clip)" fill="none" stroke="#FFC800" stroke-width="1.28" stroke-linecap="butt" stroke-linejoin="miter">
+          <path data-hf-id="hf-bjoz" id="f06-get-it-bolt-left" d="M13 2L3 14h7v8" />
+          <path data-hf-id="hf-7qtd" id="f06-get-it-bolt-right" d="M13 2v8h7L10 22" />
+        </g>
+      </svg>
+    </div>
+    <p data-hf-id="hf-gosn" id="f06-get-it-wordmark" class="f06-get-it-wordmark">
+      <span data-hf-id="hf-4lhb" class="f06-get-it-word">nostr</span>
+      <span data-hf-id="hf-2yko" class="f06-get-it-word">like</span>
+      <span data-hf-id="hf-1fhz" class="f06-get-it-word">&amp;</span>
+      <span data-hf-id="hf-9avn" class="f06-get-it-word f06-get-it-zap">zap</span>
+    </p>
+    <div data-hf-id="hf-u4yq" id="f06-get-it-avail" class="f06-get-it-avail">
+      <span data-hf-id="hf-3e79">free browser extension for</span>
+      <img data-hf-id="hf-drjx" class="f06-get-it-x-logo" src="assets/x-logo.svg" alt="X">
+      <span data-hf-id="hf-m5fp">&amp;</span>
+      <img data-hf-id="hf-aszk" class="f06-get-it-yt-logo" src="assets/youtube-logo.svg" alt="YouTube">
+    </div>
+    <div data-hf-id="hf-wt7z" class="f06-get-it-url">
+      <span data-hf-id="hf-5nxi" class="f06-get-it-url-box">
+        <span data-hf-id="hf-aub3" class="f06-get-it-url-ghost" aria-hidden="true">github.com/saiy2k/nostr-components</span>
+        <span data-hf-id="hf-kftt" class="f06-get-it-url-typed"><span data-hf-id="hf-jhmv" id="f06-get-it-url-text"></span><span data-hf-id="hf-pjjz" id="f06-get-it-caret" class="f06-get-it-caret"></span></span>
+      </span>
+    </div>
+  </div>
+  <script>
+    const DURATION = 4.5;
+    const tl = gsap.timeline({ paused: true });
+
+    const mark = document.getElementById("f06-get-it-mark");
+    const boltFill = document.getElementById("f06-get-it-bolt-fill");
+    const boltHalves = [
+      document.getElementById("f06-get-it-bolt-left"),
+      document.getElementById("f06-get-it-bolt-right"),
+    ];
+    const words = Array.from(document.getElementById("f06-get-it-wordmark").children);
+    const avail = document.getElementById("f06-get-it-avail");
+    const urlText = document.getElementById("f06-get-it-url-text");
+    const caret = document.getElementById("f06-get-it-caret");
+
+    // 30.63 is the exact length of each half outline, used only if getTotalLength() returns 0.
+    boltHalves.forEach((half) => {
+      const len = half.getTotalLength() || 30.63;
+      half.style.strokeDasharray = len + " " + len;
+      half.style.strokeDashoffset = String(len);
+      tl.fromTo(half, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.7, ease: "power2.out" }, 0);
+    });
+    tl.fromTo(boltFill, { fillOpacity: 0 }, { fillOpacity: 1, duration: 0.2, ease: "power1.out" }, 0.7);
+    tl.fromTo(mark, { scale: 1.04 }, { scale: 1, duration: 0.6, ease: "power3.out" }, 1.0);
+
+    words.forEach((word, i) => {
+      tl.fromTo(word, { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out" }, 1.0 + i * 0.2);
+    });
+
+    tl.fromTo(avail, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 2.0);
+
+    const URL_TEXT = "github.com/saiy2k/nostr-components";
+    const TYPE_START = 2.5;
+    const TYPE_END = 3.2;
+    const EPS = 1e-6;
+    const SEQUENCE = [{ t: 0, text: "" }];
+    for (let i = 1; i <= URL_TEXT.length; i++) {
+      SEQUENCE.push({
+        t: TYPE_START + ((i - 1) / (URL_TEXT.length - 1)) * (TYPE_END - TYPE_START),
+        text: URL_TEXT.slice(0, i),
+      });
+    }
+    function textAt(time) {
+      for (let i = SEQUENCE.length - 1; i >= 0; i--) {
+        if (time + EPS >= SEQUENCE[i].t) return SEQUENCE[i].text;
+      }
+      return "";
+    }
+    const driver = { t: 0 };
+    tl.to(
+      driver,
+      {
+        t: DURATION,
+        duration: DURATION,
+        ease: "none",
+        onUpdate: () => {
+          urlText.textContent = textAt(driver.t);
+          caret.style.opacity = driver.t + EPS >= TYPE_START && driver.t + EPS < TYPE_END ? "1" : "0";
+        },
+      },
+      0,
+    );
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines["06-get-it"] = tl;
+  </script>
+</template>

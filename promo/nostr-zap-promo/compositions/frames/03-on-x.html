@@ -1,0 +1,330 @@
+<template>
+  <style>
+    @font-face { font-family: "Barlow"; src: url("assets/fonts/Barlow-900.woff2") format("woff2"); font-weight: 900; font-style: normal; font-display: block; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("assets/fonts/IBMPlexMono-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: block; }
+    @font-face { font-family: "Inter"; src: url("assets/fonts/Inter-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+    @font-face { font-family: "Inter"; src: url("assets/fonts/Inter-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
+    @font-face { font-family: "Inter"; src: url("assets/fonts/Inter-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: block; }
+
+    #root { position: absolute; inset: 0; width: 1080px; height: 1080px; overflow: hidden; }
+    #root, #root * { box-sizing: border-box; margin: 0; padding: 0; }
+    #root .clip { position: absolute; inset: 0; }
+
+    #f03-on-x-ground { z-index: 1; background: #0A0A0A; }
+    #f03-on-x-head-clip { z-index: 2; }
+    #f03-on-x-page { z-index: 3; }
+    #f03-on-x-strike { z-index: 4; }
+    #f03-on-x-bolt-clip { z-index: 5; }
+    #f03-on-x-modal { z-index: 6; }
+    #f03-on-x-pointer { z-index: 7; }
+
+    #f03-on-x-headline { position: absolute; left: 0; top: 0; width: 1080px; height: 180px; }
+    #f03-on-x-xlogo { position: absolute; left: 80px; top: 79px; width: 48px; height: 49px; display: block; }
+    #f03-on-x-headtext { position: absolute; left: 152px; top: 58px; height: 80px; font: 900 80px/80px "Barlow", sans-serif; letter-spacing: -0.03em; color: #F0ECE5; white-space: nowrap; }
+
+    #f03-on-x-card { position: absolute; left: 80px; top: 190px; width: 920px; height: 690px; background: #000000; border: 2px solid #2F3336; border-radius: 32px; }
+    #f03-on-x-avatar { position: absolute; left: 114px; top: 216px; width: 80px; height: 80px; border-radius: 50%; display: block; }
+    #f03-on-x-nameline { position: absolute; left: 210px; top: 216px; height: 40px; display: flex; align-items: center; white-space: nowrap; }
+    #f03-on-x-name { font: 700 30px/40px "Inter", sans-serif; color: #E7E9EA; }
+    #f03-on-x-badge { width: 28px; height: 28px; margin-left: 4px; display: block; }
+    #f03-on-x-handle { margin-left: 8px; font: 400 30px/40px "Inter", sans-serif; color: #71767B; }
+    #f03-on-x-more { position: absolute; left: 928px; top: 217px; width: 38px; height: 38px; fill: #71767B; }
+    #f03-on-x-posttext { position: absolute; left: 210px; top: 258px; width: 756px; font: 400 30px/40px "Inter", sans-serif; color: #E7E9EA; }
+    #f03-on-x-media { position: absolute; left: 210px; top: 362px; width: 756px; height: 425px; border: 1px solid #2F3336; border-radius: 32px; object-fit: cover; display: block; }
+
+    .f03-on-x-icon { position: absolute; top: 817px; width: 38px; height: 38px; fill: none; stroke: #71767B; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .f03-on-x-count { position: absolute; top: 816px; height: 40px; font: 400 26px/40px "Inter", sans-serif; color: #71767B; white-space: nowrap; }
+    #f03-on-x-disc { position: absolute; left: 580px; top: 802px; width: 68px; height: 68px; border-radius: 50%; background: rgba(255, 200, 0, 0.12); transform-origin: 50% 50%; }
+    #f03-on-x-zapcount { position: absolute; left: 650px; top: 816px; height: 40px; font: 500 26px/40px "Inter", sans-serif; font-variant-numeric: tabular-nums; color: #FFC800; white-space: nowrap; opacity: 0; }
+
+    #f03-on-x-strike-mask { position: absolute; inset: 0; clip-path: circle(1050px at 614px 836px); }
+    #f03-on-x-strike-fill { position: absolute; inset: 0; background: #FFC800; }
+    #f03-on-x-zapit { position: absolute; left: 0; top: 535px; width: 1080px; height: 210px; text-align: center; font: 900 210px/210px "Barlow", sans-serif; letter-spacing: -0.04em; color: #0A0A0A; white-space: nowrap; }
+    #f03-on-x-kicker { position: absolute; left: 0; top: 785px; width: 1080px; height: 30px; text-align: center; font: 600 30px/30px "IBM Plex Mono", monospace; letter-spacing: 0.14em; color: rgba(17, 17, 17, 0.75); white-space: nowrap; }
+
+    #f03-on-x-bolt { position: absolute; left: 340px; top: 130px; width: 400px; height: 400px; transform-origin: 50% 50%; }
+    #f03-on-x-bolt svg { position: absolute; left: 0; top: 0; width: 400px; height: 400px; display: block; }
+
+    #f03-on-x-backdrop { position: absolute; left: 80px; top: 190px; width: 920px; height: 690px; border-radius: 32px; background: rgba(0, 0, 0, 0.5); opacity: 0; }
+    #f03-on-x-dialog-pos { position: absolute; left: 140px; top: 162px; width: 800px; height: 728px; transform-origin: 50% 50%; }
+    #f03-on-x-dialog { position: absolute; left: 0; top: 0; width: 800px; height: 728px; background: #1a1a1a; border-radius: 20px; overflow: hidden; opacity: 0; color: #FFFFFF; font-family: "Inter", sans-serif; }
+    #f03-on-x-dtitle { position: absolute; left: 40px; top: 40px; height: 88px; font: 700 40px/88px "Inter", sans-serif; color: #FFFFFF; white-space: nowrap; }
+    #f03-on-x-close { position: absolute; left: 672px; top: 40px; width: 88px; height: 88px; border-radius: 50%; background: #333333; }
+    #f03-on-x-close svg { position: absolute; left: 29px; top: 29px; width: 30px; height: 30px; display: block; }
+    .f03-on-x-amt { position: absolute; top: 148px; width: 230px; height: 72px; border: 2px solid #3a3a3a; border-radius: 12px; background: #262626; transform-origin: 50% 50%; }
+    .f03-on-x-amt-on { position: absolute; inset: 0; border-radius: 10px; background: #7f00ff; opacity: 0; }
+    .f03-on-x-amt-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font: 500 28px/1 "Inter", sans-serif; color: #FFFFFF; white-space: nowrap; }
+    .f03-on-x-amt-label svg { width: 26px; height: 26px; display: block; }
+    #f03-on-x-qr { position: absolute; left: 250px; top: 240px; width: 300px; height: 300px; border: 2px solid #3a3a3a; border-radius: 16px; background: #262626; overflow: hidden; }
+    #f03-on-x-qr-svg { position: absolute; left: 0; top: 0; width: 296px; height: 296px; display: block; }
+    #f03-on-x-copy { position: absolute; left: 0; top: 550px; width: 800px; height: 40px; text-align: center; font: 500 28px/40px "Inter", sans-serif; color: #7f00ff; }
+    #f03-on-x-open { position: absolute; left: 40px; top: 600px; width: 720px; height: 88px; border-radius: 12px; background: #7f00ff; text-align: center; font: 700 32px/88px "Inter", sans-serif; color: #FFFFFF; transform-origin: 50% 50%; }
+    #f03-on-x-success-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); opacity: 0; }
+    #f03-on-x-sparks { position: absolute; inset: 0; }
+    .f03-on-x-spark { position: absolute; left: 382px; top: 346px; width: 36px; height: 36px; transform-origin: 50% 50%; }
+    .f03-on-x-spark svg { width: 36px; height: 36px; display: block; opacity: 0; }
+    #f03-on-x-thanks { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 16px; transform-origin: 50% 50%; opacity: 0; }
+    #f03-on-x-thanks svg { width: 56px; height: 56px; display: block; }
+    #f03-on-x-thanks span { font: 700 48px/1 "Inter", sans-serif; color: #FFFFFF; white-space: nowrap; }
+
+    .f03-on-x-ripple { position: absolute; left: 580px; top: 802px; width: 68px; height: 68px; border: 3px solid #FFC800; border-radius: 50%; transform-origin: 50% 50%; opacity: 0; }
+    #f03-on-x-cursor { position: absolute; left: -8px; top: -5px; width: 48px; height: 48px; transform-origin: 8px 5px; }
+    #f03-on-x-cursor svg { width: 48px; height: 48px; display: block; overflow: visible; }
+  </style>
+
+  <div data-hf-id="hf-zjlo" id="root" data-composition-id="03-on-x" data-start="0" data-duration="7.5" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-4gie" id="f03-on-x-ground" class="clip" data-start="0" data-duration="7.5" data-track-index="0"></div>
+
+    <div data-hf-id="hf-3pi1" id="f03-on-x-head-clip" class="clip" data-start="0" data-duration="7.5" data-track-index="1">
+      <div data-hf-id="hf-eg1w" id="f03-on-x-headline">
+        <img data-hf-id="hf-ffsi" id="f03-on-x-xlogo" src="assets/x-logo.svg" alt="">
+        <div data-hf-id="hf-wmha" id="f03-on-x-headtext">right on x.</div>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-jzuk" id="f03-on-x-page" class="clip" data-start="0" data-duration="7.5" data-track-index="2">
+      <div data-hf-id="hf-4fdy" id="f03-on-x-card"></div>
+      <img data-hf-id="hf-i7fn" id="f03-on-x-avatar" src="assets/x-creator-avatar.svg" alt="">
+      <div data-hf-id="hf-sijz" id="f03-on-x-nameline">
+        <span data-hf-id="hf-kxdb" id="f03-on-x-name" data-layout-allow-overlap="">Mira Okafor</span>
+        <svg data-hf-id="hf-9mgn" id="f03-on-x-badge" viewBox="0 0 24 24"><path data-hf-id="hf-28x5" fill="#1D9BF0" d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /><path data-hf-id="hf-6xz8" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4" /></svg>
+        <span data-hf-id="hf-wpc8" id="f03-on-x-handle" data-layout-allow-overlap="">@miradraws · 2h</span>
+      </div>
+      <svg data-hf-id="hf-u2mr" id="f03-on-x-more" viewBox="0 0 24 24"><circle data-hf-id="hf-x96z" cx="5" cy="12" r="1.6" /><circle data-hf-id="hf-1z27" cx="12" cy="12" r="1.6" /><circle data-hf-id="hf-9lnk" cx="19" cy="12" r="1.6" /></svg>
+      <div data-hf-id="hf-z2pg" id="f03-on-x-posttext" data-layout-allow-overlap="">finished “last light” — three weekends of work. worth&#160;it?</div>
+      <img data-hf-id="hf-4y1j" id="f03-on-x-media" src="assets/x-post-artwork.svg" alt="">
+
+      <svg data-hf-id="hf-prpz" id="f03-on-x-reply" class="f03-on-x-icon" style="left: 210px" viewBox="0 0 24 24"><path data-hf-id="hf-2fyj" d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
+      <span data-hf-id="hf-kn9t" class="f03-on-x-count" data-layout-allow-overlap="" style="left: 256px">248</span>
+      <svg data-hf-id="hf-wdey" id="f03-on-x-repost" class="f03-on-x-icon" style="left: 328px" viewBox="0 0 24 24"><path data-hf-id="hf-nb9t" d="m2 9 3-3 3 3" /><path data-hf-id="hf-rdwb" d="M13 18H7a2 2 0 0 1-2-2V6" /><path data-hf-id="hf-ajrw" d="m22 15-3 3-3-3" /><path data-hf-id="hf-si6g" d="M11 6h6a2 2 0 0 1 2 2v10" /></svg>
+      <span data-hf-id="hf-gp94" class="f03-on-x-count" data-layout-allow-overlap="" style="left: 374px">1.2K</span>
+      <svg data-hf-id="hf-tkyh" id="f03-on-x-heart" class="f03-on-x-icon" style="left: 450px" viewBox="0 0 24 24"><path data-hf-id="hf-nupe" fill="#F91880" stroke="none" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
+      <span data-hf-id="hf-9cv6" class="f03-on-x-count" data-layout-allow-overlap="" style="left: 496px; color: #F91880">12.4K</span>
+      <div data-hf-id="hf-9m6z" id="f03-on-x-disc"></div>
+      <span data-hf-id="hf-bkpl" id="f03-on-x-zapcount">0</span>
+      <svg data-hf-id="hf-p2lg" id="f03-on-x-views" class="f03-on-x-icon" style="left: 750px" viewBox="0 0 24 24"><path data-hf-id="hf-ecj3" d="M18 20V10" /><path data-hf-id="hf-1rza" d="M12 20V4" /><path data-hf-id="hf-ride" d="M6 20v-6" /></svg>
+      <span data-hf-id="hf-spcs" class="f03-on-x-count" data-layout-allow-overlap="" style="left: 796px">96K</span>
+      <svg data-hf-id="hf-7ov9" id="f03-on-x-bookmark" class="f03-on-x-icon" style="left: 872px" viewBox="0 0 24 24"><path data-hf-id="hf-tqq5" d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" /></svg>
+      <svg data-hf-id="hf-rz08" id="f03-on-x-share" class="f03-on-x-icon" style="left: 928px" viewBox="0 0 24 24"><path data-hf-id="hf-d579" d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path data-hf-id="hf-wrs7" d="m16 6-4-4-4 4" /><path data-hf-id="hf-g4re" d="M12 2v13" /></svg>
+    </div>
+
+    <div data-hf-id="hf-4c2n" id="f03-on-x-strike" class="clip" data-start="0" data-duration="1" data-track-index="3">
+      <div data-hf-id="hf-5j7j" id="f03-on-x-strike-mask">
+        <div data-hf-id="hf-5er0" id="f03-on-x-strike-fill"></div>
+        <div data-hf-id="hf-vx4w" id="f03-on-x-zapit">zap it.</div>
+        <div data-hf-id="hf-tz3o" id="f03-on-x-kicker">INSTANT BITCOIN TIPS</div>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-w1ad" id="f03-on-x-bolt-clip" class="clip" data-start="0" data-duration="7.5" data-track-index="4">
+      <div data-hf-id="hf-kuct" id="f03-on-x-bolt">
+        <svg data-hf-id="hf-xu5d" id="f03-on-x-bolt-lit" viewBox="0 0 24 24"><path data-hf-id="hf-e6sx" fill="#FFC800" d="M13 2L3 14h7v8l10-12h-7z" /></svg>
+        <svg data-hf-id="hf-aj2m" id="f03-on-x-bolt-ink" viewBox="0 0 24 24"><path data-hf-id="hf-r6ad" fill="#0A0A0A" d="M13 2L3 14h7v8l10-12h-7z" /></svg>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-9r67" id="f03-on-x-modal" class="clip" data-start="0" data-duration="7.5" data-track-index="5">
+      <div data-hf-id="hf-u7iy" id="f03-on-x-backdrop"></div>
+      <div data-hf-id="hf-y34x" id="f03-on-x-dialog-pos">
+        <div data-hf-id="hf-te10" id="f03-on-x-dialog">
+          <div data-hf-id="hf-b4ug" id="f03-on-x-dtitle">Send a Zap</div>
+          <div data-hf-id="hf-qmug" id="f03-on-x-close"><svg data-hf-id="hf-ulu9" viewBox="0 0 24 24"><path data-hf-id="hf-a0ya" fill="none" stroke="#999999" stroke-width="2.2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg></div>
+          <div data-hf-id="hf-0d25" id="f03-on-x-amt-21" class="f03-on-x-amt" style="left: 40px">
+            <div data-hf-id="hf-cokk" id="f03-on-x-amt-21-on" class="f03-on-x-amt-on" style="opacity: 1"></div>
+            <div data-hf-id="hf-8yfv" class="f03-on-x-amt-label">21<svg data-hf-id="hf-1tol" viewBox="0 0 24 24"><path data-hf-id="hf-d8md" fill="#FFC800" d="M13 2L3 14h7v8l10-12h-7z" /></svg></div>
+          </div>
+          <div data-hf-id="hf-llu4" id="f03-on-x-amt-100" class="f03-on-x-amt" style="left: 285px">
+            <div data-hf-id="hf-0pqh" class="f03-on-x-amt-label">100<svg data-hf-id="hf-30lo" viewBox="0 0 24 24"><path data-hf-id="hf-efjg" fill="#FFC800" d="M13 2L3 14h7v8l10-12h-7z" /></svg></div>
+          </div>
+          <div data-hf-id="hf-qtjn" id="f03-on-x-amt-1000" class="f03-on-x-amt" style="left: 530px">
+            <div data-hf-id="hf-l9fa" id="f03-on-x-amt-1000-on" class="f03-on-x-amt-on"></div>
+            <div data-hf-id="hf-e3jv" class="f03-on-x-amt-label">1000<svg data-hf-id="hf-2man" viewBox="0 0 24 24"><path data-hf-id="hf-e18f" fill="#FFC800" d="M13 2L3 14h7v8l10-12h-7z" /></svg></div>
+          </div>
+          <div data-hf-id="hf-puct" id="f03-on-x-qr"><svg data-hf-id="hf-7jt2" id="f03-on-x-qr-svg" viewBox="0 0 296 296" shape-rendering="crispEdges" /></div>
+          <div data-hf-id="hf-z679" id="f03-on-x-copy">Copy invoice</div>
+          <div data-hf-id="hf-834g" id="f03-on-x-open">Open in wallet</div>
+          <div data-hf-id="hf-yby8" id="f03-on-x-success-dim"></div>
+          <div data-hf-id="hf-dh4i" id="f03-on-x-sparks"></div>
+          <div data-hf-id="hf-6gb3" id="f03-on-x-thanks"><svg data-hf-id="hf-3t7q" viewBox="0 0 24 24"><path data-hf-id="hf-f85i" fill="#FFC800" d="M13 2L3 14h7v8l10-12h-7z" /></svg><span data-hf-id="hf-fgqf">Thank you!</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-lfao" id="f03-on-x-pointer" class="clip" data-start="0" data-duration="7.5" data-track-index="6">
+      <div data-hf-id="hf-c1yy" id="f03-on-x-ripple-a" class="f03-on-x-ripple"></div>
+      <div data-hf-id="hf-83ux" id="f03-on-x-ripple-b" class="f03-on-x-ripple"></div>
+      <div data-hf-id="hf-lzne" id="f03-on-x-cursor"><svg data-hf-id="hf-3ewp" viewBox="0 0 24 24"><path data-hf-id="hf-1ek1" fill="#FFFFFF" stroke="#0A0A0A" stroke-width="1.4" stroke-linejoin="round" d="M4 2.5v17.2l4.6-4.4 3 6.7 3.1-1.4-3-6.6h6.4Z" /></svg></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var byId = function (id) { return document.getElementById(id); };
+      var SVG_NS = "http://www.w3.org/2000/svg";
+      var BOLT_D = "M13 2L3 14h7v8l10-12h-7z";
+
+      var QR_N = 33, QR_MOD = 8, QR_QUIET = 16, QR_SIZE = 296;
+      function qrHash(r, c) {
+        var h = Math.imul(r + 1, 374761393) ^ Math.imul(c + 1, 668265263);
+        h = Math.imul(h ^ (h >>> 13), 1274126177);
+        return (h ^ (h >>> 16)) >>> 0;
+      }
+      function qrFinder(r, c, r0, c0) {
+        var y = r - r0, x = c - c0;
+        if (y < -1 || y > 7 || x < -1 || x > 7) return null;
+        if (y === -1 || y === 7 || x === -1 || x === 7) return false;
+        return y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4);
+      }
+      function qrDark(r, c) {
+        var corners = [[0, 0], [0, QR_N - 7], [QR_N - 7, 0]];
+        for (var k = 0; k < corners.length; k++) {
+          var f = qrFinder(r, c, corners[k][0], corners[k][1]);
+          if (f !== null) return f;
+        }
+        var ar = Math.abs(r - (QR_N - 7)), ac = Math.abs(c - (QR_N - 7));
+        if (ar <= 2 && ac <= 2) return Math.max(ar, ac) !== 1;
+        if (r === 6) return c % 2 === 0;
+        if (c === 6) return r % 2 === 0;
+        if (r === QR_N - 8 && c === 8) return true;
+        return (qrHash(r, c) & 1023) < 520;
+      }
+
+      var qrSvg = byId("f03-on-x-qr-svg");
+      var qrRows = [];
+      for (var r = 0; r < QR_N; r++) {
+        var row = document.createElementNS(SVG_NS, "g");
+        row.style.opacity = "0";
+        var y0 = r === 0 ? 0 : QR_QUIET + r * QR_MOD;
+        var y1 = r === QR_N - 1 ? QR_SIZE : QR_QUIET + (r + 1) * QR_MOD;
+        var strip = document.createElementNS(SVG_NS, "rect");
+        strip.setAttribute("x", "0");
+        strip.setAttribute("y", String(y0));
+        strip.setAttribute("width", String(QR_SIZE));
+        strip.setAttribute("height", String(y1 - y0));
+        strip.setAttribute("fill", "#FFFFFF");
+        row.appendChild(strip);
+        var d = "";
+        for (var c = 0; c < QR_N; ) {
+          if (!qrDark(r, c)) { c++; continue; }
+          var run = c;
+          while (c < QR_N && qrDark(r, c)) c++;
+          var w = (c - run) * QR_MOD;
+          d += "M" + (QR_QUIET + run * QR_MOD) + " " + (QR_QUIET + r * QR_MOD) + "h" + w + "v" + QR_MOD + "h-" + w + "z";
+        }
+        if (d) {
+          var modules = document.createElementNS(SVG_NS, "path");
+          modules.setAttribute("d", d);
+          modules.setAttribute("fill", "#000000");
+          row.appendChild(modules);
+        }
+        qrSvg.appendChild(row);
+        qrRows.push(row);
+      }
+
+      var sparkLayer = byId("f03-on-x-sparks");
+      var sparks = [];
+      for (var i = 0; i < 12; i++) {
+        var wrap = document.createElement("div");
+        wrap.className = "f03-on-x-spark";
+        var glyph = document.createElementNS(SVG_NS, "svg");
+        glyph.setAttribute("viewBox", "0 0 24 24");
+        var boltPath = document.createElementNS(SVG_NS, "path");
+        boltPath.setAttribute("d", BOLT_D);
+        boltPath.setAttribute("fill", "#FFC800");
+        glyph.appendChild(boltPath);
+        wrap.appendChild(glyph);
+        sparkLayer.appendChild(wrap);
+        var angle = (i * 30 + 15 + ((i * 13) % 11) - 5) * Math.PI / 180;
+        sparks.push({
+          wrap: wrap,
+          glyph: glyph,
+          cos: Math.cos(angle),
+          sin: Math.sin(angle),
+          dist: 250 + ((i * 37) % 70),
+          scale: 0.72 + ((i * 5) % 6) * 0.07,
+          rot: ((i * 47) % 41) - 20
+        });
+      }
+
+      var tl = gsap.timeline({ paused: true });
+      var bolt = byId("f03-on-x-bolt");
+      var disc = byId("f03-on-x-disc");
+      var cursor = byId("f03-on-x-cursor");
+      var dialogPos = byId("f03-on-x-dialog-pos");
+      var dialog = byId("f03-on-x-dialog");
+      var backdrop = byId("f03-on-x-backdrop");
+
+      tl.fromTo(byId("f03-on-x-strike-mask"),
+        { clipPath: "circle(1050px at 614px 836px)" },
+        { clipPath: "circle(34px at 614px 836px)", duration: 0.8, ease: "power3.inOut" }, 0);
+      tl.fromTo([byId("f03-on-x-zapit"), byId("f03-on-x-kicker")],
+        { opacity: 1 }, { opacity: 0, duration: 0.2, ease: "power1.in" }, 0.4);
+      tl.fromTo(byId("f03-on-x-strike-fill"),
+        { backgroundColor: "#FFC800" }, { backgroundColor: "rgba(255, 200, 0, 0)", duration: 0.3, ease: "power1.inOut" }, 0.5);
+      tl.fromTo(bolt, { x: 0, y: 0, scale: 1 }, { x: 74, y: 506, scale: 0.1, duration: 1.0, ease: "power3.inOut" }, 0);
+      tl.fromTo(byId("f03-on-x-bolt-ink"), { opacity: 1 }, { opacity: 0, duration: 0.2, ease: "power1.inOut" }, 0.42);
+      tl.fromTo(byId("f03-on-x-headline"), { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.5);
+
+      tl.fromTo(cursor, { x: 1150, y: 848 }, { x: 622, y: 844, duration: 0.75, ease: "power3.out" }, 1.0);
+      tl.to(cursor, { scale: 0.85, duration: 0.08, ease: "power2.in" }, 2.0);
+      tl.to(cursor, { scale: 1, duration: 0.12, ease: "power2.out" }, 2.08);
+      tl.to(disc, { scale: 0.94, duration: 0.08, ease: "power2.in" }, 2.0);
+      tl.to(disc, { scale: 1, duration: 0.14, ease: "power2.out" }, 2.08);
+      tl.to(bolt, { scale: 0.094, duration: 0.08, ease: "power2.in" }, 2.0);
+      tl.to(bolt, { scale: 0.1, duration: 0.14, ease: "power2.out" }, 2.08);
+      tl.fromTo([byId("f03-on-x-ripple-a"), byId("f03-on-x-ripple-b")],
+        { scale: 1, opacity: 0.9 },
+        { scale: 1.75, opacity: 0, duration: 0.4, ease: "power2.out", stagger: 0.07, immediateRender: false }, 2.0);
+
+      tl.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, 2.02);
+      tl.to(disc, { opacity: 0, duration: 0.2, ease: "power1.out" }, 2.1);
+      tl.fromTo(dialogPos, { x: 74, y: 310, scale: 0.06 }, { x: 0, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 2.04);
+      tl.fromTo(dialog, { opacity: 0 }, { opacity: 1, duration: 0.14, ease: "power2.out" }, 2.04);
+
+      var amt1000 = byId("f03-on-x-amt-1000");
+      tl.to(cursor, { x: 852, y: 352, duration: 0.4, ease: "power2.inOut" }, 2.5);
+      tl.to(cursor, { scale: 0.85, duration: 0.08, ease: "power2.in" }, 3.0);
+      tl.to(cursor, { scale: 1, duration: 0.12, ease: "power2.out" }, 3.08);
+      tl.to(amt1000, { scale: 0.96, duration: 0.08, ease: "power2.in" }, 3.0);
+      tl.to(amt1000, { scale: 1, duration: 0.14, ease: "power2.out" }, 3.08);
+      tl.set(byId("f03-on-x-amt-21-on"), { opacity: 0 }, 3.0);
+      tl.set(byId("f03-on-x-amt-1000-on"), { opacity: 1 }, 3.0);
+      tl.fromTo(qrRows, { opacity: 0 }, { opacity: 1, duration: 0.06, ease: "none", stagger: 0.0075 }, 3.02);
+
+      var openBtn = byId("f03-on-x-open");
+      tl.to(cursor, { x: 668, y: 812, duration: 0.4, ease: "power2.inOut" }, 3.5);
+      tl.to(cursor, { scale: 0.85, duration: 0.08, ease: "power2.in" }, 4.0);
+      tl.to(cursor, { scale: 1, duration: 0.12, ease: "power2.out" }, 4.08);
+      tl.to(openBtn, { scale: 0.97, duration: 0.08, ease: "power2.in" }, 4.0);
+      tl.to(openBtn, { scale: 1, duration: 0.22, ease: "power2.out" }, 4.08);
+      tl.to(cursor, { x: 790, y: 650, duration: 0.6, ease: "power2.inOut" }, 4.35);
+
+      tl.fromTo(byId("f03-on-x-success-dim"), { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, 4.5);
+      tl.fromTo(byId("f03-on-x-thanks"), { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power3.out" }, 4.5);
+      sparks.forEach(function (spark) {
+        tl.fromTo(spark.wrap,
+          { x: spark.cos * 48, y: spark.sin * 48, scale: spark.scale * 0.5, rotation: spark.rot * 0.3 },
+          { x: spark.cos * spark.dist, y: spark.sin * spark.dist, scale: spark.scale, rotation: spark.rot, duration: 0.7, ease: "power3.out" }, 4.5);
+        tl.fromTo(spark.glyph, { opacity: 0 }, { opacity: 1, duration: 0.06, ease: "none" }, 4.5);
+        tl.to(spark.glyph, { opacity: 0, duration: 0.35, ease: "power1.in" }, 4.95);
+      });
+
+      tl.to(dialogPos, { x: 74, y: 310, scale: 0.06, duration: 0.5, ease: "power3.in" }, 5.5);
+      tl.to(dialog, { opacity: 0, duration: 0.1, ease: "power1.in" }, 5.9);
+      tl.to(backdrop, { opacity: 0, duration: 0.35, ease: "power2.inOut" }, 5.65);
+      var zapCount = byId("f03-on-x-zapcount");
+      var tally = { value: 0 };
+      tl.fromTo(zapCount, { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "power1.out" }, 6.0);
+      tl.to(tally, {
+        value: 1000,
+        duration: 0.6,
+        ease: "power2.out",
+        onUpdate: function () { zapCount.textContent = Math.round(tally.value).toLocaleString("en-US"); }
+      }, 6.0);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["03-on-x"] = tl;
+    })();
+  </script>
+</template>
