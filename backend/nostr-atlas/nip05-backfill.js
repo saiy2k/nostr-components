@@ -2,21 +2,33 @@
 // SPDX-License-Identifier: MIT
 
 import { FieldValue } from "@google-cloud/firestore";
-import { metadataFromKind0, fetchKind0s } from "./kind0.js";
+import { fetchKind0s } from "./kind0.js";
 import {
   createFirestore,
   loadRelaysFromFile,
   stripUndefined,
   terminateFirestore,
 } from "./runtime.js";
+import { isPublicHostname } from "./utils.js";
 
 const NIP05_MAX = 255;
 const BATCH_LIMIT = 400;
 
 export function boundedNip05(value) {
-  if (value === undefined || value === null || value === "") return null;
-  const text = String(value).slice(0, NIP05_MAX);
-  return text || null;
+  if (value === undefined || value === null || value === "") {
+    return { ok: true, value: null };
+  }
+  if (typeof value !== "string" || value.length > NIP05_MAX) return { ok: false };
+  const parts = value.split("@");
+  const [name, domain] = parts;
+  if (
+    parts.length !== 2 ||
+    !/^[a-z0-9._-]+$/i.test(name) ||
+    !isPublicHostname(domain)
+  ) {
+    return { ok: false };
+  }
+  return { ok: true, value: `${name.toLowerCase()}@${domain.toLowerCase()}` };
 }
 
 export function isDirectoryIdentity(identity) {
@@ -56,13 +68,19 @@ export function planNip05FromKind0(doc, kind0) {
   ) {
     return { changed: false, reason: "pubkey-mismatch" };
   }
-  const metadata = metadataFromKind0(kind0);
+  const metadata = kind0Object(kind0);
   if (!metadata) {
     return { changed: false, reason: "rejected-kind0" };
   }
-  const nextNip05 = boundedNip05(metadata.nip05);
+  const decision = boundedNip05(metadata.nip05);
+  if (!decision.ok) {
+    return { changed: false, reason: "rejected-nip05" };
+  }
+  const nextNip05 = decision.value;
   const current = storedNip05(active);
-  if (current === nextNip05) {
+  const claim = (doc.claims || []).find((item) => item?.claimId === active.claimId);
+  const claimMatches = !claim || storedNip05(claim) === nextNip05;
+  if (current === nextNip05 && claimMatches) {
     return { changed: false, reason: "unchanged", nip05: current };
   }
   return {
@@ -75,6 +93,25 @@ export function planNip05FromKind0(doc, kind0) {
       claim?.claimId === active.claimId ? applyNip05(claim, nextNip05) : claim,
     ),
   };
+}
+
+function kind0Object(event) {
+  if (!event || typeof event.content !== "string") return null;
+  try {
+    const content = JSON.parse(event.content);
+    if (!content || typeof content !== "object" || Array.isArray(content)) return null;
+    return content;
+  } catch {
+    return null;
+  }
+}
+
+function optionValue(argv, index, flag) {
+  const value = argv[index + 1];
+  if (typeof value !== "string" || value.startsWith("-")) {
+    throw new Error(`${flag} requires a value.`);
+  }
+  return value;
 }
 
 function activeIdentityForMerge(identity, clearNip05) {
@@ -99,7 +136,10 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--write") options.write = true;
-    else if (arg === "--project") options.project = argv[++index];
+    else if (arg === "--project") {
+      options.project = optionValue(argv, index, arg);
+      index += 1;
+    }
     else throw new Error(`Unknown argument: ${arg}`);
   }
   return options;
@@ -134,6 +174,7 @@ async function main() {
     const profiles = await fetchKind0s(
       [...new Set(due.map((row) => row.data.activeIdentity.pubkey))],
       relays,
+      { newest: true },
     );
     const planned = [];
     for (const row of due) {
@@ -154,32 +195,34 @@ async function main() {
       }
       if (plan.reason === "cleared") stats.cleared += 1;
       else stats.updated += 1;
-      planned.push({ row, plan });
+      planned.push({ row, event: profile?.event || null });
     }
     if (options.write) {
-      let batch = db.batch();
-      let pending = 0;
-      for (const { row, plan } of planned) {
-        const clear = plan.nip05 == null;
-        batch.set(
-          db.collection(options.collection).doc(row.id),
-          stripUndefined({
-            activeIdentity: activeIdentityForMerge(plan.activeIdentity, clear),
-            claims: plan.claims,
-            updatedAt: FieldValue.serverTimestamp(),
-          }),
-          { merge: true },
-        );
-        pending += 1;
-        stats.wrote += 1;
-        if (pending === BATCH_LIMIT) {
-          await batch.commit();
-          batch = db.batch();
-          pending = 0;
-          console.log(`wrote ${stats.wrote}`);
+      for (let index = 0; index < planned.length; index += BATCH_LIMIT) {
+        const slice = planned.slice(index, index + BATCH_LIMIT);
+        for (const item of slice) {
+          const wrote = await db.runTransaction(async (tx) => {
+            const ref = db.collection(options.collection).doc(item.row.id);
+            const snap = await tx.get(ref);
+            if (!snap.exists) return false;
+            const freshPlan = planNip05FromKind0(snap.data() || {}, item.event);
+            if (!freshPlan.changed) return false;
+            const clear = freshPlan.nip05 == null;
+            tx.set(
+              ref,
+              stripUndefined({
+                activeIdentity: activeIdentityForMerge(freshPlan.activeIdentity, clear),
+                claims: freshPlan.claims,
+                updatedAt: FieldValue.serverTimestamp(),
+              }),
+              { merge: true },
+            );
+            return true;
+          });
+          if (wrote) stats.wrote += 1;
         }
+        console.log(`wrote ${stats.wrote}`);
       }
-      if (pending) await batch.commit();
     }
     console.log(
       JSON.stringify(

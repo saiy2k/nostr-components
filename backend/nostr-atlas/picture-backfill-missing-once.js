@@ -16,6 +16,9 @@ import {
 const BATCH_LIMIT = 400;
 const X_AVATAR_CONCURRENCY = 2;
 const COLLECTION = "nostrDirectoryHandles";
+const dryRun = process.argv.includes("--dry-run");
+const unexpected = process.argv.slice(2).find((arg) => arg !== "--dry-run");
+if (unexpected) throw new Error(`Unknown argument: ${unexpected}`);
 
 function rowHandle(row) {
   const fromId = row.id.startsWith("twitter:") ? row.id.slice(8) : "";
@@ -98,6 +101,7 @@ try {
     const profiles = await fetchKind0s(
       [...new Set(due.map((row) => String(row.data.activeIdentity.pubkey).toLowerCase()))],
       relays,
+      { newest: true },
     );
     const planned = [];
     const needsX = [];
@@ -107,7 +111,7 @@ try {
       const plan = planNostrPicture(row.data, profile?.event || null);
       if (plan.changed) {
         stats.nostrUpdated += 1;
-        planned.push({ row, plan });
+        planned.push({ row, plan, event: profile?.event || null, avatar: null });
         continue;
       }
       if (plan.reason === "no-kind0") stats.noKind0 += 1;
@@ -135,32 +139,38 @@ try {
         return;
       }
       stats.xUpdated += 1;
-      planned.push({ row, plan });
+      planned.push({ row, plan, event: null, avatar: avatars[index] });
     });
-    let batch = db.batch();
-    let pending = 0;
-    for (const { row, plan } of planned) {
-      batch.set(
-        db.collection(COLLECTION).doc(row.id),
-        stripUndefined({
-          activeIdentity: plan.activeIdentity,
-          claims: plan.claims,
-          updatedAt: FieldValue.serverTimestamp(),
-        }),
-        { merge: true },
-      );
-      pending += 1;
-      stats.wrote += 1;
-      if (pending === BATCH_LIMIT) {
-        await batch.commit();
-        batch = db.batch();
-        pending = 0;
-        console.log(`wrote ${stats.wrote}`);
+    if (!dryRun) {
+      for (const item of planned) {
+        const wrote = await db.runTransaction(async (tx) => {
+          const ref = db.collection(COLLECTION).doc(item.row.id);
+          const snap = await tx.get(ref);
+          if (!snap.exists) return false;
+          const fresh = snap.data() || {};
+          const plan = item.event
+            ? planNostrPicture(fresh, item.event)
+            : planXPicture(fresh, item.avatar);
+          if (!plan.changed) return false;
+          tx.set(
+            ref,
+            stripUndefined({
+              activeIdentity: plan.activeIdentity,
+              claims: plan.claims,
+              updatedAt: FieldValue.serverTimestamp(),
+            }),
+            { merge: true },
+          );
+          return true;
+        });
+        if (wrote) stats.wrote += 1;
+        if (stats.wrote > 0 && stats.wrote % BATCH_LIMIT === 0) {
+          console.log(`wrote ${stats.wrote}`);
+        }
       }
     }
-    if (pending) await batch.commit();
   }
-  console.log(JSON.stringify({ dryRun: false, ...stats }, null, 2));
+  console.log(JSON.stringify({ dryRun, ...stats }, null, 2));
 } finally {
   await terminateFirestore(db);
 }

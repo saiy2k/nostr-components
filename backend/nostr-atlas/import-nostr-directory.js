@@ -14,9 +14,15 @@ import {
   normalizeTwitterHandle,
 } from "./utils.js";
 
-const DEFAULT_ACCOUNTS =
-  "/Users/saiy2k/Downloads/Dump/nostr-directory-accounts-2026-09-08/accounts.json";
 const BATCH_LIMIT = 450;
+
+function optionValue(argv, index, flag) {
+  const value = argv[index + 1];
+  if (typeof value !== "string" || value.startsWith("-")) {
+    throw new Error(`${flag} requires a value.`);
+  }
+  return value;
+}
 
 export function loadDirectoryClaims(records) {
   const byHandle = new Map();
@@ -169,8 +175,9 @@ function digitString(value) {
 
 function parseArgs(argv) {
   const options = {
-    accounts: DEFAULT_ACCOUNTS,
+    accounts: "",
     limit: BATCH_LIMIT,
+    dryRun: false,
     project: process.env.FIRESTORE_PROJECT || "nostr-components",
     database: process.env.FIRESTORE_DATABASE || "(default)",
     collection:
@@ -178,11 +185,19 @@ function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === "--accounts") options.accounts = argv[++i];
-    else if (arg === "--limit") options.limit = Number(argv[++i]);
-    else if (arg === "--project") options.project = argv[++i];
+    if (arg === "--accounts") {
+      options.accounts = optionValue(argv, i, arg);
+      i += 1;
+    } else if (arg === "--limit") {
+      options.limit = Number(optionValue(argv, i, arg));
+      i += 1;
+    } else if (arg === "--project") {
+      options.project = optionValue(argv, i, arg);
+      i += 1;
+    } else if (arg === "--dry-run") options.dryRun = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
+  if (!options.accounts) throw new Error("--accounts is required.");
   if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > BATCH_LIMIT) {
     throw new Error(`--limit must be an integer from 1 to ${BATCH_LIMIT}.`);
   }
@@ -240,8 +255,23 @@ async function main() {
       }
     }
 
-    if (!writes.length) {
-      console.log(JSON.stringify({ ...stats, wrote: 0 }, null, 2));
+    if (!writes.length || options.dryRun) {
+      console.log(
+        JSON.stringify(
+          {
+            dryRun: options.dryRun,
+            ...stats,
+            wouldWrite: writes.length,
+            sample: writes.slice(0, 5).map((write) => ({
+              handle: write.handle,
+              pubkey: write.activePubkey,
+              claimsAdded: write.added,
+            })),
+          },
+          null,
+          2,
+        ),
+      );
       return;
     }
 

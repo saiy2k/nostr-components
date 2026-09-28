@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
 
+import https from "node:https";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { readFile } from "node:fs/promises";
 import { FieldValue } from "@google-cloud/firestore";
 import { handleDocumentId } from "./handle-state.js";
 import { fetchKind0s, metadataFromKind0 } from "./kind0.js";
+import { isDirectoryIdentity } from "./nip05-backfill.js";
 import { checkZapSupport } from "./projection.js";
 import {
   createFirestore,
@@ -13,10 +17,78 @@ import {
   terminateFirestore,
 } from "./runtime.js";
 
-const DEFAULT_ACCOUNTS =
-  "/Users/saiy2k/Downloads/Dump/nostr-directory-accounts-2026-09-08/accounts.json";
 const LNURL_CONCURRENCY = 8;
 const LNURL_TIMEOUT_MS = 8000;
+
+export function isPrivateAddress(address) {
+  const version = isIP(address);
+  if (version === 4) {
+    const [a, b] = address.split(".").map(Number);
+    if (a === 0 || a === 10 || a === 127 || a >= 224) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    return false;
+  }
+  if (version === 6) {
+    const normalized = address.toLowerCase();
+    if (normalized === "::" || normalized === "::1") return true;
+    if (normalized.startsWith("fe80:") || normalized.startsWith("fc") || normalized.startsWith("fd")) {
+      return true;
+    }
+    const mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateAddress(mapped[1]);
+    return false;
+  }
+  return true;
+}
+
+export async function fetchPublicHttps(url, options = {}) {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:") {
+    return { ok: false, status: 400, json: async () => ({}) };
+  }
+  const records = await lookup(parsed.hostname, { all: true });
+  if (!records.length || records.some((record) => isPrivateAddress(record.address))) {
+    return { ok: false, status: 403, json: async () => ({}) };
+  }
+  const chosen = records[0];
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        host: chosen.address,
+        servername: parsed.hostname,
+        family: chosen.family,
+        method: "GET",
+        path: `${parsed.pathname}${parsed.search}`,
+        headers: { host: parsed.hostname, accept: "application/json" },
+      },
+      (res) => {
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          const status = res.statusCode || 0;
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            json: async () => JSON.parse(body),
+          });
+        });
+      },
+    );
+    const abort = () => req.destroy(new Error("aborted"));
+    options.signal?.addEventListener("abort", abort, { once: true });
+    req.on("error", reject);
+    req.setTimeout(LNURL_TIMEOUT_MS, () => req.destroy(new Error("timeout")));
+    req.end();
+  });
+}
+
+function deleted() {
+  return FieldValue.delete();
+}
 
 export function applyZapResult(identity, zap) {
   const next = { ...identity };
@@ -31,13 +103,39 @@ export function applyZapResult(identity, zap) {
     next.zappable = zap.zappable === true;
     next.lud16 = zap.lud16 || null;
     if (zap.lnurlp) next.lnurlp = zap.lnurlp;
+    else delete next.lnurlp;
     if (zap.lnurlAllowsNostr !== undefined) next.lnurlAllowsNostr = zap.lnurlAllowsNostr;
+    else delete next.lnurlAllowsNostr;
     if (zap.lnurlNostrPubkey) next.lnurlNostrPubkey = zap.lnurlNostrPubkey;
+    else delete next.lnurlNostrPubkey;
   }
   next.zapReason = zap.zapReason;
   next.zapCheckedAt = zap.zapCheckedAt;
   next.zapCheckTransient = transient;
   return stripUndefined(next);
+}
+
+export function activeZapWrite(identity, zap) {
+  const next = applyZapResult(identity, zap);
+  if (zap.zapCheckTransient === true) {
+    next.zappable = deleted();
+    next.lud16 = deleted();
+  }
+  if (!zap.lnurlp) next.lnurlp = deleted();
+  if (zap.lnurlAllowsNostr === undefined) next.lnurlAllowsNostr = deleted();
+  if (!zap.lnurlNostrPubkey) next.lnurlNostrPubkey = deleted();
+  return next;
+}
+
+export function directoryZapClaims(data) {
+  const claims = (Array.isArray(data?.claims) ? data.claims : []).filter(
+    (claim) => isDirectoryIdentity(claim) && claim.pubkey,
+  );
+  if (claims.length) return claims;
+  if (isDirectoryIdentity(data?.activeIdentity) && data.activeIdentity.pubkey) {
+    return [data.activeIdentity];
+  }
+  return [];
 }
 
 async function mapPool(items, concurrency, fn) {
@@ -61,9 +159,29 @@ function zapNeedsCheck(identity) {
   return identity.zapCheckTransient === true;
 }
 
+function matchesRecheck(identity, recheck) {
+  if (!recheck) return false;
+  if (recheck === "open") {
+    return (
+      identity?.zapReason === "missing-lud16" ||
+      identity?.zapReason === "kind0-unavailable" ||
+      identity?.zapCheckTransient === true
+    );
+  }
+  return identity?.zapReason === recheck;
+}
+
+function optionValue(argv, index, flag) {
+  const value = argv[index + 1];
+  if (typeof value !== "string" || value.startsWith("-")) {
+    throw new Error(`${flag} requires a value.`);
+  }
+  return value;
+}
+
 function parseArgs(argv) {
   const options = {
-    accounts: DEFAULT_ACCOUNTS,
+    accounts: "",
     limit: 450,
     offset: 0,
     recheck: null,
@@ -74,13 +192,24 @@ function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === "--accounts") options.accounts = argv[++i];
-    else if (arg === "--limit") options.limit = Number(argv[++i]);
-    else if (arg === "--offset") options.offset = Number(argv[++i]);
-    else if (arg === "--project") options.project = argv[++i];
-    else if (arg === "--recheck") options.recheck = argv[++i];
-    else throw new Error(`Unknown argument: ${arg}`);
+    if (arg === "--accounts") {
+      options.accounts = optionValue(argv, i, arg);
+      i += 1;
+    } else if (arg === "--limit") {
+      options.limit = Number(optionValue(argv, i, arg));
+      i += 1;
+    } else if (arg === "--offset") {
+      options.offset = Number(optionValue(argv, i, arg));
+      i += 1;
+    } else if (arg === "--project") {
+      options.project = optionValue(argv, i, arg);
+      i += 1;
+    } else if (arg === "--recheck") {
+      options.recheck = optionValue(argv, i, arg);
+      i += 1;
+    } else throw new Error(`Unknown argument: ${arg}`);
   }
+  if (!options.accounts) throw new Error("--accounts is required.");
   if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 450) {
     throw new Error("--limit must be an integer from 1 to 450.");
   }
@@ -128,57 +257,54 @@ async function main() {
         continue;
       }
       const data = snapshot.data() || {};
-      const identity = data.activeIdentity;
-      const recheck =
-        options.recheck === "open"
-          ? identity?.zapReason === "missing-lud16" ||
-            identity?.zapReason === "kind0-unavailable" ||
-            identity?.zapCheckTransient === true
-          : options.recheck && identity?.zapReason === options.recheck;
-      if (!recheck && !zapNeedsCheck(identity)) {
+      const claims = directoryZapClaims(data).filter(
+        (claim) => matchesRecheck(claim, options.recheck) || zapNeedsCheck(claim),
+      );
+      if (!claims.length) {
         stats.skippedFresh += 1;
         continue;
       }
-      due.push({
-        id: snapshot.id,
-        handle: data.handle,
-        data,
-      });
+      for (const claim of claims) {
+        due.push({
+          id: snapshot.id,
+          handle: data.handle,
+          claim,
+        });
+      }
     }
 
     console.log(
-      `Zap pass: ${due.length} handles due, relays ${relays.join(", ")}`,
+      `Zap pass: ${due.length} claims due, relays ${relays.join(", ")}`,
     );
     const profilesByPubkey = await fetchKind0s(
-      [...new Set(due.map((row) => row.data.activeIdentity.pubkey))],
+      [...new Set(due.map((row) => String(row.claim.pubkey).toLowerCase()))],
       relays,
+      { newest: true },
     );
-    const profiles = due.map((row) => ({
-      row,
-      profile: profilesByPubkey.get(row.data.activeIdentity.pubkey),
-    }));
-
-    const checked = await mapPool(profiles, LNURL_CONCURRENCY, async ({ row, profile }) => {
-      if (!profile.event) {
+    const checked = await mapPool(due, LNURL_CONCURRENCY, async (row) => {
+      const profile = profilesByPubkey.get(String(row.claim.pubkey).toLowerCase());
+      if (!profile?.event) {
         return {
           row,
           zap: {
-            zapReason: profile.transient ? "kind0-unavailable" : "missing-lud16",
+            zapReason: profile?.transient ? "kind0-unavailable" : "missing-lud16",
             zapCheckedAt: new Date().toISOString(),
-            zapCheckTransient: profile.transient,
+            zapCheckTransient: Boolean(profile?.transient),
             zappable: false,
             lud16: null,
           },
         };
       }
       const metadata = metadataFromKind0(profile.event) || {};
-      const zap = await checkZapSupport({}, metadata, LNURL_TIMEOUT_MS);
+      const zap = await checkZapSupport({}, metadata, LNURL_TIMEOUT_MS, fetchPublicHttps);
       return { row, zap };
     });
 
-    let batch = db.batch();
-    let pendingWrites = 0;
+    const byDoc = new Map();
     for (const { row, zap } of checked) {
+      const entry = byDoc.get(row.id) || [];
+      entry.push({ claimId: row.claim.claimId, handle: row.handle, zap });
+      byDoc.set(row.id, entry);
       const transient = zap.zapCheckTransient === true;
       const zappable = !transient && zap.zappable === true;
       if (transient) stats.transient += 1;
@@ -187,41 +313,47 @@ async function main() {
       if (samples.length < 8 || row.handle === "adriancantrill") {
         samples.push({
           handle: row.handle,
+          claimId: row.claim.claimId,
           zappable: transient ? null : zappable,
           zapReason: zap.zapReason,
           lud16: transient ? null : zap.lud16 || null,
           transient,
         });
       }
-
-      const activeIdentity = applyZapResult(row.data.activeIdentity, zap);
-      if (transient) {
-        activeIdentity.zappable = FieldValue.delete();
-        activeIdentity.lud16 = FieldValue.delete();
-      }
-      const claims = (row.data.claims || []).map((claim) =>
-        claim?.claimId === activeIdentity.claimId
-          ? applyZapResult(claim, zap)
-          : claim,
-      );
-      batch.set(
-        db.collection(options.collection).doc(row.id),
-        stripUndefined({
-          activeIdentity,
-          claims,
-          updatedAt: FieldValue.serverTimestamp(),
-        }),
-        { merge: true },
-      );
-      pendingWrites += 1;
-      stats.wrote += 1;
-      if (pendingWrites === 400) {
-        await batch.commit();
-        batch = db.batch();
-        pendingWrites = 0;
-      }
     }
-    if (pendingWrites) await batch.commit();
+
+    for (const [id, updates] of byDoc) {
+      const wrote = await db.runTransaction(async (tx) => {
+        const ref = db.collection(options.collection).doc(id);
+        const snap = await tx.get(ref);
+        if (!snap.exists) return false;
+        const data = snap.data() || {};
+        const updatesById = new Map(updates.map((update) => [update.claimId, update.zap]));
+        let matched = false;
+        const claims = (data.claims || []).map((claim) => {
+          const zap = updatesById.get(claim?.claimId);
+          if (!zap) return claim;
+          matched = true;
+          return applyZapResult(claim, zap);
+        });
+        const activeZap = updatesById.get(data.activeIdentity?.claimId);
+        if (activeZap) matched = true;
+        if (!matched) return false;
+        tx.set(
+          ref,
+          stripUndefined({
+            activeIdentity: activeZap
+              ? activeZapWrite(data.activeIdentity, activeZap)
+              : undefined,
+            claims,
+            updatedAt: FieldValue.serverTimestamp(),
+          }),
+          { merge: true },
+        );
+        return true;
+      });
+      if (wrote) stats.wrote += 1;
+    }
 
     console.log(
       JSON.stringify(

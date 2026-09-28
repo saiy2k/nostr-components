@@ -19,7 +19,9 @@ try {
     else stats.missingBoth += 1;
   }
   console.log(JSON.stringify(stats));
+} catch (error) {
+  console.error(error?.stack || error?.message || error);
+  process.exitCode = 1;
 } finally {
-  await terminateFirestore(db);
-  process.exit(0);
+  if (db) await terminateFirestore(db);
 }

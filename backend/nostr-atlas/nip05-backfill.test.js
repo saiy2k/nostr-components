@@ -155,4 +155,61 @@ describe("planNip05FromKind0", () => {
 
     expect(plan).toEqual({ changed: false, reason: "not-directory" });
   });
+
+  it("leaves a stored nip05 when kind-0 content is not an object", () => {
+    const plan = planNip05FromKind0(
+      directoryDoc({
+        activeIdentity: { metadata: { nip05: "old@example.com" } },
+      }),
+      finalizeEvent(
+        {
+          kind: 0,
+          created_at: 1_700_000_000,
+          tags: [],
+          content: "not-json",
+        },
+        secret,
+      ),
+    );
+
+    expect(plan).toEqual({ changed: false, reason: "rejected-kind0" });
+  });
+
+  it("rejects a non-string or overlong nip05 instead of writing it", () => {
+    const malformed = planNip05FromKind0(
+      directoryDoc({
+        activeIdentity: { metadata: { nip05: "old@example.com" } },
+      }),
+      kind0(secret, { nip05: { name: "not-a-string" } }),
+    );
+    const overlong = planNip05FromKind0(
+      directoryDoc(),
+      kind0(secret, { nip05: `${"a".repeat(250)}@example.com` }),
+    );
+
+    expect(malformed).toEqual({ changed: false, reason: "rejected-nip05" });
+    expect(overlong).toEqual({ changed: false, reason: "rejected-nip05" });
+  });
+
+  it("updates the matching claim when the active nip05 already matches", () => {
+    const plan = planNip05FromKind0(
+      directoryDoc({
+        activeIdentity: { metadata: { nip05: "logen@btcforplebs.com" } },
+        claims: [
+          {
+            claimId: "nd:PY4VgsK1FVyheIFslatp",
+            status: "verified",
+            pubkey,
+            sources: ["nostr.directory"],
+            metadata: { nip05: "old@example.com" },
+          },
+        ],
+      }),
+      kind0(secret, { nip05: "logen@btcforplebs.com" }),
+    );
+
+    expect(plan.changed).toBe(true);
+    expect(plan.activeIdentity.metadata.nip05).toBe("logen@btcforplebs.com");
+    expect(plan.claims[0].metadata.nip05).toBe("logen@btcforplebs.com");
+  });
 });
