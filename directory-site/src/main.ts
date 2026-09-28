@@ -455,7 +455,7 @@ function renderApp(): void {
       <form method="dialog" class="dialog-card claim-dialog-card" id="claim-account-form">
         <div class="dialog-heading">
           <div><h2 id="profile-dialog-title">Claim your X account</h2><p>Publish a signed NIP-39 proof so the directory can verify your X account without receiving your private key.</p></div>
-          <button class="icon-button" value="cancel" type="submit" aria-label="Close claim dialog">${icon.close()}</button>
+          <button class="icon-button" type="button" data-close-claim-dialog aria-label="Close claim dialog">${icon.close()}</button>
         </div>
         <ol class="claim-steps">
           <li>
@@ -499,7 +499,7 @@ function renderApp(): void {
           Connect a signer to begin.
         </div>
         <div class="dialog-actions">
-          <button class="secondary-button" value="cancel" type="submit">Cancel</button>
+          <button class="secondary-button" type="button" data-close-claim-dialog>Cancel</button>
           <button class="primary-button" value="default" type="submit" id="publish-claim" disabled>Sign and publish claim</button>
         </div>
       </form>
@@ -749,6 +749,12 @@ function bindEvents(): void {
   copyClaimNpub?.addEventListener("click", () => {
     if (claimIdentity) void copyNpub(claimIdentity.npub, copyClaimNpub);
   });
+
+  claimForm
+    ?.querySelectorAll<HTMLButtonElement>("[data-close-claim-dialog]")
+    .forEach((button) => {
+      button.addEventListener("click", () => profileDialog?.close());
+    });
 
   claimForm?.addEventListener("submit", async (event) => {
     const submitter = (event as SubmitEvent)

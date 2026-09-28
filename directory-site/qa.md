@@ -17,7 +17,7 @@ Unit tests mock the signer, relays, and tweet API. These are the live cases thos
 
 ## Dialog and timing
 
-7. **Enter in the handle or proof field** after connecting. The first submit button in the form is the X close button, so Enter closes the dialog. Expected to confirm: whether anything is published.
+7. **Enter in the handle or proof field** after connecting. Enter submits Sign and publish. It does not close the dialog. Invalid fields show the browser tooltip and publish nothing. Enter does nothing while that button is disabled.
 8. **Fill both fields, then connect.** Publish should enable only after connect, then succeed with those values.
 9. **Connect, then Submit with empty fields, a handle with a space, or a proof with no `https://`.** The browser tooltip should block the request. No signature prompt.
 10. **Double-click Sign and publish, and press Enter again while the status says it is waiting.** One signature prompt. Buttons stay disabled until that attempt finishes.
