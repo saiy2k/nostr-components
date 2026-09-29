@@ -212,4 +212,30 @@ describe("planNip05FromKind0", () => {
     expect(plan.activeIdentity.metadata.nip05).toBe("logen@btcforplebs.com");
     expect(plan.claims[0].metadata.nip05).toBe("logen@btcforplebs.com");
   });
+
+  it("updates a directory claim while a relay identity stays active", () => {
+    const directoryClaim = {
+      claimId: "nd:1",
+      status: "verified",
+      pubkey,
+      sources: ["nostr.directory"],
+    };
+    const plan = planNip05FromKind0(
+      {
+        activeIdentity: {
+          claimId: "relay:1",
+          status: "verified",
+          pubkey: otherPubkey,
+          verificationMethods: ["nip39_proof_tweet"],
+        },
+        claims: [directoryClaim],
+      },
+      kind0(secret, { nip05: "alice@example.com" }),
+      directoryClaim,
+    );
+
+    expect(plan.changed).toBe(true);
+    expect(plan.activeIdentity).toBeUndefined();
+    expect(plan.claims[0].metadata.nip05).toBe("alice@example.com");
+  });
 });

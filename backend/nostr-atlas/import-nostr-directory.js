@@ -41,6 +41,11 @@ export function loadDirectoryClaims(records) {
       skippedKey += 1;
       continue;
     }
+    const documentId = String(record.document_id ?? "").trim();
+    if (!documentId) {
+      skippedKey += 1;
+      continue;
+    }
     const claim = directoryClaim(record, handle, pubkey);
     const claims = byHandle.get(handle) || [];
     claims.push(claim);
@@ -55,10 +60,11 @@ export function loadDirectoryClaims(records) {
 
 function directoryClaim(record, handle, pubkey) {
   const data = record.data;
+  const documentId = String(record.document_id).trim();
   const proofPublishedAt = unixSeconds(data.createdAt || record.document_created_at);
   const verifyEvent = String(data.verifyEvent || "");
   return stripUndefined({
-    claimId: `nd:${record.document_id}`,
+    claimId: `nd:${documentId}`,
     platform: "twitter",
     handle,
     pubkey,
@@ -68,7 +74,7 @@ function directoryClaim(record, handle, pubkey) {
     evidence: [
       {
         source: "nostr.directory",
-        value: record.document_id,
+        value: documentId,
       },
     ],
     status: "verified",
@@ -92,6 +98,11 @@ export function planDirectoryImport(existing, incomingClaims) {
       .map((item) => item?.claimId)
       .filter(Boolean),
   );
+  for (const claim of current.claims || []) {
+    if (claim?.status === "rejected" && claim.claimId) {
+      rejected.add(claim.claimId);
+    }
+  }
   const claimsById = new Map();
   for (const claim of current.claims || []) {
     if (claim?.claimId && claim.status !== "rejected") {
@@ -120,10 +131,20 @@ export function planDirectoryImport(existing, incomingClaims) {
   const claims = [activeIdentity, ...pending, ...inactiveVerified]
     .filter(Boolean)
     .sort(compareClaimsNewestFirst);
+  const retainedIds = new Set(claims.map((claim) => claim.claimId));
+  const existingIds = new Set(
+    (current.claims || [])
+      .filter((claim) => claim?.claimId && claim.status !== "rejected")
+      .map((claim) => claim.claimId),
+  );
+  const retainedAdded = incomingClaims.filter(
+    (claim) => retainedIds.has(claim.claimId) && !existingIds.has(claim.claimId),
+  ).length;
+  if (!retainedAdded) return { changed: false, added: 0 };
 
   return {
     changed: true,
-    added,
+    added: retainedAdded,
     keptRelayIdentity: Boolean(relayActive),
     activePubkey: activeIdentity?.pubkey || null,
     data: stripUndefined({
@@ -248,6 +269,7 @@ async function main() {
         writes.push({
           id: snapshot.id,
           handle,
+          incoming,
           activePubkey: planned.activePubkey,
           added: planned.added,
           data: planned.data,
@@ -275,13 +297,19 @@ async function main() {
       return;
     }
 
-    const batch = db.batch();
+    let wrote = 0;
     for (const write of writes) {
-      batch.set(db.collection(options.collection).doc(write.id), write.data, {
-        merge: true,
+      const committed = await db.runTransaction(async (tx) => {
+        const ref = db.collection(options.collection).doc(write.id);
+        const snap = await tx.get(ref);
+        const existing = snap.exists ? snap.data() || {} : null;
+        const planned = planDirectoryImport(existing, write.incoming);
+        if (!planned.changed) return false;
+        tx.set(ref, planned.data, { mergeFields: Object.keys(planned.data) });
+        return true;
       });
+      if (committed) wrote += 1;
     }
-    await batch.commit();
 
     const check = await db
       .collection(options.collection)
@@ -302,7 +330,7 @@ async function main() {
           skippedHandle: loaded.skippedHandle,
           skippedKey: loaded.skippedKey,
           ...stats,
-          wrote: writes.length,
+          wrote,
           firstIndex: handles.indexOf(writes[0].handle),
           firstHandle: writes[0].handle,
           lastHandle: writes.at(-1).handle,

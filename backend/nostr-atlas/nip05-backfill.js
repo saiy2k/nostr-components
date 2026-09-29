@@ -54,9 +54,8 @@ function applyNip05(entity, nip05) {
   return next;
 }
 
-export function planNip05FromKind0(doc, kind0) {
-  const active = doc?.activeIdentity;
-  if (!isDirectoryIdentity(active)) {
+export function planNip05FromKind0(doc, kind0, claim = doc?.activeIdentity) {
+  if (!isDirectoryIdentity(claim)) {
     return { changed: false, reason: "not-directory" };
   }
   if (!kind0) {
@@ -64,7 +63,7 @@ export function planNip05FromKind0(doc, kind0) {
   }
   if (
     String(kind0.pubkey || "").toLowerCase() !==
-    String(active.pubkey || "").toLowerCase()
+    String(claim.pubkey || "").toLowerCase()
   ) {
     return { changed: false, reason: "pubkey-mismatch" };
   }
@@ -77,10 +76,12 @@ export function planNip05FromKind0(doc, kind0) {
     return { changed: false, reason: "rejected-nip05" };
   }
   const nextNip05 = decision.value;
-  const current = storedNip05(active);
-  const claim = (doc.claims || []).find((item) => item?.claimId === active.claimId);
-  const claimMatches = !claim || storedNip05(claim) === nextNip05;
-  if (current === nextNip05 && claimMatches) {
+  const updatesActive = doc?.activeIdentity?.claimId === claim.claimId;
+  const current = storedNip05(updatesActive ? doc.activeIdentity : claim);
+  const storedClaim = (doc.claims || []).find((item) => item?.claimId === claim.claimId);
+  const claimMatches = !storedClaim || storedNip05(storedClaim) === nextNip05;
+  const activeMatches = !updatesActive || current === nextNip05;
+  if (activeMatches && claimMatches) {
     return { changed: false, reason: "unchanged", nip05: current };
   }
   return {
@@ -88,9 +89,11 @@ export function planNip05FromKind0(doc, kind0) {
     reason: nextNip05 ? "updated" : "cleared",
     nip05: nextNip05,
     previousNip05: current,
-    activeIdentity: applyNip05(active, nextNip05),
-    claims: (doc.claims || []).map((claim) =>
-      claim?.claimId === active.claimId ? applyNip05(claim, nextNip05) : claim,
+    activeIdentity: updatesActive
+      ? applyNip05(doc.activeIdentity, nextNip05)
+      : undefined,
+    claims: (doc.claims || []).map((item) =>
+      item?.claimId === claim.claimId ? applyNip05(item, nextNip05) : item,
     ),
   };
 }
@@ -166,20 +169,25 @@ async function main() {
     const due = [];
     for (const doc of snap.docs) {
       const data = doc.data() || {};
-      if (!isDirectoryIdentity(data.activeIdentity)) continue;
-      stats.scanned += 1;
-      due.push({ id: doc.id, data });
+      const targets = (data.claims || []).filter(isDirectoryIdentity);
+      if (!targets.length && isDirectoryIdentity(data.activeIdentity)) {
+        targets.push(data.activeIdentity);
+      }
+      for (const claim of targets) {
+        stats.scanned += 1;
+        due.push({ id: doc.id, data, claim });
+      }
     }
     console.log(`NIP-05 pass: ${due.length} directory identities, relays ${relays.length}`);
     const profiles = await fetchKind0s(
-      [...new Set(due.map((row) => row.data.activeIdentity.pubkey))],
+      [...new Set(due.map((row) => row.claim.pubkey))],
       relays,
       { newest: true },
     );
     const planned = [];
     for (const row of due) {
-      const profile = profiles.get(row.data.activeIdentity.pubkey);
-      const plan = planNip05FromKind0(row.data, profile?.event || null);
+      const profile = profiles.get(row.claim.pubkey);
+      const plan = planNip05FromKind0(row.data, profile?.event || null, row.claim);
       if (row.data.handle === "btcforplebs" || row.id === "twitter:btcforplebs") {
         sample = {
           handle: row.data.handle || row.id,
@@ -195,7 +203,7 @@ async function main() {
       }
       if (plan.reason === "cleared") stats.cleared += 1;
       else stats.updated += 1;
-      planned.push({ row, event: profile?.event || null });
+      planned.push({ row, event: profile?.event || null, claimId: row.claim.claimId });
     }
     if (options.write) {
       for (let index = 0; index < planned.length; index += BATCH_LIMIT) {
@@ -205,13 +213,21 @@ async function main() {
             const ref = db.collection(options.collection).doc(item.row.id);
             const snap = await tx.get(ref);
             if (!snap.exists) return false;
-            const freshPlan = planNip05FromKind0(snap.data() || {}, item.event);
+            const fresh = snap.data() || {};
+            const claim =
+              (fresh.claims || []).find((entry) => entry?.claimId === item.claimId) ||
+              (fresh.activeIdentity?.claimId === item.claimId
+                ? fresh.activeIdentity
+                : null);
+            const freshPlan = planNip05FromKind0(fresh, item.event, claim);
             if (!freshPlan.changed) return false;
             const clear = freshPlan.nip05 == null;
             tx.set(
               ref,
               stripUndefined({
-                activeIdentity: activeIdentityForMerge(freshPlan.activeIdentity, clear),
+                activeIdentity: freshPlan.activeIdentity
+                  ? activeIdentityForMerge(freshPlan.activeIdentity, clear)
+                  : undefined,
                 claims: freshPlan.claims,
                 updatedAt: FieldValue.serverTimestamp(),
               }),

@@ -139,6 +139,10 @@ try {
         planned.push({ row, plan, event: profile?.event || null, avatar: null });
         continue;
       }
+      if (!profile?.event && profile?.transient !== false) {
+        stats.noKind0 += 1;
+        continue;
+      }
       if (plan.reason === "no-kind0") stats.noKind0 += 1;
       else if (plan.reason === "no-picture") stats.noNostrPicture += 1;
       needsX.push(row);
