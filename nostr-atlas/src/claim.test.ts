@@ -29,6 +29,7 @@ import {
   claimDialogAfterClose,
   claimProofEndpoint,
   fetchClaimProof,
+  CLAIM_PROOF_TIMEOUT_MS,
   submitXClaim,
 } from "./claim-flow";
 
@@ -1309,8 +1310,9 @@ describe("claim publish flow", () => {
     expect(claimProofEndpoint(directoryApiUrl)).toBe(
       "https://us-central1-nostr-components.cloudfunctions.net/checkClaimProof",
     );
-    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
-      const request = new URL(String(url));
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const fetchImpl = vi.fn(async (_url: string | URL | Request) => {
+      const request = new URL(String(_url));
       expect(request.origin + request.pathname).toBe(
         "https://us-central1-nostr-components.cloudfunctions.net/checkClaimProof",
       );
@@ -1334,6 +1336,8 @@ describe("claim publish flow", () => {
       ok: false,
       message: CLAIM_COPY.proofMissingNpub,
     });
+    expect(timeout).toHaveBeenCalledWith(CLAIM_PROOF_TIMEOUT_MS);
+    timeout.mockRestore();
   });
 
   it("resets a closed dialog only after publishing finishes", () => {

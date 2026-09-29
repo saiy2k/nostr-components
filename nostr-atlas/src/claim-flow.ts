@@ -110,6 +110,10 @@ export function claimProofEndpoint(directoryApiUrl: string): string {
   return directoryFunctionUrl(directoryApiUrl, "checkClaimProof");
 }
 
+// A cold Cloud Run instance has taken about 19s before this handler returns.
+// The dialog must outlast that, or a readable proof tweet looks unavailable.
+export const CLAIM_PROOF_TIMEOUT_MS = 30_000;
+
 export function claimIngestEndpoint(directoryApiUrl: string): string {
   return directoryFunctionUrl(directoryApiUrl, "ingestClaim");
 }
@@ -135,7 +139,7 @@ export async function fetchClaimProof(input: {
   const fetchImpl = input.fetchImpl ?? fetch;
   try {
     const response = await fetchImpl(endpoint, {
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(CLAIM_PROOF_TIMEOUT_MS),
     });
     const body = (await response.json().catch(() => null)) as {
       ok?: boolean;
