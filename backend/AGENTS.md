@@ -4,7 +4,7 @@ Cloud Run jobs for backfill and projection. This package is separate from the re
 
 - From `backend/`: `npm ci`, then `npm test`.
 - Run projection after backfill. Backfill writes handle documents; projection consumes them.
-- Deploy with `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh` and `backend/deploy-nostr-atlas-projection.sh` from the repo root.
+- Deploy with `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh` and `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-projection.sh` from the repo root.
 - Client Firestore rules are [firestore.rules](firestore.rules), deployed only with:
 
 ```sh

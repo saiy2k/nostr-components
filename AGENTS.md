@@ -1,6 +1,6 @@
 # Agent map
 
-This repo holds several products. Identify the surface before editing. Library source lives in `src/`. Every other top-level directory is a separate app, job, plugin, or generated copy.
+This repo holds several products. Identify the surface before editing. Library source lives in `src/`. `scripts/` is shared build and copy tooling. Other product directories are separate apps, jobs, or plugins.
 
 Read the surface README for runbooks. This file only routes work and names the traps.
 
@@ -25,7 +25,7 @@ Read the surface README for runbooks. This file only routes work and names the t
 - Source: `functions/`. Local notes: [functions/AGENTS.md](functions/AGENTS.md).
 - Runtime: Node 22. Check: `npm run test:functions`.
 - Deploy named functions only, to project `nostr-components`: `listAtlasProfiles`, `lookupAtlasHandle`, `checkClaimProof`, `ingestClaim`.
-- Public responses omit claims, evidence, `lud16`, and retry state.
+- `listAtlasProfiles` omits claims, evidence, `lud16`, and retry state. `lookupAtlasHandle` may return `activeIdentity.lud16` when that identity is zappable.
 
 ### Crawler jobs
 
