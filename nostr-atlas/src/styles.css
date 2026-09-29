@@ -805,18 +805,9 @@ svg {
 }
 
 .directory-data-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   padding: 8px 0 18px;
   color: var(--muted);
   font-size: 13px;
-}
-
-.directory-data-actions {
-  display: flex;
-  gap: 8px;
 }
 
 .mobile-only {

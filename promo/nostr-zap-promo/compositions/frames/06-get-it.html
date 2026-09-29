@@ -128,8 +128,8 @@
       opacity: 0;
     }
   </style>
-  <div data-hf-id="hf-89bm" id="root" data-composition-id="06-get-it" data-width="1080" data-height="1080" data-duration="4.5">
-    <div data-hf-id="hf-08kz" id="f06-get-it-ground" class="clip f06-get-it-ground" data-start="0" data-duration="4.5" data-track-index="0"></div>
+  <div data-hf-id="hf-89bm" id="root" data-composition-id="06-get-it" data-width="1080" data-height="1080" data-duration="4.882">
+    <div data-hf-id="hf-08kz" id="f06-get-it-ground" class="clip f06-get-it-ground" data-start="0" data-duration="4.882" data-track-index="0"></div>
     <div data-hf-id="hf-sbbc" id="f06-get-it-mark" class="f06-get-it-mark">
       <svg data-hf-id="hf-lp1i" class="f06-get-it-bolt" viewBox="-0.5 0 24 24" aria-hidden="true">
         <defs data-hf-id="hf-mh0t">
@@ -151,14 +151,14 @@
       <span data-hf-id="hf-9avn" class="f06-get-it-word f06-get-it-zap">zap</span>
     </p>
     <div data-hf-id="hf-u4yq" id="f06-get-it-avail" class="f06-get-it-avail">
-      <span data-hf-id="hf-3e79">free browser extension for</span>
+      <span data-hf-id="hf-3e79">now zap on</span>
       <img data-hf-id="hf-drjx" class="f06-get-it-x-logo" src="assets/x-logo.svg" alt="X">
-      <span data-hf-id="hf-m5fp">&amp;</span>
+      <span data-hf-id="hf-m5fp">and</span>
       <img data-hf-id="hf-aszk" class="f06-get-it-yt-logo" src="assets/youtube-logo.svg" alt="YouTube">
     </div>
     <div data-hf-id="hf-wt7z" class="f06-get-it-url">
       <span data-hf-id="hf-5nxi" class="f06-get-it-url-box">
-        <span data-hf-id="hf-aub3" class="f06-get-it-url-ghost" aria-hidden="true">github.com/saiy2k/nostr-components</span>
+        <span data-hf-id="hf-aub3" class="f06-get-it-url-ghost" aria-hidden="true">https://nostr-component.web.app/</span>
         <span data-hf-id="hf-kftt" class="f06-get-it-url-typed"><span data-hf-id="hf-jhmv" id="f06-get-it-url-text"></span><span data-hf-id="hf-pjjz" id="f06-get-it-caret" class="f06-get-it-caret"></span></span>
       </span>
     </div>
@@ -194,7 +194,7 @@
 
     tl.fromTo(avail, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 2.0);
 
-    const URL_TEXT = "github.com/saiy2k/nostr-components";
+    const URL_TEXT = "https://nostr-component.web.app/";
     const TYPE_START = 2.5;
     const TYPE_END = 3.2;
     const EPS = 1e-6;
@@ -227,6 +227,13 @@
     );
 
     window.__timelines = window.__timelines || {};
+    (function (timeline) {
+      var S = 30 / 27.65;
+      timeline.getChildren(false, true, false).forEach(function (tw) {
+        tw.startTime(tw.startTime() * S);
+        tw.duration(tw.duration() * S);
+      });
+    })(tl);
     window.__timelines["06-get-it"] = tl;
   </script>
 </template>

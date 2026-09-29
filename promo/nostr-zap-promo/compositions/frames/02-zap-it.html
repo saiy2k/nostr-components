@@ -30,12 +30,12 @@
     [id="f02-zap-it-bolt-body"] svg { position: absolute; left: 0; top: 0; width: 400px; height: 400px; display: block; }
   </style>
 
-  <div data-hf-id="hf-0xzi" id="root" data-composition-id="02-zap-it" data-start="0" data-duration="4" data-width="1080" data-height="1080">
-    <div data-hf-id="hf-8ir0" id="f02-zap-it-ground" class="clip" data-start="0" data-duration="4" data-track-index="0">
+  <div data-hf-id="hf-0xzi" id="root" data-composition-id="02-zap-it" data-start="0" data-duration="5.154" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-8ir0" id="f02-zap-it-ground" class="clip" data-start="0" data-duration="5.154" data-track-index="0">
       <div data-hf-id="hf-om9g" id="f02-zap-it-strike"></div>
     </div>
 
-    <div data-hf-id="hf-9kx0" id="f02-zap-it-stage" class="clip" data-start="0" data-duration="4" data-track-index="1">
+    <div data-hf-id="hf-9kx0" id="f02-zap-it-stage" class="clip" data-start="0" data-duration="5.154" data-track-index="1">
       <svg data-hf-id="hf-tyw9" id="f02-zap-it-defs" width="0" height="0" aria-hidden="true">
         <filter data-hf-id="hf-w12s" id="f02-zap-it-streak" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
           <fegaussianblur data-hf-id="hf-owgu" id="f02-zap-it-streak-blur" in="SourceGraphic" stdDeviation="0 0" />
@@ -106,7 +106,8 @@
         for (var i = 0; i < units.length; i++) units[i].style.opacity = i < shown ? "1" : "0";
       }
 
-      // Scene 2 — the verb slot clicks over on the 0.5s and 1.0s beats. Summed per-step progress
+      // Scene 2 — like, repost, and bookmark each hold 250ms longer than the original
+      // 0.5s beats, so the slot clicks at 0.75s and 1.5s. Summed per-step progress
       // drives the stack; each step is out-eased because this video allows no overshoot. The line
       // re-centres through a translate on the slot/tail join, never a layout property.
       var ITEM_H = 125;
@@ -122,7 +123,7 @@
         if (tail.offsetWidth > 0) tailW = tail.offsetWidth;
       }
       function applyTicker(t) {
-        var sum = stepEase(clamp01((t - 0.5) / 0.55)) + stepEase(clamp01((t - 1.0) / 0.55));
+        var sum = stepEase(clamp01((t - 0.75) / 0.55)) + stepEase(clamp01((t - 1.5) / 0.55));
         var i = Math.min(Math.floor(sum), verbW.length - 2);
         var verbWidth = verbW[i] + (verbW[i + 1] - verbW[i]) * (sum - i);
         stack.style.transform = "translateY(" + (-sum * ITEM_H) + "px)";
@@ -131,10 +132,11 @@
       measureLine2();
 
       // Scene 3–4 — one driver owns the collision: the bolt streaks in on a steep diagonal with a
-      // velocity-coupled directional blur, touches the top of "don't just" at exactly 2.0s, the
+      // velocity-coupled directional blur, touches the top of "don't just" at exactly 2.75s, the
       // register flips, the lead is shoved off left-down in proportion to the bolt's settle
-      // (done by 2.2s), and the bolt lands heavy (power2) in its rest box by 2.5s.
-      var T_IN = 1.6, T_HIT = 2.0, T_REST = 2.5, T_CLEAR = 2.2, RING_DUR = 0.3;
+      // (done by 2.95s), and the bolt lands heavy (power2) in its rest box by 3.25s.
+      // The crash is 0.75s later so bookmark also keeps its extra 250ms.
+      var T_IN = 2.35, T_HIT = 2.75, T_REST = 3.25, T_CLEAR = 2.95, RING_DUR = 0.3;
       var REST_X = 540, REST_Y = 330;
       var DIR_X = -0.53, DIR_Y = 0.848;
       var STREAK_AXIS = -58;
@@ -230,11 +232,11 @@
           ring.setAttribute("stroke-width", "0");
         }
       }
-      // Scene 4 — "zap it." slams on 2.5s (scale + blur), the kicker lands on 3.0s (rise); both are
-      // at rest by 3.18s so 3.2–4.0s is the exact, dead-still handoff picture.
+      // Scene 4 — "zap it." slams on 3.25s (scale + blur), the kicker lands on 3.75s (rise); both are
+      // at rest by 3.93s so 3.95–4.75s is the exact, dead-still handoff picture.
       var word = byId("word");
       function applyWordBlur(t) {
-        var v = 16 * (1 - slamEase(clamp01((t - 2.5) / 0.5)));
+        var v = 16 * (1 - slamEase(clamp01((t - 3.25) / 0.5)));
         word.style.filter = v > 0.05 ? "blur(" + v.toFixed(2) + "px)" : "none";
       }
 
@@ -248,15 +250,22 @@
       }
       var drv = { t: 0 };
       renderAt(0);
-      tl.to(drv, { t: 4, duration: 4, ease: "none", onUpdate: function () { renderAt(drv.t); } }, 0);
-      tl.fromTo(word, { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power4.out" }, 2.5);
-      tl.fromTo(byId("kicker"), { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.18, ease: "circ.out" }, 3.0);
+      tl.to(drv, { t: 4.75, duration: 4.75, ease: "none", onUpdate: function () { renderAt(drv.t); } }, 0);
+      tl.fromTo(word, { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power4.out" }, 3.25);
+      tl.fromTo(byId("kicker"), { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.18, ease: "circ.out" }, 3.75);
       // Widths are cached outside timeline callbacks; refresh them once the webfont is in.
       if (document.fonts && document.fonts.load) {
         document.fonts.load('900 100px "Barlow"').then(function () { measureLine2(); renderAt(tl.time()); }, function () {});
       }
 
       window.__timelines = window.__timelines || {};
+    (function (timeline) {
+      var S = 30 / 27.65;
+      timeline.getChildren(false, true, false).forEach(function (tw) {
+        tw.startTime(tw.startTime() * S);
+        tw.duration(tw.duration() * S);
+      });
+    })(tl);
       window.__timelines["02-zap-it"] = tl;
     })();
   </script>

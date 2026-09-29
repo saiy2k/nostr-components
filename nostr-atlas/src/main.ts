@@ -183,7 +183,7 @@ function renderProfiles(): void {
   const emptyDescription = waitingForPage
     ? "Fetching verified accounts."
     : loadFailed && (!loaded || missingPage)
-      ? "Please retry using the button below."
+      ? "Reload the page to try again."
       : "Try an X handle, NIP-05 address, or npub. A partial handle lists every match.";
 
   results.innerHTML = items.length
@@ -283,26 +283,20 @@ function renderPagination(
 
 function renderDirectoryStatus(): void {
   const status = document.querySelector<HTMLElement>("#directory-status");
-  const retry = document.querySelector<HTMLButtonElement>("#retry-directory");
   const cachedProfiles = [...profileBatches.values()].reduce(
     (count, batch) => count + batch.length,
     0,
   );
-  if (status) {
-    const accountLabel = (count: number) =>
-      `verified X ${count === 1 ? "account" : "accounts"}`;
-    status.textContent = loadFailed
-      ? "Could not load verified accounts. Check your connection and retry. Local previews are kept."
-      : loading
-        ? "Loading verified accounts…"
-        : query
-          ? `${totalProfiles} ${accountLabel(totalProfiles)} match this search; ${cachedProfiles} cached in this browser.`
-          : `${directoryTotal} ${accountLabel(directoryTotal)} in the directory; ${cachedProfiles} cached in this browser.`;
-  }
-  if (retry) {
-    retry.hidden = !loadFailed;
-    retry.disabled = loading;
-  }
+  if (!status) return;
+  const accountLabel = (count: number) =>
+    `verified X ${count === 1 ? "account" : "accounts"}`;
+  status.textContent = loadFailed
+    ? "Could not load verified accounts. Check your connection and reload the page. Local previews are kept."
+    : loading
+      ? "Loading verified accounts…"
+      : query
+        ? `${totalProfiles} ${accountLabel(totalProfiles)} match this search; ${cachedProfiles} cached in this browser.`
+        : `${directoryTotal} ${accountLabel(directoryTotal)} in the directory; ${cachedProfiles} cached in this browser.`;
 }
 
 async function loadProfileBatches(
@@ -457,14 +451,6 @@ function scrollToDirectory(): void {
 }
 
 function bindEvents(): void {
-  document
-    .querySelector("#retry-directory")
-    ?.addEventListener("click", () => {
-      if (loadFailed && loaded && requiredBatchOffsets().length > 0) {
-        void ensureCurrentPageLoaded();
-      } else void reloadProfiles();
-    });
-
   const paginationNav = document.querySelector("#directory-pagination");
   paginationNav?.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
