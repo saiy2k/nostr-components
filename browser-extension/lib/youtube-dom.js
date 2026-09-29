@@ -142,8 +142,6 @@
       'ytd-reel-player-overlay-renderer ytd-channel-name',
       'ytd-reel-player-overlay-renderer #channel-name',
       'ytd-reel-player-overlay-renderer a[href^="nostr:npub1"]',
-      'ytm-reel-player-overlay-renderer',
-      'ytm-shorts-player-overlay-renderer',
       'ytm-slim-owner-renderer'
     ].join(','));
     for (const candidate of candidates) {
