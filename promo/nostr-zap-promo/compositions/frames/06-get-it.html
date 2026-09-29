@@ -128,8 +128,8 @@
       opacity: 0;
     }
   </style>
-  <div data-hf-id="hf-89bm" id="root" data-composition-id="06-get-it" data-width="1080" data-height="1080" data-duration="4.5">
-    <div data-hf-id="hf-08kz" id="f06-get-it-ground" class="clip f06-get-it-ground" data-start="0" data-duration="4.5" data-track-index="0"></div>
+  <div data-hf-id="hf-89bm" id="root" data-composition-id="06-get-it" data-width="1080" data-height="1080" data-duration="4.882">
+    <div data-hf-id="hf-08kz" id="f06-get-it-ground" class="clip f06-get-it-ground" data-start="0" data-duration="4.882" data-track-index="0"></div>
     <div data-hf-id="hf-sbbc" id="f06-get-it-mark" class="f06-get-it-mark">
       <svg data-hf-id="hf-lp1i" class="f06-get-it-bolt" viewBox="-0.5 0 24 24" aria-hidden="true">
         <defs data-hf-id="hf-mh0t">
@@ -227,6 +227,13 @@
     );
 
     window.__timelines = window.__timelines || {};
+    (function (timeline) {
+      var S = 30 / 27.65;
+      timeline.getChildren(false, true, false).forEach(function (tw) {
+        tw.startTime(tw.startTime() * S);
+        tw.duration(tw.duration() * S);
+      });
+    })(tl);
     window.__timelines["06-get-it"] = tl;
   </script>
 </template>

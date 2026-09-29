@@ -1,20 +1,20 @@
 ---
 format: 1080x1080
-duration: 30.75s
+duration: 30s
 message: "Don't just like it. Zap it: send real sats to creators, right on X and YouTube."
-arc: BAB — a like gives nothing → zap it → on X → on YouTube → real sats to the creator → get it
+arc: BAB — a like gives nothing → zap it → on X → on YouTube → get it
 audience: X and YouTube users who follow Bitcoin/Nostr creators
 mode: autonomous
 music: none
 ---
 
-# Nostr Like & Zap — "Strike" (30.75s, 1:1 X feed, no voice-over)
+# Nostr Like & Zap — "Strike" (30s, 1:1 X feed, no voice-over)
 
 This video tells X and YouTube users who follow Bitcoin/Nostr creators that a like
 gives the creator nothing, and the zap button sends real sats right where they
 already scroll. No voice-over and no music (SFX only): every reveal lands on a
 120 BPM beat grid (one beat every 0.5s); the sound peak — a riser into a bass
-impact — is the bolt strike at 7.75s.
+impact — is the bolt strike at 8.4s.
 
 ## Video direction
 
@@ -31,7 +31,7 @@ impact — is the bolt strike at 7.75s.
 
 - scene: A giant X heart gets liked, pops pink and its count ticks up — "you liked it." — then it drains grey: "can they buy a coffee / with those likes?"
 - voiceover: ""
-- duration: 5s
+- duration: 5.425s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/01-liked.html
@@ -60,7 +60,7 @@ keyMessage: a like is free, and worth nothing to the creator.
 
 - scene: "don't just like it." — the verb cycles like → repost → bookmark — then a giant yellow bolt crashes in, shoves the line off-frame, and the screen flips electric yellow: "zap it."
 - voiceover: ""
-- duration: 4.75s
+- duration: 5.154s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/02-zap-it.html
@@ -90,7 +90,7 @@ keyMessage: don't just like it — zap it.
 
 - scene: The giant bolt shrinks into its real home — right after the heart on an X post — then a cursor zaps 1000 sats: Send a Zap → 1000 → Open in wallet → Thank you!
 - voiceover: ""
-- duration: 7s
+- duration: 8.137s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/03-on-x.html
@@ -126,7 +126,7 @@ keyMessage: it's right there on X, next to the like.
 
 - scene: Extreme close-up on YouTube's zap pill — click, 2,100 → 3,100 sats with sparks — then one decelerating zoom-out reveals the whole YouTube watch page.
 - voiceover: ""
-- duration: 6s
+- duration: 6.944s
 - transition_in: push-slide LEFT
 - status: animated
 - src: compositions/frames/04-on-youtube.html
@@ -153,39 +153,11 @@ Scene 4 (3.0–6.0s): locked wide, element motion only. The headline lands in th
 narrativeRole: the same button on the second platform — breadth, delivered as a reveal.
 keyMessage: and on YouTube too.
 
-## Frame 5 — real sats.
-
-- scene: The breather: "real sats." then, in yellow, "straight to the creator." with a quiet mono line — peer-to-peer, no platform cut.
-- voiceover: ""
-- duration: 3.5s
-- transition_in: zoom-through
-- status: animated
-- src: compositions/frames/05-real-sats.html
-- type: benefit_highlight
-- persuasion: Value framing (direct, uncut value)
-- beat: clarity → trust
-- blueprint: titlecard-reveal (Adapt)
-- focal: typography only
-- roles: typography only
-- sfx: whoosh-short
-- asset_candidates: none — typography-only frame
-
-On-screen copy (exact): "real sats." / "straight to the creator." / "PEER-TO-PEER · NO PLATFORM CUT".
-
-Adapt: keep the calm Benefits shape — one restrained reveal, then a still hold (allocated stillness); change: line 1 stays while line 2 slides up beneath it into a two-line statement (broadside Statement: one clause inked yellow).
-
-Scene 1 (0.0–0.5s): dark register. "real sats." (Barlow 900 lowercase cream, ~140px, left-aligned at x80, center y ~330) fades in, rising slightly with a 95→100% scale settle (scale-swap-transition, restrained in-settle).
-Scene 2 (1.0–1.5s): on the 1.0s beat "straight to the creator." slides up into place beneath it in #FFC800 (~110px, two lines "straight to" / "the creator.", left-aligned at x80, top ~430) (discrete-text-sequence slide-up handoff; line 1 holds).
-Scene 3 (1.5–3.5s): on 1.5s the kicker lands under the block, left-aligned: a 36×2 #FFC800 rule stub, then "PEER-TO-PEER · NO PLATFORM CUT" (IBM Plex Mono 600 uppercase, +0.14em, ~28px, cream-muted). Hold dead still.
-
-narrativeRole: the value, said plainly after the demos — a zap is real money that goes straight to the person who made the thing.
-keyMessage: real sats, straight to the creator.
-
-## Frame 6 — nostr like & zap
+## Frame 5 — nostr like & zap
 
 - scene: The bolt draws itself and floods yellow; "nostr like & zap" builds beneath; "now zap on" X and YouTube; the GitHub URL types on and holds.
 - voiceover: ""
-- duration: 4.5s
+- duration: 4.882s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/06-get-it.html

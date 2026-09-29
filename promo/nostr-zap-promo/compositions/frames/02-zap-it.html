@@ -30,12 +30,12 @@
     [id="f02-zap-it-bolt-body"] svg { position: absolute; left: 0; top: 0; width: 400px; height: 400px; display: block; }
   </style>
 
-  <div data-hf-id="hf-0xzi" id="root" data-composition-id="02-zap-it" data-start="0" data-duration="4.75" data-width="1080" data-height="1080">
-    <div data-hf-id="hf-8ir0" id="f02-zap-it-ground" class="clip" data-start="0" data-duration="4.75" data-track-index="0">
+  <div data-hf-id="hf-0xzi" id="root" data-composition-id="02-zap-it" data-start="0" data-duration="5.154" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-8ir0" id="f02-zap-it-ground" class="clip" data-start="0" data-duration="5.154" data-track-index="0">
       <div data-hf-id="hf-om9g" id="f02-zap-it-strike"></div>
     </div>
 
-    <div data-hf-id="hf-9kx0" id="f02-zap-it-stage" class="clip" data-start="0" data-duration="4.75" data-track-index="1">
+    <div data-hf-id="hf-9kx0" id="f02-zap-it-stage" class="clip" data-start="0" data-duration="5.154" data-track-index="1">
       <svg data-hf-id="hf-tyw9" id="f02-zap-it-defs" width="0" height="0" aria-hidden="true">
         <filter data-hf-id="hf-w12s" id="f02-zap-it-streak" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
           <fegaussianblur data-hf-id="hf-owgu" id="f02-zap-it-streak-blur" in="SourceGraphic" stdDeviation="0 0" />
@@ -259,6 +259,13 @@
       }
 
       window.__timelines = window.__timelines || {};
+    (function (timeline) {
+      var S = 30 / 27.65;
+      timeline.getChildren(false, true, false).forEach(function (tw) {
+        tw.startTime(tw.startTime() * S);
+        tw.duration(tw.duration() * S);
+      });
+    })(tl);
       window.__timelines["02-zap-it"] = tl;
     })();
   </script>

@@ -61,10 +61,10 @@
     [class~="f04-on-youtube-hl-word"] { display: inline-block; }
   </style>
 
-  <div data-hf-id="hf-s97e" id="root" data-composition-id="04-on-youtube" data-start="0" data-duration="6.4" data-width="1080" data-height="1080">
-    <div data-hf-id="hf-5t40" id="f04-on-youtube-ground" class="clip" data-start="0" data-duration="6.4" data-track-index="0"></div>
+  <div data-hf-id="hf-s97e" id="root" data-composition-id="04-on-youtube" data-start="0" data-duration="6.944" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-5t40" id="f04-on-youtube-ground" class="clip" data-start="0" data-duration="6.944" data-track-index="0"></div>
 
-    <div data-hf-id="hf-nkra" id="f04-on-youtube-scene" class="clip" data-start="0" data-duration="6.4" data-track-index="1">
+    <div data-hf-id="hf-nkra" id="f04-on-youtube-scene" class="clip" data-start="0" data-duration="6.944" data-track-index="1">
       <div data-hf-id="hf-nnt3" id="f04-on-youtube-world" data-layout-allow-overflow="">
         <div data-hf-id="hf-qlcs" class="f04-on-youtube-player" data-dof-depth="3">
           <img data-hf-id="hf-1jn2" class="f04-on-youtube-still" src="assets/yt-btc-sessions-nostr.jpg" alt="">
@@ -137,7 +137,7 @@
       </div>
     </div>
 
-    <div data-hf-id="hf-ovb3" id="f04-on-youtube-headline" class="clip" data-start="0" data-duration="6.4" data-track-index="2">
+    <div data-hf-id="hf-ovb3" id="f04-on-youtube-headline" class="clip" data-start="0" data-duration="6.944" data-track-index="2">
       <div data-hf-id="hf-4ogi" class="f04-on-youtube-hl-row">
         <img data-hf-id="hf-9s5o" id="f04-on-youtube-hl-logo" class="f04-on-youtube-hl-logo" src="assets/youtube-logo.svg" alt="">
         <div data-hf-id="hf-yvd7" class="f04-on-youtube-hl-text"><span data-hf-id="hf-8cr3" id="f04-on-youtube-hl-w1" class="f04-on-youtube-hl-word">right</span> <span data-hf-id="hf-tj3t" id="f04-on-youtube-hl-w2" class="f04-on-youtube-hl-word">on</span> <span data-hf-id="hf-21t0" id="f04-on-youtube-hl-w3" class="f04-on-youtube-hl-word">youtube.</span></div>
@@ -213,6 +213,13 @@
       tl.fromTo(cursor, { x: TIP_CLICK.x, y: TIP_CLICK.y }, { x: TIP_REST.x, y: TIP_REST.y, duration: 1.0, ease: "power2.inOut", force3D: false, immediateRender: false }, 3.75);
       tl.fromTo(pill, { backgroundColor: PILL_HOVER }, { backgroundColor: PILL_BG, duration: 0.2, ease: "power1.out", immediateRender: false }, 4.58);
 
+    (function (timeline) {
+      var S = 30 / 27.65;
+      timeline.getChildren(false, true, false).forEach(function (tw) {
+        tw.startTime(tw.startTime() * S);
+        tw.duration(tw.duration() * S);
+      });
+    })(tl);
       window.__timelines["04-on-youtube"] = tl;
     })();
   </script>

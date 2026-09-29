@@ -160,8 +160,8 @@
     }
   </style>
 
-  <div data-hf-id="hf-hb8b" id="root" data-composition-id="01-liked" data-start="0" data-duration="5" data-width="1080" data-height="1080">
-    <div data-hf-id="hf-8kul" id="f01-liked-bg" class="clip" data-start="0" data-duration="5" data-track-index="0"></div>
+  <div data-hf-id="hf-hb8b" id="root" data-composition-id="01-liked" data-start="0" data-duration="5.425" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-8kul" id="f01-liked-bg" class="clip" data-start="0" data-duration="5.425" data-track-index="0"></div>
 
     <div data-hf-id="hf-3jru" class="f01-liked-unit">
       <div data-hf-id="hf-z8fp" class="f01-liked-heart-slot">
@@ -344,6 +344,13 @@
       T_LIKES,
     );
 
+    (function (timeline) {
+      var S = 30 / 27.65;
+      timeline.getChildren(false, true, false).forEach(function (tw) {
+        tw.startTime(tw.startTime() * S);
+        tw.duration(tw.duration() * S);
+      });
+    })(tl);
     window.__timelines["01-liked"] = tl;
   </script>
 </template>
