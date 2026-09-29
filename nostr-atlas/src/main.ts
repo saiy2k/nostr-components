@@ -431,7 +431,14 @@ function setProperty(property: string, content: string): void {
   if (element) element.content = content;
 }
 
+function configureSiteActions(): void {
+  const pageUrl = `${siteOrigin}/`;
+  document.querySelector("nostr-like-button")?.setAttribute("url", pageUrl);
+  document.querySelector("nostr-zap-button")?.setAttribute("url", pageUrl);
+}
+
 function boot(): void {
+  configureSiteActions();
   bindEvents();
   const initialQuery = readSearchQuery();
   const searchInput = document.querySelector<HTMLInputElement>("#directory-search");
