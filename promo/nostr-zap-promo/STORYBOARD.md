@@ -198,13 +198,13 @@ keyMessage: real sats, straight to the creator.
 - sfx: impact-bass-1, pop
 - asset_candidates: assets/zap-bolt.svg — the mark; assets/x-logo.svg — official X mark (white); assets/youtube-logo.svg — official YouTube mark
 
-On-screen copy (exact): "nostr like & zap" · "now zap on" + [X logo] + "and" + [YouTube logo] · "github.com/saiy2k/nostr-components".
+On-screen copy (exact): "nostr like & zap" · "now zap on" + [X logo] + "and" + [YouTube logo] · "https://nostr-component.web.app/".
 
 Adapt: keep the Brand_Outro build — on a clear stage the mark draws itself stroke by stroke and the wordmark completes the lockup (svg-path-draw); change: the lockup stacks (mark over wordmark) and extends into an availability line plus the URL. This is the final frame: it holds to the last frame.
 
 Scene 1 (0.0–1.0s): dark register, empty. The bolt outline draws on at center (300px box, center y ~290) as a #FFC800 stroke (0.0–0.7s); the fill floods in #FFC800 (0.7–0.9s); on the 1.0s beat it lands with one subtle scale settle 1.04 → 1.
 Scene 2 (1.0–2.0s): "nostr like & zap" builds word by word beneath it (center y ~540; Barlow 900 lowercase, ~100px, ≤ 78cqw; "zap" in #FFC800, the rest cream) on 1.0 / 1.2 / 1.4 / 1.6s.
-Scene 3 (2.0–3.2s): on 2.0s the availability line fades up (center y ~650): "now zap on" (Barlow 600 lowercase cream ~44px) followed inline by the X logo (40px tall, white), "and", and the YouTube logo (44px wide). On 2.5s the URL types on by character (discrete-text-sequence) below it (center y ~740): "github.com/saiy2k/nostr-components" in IBM Plex Mono 500 ~34px cream-muted, lowercase (a URL is copy, not chrome); typing done by 3.2s.
+Scene 3 (2.0–3.2s): on 2.0s the availability line fades up (center y ~650): "now zap on" (Barlow 600 lowercase cream ~44px) followed inline by the X logo (40px tall, white), "and", and the YouTube logo (44px wide). On 2.5s the URL types on by character (discrete-text-sequence) below it (center y ~740): "https://nostr-component.web.app/" in IBM Plex Mono 500 ~34px cream-muted, lowercase (a URL is copy, not chrome); typing done by 3.2s.
 Scene 4 (3.2–4.5s): the complete lockup holds dead still to the last frame.
 
 narrativeRole: name the product and hand over the one next step — it's free and it's one link away.
