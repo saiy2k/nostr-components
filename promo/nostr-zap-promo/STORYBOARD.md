@@ -1,6 +1,6 @@
 ---
 format: 1080x1080
-duration: 29s
+duration: 30.75s
 message: "Don't just like it. Zap it: send real sats to creators, right on X and YouTube."
 arc: BAB — a like gives nothing → zap it → on X → on YouTube → real sats to the creator → get it
 audience: X and YouTube users who follow Bitcoin/Nostr creators
@@ -8,13 +8,13 @@ mode: autonomous
 music: none
 ---
 
-# Nostr Like & Zap — "Strike" (29s, 1:1 X feed, no voice-over)
+# Nostr Like & Zap — "Strike" (30.75s, 1:1 X feed, no voice-over)
 
 This video tells X and YouTube users who follow Bitcoin/Nostr creators that a like
 gives the creator nothing, and the zap button sends real sats right where they
 already scroll. No voice-over and no music (SFX only): every reveal lands on a
 120 BPM beat grid (one beat every 0.5s); the sound peak — a riser into a bass
-impact — is the bolt strike at 6.0s.
+impact — is the bolt strike at 7.75s.
 
 ## Video direction
 
@@ -29,9 +29,9 @@ impact — is the bolt strike at 6.0s.
 
 ## Frame 1 — you liked it.
 
-- scene: A giant X heart gets liked, pops pink and its count ticks up — "you liked it." — then it drains grey: "they got nothing."
+- scene: A giant X heart gets liked, pops pink and its count ticks up — "you liked it." — then it drains grey: "can they buy a coffee / with those likes?"
 - voiceover: ""
-- duration: 4s
+- duration: 5s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/01-liked.html
@@ -44,14 +44,14 @@ impact — is the bolt strike at 6.0s.
 - sfx: pop, click-soft
 - asset_candidates: assets/ui-icons.svg — X heart outline and filled pink heart paths
 
-On-screen copy (exact): "you liked it." → "they got nothing." · like count "12,399" → "12,400" · mono readout "0 SATS RECEIVED".
+On-screen copy (exact): "you liked it." → "can they buy a coffee" / "with those likes?" · like count "12,399" → "12,400".
 
 Adapt: keep the centered beat-triptych law (each beat alone at one fixed center, the last beat holds) and the in-place line swap by instant hard cut; change beat 1 into a non-text payload — X's heart being liked.
 
 Scene 1 (0.0–0.5s): dark register ground (full-bleed clip). Upper center, one unit centered on x540 / y330: X's heart outline (~240px, stroke #71767B) with the like count "12,399" to its right (Inter 700 ~120px, #71767B). Visible from t=0, still.
 Scene 2 (0.5–1.0s): on the 0.5s beat the heart is liked: outline swaps to the filled #F91880 heart with X's like pop — scale dips to 0.85 and settles back to 1 on a smooth long-tail (no overshoot), a thin pink ring expands and fades, 6 tiny pink dots burst outward at index-derived angles and fade by 0.9s; the count flips 12,399 → 12,400 by instant digit swap and turns #F91880.
-Scene 3 (1.0–2.5s): beneath the unit (center y ~650) "you liked it." slams in word by word on 1.0 / 1.25 / 1.5s — Barlow 900 lowercase cream, both lines of this frame sized to the longer one ("they got nothing.", ≤ 78cqw, ~96px) — each word a distinct percussive entrance per the beat-slam recipe (kinetic-beat-slam). Holds.
-Scene 4 (2.5–4.0s): hard cut on the 2.5s beat (discrete-text-sequence whole-line swap, no fade): the line becomes "they got nothing." at the same size and position, "nothing." in cream-muted #888880; in the same instant the heart drains back to the grey outline and the count returns to grey #71767B (12,400 stays). On 3.0s a mono readout lands under the line (center y ~790): "0 SATS RECEIVED" — IBM Plex Mono 600 uppercase, +0.14em, ~30px, cream-muted — with a 36×2 hairline stub (#282826) above it. Hold dead still to the end: the stillness is the deflation.
+Scene 3 (1.0–2.5s): beneath the unit (center y ~650) "you liked it." slams in word by word on 1.0 / 1.25 / 1.5s — Barlow 900 lowercase cream, ~96px — each word a distinct percussive entrance per the beat-slam recipe (kinetic-beat-slam). Holds.
+Scene 4 (2.5–5.0s): hard cut on the 2.5s beat (discrete-text-sequence whole-line swap, no fade): the line becomes "can they buy a coffee" (Barlow 900 lowercase cream, 72px, first line aligned to the same band), and in the same instant the heart drains back to the grey outline and the count returns to grey #71767B (12,400 stays). On 3.0s "with those likes?" settles up beneath it in the same face and color. Hold dead still to the end: the stillness is the deflation.
 
 narrativeRole: open on a gesture every X user makes a hundred times a day, then puncture it — the like feels generous but pays the creator nothing.
 keyMessage: a like is free, and worth nothing to the creator.
@@ -60,7 +60,7 @@ keyMessage: a like is free, and worth nothing to the creator.
 
 - scene: "don't just like it." — the verb cycles like → repost → bookmark — then a giant yellow bolt crashes in, shoves the line off-frame, and the screen flips electric yellow: "zap it."
 - voiceover: ""
-- duration: 4s
+- duration: 4.75s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/02-zap-it.html
@@ -79,9 +79,9 @@ On-screen copy (exact): "don't just" / "like it." → "repost it." → "bookmark
 Adapt: keep the signature collision — the hero crashes in from off-screen and physically shoves the text group aside (reactive-displacement), then lands heavy; change: the lead-in types on fast and smooth, the accent slot is an X verb with its X icon, and the impact flips the register to full yellow.
 
 Scene 1 (0.0–0.5s): dark register. Two centered lines (block center y ~450, Barlow 900 lowercase cream, ~100px, the longest state ≤ 78cqw): line 1 "don't just", line 2 = the accent slot + " it." — the slot shows the X heart icon (outline, cream, cap-height) followed by "like". The block types on by character, fast and smooth (discrete-text-sequence), fully in by 0.4s.
-Scene 2 (0.5–1.5s): the slot rolls vertically on the 0.5s and 1.0s beats: heart "like" → repost-arrows "repost" → bookmark "bookmark" (vertical-spring-ticker, 2 steps, footer unused); the rest of the block holds.
-Scene 3 (1.5–2.2s): the collision — the bolt (zap-bolt, #FFC800, 400px box) crashes in from off-screen top-right on a steep diagonal with a velocity streak that resolves sharp (motion-blur-streak) and strikes at exactly 2.0s (the sound peak). The impact shoves the text block off left-down — pushed, slightly rotated, clipped by the frame edge, never faded. At 2.0s the ground hard-flips to the yellow register (#FFC800) and the bolt's fill flips to ink #0A0A0A; one thin ink ring expands from the impact point and is gone by 2.3s.
-Scene 4 (2.2–4.0s): the hero alone. The ink bolt settles into its rest box (400×400 at 540,330) on a heavy long-tail settle, done by 2.5s. On 2.5s "zap it." slams in beneath (one hit, per kinetic-beat-slam); on 3.0s the kicker "INSTANT BITCOIN TIPS" lands. By 3.2s every element sits exactly at the handoff_out values and holds dead still (no jitter) — the next frame starts from this exact picture.
+Scene 2 (0.5–2.25s): the slot rolls vertically on the 0.75s and 1.5s beats: heart "like" → repost-arrows "repost" → bookmark "bookmark" (vertical-spring-ticker, 2 steps, footer unused); each verb holds 250ms longer than the original half-second beat.
+Scene 3 (2.25–2.95s): the collision — the bolt (zap-bolt, #FFC800, 400px box) crashes in from off-screen top-right on a steep diagonal with a velocity streak that resolves sharp (motion-blur-streak) and strikes at exactly 2.75s (the sound peak). The impact shoves the text block off left-down — pushed, slightly rotated, clipped by the frame edge, never faded. At 2.75s the ground hard-flips to the yellow register (#FFC800) and the bolt's fill flips to ink #0A0A0A; one thin ink ring expands from the impact point and is gone by 3.05s.
+Scene 4 (2.95–4.75s): the hero alone. The ink bolt settles into its rest box (400×400 at 540,330) on a heavy long-tail settle, done by 3.25s. On 3.25s "zap it." slams in beneath (one hit, per kinetic-beat-slam); on 3.75s the kicker "INSTANT BITCOIN TIPS" lands. By 3.95s every element sits exactly at the handoff_out values and holds dead still (no jitter) — the next frame starts from this exact picture.
 
 narrativeRole: the promise, landed by beat 2 — every lazy engagement verb is not enough; strike with the new one.
 keyMessage: don't just like it — zap it.
@@ -183,7 +183,7 @@ keyMessage: real sats, straight to the creator.
 
 ## Frame 6 — nostr like & zap
 
-- scene: The bolt draws itself and floods yellow; "nostr like & zap" builds beneath; "free browser extension for X & YouTube"; the GitHub URL types on and holds.
+- scene: The bolt draws itself and floods yellow; "nostr like & zap" builds beneath; "now zap on" X and YouTube; the GitHub URL types on and holds.
 - voiceover: ""
 - duration: 4.5s
 - transition_in: cut
@@ -198,14 +198,14 @@ keyMessage: real sats, straight to the creator.
 - sfx: impact-bass-1, pop
 - asset_candidates: assets/zap-bolt.svg — the mark; assets/x-logo.svg — official X mark (white); assets/youtube-logo.svg — official YouTube mark
 
-On-screen copy (exact): "nostr like & zap" · "free browser extension for" + [X logo] "&" [YouTube logo] · "github.com/saiy2k/nostr-components".
+On-screen copy (exact): "nostr like & zap" · "now zap on" + [X logo] + "and" + [YouTube logo] · "github.com/saiy2k/nostr-components".
 
 Adapt: keep the Brand_Outro build — on a clear stage the mark draws itself stroke by stroke and the wordmark completes the lockup (svg-path-draw); change: the lockup stacks (mark over wordmark) and extends into an availability line plus the URL. This is the final frame: it holds to the last frame.
 
 Scene 1 (0.0–1.0s): dark register, empty. The bolt outline draws on at center (300px box, center y ~290) as a #FFC800 stroke (0.0–0.7s); the fill floods in #FFC800 (0.7–0.9s); on the 1.0s beat it lands with one subtle scale settle 1.04 → 1.
 Scene 2 (1.0–2.0s): "nostr like & zap" builds word by word beneath it (center y ~540; Barlow 900 lowercase, ~100px, ≤ 78cqw; "zap" in #FFC800, the rest cream) on 1.0 / 1.2 / 1.4 / 1.6s.
-Scene 3 (2.0–3.2s): on 2.0s the availability line fades up (center y ~650): "free browser extension for" (Barlow 600 lowercase cream ~44px) followed inline by the X logo (40px tall, white), "&", and the YouTube logo (44px wide). On 2.5s the URL types on by character (discrete-text-sequence) below it (center y ~740): "github.com/saiy2k/nostr-components" in IBM Plex Mono 500 ~34px cream-muted, lowercase (a URL is copy, not chrome); typing done by 3.2s.
+Scene 3 (2.0–3.2s): on 2.0s the availability line fades up (center y ~650): "now zap on" (Barlow 600 lowercase cream ~44px) followed inline by the X logo (40px tall, white), "and", and the YouTube logo (44px wide). On 2.5s the URL types on by character (discrete-text-sequence) below it (center y ~740): "github.com/saiy2k/nostr-components" in IBM Plex Mono 500 ~34px cream-muted, lowercase (a URL is copy, not chrome); typing done by 3.2s.
 Scene 4 (3.2–4.5s): the complete lockup holds dead still to the last frame.
 
 narrativeRole: name the product and hand over the one next step — it's free and it's one link away.
-keyMessage: get the free extension for X and YouTube.
+keyMessage: now zap on X and YouTube.

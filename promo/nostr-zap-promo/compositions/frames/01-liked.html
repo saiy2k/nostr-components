@@ -14,14 +14,6 @@
       font-style: normal;
       font-display: block;
     }
-    @font-face {
-      font-family: "IBM Plex Mono";
-      src: url("assets/fonts/IBMPlexMono-600.woff2") format("woff2");
-      font-weight: 600;
-      font-style: normal;
-      font-display: block;
-    }
-
     #root {
       position: relative;
       width: 1080px;
@@ -142,50 +134,34 @@
     }
 
     .f01-liked-line-b {
+      top: 610px;
+      height: auto;
+      font-size: 72px;
+      line-height: 0.92;
+      letter-spacing: -0.035em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+    }
+
+    .f01-liked-q-line {
+      display: block;
+      white-space: nowrap;
+    }
+
+    .f01-liked-q2 {
       opacity: 0;
     }
 
     .f01-liked-word {
       display: inline-block;
     }
-
-    .f01-liked-muted {
-      color: #888880;
-    }
-
-    .f01-liked-readout {
-      position: absolute;
-      z-index: 1;
-      left: 0;
-      right: 0;
-      top: 750px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 22px;
-    }
-
-    .f01-liked-stub {
-      width: 36px;
-      height: 2px;
-      background: #282826;
-    }
-
-    .f01-liked-readout-text {
-      font-family: "IBM Plex Mono", monospace;
-      font-weight: 600;
-      font-size: 30px;
-      line-height: 30px;
-      letter-spacing: 0.14em;
-      padding-left: 0.14em;
-      text-transform: uppercase;
-      color: #888880;
-      white-space: nowrap;
-    }
   </style>
 
-  <div data-hf-id="hf-hb8b" id="root" data-composition-id="01-liked" data-start="0" data-duration="4" data-width="1080" data-height="1080">
-    <div data-hf-id="hf-8kul" id="f01-liked-bg" class="clip" data-start="0" data-duration="4" data-track-index="0"></div>
+  <div data-hf-id="hf-hb8b" id="root" data-composition-id="01-liked" data-start="0" data-duration="5" data-width="1080" data-height="1080">
+    <div data-hf-id="hf-8kul" id="f01-liked-bg" class="clip" data-start="0" data-duration="5" data-track-index="0"></div>
 
     <div data-hf-id="hf-3jru" class="f01-liked-unit">
       <div data-hf-id="hf-z8fp" class="f01-liked-heart-slot">
@@ -221,11 +197,9 @@
       <span data-hf-id="hf-2h4t" class="f01-liked-word f01-liked-w2">liked</span>
       <span data-hf-id="hf-dxjy" class="f01-liked-word f01-liked-w3">it.</span>
     </div>
-    <div data-hf-id="hf-nv55" class="f01-liked-line f01-liked-line-b">they got <span data-hf-id="hf-youn" class="f01-liked-muted">nothing.</span></div>
-
-    <div data-hf-id="hf-oviw" class="f01-liked-readout">
-      <div data-hf-id="hf-pqik" class="f01-liked-stub"></div>
-      <div data-hf-id="hf-v3ls" class="f01-liked-readout-text">0 SATS RECEIVED</div>
+    <div data-hf-id="hf-nv55" class="f01-liked-line f01-liked-line-b">
+      <span data-hf-id="hf-q1cf" class="f01-liked-q-line">can they buy a coffee</span>
+      <span data-hf-id="hf-q2lk" class="f01-liked-q-line f01-liked-q2">with those likes?</span>
     </div>
   </div>
 
@@ -233,12 +207,12 @@
   <script>
     window.__timelines = window.__timelines || {};
 
-    const DURATION = 4;
+    const DURATION = 5;
     const BEAT = 0.5;
     const T_LIKE = BEAT;
     const WORD_BEATS = [2 * BEAT, 2.5 * BEAT, 3 * BEAT];
     const T_CUT = 5 * BEAT;
-    const T_READOUT = 6 * BEAT;
+    const T_LIKES = 6 * BEAT;
 
     const X_GREY = "#71767B";
     const X_PINK = "#F91880";
@@ -364,16 +338,10 @@
     );
 
     tl.fromTo(
-      ".f01-liked-stub",
-      { scaleX: 0 },
-      { scaleX: 1, duration: 0.4, ease: "power3.out" },
-      T_READOUT,
-    );
-    tl.fromTo(
-      ".f01-liked-readout-text",
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
-      T_READOUT,
+      ".f01-liked-q2",
+      { opacity: 0, y: 18 },
+      { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" },
+      T_LIKES,
     );
 
     window.__timelines["01-liked"] = tl;
