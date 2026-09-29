@@ -1,5 +1,10 @@
 {
-  "bgm": null,
+  "bgm": {
+    "path": "assets/bgm/spectral.mp3",
+    "volume": 0.15,
+    "duration_s": 120.024,
+    "query": "Dark Synthwave | Spectral by TurtleBeats (Pixabay)"
+  },
   "voices": [],
   "sfx": [
     { "frame": 1, "file": "assets/sfx/pop.mp3", "offset_s": 0.5, "duration_s": 0.72, "volume": 0.55 },
