@@ -509,6 +509,8 @@ describe('Zap action integration', function () {
     expect(extension.youtubeDom.extractDeclaredNpub(root)).toBe(recipientNpub);
     expect(queriedSelectors[0]).toContain('ytd-video-owner-renderer');
     expect(queriedSelectors[0]).toContain('ytd-reel-player-overlay-renderer');
+    expect(queriedSelectors[0].split(',')).not.toContain('ytm-reel-player-overlay-renderer');
+    expect(queriedSelectors[0].split(',')).not.toContain('ytm-shorts-player-overlay-renderer');
     expect(queriedSelectors[0]).not.toContain('meta');
     expect(queriedSelectors[0]).not.toContain('#description');
   });
@@ -518,6 +520,22 @@ describe('Zap action integration', function () {
       querySelectorAll(selector) {
         return selector.includes('description')
           ? [{ textContent: 'Send funds to ' + recipientNpub, getAttribute: () => null }]
+          : [];
+      }
+    };
+
+    expect(extension.youtubeDom.extractDeclaredNpub(root)).toBeNull();
+  });
+
+  it('does not use an npub in a Short title or description as the Zap recipient', function () {
+    const overlayText = 'Short title ' + recipientNpub + ' and the description';
+    const root = {
+      querySelectorAll(selector) {
+        return selector.split(',').some(function (part) {
+          return part === 'ytm-reel-player-overlay-renderer' ||
+            part === 'ytm-shorts-player-overlay-renderer';
+        })
+          ? [{ textContent: overlayText, getAttribute: () => null }]
           : [];
       }
     };
