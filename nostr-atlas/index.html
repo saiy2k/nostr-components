@@ -33,6 +33,10 @@
           </svg>
           <span>Nostr Atlas</span>
         </a>
+        <div class="header-actions">
+          <nostr-like-button url="https://nostr-atlas.web.app/"></nostr-like-button>
+          <nostr-zap-button npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3" url="https://nostr-atlas.web.app/"></nostr-zap-button>
+        </div>
       </div>
     </header>
 
@@ -192,6 +196,8 @@
     </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <noscript>Search works with JavaScript. Verified accounts linked from this page can still be opened.</noscript>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@0.7.0/dist/components/nostr-like-button.es.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@0.7.0/dist/components/nostr-zap-button.es.js"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

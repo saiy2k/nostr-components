@@ -117,6 +117,21 @@ svg {
   min-height: 74px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.header-actions nostr-like-button,
+.header-actions nostr-zap-button {
+  flex: 0 0 auto;
 }
 
 .brand,
@@ -1334,6 +1349,15 @@ svg {
 
   .header-inner {
     min-height: 68px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+
+  .header-actions {
+    flex: 1 0 100%;
+    justify-content: flex-start;
   }
 
   .brand {
