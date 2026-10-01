@@ -21,6 +21,7 @@ await import('../lib/zap-http.js');
 await import('../lib/storage.js');
 await import('../lib/directory.js');
 await import('../lib/relay-client.js');
+await import('../lib/zap-invite.js');
 await import('../lib/dom.js');
 await import('../lib/youtube-dom.js');
 
@@ -187,14 +188,36 @@ describe('Zap action integration', function () {
       this.parentElement.children = this.parentElement.children.filter((child) => child !== this);
     }
 
-    addEventListener() {}
+    addEventListener(type, handler) {
+      if (!this.listeners) this.listeners = {};
+      if (!this.listeners[type]) this.listeners[type] = [];
+      this.listeners[type].push(handler);
+    }
+
+    click() {
+      const event = {
+        preventDefault() {},
+        stopPropagation() {},
+        currentTarget: this
+      };
+      for (const handler of this.listeners?.click || []) {
+        handler(event);
+      }
+    }
 
     querySelector(selector) {
-      if (selector === 'nostr-like-button' || selector === 'nostr-zap-button') {
-        return this.children.find((child) => child.tagName === selector) ?? null;
-      }
-      return null;
+      return this.children.find((child) => matchesActionChild(child, selector)) ?? null;
     }
+  }
+
+  function matchesActionChild(child, selector) {
+    if (selector === 'nostr-like-button' || selector === 'nostr-zap-button') {
+      return child.tagName === selector;
+    }
+    if (selector === 'button.nostr-zap-invite') {
+      return child.tagName === 'button' && child.className === 'nostr-zap-invite';
+    }
+    return false;
   }
 
   beforeEach(function () {
@@ -445,6 +468,8 @@ describe('Zap action integration', function () {
     expect(zap.getAttribute('npub')).toBe(recipientNpub);
     expect(zap.getAttribute('url')).toBe('https://x.com/alokdangre/status/42');
     expect(zap.getAttribute('compact')).toBe('');
+    expect(action.slot.querySelector('button.nostr-zap-invite')).toBeNull();
+    expect(action.slot.dataset.zapRecipientNpub).toBe(recipientNpub);
 
     extension.dom.applyDirectoryIdentity(action.slot, {
       found: true,
@@ -452,6 +477,113 @@ describe('Zap action integration', function () {
       activeIdentity: { npub: recipientNpub, zappable: true }
     });
     expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
+    expect(action.slot.dataset.zapRecipientNpub).toBeUndefined();
+    expect(action.slot.querySelector('button.nostr-zap-invite').getAttribute('data-invite-mode')).toBe('link');
+  });
+
+  function openInvite(slot) {
+    const opened = [];
+    globalThis.window = {
+      open(url) {
+        opened.push(url);
+        return null;
+      }
+    };
+    slot.querySelector('button.nostr-zap-invite').click();
+    return opened.length === 1 ? new URL(opened[0]) : null;
+  }
+
+  function createXAction() {
+    const action = extension.dom.createNostrAction(
+      {
+        canonicalUrl: 'https://x.com/alokdangre/status/42',
+        statusId: '42',
+        username: 'alokdangre'
+      },
+      'dark'
+    );
+    extension.dom.hydrateNostrAction(action.slot);
+    return action;
+  }
+
+  it('asks a verified non-zappable X author to add a Lightning address', function () {
+    const action = createXAction();
+    expect(action.slot.querySelector('button.nostr-zap-invite')).toBeNull();
+
+    extension.dom.applyDirectoryIdentity(action.slot, {
+      found: true,
+      verified: true,
+      activeIdentity: { npub: recipientNpub, zappable: false }
+    });
+
+    const invite = action.slot.querySelector('button.nostr-zap-invite');
+    expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
+    expect(action.slot.dataset.zapRecipientNpub).toBeUndefined();
+    expect(invite.getAttribute('data-invite-mode')).toBe('lightning');
+    expect(invite.getAttribute('aria-label')).toBe('Ask @alokdangre to add a Lightning address');
+    expect(invite.getAttribute('title')).toBe('Ask @alokdangre to add a Lightning address');
+
+    const intent = openInvite(action.slot);
+    expect(intent.origin + intent.pathname).toBe('https://x.com/intent/post');
+    expect(intent.searchParams.get('in_reply_to')).toBe('42');
+    expect(intent.searchParams.get('text')).toBe(
+      '@alokdangre Add a Lightning address (name@domain) to your Nostr profile so people can zap this post. The wallet needs to allow Nostr payments.'
+    );
+  });
+
+  it.each([
+    ['not found', { found: false, verified: false }],
+    ['unverified', { found: true, verified: false, activeIdentity: { npub: recipientNpub, zappable: true } }],
+    ['unavailable', { found: false, verified: false, source: 'unavailable' }]
+  ])('asks %s X authors to link Nostr', function (_label, identity) {
+    const action = createXAction();
+    extension.dom.applyDirectoryIdentity(action.slot, identity);
+
+    const invite = action.slot.querySelector('button.nostr-zap-invite');
+    expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
+    expect(action.slot.dataset.zapRecipientNpub).toBeUndefined();
+    expect(invite.getAttribute('data-invite-mode')).toBe('link');
+    expect(invite.getAttribute('aria-label')).toBe('Ask @alokdangre to link Nostr so people can zap this');
+
+    const intent = openInvite(action.slot);
+    expect(intent.searchParams.get('in_reply_to')).toBe('42');
+    expect(intent.searchParams.get('text')).toBe(
+      '@alokdangre Link this account to your Nostr profile and add a Lightning address so people can zap posts like this. https://nostr-atlas.web.app'
+    );
+  });
+
+  it('asks the author to link Nostr when directory lookup throws', function () {
+    const action = createXAction();
+    extension.dom.applyDirectoryIdentity(action.slot, null);
+
+    expect(action.slot.dataset.directoryStatus).toBe('invalid');
+    expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
+    expect(action.slot.querySelector('button.nostr-zap-invite').getAttribute('data-invite-mode')).toBe('link');
+    const intent = openInvite(action.slot);
+    expect(intent.searchParams.get('text')).toContain('https://nostr-atlas.web.app');
+  });
+
+  it('hides both X Zap and the invite when a zappable npub is not checksum-valid', function () {
+    const action = createXAction();
+    extension.dom.applyDirectoryIdentity(action.slot, {
+      found: true,
+      verified: true,
+      activeIdentity: { npub: 'npub1invalid', zappable: true }
+    });
+
+    expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
+    expect(action.slot.querySelector('button.nostr-zap-invite')).toBeNull();
+    expect(action.slot.dataset.zapRecipientNpub).toBeUndefined();
+  });
+
+  it('does not open a reply when the X status id is not numeric', function () {
+    const action = createXAction();
+    extension.dom.applyDirectoryIdentity(action.slot, {
+      found: false,
+      verified: false
+    });
+    action.slot.dataset.statusId = 'not-a-status';
+    expect(openInvite(action.slot)).toBeNull();
   });
 
   it('adds YouTube Like unconditionally and Zap for an explicitly declared valid npub', function () {

@@ -209,6 +209,10 @@
     if (zapComponent && zapComponent.getAttribute('data-theme') !== theme) {
       zapComponent.setAttribute('data-theme', theme);
     }
+    const invite = slot.querySelector('button.nostr-zap-invite');
+    if (invite && invite.getAttribute('data-theme') !== theme) {
+      invite.setAttribute('data-theme', theme);
+    }
   }
 
   function directChildContaining(actionBar, descendant) {
@@ -231,6 +235,11 @@
     actionBar.appendChild(slot);
   }
 
+  function syncZapInvite(slot, identity) {
+    if (typeof extension.zapInvite?.syncButton !== 'function') return;
+    extension.zapInvite.syncButton(slot, extension.zapInvite.classify(identity));
+  }
+
   function applyDirectoryIdentity(slot, identity) {
     if (!identity) {
       slot.dataset.directoryStatus = 'invalid';
@@ -239,6 +248,7 @@
         recipientNpub: null
       });
       if (slot.querySelector('nostr-like-button')) syncZapComponent(slot);
+      syncZapInvite(slot, null);
       return;
     }
     slot.dataset.directoryStatus = identity.verified
@@ -267,6 +277,7 @@
       });
     }
     if (slot.querySelector('nostr-like-button')) syncZapComponent(slot);
+    syncZapInvite(slot, identity);
   }
 
   extension.dom = {
