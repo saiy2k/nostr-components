@@ -41,6 +41,7 @@
         "lib/directory.js",
         "lib/relay-client.js",
         "lib/component-loader.js",
+        "lib/zap-invite.js",
         "lib/dom.js",
         "lib/youtube-dom.js",
         "content.js"

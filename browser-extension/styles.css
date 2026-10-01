@@ -60,3 +60,32 @@
   min-width: 0;
   height: 34px;
 }
+
+.nostr-competency-action-slot > button.nostr-zap-invite {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #536471;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 34px;
+  justify-content: center;
+  padding: 0;
+  width: 34px;
+}
+
+.nostr-competency-action-slot[data-theme="dark"] > button.nostr-zap-invite {
+  color: #8b98a5;
+}
+
+.nostr-competency-action-slot > button.nostr-zap-invite svg {
+  display: block;
+  height: 18px;
+  width: 18px;
+}
+
+.nostr-competency-action-slot > button.nostr-zap-invite:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}

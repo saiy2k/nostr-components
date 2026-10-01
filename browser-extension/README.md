@@ -18,9 +18,11 @@ other NIP-07 extension).
 Author identities are looked up in the background and cached on the device. If
 lookup is temporarily unavailable, the last cached result may still be used.
 Likes still work when identity metadata is missing. X Zaps appear only for a
-verified, zappable directory identity. YouTube Zaps appear only when the
-creator-owned channel identity area explicitly contains a checksum-valid
-lowercase `npub`; video titles, metadata, and descriptions are never treated as
+verified, zappable directory identity. When that identity is missing, not
+zappable, or the lookup fails, X shows an invite that opens an editable reply
+asking the author to link Nostr or add a Lightning address. YouTube Zaps appear
+only when the creator-owned channel identity area explicitly contains a
+checksum-valid lowercase `npub`; video titles, metadata, and descriptions are never treated as
 payment-recipient declarations. Channel URLs are not mapped to recipients, so a
 stale third-party mapping cannot redirect a Zap.
 
