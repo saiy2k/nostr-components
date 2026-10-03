@@ -7793,12 +7793,11 @@
       const eventsById = /* @__PURE__ */ new Map();
       const relaysWithEvents = /* @__PURE__ */ new Set();
       const closers = [];
-      const finishOnFirstEvent = options && options.finishOnFirstEvent === true;
-      const requireEvent = finishOnFirstEvent || options && options.requireEvent === true;
+      const keepNewestProfile = options && options.keepNewestProfile === true;
+      const requireEvent = keepNewestProfile || options && options.requireEvent === true;
       return new Promise(function(resolve) {
         let successfulResponses = 0;
         let finished = false;
-        let profileFinishScheduled = false;
         const completedRelays = /* @__PURE__ */ new Set();
         const requiredResponses = Math.min(QUERY_RESPONSE_QUORUM, selectedRelays.length);
         function finish(penalizePending = true) {
@@ -7844,7 +7843,7 @@
             maxWait: QUERY_DEADLINE_MS,
             onevent(event) {
               if (finished) return;
-              if (finishOnFirstEvent) {
+              if (keepNewestProfile) {
                 if (!isRequestedProfile(event, filterList)) return;
                 const current = eventsById.values().next().value || null;
                 if (!current || preferProfile(event, current)) {
@@ -7852,12 +7851,6 @@
                   eventsById.set(event.id, event);
                 }
                 relaysWithEvents.add(relay);
-                if (!profileFinishScheduled) {
-                  profileFinishScheduled = true;
-                  queueMicrotask(function() {
-                    if (!finished) finish(false);
-                  });
-                }
                 return;
               }
               if (event && event.id) {
@@ -8122,7 +8115,7 @@
           limit: 1
         },
         {
-          finishOnFirstEvent: true,
+          keepNewestProfile: true,
           selectedRelays: relays
         }
       );
@@ -8322,7 +8315,7 @@
           relays,
           filter,
           singleProfileLookup ? {
-            finishOnFirstEvent: true,
+            keepNewestProfile: true,
             selectedRelays: relays
           } : zapQuery ? { requireEvent: true } : void 0
         );

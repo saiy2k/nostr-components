@@ -240,6 +240,18 @@
     return component;
   }
 
+  const directoryLookupEpochs = new WeakMap();
+
+  function beginDirectoryLookup(slot) {
+    const epoch = (directoryLookupEpochs.get(slot) || 0) + 1;
+    directoryLookupEpochs.set(slot, epoch);
+    return epoch;
+  }
+
+  function isCurrentDirectoryLookup(slot, epoch) {
+    return directoryLookupEpochs.get(slot) === epoch;
+  }
+
   function retargetAction(slot, tweetInfo) {
     const urlChanged = slot.dataset.statusUrl !== tweetInfo.canonicalUrl;
     const handleChanged = slot.dataset.authorHandle !== tweetInfo.username;
@@ -351,6 +363,8 @@
     hydrateNostrAction: hydrateNostrAction,
     updateActionTheme: updateActionTheme,
     retargetAction: retargetAction,
+    beginDirectoryLookup: beginDirectoryLookup,
+    isCurrentDirectoryLookup: isCurrentDirectoryLookup,
     insertAfterNativeLike: insertAfterNativeLike,
     applyDirectoryIdentity: applyDirectoryIdentity
   };

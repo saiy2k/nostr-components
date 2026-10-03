@@ -355,15 +355,15 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     const relaysWithEvents = new Set();
     const closers = [];
     // A single profile may live on any relay in the allowed list. Empty
-    // replies must not cancel the rest, and the first match closes them.
-    const finishOnFirstEvent = options && options.finishOnFirstEvent === true;
+    // replies must not cancel the rest. The newest verified profile wins,
+    // because that profile chooses the Lightning address.
+    const keepNewestProfile = options && options.keepNewestProfile === true;
     const requireEvent =
-      finishOnFirstEvent || (options && options.requireEvent === true);
+      keepNewestProfile || (options && options.requireEvent === true);
 
     return new Promise(function (resolve) {
       let successfulResponses = 0;
       let finished = false;
-      let profileFinishScheduled = false;
       const completedRelays = new Set();
       const requiredResponses = Math.min(QUERY_RESPONSE_QUORUM, selectedRelays.length);
 
@@ -414,7 +414,7 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
           maxWait: QUERY_DEADLINE_MS,
           onevent(event) {
             if (finished) return;
-            if (finishOnFirstEvent) {
+            if (keepNewestProfile) {
               if (!isRequestedProfile(event, filterList)) return;
               const current = eventsById.values().next().value || null;
               if (!current || preferProfile(event, current)) {
@@ -422,13 +422,6 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
                 eventsById.set(event.id, event);
               }
               relaysWithEvents.add(relay);
-              // Let this relay finish its burst, then close every other relay.
-              if (!profileFinishScheduled) {
-                profileFinishScheduled = true;
-                queueMicrotask(function () {
-                  if (!finished) finish(false);
-                });
-              }
               return;
             }
             if (event && event.id) {
@@ -812,7 +805,7 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         limit: 1
       },
       {
-        finishOnFirstEvent: true,
+        keepNewestProfile: true,
         selectedRelays: relays
       }
     );
@@ -1124,7 +1117,7 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         filter,
         singleProfileLookup
           ? {
-              finishOnFirstEvent: true,
+              keepNewestProfile: true,
               selectedRelays: relays
             }
           : zapQuery

@@ -71,10 +71,13 @@
   }
 
   async function loadDirectoryIdentity(slot, handle) {
+    const epoch = extension.dom.beginDirectoryLookup(slot);
     try {
       const identity = await extension.directory.lookup(handle);
+      if (!extension.dom.isCurrentDirectoryLookup(slot, epoch)) return;
       extension.dom.applyDirectoryIdentity(slot, identity);
     } catch (error) {
+      if (!extension.dom.isCurrentDirectoryLookup(slot, epoch)) return;
       extension.dom.applyDirectoryIdentity(slot, null);
       reportBackgroundError('Directory lookup failed', error);
     }

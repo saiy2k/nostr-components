@@ -2880,14 +2880,13 @@ describe('CSP-safe component and relay integration', function () {
     }
   });
 
-  it('loads a profile from any relay and closes the rest on the first match', async function () {
+  it('keeps the newer kind 0 when an older signed profile arrives first', async function () {
     const originalRelayClient = extension.relayClient;
     await import('../src/relay-client.js?profile-relay-quorum');
     try {
       const listeners = new Map();
       const responses = [];
       const subscribedRelays = [];
-      const closes = new Map();
       const pageWindow = {
         location: { origin: 'https://x.com' },
         addEventListener(type, listener) {
@@ -2900,6 +2899,7 @@ describe('CSP-safe component and relay integration', function () {
           responses.push(message);
         }
       };
+      const profileKey = new Uint8Array(32).fill(23);
       const profile = finalizeEvent(
         {
           kind: 0,
@@ -2911,14 +2911,26 @@ describe('CSP-safe component and relay integration', function () {
             lud16: 'lyn@primal.net'
           })
         },
-        new Uint8Array(32).fill(23)
+        profileKey
       );
-      const otherProfile = finalizeEvent(
+      const olderProfile = finalizeEvent(
         {
           kind: 0,
           created_at: 10,
           tags: [],
-          content: JSON.stringify({ name: 'Someone Else' })
+          content: JSON.stringify({
+            name: 'LynAlden',
+            lud16: 'old@example.com'
+          })
+        },
+        profileKey
+      );
+      const wrongAuthor = finalizeEvent(
+        {
+          kind: 0,
+          created_at: 99,
+          tags: [],
+          content: JSON.stringify({ name: 'Someone Else', lud16: 'other@example.com' })
         },
         new Uint8Array(32).fill(24)
       );
@@ -2935,10 +2947,10 @@ describe('CSP-safe component and relay integration', function () {
           const relay = relays[0];
           const close = vi.fn(async function () {});
           subscribedRelays.push(relay);
-          closes.set(relay, close);
           if (relay.includes('relay.damus.io')) {
             queueMicrotask(function () {
-              options.onevent(otherProfile);
+              options.onevent(wrongAuthor);
+              options.onevent(olderProfile);
               options.oneose();
             });
             return { close: close };
@@ -2950,7 +2962,11 @@ describe('CSP-safe component and relay integration', function () {
             }, 20);
             return { close: close };
           }
-          if (relay.includes('nos.lol')) {
+          if (relay.includes('nostr.wine')) {
+            setTimeout(function () {
+              options.onevent(olderProfile);
+              options.oneose();
+            }, 40);
             return { close: close };
           }
           queueMicrotask(function () {
@@ -2992,11 +3008,10 @@ describe('CSP-safe component and relay integration', function () {
 
       expect(subscribedRelays).toHaveLength(requestedRelays.length);
       expect(subscribedRelays.some((relay) => relay.includes('purplepag.es'))).toBe(true);
-      expect(subscribedRelays.some((relay) => relay.includes('nos.lol'))).toBe(true);
-      const silentRelay = [...closes.keys()].find((relay) => relay.includes('nos.lol'));
-      expect(closes.get(silentRelay)).toHaveBeenCalled();
       expect(responses[0].ok).toBe(true);
       expect(responses[0].result.map((event) => event.id)).toEqual([profile.id]);
+      expect(profile.pubkey).toBe(olderProfile.pubkey);
+      expect(profile.id).not.toBe(olderProfile.id);
       session.dispose();
     } finally {
       extension.relayClient = originalRelayClient;
@@ -3311,6 +3326,225 @@ describe('timeline component integration', function () {
         }
       ]);
       expect(revokeAction).toHaveBeenCalledWith(slot);
+    } finally {
+      extension.directory.lookup = originalDirectoryLookup;
+    }
+  });
+
+  it('ignores a directory lookup that finishes after the author handle changes', async function () {
+    const scheduledCallbacks = [];
+    const observerCallbacks = [];
+    const aliceNpub = nip19.npubEncode('a'.repeat(64));
+    const bobNpub = nip19.npubEncode('b'.repeat(64));
+    let statusHref = '/alice/status/4242';
+    const pendingLookups = [];
+
+    class FakeElement {
+      constructor(tagName = 'div') {
+        this.tagName = tagName.toLowerCase();
+        this.children = [];
+        this.dataset = {};
+        this.attributes = {};
+        this.parentElement = null;
+        this.nextSibling = null;
+        this.className = '';
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+        if (name.startsWith('data-')) {
+          const key = name.slice(5).replace(/-([a-z])/g, function (_match, letter) {
+            return letter.toUpperCase();
+          });
+          this.dataset[key] = String(value);
+        }
+      }
+
+      getAttribute(name) {
+        return Object.prototype.hasOwnProperty.call(this.attributes, name)
+          ? this.attributes[name]
+          : null;
+      }
+
+      appendChild(child) {
+        child.parentElement = this;
+        this.children.push(child);
+        return child;
+      }
+
+      insertBefore(child, sibling) {
+        child.parentElement = this;
+        const index = this.children.indexOf(sibling);
+        if (index === -1) this.children.push(child);
+        else this.children.splice(index, 0, child);
+        return child;
+      }
+
+      remove() {
+        const parent = this.parentElement;
+        if (!parent) return;
+        parent.children = parent.children.filter((child) => child !== this);
+        this.parentElement = null;
+      }
+
+      addEventListener() {}
+
+      querySelector(selector) {
+        return this.querySelectorAll(selector)[0] || null;
+      }
+
+      querySelectorAll(selector) {
+        const matches = [];
+        const visit = (node) => {
+          for (const child of node.children || []) {
+            if (elementMatches(child, selector)) matches.push(child);
+            visit(child);
+          }
+        };
+        visit(this);
+        return matches;
+      }
+    }
+
+    function elementMatches(element, selector) {
+      if (selector === 'button') return element.tagName === 'button';
+      if (selector.includes('data-testid')) {
+        return element.getAttribute('data-testid') === 'like' ||
+          element.getAttribute('data-testid') === 'unlike';
+      }
+      const statusId = selector.match(/data-status-id="([^"]+)"/)?.[1];
+      return Boolean(statusId) &&
+        element.getAttribute('data-nostr-competency-like') === 'true' &&
+        element.getAttribute('data-status-id') === statusId;
+    }
+
+    const actionBar = new FakeElement();
+    const likeContainer = new FakeElement();
+    const replyButton = new FakeElement('button');
+    replyButton.setAttribute('aria-label', 'Reply');
+    const likeButton = new FakeElement('button');
+    likeButton.setAttribute('aria-label', 'Like');
+    likeButton.setAttribute('data-testid', 'like');
+    likeButton.closest = function () {
+      return actionBar;
+    };
+    likeContainer.appendChild(likeButton);
+    likeContainer.appendChild(replyButton);
+    actionBar.appendChild(likeContainer);
+    actionBar.appendChild(new FakeElement());
+    actionBar.appendChild(new FakeElement());
+
+    const statusAnchor = {
+      getAttribute() {
+        return statusHref;
+      },
+      querySelector() {
+        return {};
+      },
+      parentElement: null
+    };
+    const article = {
+      querySelector(selector) {
+        if (String(selector).includes('data-testid')) return likeButton;
+        return null;
+      },
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [statusAnchor];
+        if (selector === 'button') return [likeButton, replyButton];
+        return [];
+      }
+    };
+    statusAnchor.parentElement = article;
+
+    globalThis.document = {
+      body: new FakeElement('body'),
+      documentElement: new FakeElement('html'),
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      },
+      querySelectorAll() {
+        return [article];
+      }
+    };
+    globalThis.MutationObserver = class {
+      constructor(callback) {
+        observerCallbacks.push(callback);
+      }
+
+      observe() {}
+    };
+    globalThis.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+    };
+    globalThis.window = {
+      location: { hostname: 'x.com', origin: 'https://x.com', href: 'https://x.com/home' },
+      getComputedStyle() {
+        return { colorScheme: 'light' };
+      },
+      setTimeout(callback) {
+        scheduledCallbacks.push(callback);
+        return scheduledCallbacks.length;
+      },
+      requestAnimationFrame(callback) {
+        callback();
+      },
+      addEventListener() {}
+    };
+
+    function identityFor(handle, npub) {
+      return {
+        verified: true,
+        found: true,
+        source: 'directory',
+        activeIdentity: {
+          npub: npub,
+          zappable: true
+        },
+        handle: handle
+      };
+    }
+
+    const originalDirectoryLookup = extension.directory.lookup;
+    extension.directory.lookup = function (handle) {
+      let resolveLookup;
+      const promise = new Promise(function (resolve) {
+        resolveLookup = resolve;
+      });
+      pendingLookups.push({ handle: handle, resolve: resolveLookup });
+      return promise;
+    };
+    extension.componentLoader = {
+      ready: Promise.resolve(),
+      registerAction() {},
+      updateAction() {},
+      revokeAction() {}
+    };
+    vi.spyOn(console, 'warn').mockImplementation(function () {});
+
+    try {
+      await import('../content.js?directory-race');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      scheduledCallbacks.shift()();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(pendingLookups.map((entry) => entry.handle)).toEqual(['alice']);
+      statusHref = '/bob/status/4242';
+      observerCallbacks[0]();
+      scheduledCallbacks.shift()();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(pendingLookups.map((entry) => entry.handle)).toEqual(['alice', 'bob']);
+      const slot = actionBar.children.find(function (child) {
+        return child.getAttribute?.('data-nostr-competency-like') === 'true';
+      });
+      pendingLookups[1].resolve(identityFor('bob', bobNpub));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      pendingLookups[0].resolve(identityFor('alice', aliceNpub));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(slot.dataset.authorHandle).toBe('bob');
+      expect(slot.dataset.zapRecipientNpub).toBe(bobNpub);
     } finally {
       extension.directory.lookup = originalDirectoryLookup;
     }
