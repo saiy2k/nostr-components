@@ -8,6 +8,7 @@ export interface RenderZapButtonOptions extends IRenderOptions {
   isAmountLoading: boolean;
   isSuccess: boolean;
   buttonText: string;
+  actionNotice?: string;
   totalZapAmount: number | null;
   hasZaps?: boolean;
   compact?: boolean;
@@ -19,6 +20,7 @@ export function renderZapButton({
   isSuccess,
   errorMessage,
   buttonText,
+  actionNotice = '',
   totalZapAmount,
   isAmountLoading,
   hasZaps = false,
@@ -62,7 +64,8 @@ export function renderZapButton({
     hasZaps,
     false,
     compact,
-    buttonText
+    buttonText,
+    actionNotice
   );
 }
 
@@ -107,15 +110,21 @@ function renderContainer(
   hasZaps: boolean = false,
   isButtonLoading: boolean = false,
   compact: boolean = false,
-  buttonLabel: string = 'Zap'
+  buttonLabel: string = 'Zap',
+  actionNotice: string = ''
 ): string {
   const zapAmountHtml = isAmountLoading 
     ? (compact ? '' : `<span class="total-zap-amount skeleton"></span>`)
     : (totalZapAmount !== null ? `<span class="total-zap-amount${compact ? ' compact-zap-count' : ''}${hasZaps ? ' clickable' : ''}"${hasZaps ? ' role="button" tabindex="0" aria-label="View zappers"' : ''}>${totalZapAmount.toLocaleString()}${compact ? '' : ' ⚡ sats received'}</span>` : '');
   
   const disabledAttrs = isButtonLoading ? ' disabled aria-busy="true"' : '';
+  const title = actionNotice || (compact ? buttonLabel : '');
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
   const accessibleAttrs = compact
-    ? ` aria-label="${escapeHtml(buttonLabel)}" title="${escapeHtml(buttonLabel)}"`
+    ? ` aria-label="${escapeHtml(buttonLabel)}"${titleAttr}`
+    : titleAttr;
+  const noticeHtml = actionNotice
+    ? `<span class="zap-action-notice" role="status">${escapeHtml(actionNotice)}</span>`
     : '';
   const helpIconHtml = compact ? '' : `<button type="button" class="help-icon" aria-label="What is a zap?" title="What is a zap?">?</button>`;
   
@@ -125,6 +134,7 @@ function renderContainer(
         ${iconContent}
         ${textContent}
       </button>
+      ${noticeHtml}
       ${zapAmountHtml} ${helpIconHtml}
     </div>
   `;

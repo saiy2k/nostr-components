@@ -19835,6 +19835,36 @@
       return null;
     }
   }
+  function readExtensionZapCache(events) {
+    if (!Array.isArray(events) || events.length !== 1) return null;
+    const marker = events[0];
+    if (!marker || marker.id !== void 0 || marker.extensionZapCache !== true || !marker.cachedZapSummary || typeof marker.cachedZapSummary !== "object") {
+      return null;
+    }
+    const { totalSats, rows } = marker.cachedZapSummary;
+    if (typeof totalSats !== "number" || !Number.isFinite(totalSats) || totalSats < 0) {
+      return null;
+    }
+    if (!Array.isArray(rows)) return null;
+    const zapDetails = [];
+    for (const row of rows) {
+      const candidate = row;
+      if (!candidate || typeof candidate !== "object" || typeof candidate.amountSats !== "number" || !Number.isFinite(candidate.amountSats) || candidate.amountSats < 0) {
+        continue;
+      }
+      zapDetails.push({
+        amount: candidate.amountSats,
+        date: new Date((typeof candidate.createdAt === "number" ? candidate.createdAt : 0) * 1e3),
+        authorPubkey: typeof candidate.authorPubkey === "string" ? candidate.authorPubkey : "",
+        comment: typeof candidate.comment === "string" ? candidate.comment : ""
+      });
+    }
+    zapDetails.sort((left, right) => right.date.getTime() - left.date.getTime());
+    return {
+      totalAmount: totalSats,
+      zapDetails
+    };
+  }
   var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, profileCacheKey, getVerifiedProfileEvent, getProfileMetadata, PROFILE_QUERY_BATCH_SIZE, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoiceForAction, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
   var init_zap_utils = __esm({
     "src/nostr-zap-button/zap-utils.ts"() {
@@ -20113,16 +20143,23 @@
         const zapDetails = [];
         try {
           let provider = null;
+          let providerLookupFailed = false;
           if (actionId && transport?.getZapProvider) {
-            provider = await transport.getZapProvider(actionId, relays);
+            try {
+              provider = await transport.getZapProvider(actionId, relays);
+            } catch (error) {
+              providerLookupFailed = true;
+              if (!transport) throw error;
+            }
           } else {
             const profileMetadata = await getProfileMetadata(pubkey, relays);
-            if (!profileMetadata) {
+            if (profileMetadata) {
+              provider = await getZapProviderInfo(profileMetadata);
+            } else if (!transport) {
               return { totalAmount: 0, zapDetails: [] };
             }
-            provider = await getZapProviderInfo(profileMetadata);
           }
-          if (!provider) {
+          if (!provider && !transport) {
             return { totalAmount: 0, zapDetails: [] };
           }
           const filter = {
@@ -20135,6 +20172,14 @@
             filter["#a"] = [expectedATag];
           }
           const events = transport ? await transport.query(relays, filter) : await pool.querySync(relays, filter);
+          const cached = transport ? readExtensionZapCache(events) : null;
+          if (cached) return cached;
+          if (!provider) {
+            if (providerLookupFailed || transport) {
+              throw new Error("Zap recipient has no valid LNURL provider");
+            }
+            return { totalAmount: 0, zapDetails: [] };
+          }
           for (const event of events) {
             const validated = validateZapReceipt(event, {
               recipientPubkey: pubkey,
@@ -20152,6 +20197,7 @@
             });
           }
         } catch (error) {
+          if (transport) throw error;
           console.error("Nostr-Components: Zap button: Error fetching zap receipts", error);
         } finally {
           pool?.close(relays);
@@ -27800,6 +27846,7 @@ ${url}`;
     isSuccess,
     errorMessage,
     buttonText,
+    actionNotice = "",
     totalZapAmount,
     isAmountLoading,
     hasZaps = false,
@@ -27833,7 +27880,8 @@ ${url}`;
       hasZaps,
       false,
       compact,
-      buttonText
+      buttonText,
+      actionNotice
     );
   }
   function renderLoading(isAmountLoading, compact) {
@@ -27866,10 +27914,13 @@ ${url}`;
     </div>
   `;
   }
-  function renderContainer2(iconContent, textContent, totalZapAmount, isAmountLoading, hasZaps = false, isButtonLoading = false, compact = false, buttonLabel = "Zap") {
+  function renderContainer2(iconContent, textContent, totalZapAmount, isAmountLoading, hasZaps = false, isButtonLoading = false, compact = false, buttonLabel = "Zap", actionNotice = "") {
     const zapAmountHtml = isAmountLoading ? compact ? "" : `<span class="total-zap-amount skeleton"></span>` : totalZapAmount !== null ? `<span class="total-zap-amount${compact ? " compact-zap-count" : ""}${hasZaps ? " clickable" : ""}"${hasZaps ? ' role="button" tabindex="0" aria-label="View zappers"' : ""}>${totalZapAmount.toLocaleString()}${compact ? "" : " \u26A1 sats received"}</span>` : "";
     const disabledAttrs = isButtonLoading ? ' disabled aria-busy="true"' : "";
-    const accessibleAttrs = compact ? ` aria-label="${escapeHtml(buttonLabel)}" title="${escapeHtml(buttonLabel)}"` : "";
+    const title = actionNotice || (compact ? buttonLabel : "");
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+    const accessibleAttrs = compact ? ` aria-label="${escapeHtml(buttonLabel)}"${titleAttr}` : titleAttr;
+    const noticeHtml = actionNotice ? `<span class="zap-action-notice" role="status">${escapeHtml(actionNotice)}</span>` : "";
     const helpIconHtml = compact ? "" : `<button type="button" class="help-icon" aria-label="What is a zap?" title="What is a zap?">?</button>`;
     return `
     <div class="nostr-zap-button-container${compact ? " compact" : ""}">
@@ -27877,6 +27928,7 @@ ${url}`;
         ${iconContent}
         ${textContent}
       </button>
+      ${noticeHtml}
       ${zapAmountHtml} ${helpIconHtml}
     </div>
   `;
@@ -28074,6 +28126,18 @@ ${url}`;
       height: var(--nostrc-icon-height);
     }
 
+    .zap-action-notice {
+      border: 0;
+      clip: rect(0 0 0 0);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+
     /* Total zap amount display */
     .total-zap-amount {
       font-size: var(--nostrc-font-size-sm);
@@ -28193,6 +28257,8 @@ ${url}`;
     #totalZapAmount = null;
     #cachedZapDetails = [];
     #cachedAmountDialog = null;
+    #countedZapSubject = null;
+    #zapActionNotice = "";
     #zapCountLoadSeq = 0;
     constructor() {
       super();
@@ -28220,6 +28286,9 @@ ${url}`;
       super.attributeChangedCallback(name, oldValue, newValue);
       if (name === "npub" || name === "url" || name === "relays" || name === "amount" || name === "default-amount") {
         this.#closeCachedAmountDialog();
+      }
+      if (name === "npub" || name === "pubkey" || name === "url") {
+        this.#forgetZapCountUnlessSubject(this.#zapSubjectKey());
       }
       if (name === "url" && this.user) {
         void this.updateZapCount();
@@ -28312,6 +28381,7 @@ ${url}`;
     async #handleZapClick() {
       if (this.userStatus.get() !== 2 /* Ready */) return;
       if (this.zapActionStatus.get() === 1 /* Loading */) return;
+      this.#zapActionNotice = "";
       this.zapActionStatus.set(1 /* Loading */);
       this.render();
       try {
@@ -28374,7 +28444,9 @@ ${url}`;
         });
         this.zapActionStatus.set(2 /* Ready */);
       } catch (e) {
-        this.zapActionStatus.set(3 /* Error */, e?.message || "Unable to zap");
+        console.error("Nostr-Components: Zap button: Unable to zap", e);
+        this.#zapActionNotice = e?.message || "Unable to zap";
+        this.zapActionStatus.set(2 /* Ready */);
       } finally {
         this.render();
       }
@@ -28428,8 +28500,23 @@ ${url}`;
         void this.#handleZappersClick();
       });
     }
+    #zapSubjectKey() {
+      const trustedContext = getTrustedActionContext(this);
+      const recipient = trustedContext?.recipientNpub || this.user?.pubkey || this.getAttribute("npub") || this.getAttribute("pubkey") || "";
+      const url = trustedContext?.url || this.getAttribute("url") || "";
+      return `${recipient}
+${url}`;
+    }
+    #forgetZapCountUnlessSubject(subjectKey) {
+      if (this.#countedZapSubject === subjectKey) return;
+      this.#totalZapAmount = null;
+      this.#cachedZapDetails = [];
+      this.#countedZapSubject = null;
+    }
     async updateZapCount() {
       if (!this.user) return;
+      const subjectKey = this.#zapSubjectKey();
+      this.#forgetZapCountUnlessSubject(subjectKey);
       const seq = ++this.#zapCountLoadSeq;
       const trustedContext = getTrustedActionContext(this);
       try {
@@ -28446,12 +28533,23 @@ ${url}`;
         if (seq !== this.#zapCountLoadSeq) return;
         this.#totalZapAmount = result.totalAmount;
         this.#cachedZapDetails = result.zapDetails;
+        this.#countedZapSubject = subjectKey;
         this.zapListStatus.set(2 /* Ready */);
       } catch (e) {
         if (seq !== this.#zapCountLoadSeq) return;
         console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
-        this.#totalZapAmount = null;
-        this.zapListStatus.set(3 /* Error */);
+        if (getRelayTransport()) {
+          if (this.#countedZapSubject !== subjectKey) {
+            this.#totalZapAmount = null;
+            this.#cachedZapDetails = [];
+          }
+          this.zapListStatus.set(2 /* Ready */);
+        } else {
+          this.#totalZapAmount = null;
+          this.#cachedZapDetails = [];
+          this.#countedZapSubject = null;
+          this.zapListStatus.set(3 /* Error */);
+        }
       } finally {
         if (seq === this.#zapCountLoadSeq) {
           this.render();
@@ -28473,6 +28571,7 @@ ${url}`;
         // TODO: Add success state handling
         errorMessage,
         buttonText,
+        actionNotice: this.#zapActionNotice,
         totalZapAmount: this.#totalZapAmount,
         hasZaps: this.#cachedZapDetails.length > 0,
         compact: this.hasAttribute("compact")

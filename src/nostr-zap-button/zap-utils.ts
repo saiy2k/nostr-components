@@ -475,6 +475,61 @@ export interface ZapAmountResult {
   zapDetails: ZapDetails[];
 }
 
+function readExtensionZapCache(events: unknown[]): ZapAmountResult | null {
+  if (!Array.isArray(events) || events.length !== 1) return null;
+  const marker = events[0] as {
+    id?: unknown;
+    extensionZapCache?: unknown;
+    cachedZapSummary?: {
+      totalSats?: unknown;
+      rows?: unknown;
+    };
+  } | null;
+  if (
+    !marker ||
+    marker.id !== undefined ||
+    marker.extensionZapCache !== true ||
+    !marker.cachedZapSummary ||
+    typeof marker.cachedZapSummary !== 'object'
+  ) {
+    return null;
+  }
+  const { totalSats, rows } = marker.cachedZapSummary;
+  if (typeof totalSats !== 'number' || !Number.isFinite(totalSats) || totalSats < 0) {
+    return null;
+  }
+  if (!Array.isArray(rows)) return null;
+  const zapDetails: ZapDetails[] = [];
+  for (const row of rows) {
+    const candidate = row as {
+      amountSats?: unknown;
+      createdAt?: unknown;
+      authorPubkey?: unknown;
+      comment?: unknown;
+    };
+    if (
+      !candidate ||
+      typeof candidate !== 'object' ||
+      typeof candidate.amountSats !== 'number' ||
+      !Number.isFinite(candidate.amountSats) ||
+      candidate.amountSats < 0
+    ) {
+      continue;
+    }
+    zapDetails.push({
+      amount: candidate.amountSats,
+      date: new Date((typeof candidate.createdAt === 'number' ? candidate.createdAt : 0) * 1000),
+      authorPubkey: typeof candidate.authorPubkey === 'string' ? candidate.authorPubkey : '',
+      comment: typeof candidate.comment === 'string' ? candidate.comment : '',
+    });
+  }
+  zapDetails.sort((left, right) => right.date.getTime() - left.date.getTime());
+  return {
+    totalAmount: totalSats,
+    zapDetails,
+  };
+}
+
 export const fetchTotalZapAmount = async ({
   pubkey,
   relays,
@@ -493,16 +548,23 @@ export const fetchTotalZapAmount = async ({
 
   try {
     let provider: ZapProviderInfo | null = null;
+    let providerLookupFailed = false;
     if (actionId && transport?.getZapProvider) {
-      provider = await transport.getZapProvider(actionId, relays);
+      try {
+        provider = await transport.getZapProvider(actionId, relays);
+      } catch (error) {
+        providerLookupFailed = true;
+        if (!transport) throw error;
+      }
     } else {
       const profileMetadata = await getProfileMetadata(pubkey, relays);
-      if (!profileMetadata) {
+      if (profileMetadata) {
+        provider = await getZapProviderInfo(profileMetadata);
+      } else if (!transport) {
         return { totalAmount: 0, zapDetails: [] };
       }
-      provider = await getZapProviderInfo(profileMetadata);
     }
-    if (!provider) {
+    if (!provider && !transport) {
       // Fail closed: without LNURL nostrPubkey we cannot authenticate receipts.
       return { totalAmount: 0, zapDetails: [] };
     }
@@ -526,6 +588,16 @@ export const fetchTotalZapAmount = async ({
       ? await transport.query(relays, filter)
       : await pool!.querySync(relays, filter);
 
+    const cached = transport ? readExtensionZapCache(events) : null;
+    if (cached) return cached;
+
+    if (!provider) {
+      if (providerLookupFailed || transport) {
+        throw new Error('Zap recipient has no valid LNURL provider');
+      }
+      return { totalAmount: 0, zapDetails: [] };
+    }
+
     for (const event of events) {
       const validated = validateZapReceipt(event, {
         recipientPubkey: pubkey,
@@ -543,6 +615,7 @@ export const fetchTotalZapAmount = async ({
       });
     }
   } catch (error) {
+    if (transport) throw error;
     console.error("Nostr-Components: Zap button: Error fetching zap receipts", error);
   } finally {
     pool?.close(relays);

@@ -23,6 +23,25 @@ describe('renderZapButton', () => {
     expect(html).toContain('button-text-skeleton');
   });
 
+  it('shows a zap failure without disabling the button', () => {
+    const html = renderZapButton({
+      isLoading: false,
+      isError: false,
+      isSuccess: false,
+      errorMessage: '',
+      buttonText: 'Zap',
+      actionNotice: 'Unable to zap',
+      totalZapAmount: null,
+      isAmountLoading: false,
+      compact: true,
+    });
+
+    expect(html).toContain('role="status"');
+    expect(html).toContain('Unable to zap');
+    expect(html).not.toContain(' disabled');
+    expect(html).toContain('aria-label="Zap"');
+  });
+
   it('leaves the button enabled when not loading', () => {
     const html = renderZapButton({
       isLoading: false,

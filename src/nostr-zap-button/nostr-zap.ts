@@ -40,6 +40,8 @@ export default class NostrZap extends NostrUserComponent {
   #totalZapAmount: number | null = null;
   #cachedZapDetails: ZapDetails[] = [];
   #cachedAmountDialog: DialogComponent | null = null;
+  #countedZapSubject: string | null = null;
+  #zapActionNotice = '';
   #zapCountLoadSeq = 0;
 
   constructor() {
@@ -77,6 +79,9 @@ export default class NostrZap extends NostrUserComponent {
       name === 'default-amount'
     ) {
       this.#closeCachedAmountDialog();
+    }
+    if (name === 'npub' || name === 'pubkey' || name === 'url') {
+      this.#forgetZapCountUnlessSubject(this.#zapSubjectKey());
     }
     if (name === 'url' && this.user) {
       void this.updateZapCount();
@@ -191,6 +196,7 @@ export default class NostrZap extends NostrUserComponent {
     if (this.userStatus.get() !== NCStatus.Ready) return;
     if (this.zapActionStatus.get() === NCStatus.Loading) return;
 
+    this.#zapActionNotice = '';
     this.zapActionStatus.set(NCStatus.Loading);
     this.render();
 
@@ -262,7 +268,9 @@ export default class NostrZap extends NostrUserComponent {
       });
       this.zapActionStatus.set(NCStatus.Ready);
     } catch (e: any) {
-      this.zapActionStatus.set(NCStatus.Error, e?.message || "Unable to zap");
+      console.error('Nostr-Components: Zap button: Unable to zap', e);
+      this.#zapActionNotice = e?.message || 'Unable to zap';
+      this.zapActionStatus.set(NCStatus.Ready);
     } finally {
       this.render();
     }
@@ -324,8 +332,29 @@ export default class NostrZap extends NostrUserComponent {
     });
   }
 
+  #zapSubjectKey(): string {
+    const trustedContext = getTrustedActionContext(this);
+    const recipient =
+      trustedContext?.recipientNpub ||
+      this.user?.pubkey ||
+      this.getAttribute('npub') ||
+      this.getAttribute('pubkey') ||
+      '';
+    const url = trustedContext?.url || this.getAttribute('url') || '';
+    return `${recipient}\n${url}`;
+  }
+
+  #forgetZapCountUnlessSubject(subjectKey: string) {
+    if (this.#countedZapSubject === subjectKey) return;
+    this.#totalZapAmount = null;
+    this.#cachedZapDetails = [];
+    this.#countedZapSubject = null;
+  }
+
   private async updateZapCount() {
     if (!this.user) return;
+    const subjectKey = this.#zapSubjectKey();
+    this.#forgetZapCountUnlessSubject(subjectKey);
     const seq = ++this.#zapCountLoadSeq;
     const trustedContext = getTrustedActionContext(this);
 
@@ -346,12 +375,23 @@ export default class NostrZap extends NostrUserComponent {
 
       this.#totalZapAmount = result.totalAmount;
       this.#cachedZapDetails = result.zapDetails;
+      this.#countedZapSubject = subjectKey;
       this.zapListStatus.set(NCStatus.Ready);
     } catch (e) {
       if (seq !== this.#zapCountLoadSeq) return;
       console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
-      this.#totalZapAmount = null;
-      this.zapListStatus.set(NCStatus.Error);
+      if (getRelayTransport()) {
+        if (this.#countedZapSubject !== subjectKey) {
+          this.#totalZapAmount = null;
+          this.#cachedZapDetails = [];
+        }
+        this.zapListStatus.set(NCStatus.Ready);
+      } else {
+        this.#totalZapAmount = null;
+        this.#cachedZapDetails = [];
+        this.#countedZapSubject = null;
+        this.zapListStatus.set(NCStatus.Error);
+      }
     } finally {
       if (seq === this.#zapCountLoadSeq) {
         this.render();
@@ -374,6 +414,7 @@ export default class NostrZap extends NostrUserComponent {
       isSuccess: false, // TODO: Add success state handling
       errorMessage: errorMessage,
       buttonText: buttonText,
+      actionNotice: this.#zapActionNotice,
       totalZapAmount: this.#totalZapAmount,
       hasZaps: this.#cachedZapDetails.length > 0,
       compact: this.hasAttribute('compact'),
