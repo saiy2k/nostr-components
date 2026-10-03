@@ -527,7 +527,7 @@ describe('Zap action integration', function () {
     expect(intent.origin + intent.pathname).toBe('https://x.com/intent/post');
     expect(intent.searchParams.get('in_reply_to')).toBe('42');
     expect(intent.searchParams.get('text')).toBe(
-      '@alokdangre Add a Lightning address (name@domain) to your Nostr profile so people can zap this post. The wallet needs to allow Nostr payments.'
+      '@alokdangre This post is waiting on a place to send bitcoin. Add a Lightning address (name@domain) to your Nostr profile, from a wallet that accepts Nostr payments, and people can zap it.'
     );
   });
 
@@ -548,7 +548,7 @@ describe('Zap action integration', function () {
     const intent = openInvite(action.slot);
     expect(intent.searchParams.get('in_reply_to')).toBe('42');
     expect(intent.searchParams.get('text')).toBe(
-      '@alokdangre Link this account to your Nostr profile and add a Lightning address so people can zap posts like this. https://nostr-atlas.web.app'
+      '@alokdangre This post can carry more than the story. Link this account to your Nostr profile, add a Lightning address, and readers can zap you right from the thread. https://nostr-atlas.web.app'
     );
   });
 

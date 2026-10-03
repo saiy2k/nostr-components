@@ -37,9 +37,9 @@
 
   function draftText(mode, handle) {
     if (mode === 'lightning') {
-      return '@' + handle + ' Add a Lightning address (name@domain) to your Nostr profile so people can zap this post. The wallet needs to allow Nostr payments.';
+      return '@' + handle + ' This post is waiting on a place to send bitcoin. Add a Lightning address (name@domain) to your Nostr profile, from a wallet that accepts Nostr payments, and people can zap it.';
     }
-    return '@' + handle + ' Link this account to your Nostr profile and add a Lightning address so people can zap posts like this. ' + ATLAS_URL;
+    return '@' + handle + ' This post can carry more than the story. Link this account to your Nostr profile, add a Lightning address, and readers can zap you right from the thread. ' + ATLAS_URL;
   }
 
   function tooltip(mode, handle) {
