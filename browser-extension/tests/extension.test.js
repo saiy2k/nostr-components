@@ -2454,6 +2454,16 @@ describe('CSP-safe component and relay integration', function () {
     expect(extension.zapHttp.isAllowedZapHttpUrl('https://ln.example/.well-known/lnurlp/alice')).toBe(true);
     expect(extension.zapHttp.isAllowedZapHttpUrl('https://127.0.0.1/.well-known/lnurlp/alice')).toBe(false);
     expect(extension.zapHttp.isAllowedZapHttpUrl('https://192.168.1.9/.well-known/lnurlp/alice')).toBe(false);
+    expect(
+      extension.zapHttp.isAllowedZapHttpUrl(
+        'https://ln.example/callback?nostr=' + 'a'.repeat(3000)
+      )
+    ).toBe(true);
+    expect(
+      extension.zapHttp.isAllowedZapHttpUrl(
+        'https://ln.example/callback?nostr=' + 'a'.repeat(9000)
+      )
+    ).toBe(false);
     session.dispose();
   });
 
