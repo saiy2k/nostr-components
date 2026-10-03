@@ -121,7 +121,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Purpose: Listen for zap receipt events (kind 9735) matching the invoice
 - Status: ACTIVELY USED in dialog implementation
 - Behavior: Shows success overlay only after NIP-57 Appendix F validation succeeds, or immediately after WebLN `sendPayment` resolves
-- Button total: `markSuccess()` reports the paid bolt11 amount through `onZapPaid`. The button credits that invoice once and refreshes receipts without lowering the visible total
+- Button total: `markSuccess()` reports the paid bolt11 amount and the comment stored on that invoice through `onZapPaid`. The button credits that invoice once. A later receipt row for the same sender, amount, and time replaces the credit. A refresh that lacks the receipt cannot lower the visible total.
 
 ### Close Behavior
 - ESC Key: Closes dialog
@@ -155,7 +155,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - `listenForZapReceipt()`: Monitors for zap payment confirmations
 
 ### Zap display (`src/nostr-zap-button/zap-display.ts`)
-- `creditPaidZap()` / `applyRelayZapResult()`: Add a confirmed payment to the visible total immediately, then adopt a later relay total only when it covers that credit
+- `creditPaidZap()` / `applyRelayZapResult()`: Add a confirmed payment to the visible total immediately. Drop that credit when a new receipt row matches the sender, amount, and time. A row already in the previous result does not match. Keep the credit on top of a fetch that does not contain it.
 
 ## Zap Count
 
@@ -185,7 +185,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Delegated click handler on `.total-zap-amount` class
 - `handleZapClick` early-returns while `zapActionStatus` is Loading
 - Primary zap button is `disabled` + `aria-busy` during the action
-- After a confirmed zap, the visible total includes that payment immediately. The follow-up `updateZapCount({ preserveVisibleTotal: true })` does not show the amount skeleton, and a stale fetch cannot replace the credited total
+- After a confirmed zap, the visible total includes that payment immediately. The follow-up `updateZapCount({ preserveVisibleTotal: true })` does not show the amount skeleton. The credit stays until a receipt row matches that payment.
 
 ## Individual Zaps
 

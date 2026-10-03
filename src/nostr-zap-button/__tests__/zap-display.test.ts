@@ -8,6 +8,7 @@ import {
   displayedZapDetails,
   displayedZapTotal,
   emptyZapDisplay,
+  RECEIPT_MATCH_SKEW_MS,
   resetZapDisplay,
   type PendingZapCredit,
   type ZapDisplayState,
@@ -26,13 +27,17 @@ function payment(overrides: Partial<PendingZapCredit> = {}): PendingZapCredit {
   };
 }
 
-function relayZap(amount: number, authorPubkey = 'other'): ZapDetails {
+function relayZap(amount: number, authorPubkey = 'other', date = new Date('2026-10-01T00:00:00.000Z')): ZapDetails {
   return {
     amount,
-    date: new Date('2026-10-01T00:00:00.000Z'),
+    date,
     authorPubkey,
     comment: '',
   };
+}
+
+function paidReceipt(amount: number, authorPubkey = 'sender', skewMs = 0): ZapDetails {
+  return relayZap(amount, authorPubkey, new Date(paidAt.getTime() - skewMs));
 }
 
 function withRelay(total: number, details: ZapDetails[] = [relayZap(total)]): ZapDisplayState {
@@ -86,19 +91,131 @@ describe('zap-display', () => {
     expect(displayedZapTotal(refreshed)).toBe(121);
   });
 
-  it('drops the credit once the relay total has caught up', () => {
+  it('drops the credit once a matching receipt is in the result', () => {
     const credited = creditPaidZap(withRelay(100), payment());
     const caughtUp = applyRelayZapResult(credited, {
       totalAmount: 121,
-      zapDetails: [relayZap(21, 'sender'), relayZap(100)],
+      zapDetails: [paidReceipt(21), relayZap(100)],
     });
 
     expect(displayedZapTotal(caughtUp)).toBe(121);
     expect(caughtUp.pending).toEqual([]);
     expect(displayedZapDetails(caughtUp)).toEqual([
-      relayZap(21, 'sender'),
+      paidReceipt(21),
       relayZap(100),
     ]);
+  });
+
+  it('keeps the credit when an older zap from the same sender raises the total', () => {
+    const credited = creditPaidZap(withRelay(100), payment());
+    const refreshed = applyRelayZapResult(credited, {
+      totalAmount: 121,
+      zapDetails: [relayZap(21, 'sender'), relayZap(100)],
+    });
+
+    expect(refreshed.relayTotal).toBe(121);
+    expect(refreshed.pending).toHaveLength(1);
+    expect(displayedZapTotal(refreshed)).toBe(142);
+  });
+
+  it('keeps the credit when someone else pays the same amount', () => {
+    const credited = creditPaidZap(withRelay(100), payment());
+    const refreshed = applyRelayZapResult(credited, {
+      totalAmount: 121,
+      zapDetails: [paidReceipt(21, 'other'), relayZap(100)],
+    });
+
+    expect(refreshed.relayTotal).toBe(121);
+    expect(refreshed.pending).toHaveLength(1);
+    expect(displayedZapTotal(refreshed)).toBe(142);
+  });
+
+  it('matches a receipt a few minutes before the client timestamp', () => {
+    const credited = creditPaidZap(withRelay(100), payment());
+    const caughtUp = applyRelayZapResult(credited, {
+      totalAmount: 121,
+      zapDetails: [paidReceipt(21, 'sender', RECEIPT_MATCH_SKEW_MS), relayZap(100)],
+    });
+
+    expect(caughtUp.pending).toEqual([]);
+    expect(displayedZapTotal(caughtUp)).toBe(121);
+  });
+
+  it('does not match a receipt older than the clock skew', () => {
+    const credited = creditPaidZap(withRelay(100), payment());
+    const refreshed = applyRelayZapResult(credited, {
+      totalAmount: 121,
+      zapDetails: [paidReceipt(21, 'sender', RECEIPT_MATCH_SKEW_MS + 1), relayZap(100)],
+    });
+
+    expect(refreshed.pending).toHaveLength(1);
+    expect(displayedZapTotal(refreshed)).toBe(142);
+  });
+
+  it('matches the sender pubkey without case sensitivity', () => {
+    const credited = creditPaidZap(withRelay(100), payment({ authorPubkey: 'AbC' }));
+    const caughtUp = applyRelayZapResult(credited, {
+      totalAmount: 121,
+      zapDetails: [paidReceipt(21, 'abc'), relayZap(100)],
+    });
+
+    expect(caughtUp.pending).toEqual([]);
+    expect(displayedZapTotal(caughtUp)).toBe(121);
+  });
+
+  it('does not clear a new credit against a receipt already on the button', () => {
+    const recent = paidReceipt(21, 'sender', 60_000);
+    const baseline = withRelay(121, [recent, relayZap(100)]);
+    const credited = creditPaidZap(baseline, payment());
+    const refreshed = applyRelayZapResult(credited, {
+      totalAmount: 121,
+      zapDetails: [recent, relayZap(100)],
+    });
+
+    expect(refreshed).toBe(credited);
+    expect(displayedZapTotal(refreshed)).toBe(142);
+
+    const caughtUp = applyRelayZapResult(credited, {
+      totalAmount: 142,
+      zapDetails: [paidReceipt(21), recent, relayZap(100)],
+    });
+    expect(caughtUp.pending).toEqual([]);
+    expect(displayedZapTotal(caughtUp)).toBe(142);
+  });
+
+  it('drops only the pending credit that has a matching receipt', () => {
+    const first = creditPaidZap(withRelay(100), payment());
+    const second = creditPaidZap(first, payment({ invoice: 'lnbc21b' }));
+    const refreshed = applyRelayZapResult(second, {
+      totalAmount: 121,
+      zapDetails: [paidReceipt(21), relayZap(100)],
+    });
+
+    expect(refreshed.pending).toHaveLength(1);
+    expect(displayedZapTotal(refreshed)).toBe(142);
+    expect(displayedZapDetails(refreshed).filter((zap) => zap.amount === 21)).toHaveLength(2);
+  });
+
+  it('adopts a lower total once the pending payment is in that result', () => {
+    const credited = creditPaidZap(withRelay(100), payment());
+    const refreshed = applyRelayZapResult(credited, {
+      totalAmount: 71,
+      zapDetails: [paidReceipt(21), relayZap(50)],
+    });
+
+    expect(refreshed.pending).toEqual([]);
+    expect(displayedZapTotal(refreshed)).toBe(71);
+  });
+
+  it('ignores a lower total that does not contain the pending payment', () => {
+    const credited = creditPaidZap(withRelay(100), payment());
+    const refreshed = applyRelayZapResult(credited, {
+      totalAmount: 80,
+      zapDetails: [relayZap(80)],
+    });
+
+    expect(refreshed).toBe(credited);
+    expect(displayedZapTotal(refreshed)).toBe(121);
   });
 
   it('keeps a credit that landed before the first count on top of that fetch', () => {
@@ -116,10 +233,22 @@ describe('zap-display', () => {
 
     const caughtUp = applyRelayZapResult(firstFetch, {
       totalAmount: 121,
-      zapDetails: [relayZap(21, 'sender'), relayZap(100)],
+      zapDetails: [paidReceipt(21), relayZap(100)],
     });
     expect(displayedZapTotal(caughtUp)).toBe(121);
     expect(caughtUp.pending).toEqual([]);
+  });
+
+  it('does not stack a credit the first count already includes', () => {
+    const credited = creditPaidZap(emptyZapDisplay(), payment());
+    const firstFetch = applyRelayZapResult(credited, {
+      totalAmount: 121,
+      zapDetails: [paidReceipt(21), relayZap(100)],
+    });
+
+    expect(firstFetch.pending).toEqual([]);
+    expect(displayedZapTotal(firstFetch)).toBe(121);
+    expect(displayedZapDetails(firstFetch).filter((zap) => zap.amount === 21)).toHaveLength(1);
   });
 
   it('adopts a relay total when nothing is pending', () => {

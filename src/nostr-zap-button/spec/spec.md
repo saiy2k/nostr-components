@@ -58,9 +58,10 @@ When `url` attribute is provided:
 A confirmed payment updates the button before the next receipt query:
 
 - The credited amount is the paid invoice amount, counted once per invoice. WebLN success and the later receipt for that same invoice do not add it twice.
-- The button total increases immediately, and the zappers list gains a row for that payment.
-- A background refresh does not replace the total with a skeleton or with a lower result. The local credit is removed once the fetched total is at least the previous relay total plus the pending credit.
-- If the user pays before the first count returns, the credit stays on top of that first result until a later refresh has caught up.
+- The button total increases immediately, and the zappers list gains a row for that payment. The row comment is the comment stored on the paid invoice.
+- A background refresh does not show a skeleton. The pending credit stays until a newly fetched receipt matches that payment: same sender, same amount, and a receipt time at or after the payment, allowing ten minutes of clock skew. A receipt already in the previous result does not match. A larger fetched total that does not contain the new receipt stays underneath the pending credit.
+- A fetched result that does not contain the pending payment cannot lower the visible total. Once the receipt is present, the button adopts that fetched total and drops the matching credit.
+- If the user pays before the first count returns, the credit stays on top of that first result when the receipt is absent. When that first result already includes the receipt, the button shows the fetched total once.
 - A failed refresh leaves a credited total in place. Changing `npub`, `pubkey`, or `url` drops both the fetched total and any pending credit.
 
 ## API

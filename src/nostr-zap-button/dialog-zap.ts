@@ -128,6 +128,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   }
   let customComment = '';
   let currentInvoice = '';
+  let invoicedComment = '';
   let cleanupReceipt: (() => void) | null = null;
   let invoiceRequestSeq = 0;
 
@@ -180,6 +181,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     }
     if (requestSeq !== invoiceRequestSeq) return null;
     currentInvoice = invoice;
+    invoicedComment = comment;
 
     // Zap receipt listener
     // Dispose previous listener before creating a new one
@@ -243,6 +245,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   async function refreshUI(dialog: HTMLDialogElement) {
     const requestSeq = ++invoiceRequestSeq;
     currentInvoice = '';
+    invoicedComment = '';
     if (cleanupReceipt) {
       cleanupReceipt();
       cleanupReceipt = null;
@@ -481,6 +484,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
 
   function markSuccess() {
     const invoice = currentInvoice;
+    const comment = invoicedComment;
     const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
     const amountSats = amountMsats != null ? amountMsats / 1000 : selectedAmount;
 
@@ -500,7 +504,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       params.onZapPaid?.({
         invoice,
         amountSats,
-        comment: customComment,
+        comment,
       });
     }
   }
@@ -508,6 +512,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   dialog.addEventListener('close', () => {
     invoiceRequestSeq += 1;
     currentInvoice = '';
+    invoicedComment = '';
     if (cleanupReceipt) {
       cleanupReceipt();
       cleanupReceipt = null;

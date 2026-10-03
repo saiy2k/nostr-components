@@ -26884,6 +26884,7 @@ ${url}`;
     }
     let customComment = "";
     let currentInvoice = "";
+    let invoicedComment = "";
     let cleanupReceipt = null;
     let invoiceRequestSeq = 0;
     async function loadInvoice(amountSats, comment, requestSeq) {
@@ -26925,6 +26926,7 @@ ${url}`;
       }
       if (requestSeq !== invoiceRequestSeq) return null;
       currentInvoice = invoice;
+      invoicedComment = comment;
       if (cleanupReceipt) cleanupReceipt();
       cleanupReceipt = listenForZapReceipt({
         relays: relaysArray,
@@ -26977,6 +26979,7 @@ ${url}`;
     async function refreshUI(dialog2) {
       const requestSeq = ++invoiceRequestSeq;
       currentInvoice = "";
+      invoicedComment = "";
       if (cleanupReceipt) {
         cleanupReceipt();
         cleanupReceipt = null;
@@ -27170,6 +27173,7 @@ ${url}`;
     );
     function markSuccess() {
       const invoice = currentInvoice;
+      const comment = invoicedComment;
       const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
       const amountSats = amountMsats != null ? amountMsats / 1e3 : selectedAmount;
       dialog.classList.add("success");
@@ -27184,13 +27188,14 @@ ${url}`;
         params.onZapPaid?.({
           invoice,
           amountSats,
-          comment: customComment
+          comment
         });
       }
     }
     dialog.addEventListener("close", () => {
       invoiceRequestSeq += 1;
       currentInvoice = "";
+      invoicedComment = "";
       if (cleanupReceipt) {
         cleanupReceipt();
         cleanupReceipt = null;
@@ -28274,6 +28279,7 @@ ${url}`;
   function hasPendingZapCredit(state) {
     return state.pending.length > 0;
   }
+  var RECEIPT_MATCH_SKEW_MS = 10 * 60 * 1e3;
   function displayedZapTotal(state) {
     const credit = pendingCreditSats(state.pending);
     if (state.relayTotal === null) {
@@ -28298,32 +28304,81 @@ ${url}`;
   }
   function applyRelayZapResult(state, result) {
     if (!isUsableTotal(result.totalAmount)) return state;
-    const credit = pendingCreditSats(state.pending);
-    if (credit === 0) {
+    if (state.pending.length === 0) {
       return {
         relayTotal: result.totalAmount,
         relayDetails: result.zapDetails,
         pending: []
       };
     }
-    if (state.relayTotal === null) {
+    const unmatched = pendingWithoutMatchingReceipts(
+      state.pending,
+      result.zapDetails,
+      state.relayDetails
+    );
+    if (unmatched.length !== state.pending.length) {
+      return {
+        relayTotal: result.totalAmount,
+        relayDetails: result.zapDetails,
+        pending: unmatched
+      };
+    }
+    if (state.relayTotal === null || result.totalAmount > state.relayTotal) {
       return {
         relayTotal: result.totalAmount,
         relayDetails: result.zapDetails,
         pending: state.pending
       };
     }
-    if (result.totalAmount >= state.relayTotal + credit) {
-      return {
-        relayTotal: result.totalAmount,
-        relayDetails: result.zapDetails,
-        pending: []
-      };
-    }
     return state;
   }
   function pendingCreditSats(pending) {
     return pending.reduce((sum, zap) => sum + zap.amountSats, 0);
+  }
+  function pendingWithoutMatchingReceipts(pending, details, previousDetails) {
+    const freshDetails = detailsAbsentFrom(previousDetails, details);
+    const used = /* @__PURE__ */ new Set();
+    const unmatched = [];
+    for (const credit of pending) {
+      const index = freshDetails.findIndex(
+        (detail, detailIndex) => !used.has(detailIndex) && receiptMatchesCredit(detail, credit)
+      );
+      if (index === -1) {
+        unmatched.push(credit);
+      } else {
+        used.add(index);
+      }
+    }
+    return unmatched;
+  }
+  function detailsAbsentFrom(previous, next) {
+    const remaining = /* @__PURE__ */ new Map();
+    for (const detail of previous) {
+      const key = receiptKey(detail);
+      remaining.set(key, (remaining.get(key) ?? 0) + 1);
+    }
+    const fresh = [];
+    for (const detail of next) {
+      const key = receiptKey(detail);
+      const count = remaining.get(key) ?? 0;
+      if (count > 0) {
+        remaining.set(key, count - 1);
+      } else {
+        fresh.push(detail);
+      }
+    }
+    return fresh;
+  }
+  function receiptKey(detail) {
+    return `${detail.authorPubkey.toLowerCase()}|${detail.amount}|${detail.date.getTime()}`;
+  }
+  function receiptMatchesCredit(detail, credit) {
+    if (!sameAuthor(detail.authorPubkey, credit.authorPubkey)) return false;
+    if (detail.amount !== credit.amountSats) return false;
+    return detail.date.getTime() >= credit.paidAt.getTime() - RECEIPT_MATCH_SKEW_MS;
+  }
+  function sameAuthor(left, right) {
+    return left.length > 0 && left.toLowerCase() === right.toLowerCase();
   }
   function pendingZapDetails(zap) {
     return {
