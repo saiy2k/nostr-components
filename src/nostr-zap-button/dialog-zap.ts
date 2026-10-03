@@ -130,6 +130,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   let currentInvoice = '';
   let invoicedComment = '';
   let cleanupReceipt: (() => void) | null = null;
+  const reportedInvoices = new Set<string>();
   let invoiceRequestSeq = 0;
 
   // -----------------------------------------------------------------------------
@@ -186,13 +187,15 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     // Zap receipt listener
     // Dispose previous listener before creating a new one
     if (cleanupReceipt) cleanupReceipt();
+    const paidInvoice = invoice;
+    const paidComment = comment;
     cleanupReceipt = listenForZapReceipt({
       relays: relaysArray,
       receiversPubKey: npubHex,
       invoice,
       provider,
       url,
-      onSuccess: markSuccess
+      onSuccess: () => markSuccess(paidInvoice, paidComment),
     });
     return invoice;
   }
@@ -466,12 +469,14 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     async (event) => {
       if (!isTrustedUserEvent(event)) return;
       if (!currentInvoice) return;
+      const paidInvoice = currentInvoice;
+      const paidComment = invoicedComment;
       // try WebLN first
       if (window.webln) {
         try {
           await window.webln.enable();
-          await window.webln.sendPayment(currentInvoice);
-          markSuccess();
+          await window.webln.sendPayment(paidInvoice);
+          markSuccess(paidInvoice, paidComment);
           return;
         } catch (e) {
           console.error('Nostr-Components: Zap button: webln payment failed', e);
@@ -482,9 +487,15 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     },
   );
 
-  function markSuccess() {
-    const invoice = currentInvoice;
-    const comment = invoicedComment;
+  function stopReceiptListener() {
+    if (!cleanupReceipt) return;
+    cleanupReceipt();
+    cleanupReceipt = null;
+  }
+
+  function markSuccess(paidInvoice = currentInvoice, paidComment = invoicedComment) {
+    const invoice = paidInvoice;
+    const comment = paidComment;
     const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
     const amountSats = amountMsats != null ? amountMsats / 1000 : selectedAmount;
 
@@ -500,7 +511,9 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     });
     // DialogComponent close button is always clickable
 
-    if (invoice && amountSats > 0) {
+    if (invoice && amountSats > 0 && !reportedInvoices.has(invoice)) {
+      reportedInvoices.add(invoice);
+      stopReceiptListener();
       params.onZapPaid?.({
         invoice,
         amountSats,

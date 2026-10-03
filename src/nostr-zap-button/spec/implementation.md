@@ -121,7 +121,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Purpose: Listen for zap receipt events (kind 9735) matching the invoice
 - Status: ACTIVELY USED in dialog implementation
 - Behavior: Shows success overlay only after NIP-57 Appendix F validation succeeds, or immediately after WebLN `sendPayment` resolves
-- Button total: `markSuccess()` reports the paid bolt11 amount and the comment stored on that invoice through `onZapPaid`. The button credits that invoice once. A later receipt row for the same sender, amount, and time replaces the credit. A refresh that lacks the receipt cannot lower the visible total.
+- Button total: `markSuccess()` reports the paid bolt11 amount and the comment stored on that invoice through `onZapPaid`, once per invoice, then stops the receipt listener. The button credits that invoice once. A later receipt row for the same sender, amount, and time replaces the credit. A refresh that lacks the receipt cannot lower the visible total.
 
 ### Close Behavior
 - ESC Key: Closes dialog
@@ -129,7 +129,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Close Button (×): Closes dialog
 - WebLN Success: Modal closes automatically after successful WebLN payment
 - WebLN Failure: Modal closes automatically after failed WebLN payment
-- Cleanup: Receipt listener cleanup on dialog close event
+- Cleanup: Receipt listener cleanup when the payment is reported, and again on dialog close
 
 ### CSS Management
 - Content Styles: Separate files for each dialog type

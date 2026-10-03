@@ -20296,7 +20296,10 @@
             }
           }
         );
+        let closed = false;
         const cleanup = () => {
+          if (closed) return;
+          closed = true;
           pool.close(normalizedRelays);
         };
         return cleanup;
@@ -26886,6 +26889,7 @@ ${url}`;
     let currentInvoice = "";
     let invoicedComment = "";
     let cleanupReceipt = null;
+    const reportedInvoices = /* @__PURE__ */ new Set();
     let invoiceRequestSeq = 0;
     async function loadInvoice(amountSats, comment, requestSeq) {
       const authorId = npubHex;
@@ -26928,13 +26932,15 @@ ${url}`;
       currentInvoice = invoice;
       invoicedComment = comment;
       if (cleanupReceipt) cleanupReceipt();
+      const paidInvoice = invoice;
+      const paidComment = comment;
       cleanupReceipt = listenForZapReceipt({
         relays: relaysArray,
         receiversPubKey: npubHex,
         invoice,
         provider,
         url,
-        onSuccess: markSuccess
+        onSuccess: () => markSuccess(paidInvoice, paidComment)
       });
       return invoice;
     }
@@ -27157,11 +27163,13 @@ ${url}`;
       async (event) => {
         if (!isTrustedUserEvent(event)) return;
         if (!currentInvoice) return;
+        const paidInvoice = currentInvoice;
+        const paidComment = invoicedComment;
         if (window.webln) {
           try {
             await window.webln.enable();
-            await window.webln.sendPayment(currentInvoice);
-            markSuccess();
+            await window.webln.sendPayment(paidInvoice);
+            markSuccess(paidInvoice, paidComment);
             return;
           } catch (e) {
             console.error("Nostr-Components: Zap button: webln payment failed", e);
@@ -27171,9 +27179,14 @@ ${url}`;
         window.location.href = `lightning:${currentInvoice}`;
       }
     );
-    function markSuccess() {
-      const invoice = currentInvoice;
-      const comment = invoicedComment;
+    function stopReceiptListener() {
+      if (!cleanupReceipt) return;
+      cleanupReceipt();
+      cleanupReceipt = null;
+    }
+    function markSuccess(paidInvoice = currentInvoice, paidComment = invoicedComment) {
+      const invoice = paidInvoice;
+      const comment = paidComment;
       const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
       const amountSats = amountMsats != null ? amountMsats / 1e3 : selectedAmount;
       dialog.classList.add("success");
@@ -27184,7 +27197,9 @@ ${url}`;
       controls.forEach((el) => {
         if (el instanceof HTMLElement) el.style.display = "none";
       });
-      if (invoice && amountSats > 0) {
+      if (invoice && amountSats > 0 && !reportedInvoices.has(invoice)) {
+        reportedInvoices.add(invoice);
+        stopReceiptListener();
         params.onZapPaid?.({
           invoice,
           amountSats,
