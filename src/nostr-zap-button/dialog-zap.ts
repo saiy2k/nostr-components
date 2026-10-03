@@ -23,6 +23,7 @@ import {
  * the need for redundant validation and resolution logic.
  */
 
+import { getBolt11AmountMsats } from './zap-receipt';
 import { 
   fetchInvoice, 
   fetchInvoiceForAction,
@@ -43,6 +44,12 @@ declare global {
   }
 }
 
+export interface ZapPaidNotice {
+  invoice: string;
+  amountSats: number;
+  comment: string;
+}
+
 export interface OpenZapModalParams {
   actionId?: string;
   npub: string;
@@ -55,6 +62,7 @@ export interface OpenZapModalParams {
   initialAmount?: number; // legacy support
   anon?: boolean;
   url?: string; // URL to send zap to (enables URL-based zaps)
+  onZapPaid?: (payment: ZapPaidNotice) => void;
 }
 
 export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
@@ -472,6 +480,10 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   );
 
   function markSuccess() {
+    const invoice = currentInvoice;
+    const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
+    const amountSats = amountMsats != null ? amountMsats / 1000 : selectedAmount;
+
     dialog.classList.add('success');
     const overlay = dialog.querySelector('.success-overlay') as HTMLElement;
     overlay.style.opacity = '1';
@@ -483,6 +495,14 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       if (el instanceof HTMLElement) el.style.display = 'none';
     });
     // DialogComponent close button is always clickable
+
+    if (invoice && amountSats > 0) {
+      params.onZapPaid?.({
+        invoice,
+        amountSats,
+        comment: customComment,
+      });
+    }
   }
 
   dialog.addEventListener('close', () => {

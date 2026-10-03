@@ -28,8 +28,9 @@
 5. Display QR code and wallet links
 6. User completes payment
 7. Listen for zap receipt events
-8. Show "⚡ Thank you!" overlay
-9. Close via × button or automatic after WebLN payment
+8. Show "⚡ Thank you!" overlay and add the paid invoice amount to the button total immediately
+9. Refresh the relay total in the background. A lower or cached total stays off the button until the fetched total includes the new payment
+10. Close via × button or automatic after WebLN payment
 
 ## URL-Based Zaps
 
@@ -51,6 +52,16 @@ When `url` attribute is provided:
 - Total zap amount may not reflect all zaps received
 - Zappers list may not show all contributors
 - URL-specific totals may be incomplete
+
+## Total after a zap
+
+A confirmed payment updates the button before the next receipt query:
+
+- The credited amount is the paid invoice amount, counted once per invoice. WebLN success and the later receipt for that same invoice do not add it twice.
+- The button total increases immediately, and the zappers list gains a row for that payment.
+- A background refresh does not replace the total with a skeleton or with a lower result. The local credit is removed once the fetched total is at least the previous relay total plus the pending credit.
+- If the user pays before the first count returns, the credit stays on top of that first result until a later refresh has caught up.
+- A failed refresh leaves a credited total in place. Changing `npub`, `pubkey`, or `url` drops both the fetched total and any pending credit.
 
 ## API
 
@@ -279,4 +290,3 @@ Data:
 
 TODO:
 - Handle dynamic change of attributes.
-- Refresh totals after successful zap.

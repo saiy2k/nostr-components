@@ -26835,6 +26835,7 @@ ${url}`;
   // src/nostr-zap-button/dialog-zap.ts
   init_utils8();
   init_trusted_html();
+  init_zap_receipt();
   init_zap_utils();
   var QRCode = __toESM(require_browser2(), 1);
   var injectCSS = (theme = "light") => {
@@ -27168,6 +27169,9 @@ ${url}`;
       }
     );
     function markSuccess() {
+      const invoice = currentInvoice;
+      const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
+      const amountSats = amountMsats != null ? amountMsats / 1e3 : selectedAmount;
       dialog.classList.add("success");
       const overlay = dialog.querySelector(".success-overlay");
       overlay.style.opacity = "1";
@@ -27176,6 +27180,13 @@ ${url}`;
       controls.forEach((el) => {
         if (el instanceof HTMLElement) el.style.display = "none";
       });
+      if (invoice && amountSats > 0) {
+        params.onZapPaid?.({
+          invoice,
+          amountSats,
+          comment: customComment
+        });
+      }
     }
     dialog.addEventListener("close", () => {
       invoiceRequestSeq += 1;
@@ -28248,6 +28259,91 @@ ${url}`;
 
   // src/nostr-zap-button/nostr-zap.ts
   init_zap_utils();
+
+  // src/nostr-zap-button/zap-display.ts
+  function emptyZapDisplay() {
+    return {
+      relayTotal: null,
+      relayDetails: [],
+      pending: []
+    };
+  }
+  function resetZapDisplay() {
+    return emptyZapDisplay();
+  }
+  function hasPendingZapCredit(state) {
+    return state.pending.length > 0;
+  }
+  function displayedZapTotal(state) {
+    const credit = pendingCreditSats(state.pending);
+    if (state.relayTotal === null) {
+      return credit > 0 ? credit : null;
+    }
+    return state.relayTotal + credit;
+  }
+  function displayedZapDetails(state) {
+    return [
+      ...state.pending.map(pendingZapDetails),
+      ...state.relayDetails
+    ];
+  }
+  function creditPaidZap(state, payment) {
+    if (!isCreditablePayment(payment)) return state;
+    if (state.pending.some((zap) => zap.invoice === payment.invoice)) return state;
+    return {
+      relayTotal: state.relayTotal,
+      relayDetails: state.relayDetails,
+      pending: [payment, ...state.pending]
+    };
+  }
+  function applyRelayZapResult(state, result) {
+    if (!isUsableTotal(result.totalAmount)) return state;
+    const credit = pendingCreditSats(state.pending);
+    if (credit === 0) {
+      return {
+        relayTotal: result.totalAmount,
+        relayDetails: result.zapDetails,
+        pending: []
+      };
+    }
+    if (state.relayTotal === null) {
+      return {
+        relayTotal: result.totalAmount,
+        relayDetails: result.zapDetails,
+        pending: state.pending
+      };
+    }
+    if (result.totalAmount >= state.relayTotal + credit) {
+      return {
+        relayTotal: result.totalAmount,
+        relayDetails: result.zapDetails,
+        pending: []
+      };
+    }
+    return state;
+  }
+  function pendingCreditSats(pending) {
+    return pending.reduce((sum, zap) => sum + zap.amountSats, 0);
+  }
+  function pendingZapDetails(zap) {
+    return {
+      amount: zap.amountSats,
+      date: zap.paidAt,
+      authorPubkey: zap.authorPubkey,
+      comment: zap.comment
+    };
+  }
+  function isCreditablePayment(payment) {
+    return typeof payment.invoice === "string" && payment.invoice.length > 0 && isPositiveAmount(payment.amountSats);
+  }
+  function isPositiveAmount(amount) {
+    return typeof amount === "number" && Number.isFinite(amount) && amount > 0;
+  }
+  function isUsableTotal(amount) {
+    return typeof amount === "number" && Number.isFinite(amount) && amount >= 0;
+  }
+
+  // src/nostr-zap-button/nostr-zap.ts
   init_utils8();
   init_relay_transport();
   init_trusted_html();
@@ -28256,6 +28352,7 @@ ${url}`;
     zapListStatus = this.channel("zapList");
     #totalZapAmount = null;
     #cachedZapDetails = [];
+    #zapDisplay = emptyZapDisplay();
     #cachedAmountDialog = null;
     #countedZapSubject = null;
     #zapActionNotice = "";
@@ -28402,6 +28499,7 @@ ${url}`;
           this.render();
           return;
         }
+        const senderPubkey = signerResult.publicKey;
         const trustedContext = getTrustedActionContext(this);
         if (hasInstalledRelayTransport() && !trustedContext) {
           throw new Error("Untrusted extension action");
@@ -28440,7 +28538,10 @@ ${url}`;
             return num2;
           })(),
           url: trustedContext?.url || this.getAttribute("url") || void 0,
-          anon: false
+          anon: false,
+          onZapPaid: (payment) => {
+            this.#recordPaidZap(payment, senderPubkey);
+          }
         });
         this.zapActionStatus.set(2 /* Ready */);
       } catch (e) {
@@ -28509,19 +28610,41 @@ ${url}`;
     }
     #forgetZapCountUnlessSubject(subjectKey) {
       if (this.#countedZapSubject === subjectKey) return;
-      this.#totalZapAmount = null;
-      this.#cachedZapDetails = [];
+      this.#applyZapDisplay(resetZapDisplay());
       this.#countedZapSubject = null;
     }
-    async updateZapCount() {
+    #applyZapDisplay(next) {
+      this.#zapDisplay = next;
+      this.#totalZapAmount = displayedZapTotal(next);
+      this.#cachedZapDetails = displayedZapDetails(next);
+    }
+    #recordPaidZap(payment, authorPubkey) {
+      const subjectKey = this.#zapSubjectKey();
+      this.#forgetZapCountUnlessSubject(subjectKey);
+      this.#applyZapDisplay(creditPaidZap(this.#zapDisplay, {
+        invoice: payment.invoice,
+        amountSats: payment.amountSats,
+        comment: payment.comment,
+        authorPubkey,
+        paidAt: /* @__PURE__ */ new Date()
+      }));
+      this.#countedZapSubject = subjectKey;
+      this.zapListStatus.set(2 /* Ready */);
+      this.render();
+      void this.updateZapCount({ preserveVisibleTotal: true });
+    }
+    async updateZapCount(options) {
       if (!this.user) return;
       const subjectKey = this.#zapSubjectKey();
       this.#forgetZapCountUnlessSubject(subjectKey);
       const seq = ++this.#zapCountLoadSeq;
       const trustedContext = getTrustedActionContext(this);
+      const preserveVisibleTotal = options?.preserveVisibleTotal === true && displayedZapTotal(this.#zapDisplay) !== null;
       try {
-        this.zapListStatus.set(1 /* Loading */);
-        this.render();
+        if (!preserveVisibleTotal) {
+          this.zapListStatus.set(1 /* Loading */);
+          this.render();
+        }
         await this.ensureNostrConnected();
         if (seq !== this.#zapCountLoadSeq) return;
         const result = await fetchTotalZapAmount({
@@ -28531,22 +28654,22 @@ ${url}`;
           actionId: trustedContext?.actionId
         });
         if (seq !== this.#zapCountLoadSeq) return;
-        this.#totalZapAmount = result.totalAmount;
-        this.#cachedZapDetails = result.zapDetails;
+        this.#applyZapDisplay(applyRelayZapResult(this.#zapDisplay, result));
         this.#countedZapSubject = subjectKey;
         this.zapListStatus.set(2 /* Ready */);
       } catch (e) {
         if (seq !== this.#zapCountLoadSeq) return;
         console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
+        const keepCreditedTotal = hasPendingZapCredit(this.#zapDisplay);
         if (getRelayTransport()) {
-          if (this.#countedZapSubject !== subjectKey) {
-            this.#totalZapAmount = null;
-            this.#cachedZapDetails = [];
+          if (this.#countedZapSubject !== subjectKey && !keepCreditedTotal) {
+            this.#applyZapDisplay(resetZapDisplay());
           }
           this.zapListStatus.set(2 /* Ready */);
+        } else if (keepCreditedTotal) {
+          this.zapListStatus.set(2 /* Ready */);
         } else {
-          this.#totalZapAmount = null;
-          this.#cachedZapDetails = [];
+          this.#applyZapDisplay(resetZapDisplay());
           this.#countedZapSubject = null;
           this.zapListStatus.set(3 /* Error */);
         }

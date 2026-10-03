@@ -120,7 +120,8 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Function: `listenForZapReceipt()` in `zap-utils.ts`
 - Purpose: Listen for zap receipt events (kind 9735) matching the invoice
 - Status: ACTIVELY USED in dialog implementation
-- Behavior: Shows success overlay only after NIP-57 Appendix F validation succeeds
+- Behavior: Shows success overlay only after NIP-57 Appendix F validation succeeds, or immediately after WebLN `sendPayment` resolves
+- Button total: `markSuccess()` reports the paid bolt11 amount through `onZapPaid`. The button credits that invoice once and refreshes receipts without lowering the visible total
 
 ### Close Behavior
 - ESC Key: Closes dialog
@@ -153,6 +154,9 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - `makeZapEvent()`: Creates zap request events with `["a", "39735:pubkey:url"]` for URL-based zaps
 - `listenForZapReceipt()`: Monitors for zap payment confirmations
 
+### Zap display (`src/nostr-zap-button/zap-display.ts`)
+- `creditPaidZap()` / `applyRelayZapResult()`: Add a confirmed payment to the visible total immediately, then adopt a later relay total only when it covers that credit
+
 ## Zap Count
 
 > **Kind 39735** was chosen as the URL-zap coordinate kind. It is a custom, non-standard kind in the NIP-01 addressable range (30000–39999). No actual event of this kind is ever published — the coordinate string (`39735:pubkey:url`) is used purely as a stable `a` tag value that NIP-57 relays copy to zap receipts. Kind 39735 is also referenced by the publsp project for Lightning LSP liquidity offers; however, the `d`-field here is always a normalized URL, which is semantically distinct from publsp identifiers, making the overlap benign in practice.
@@ -181,6 +185,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Delegated click handler on `.total-zap-amount` class
 - `handleZapClick` early-returns while `zapActionStatus` is Loading
 - Primary zap button is `disabled` + `aria-busy` during the action
+- After a confirmed zap, the visible total includes that payment immediately. The follow-up `updateZapCount({ preserveVisibleTotal: true })` does not show the amount skeleton, and a stale fetch cannot replace the credited total
 
 ## Individual Zaps
 
