@@ -2683,6 +2683,114 @@ describe('CSP-safe component and relay integration', function () {
 
     expect(events).toContain(lateEvent);
   });
+
+  it('loads a Zap provider when only a slower relay has the profile', async function () {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: 'https://x.com' },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message) {
+        responses.push(message);
+      }
+    };
+    const profile = finalizeEvent(
+      {
+        kind: 0,
+        created_at: 50,
+        tags: [],
+        content: JSON.stringify({ lud16: 'btcsessions@getalby.com' })
+      },
+      new Uint8Array(32).fill(21)
+    );
+    const servicePubkey = 'b'.repeat(64);
+    const backgroundRequests = [];
+    globalThis.chrome = {
+      runtime: {
+        sendMessage(_message, callback) {
+          backgroundRequests.push(_message);
+          callback({
+            ok: true,
+            result: {
+              status: 200,
+              json: {
+                allowsNostr: true,
+                callback: 'https://getalby.com/lnurlp/btcsessions/callback',
+                nostrPubkey: servicePubkey,
+                minSendable: 1000,
+                maxSendable: 10000000000,
+                commentAllowed: 255
+              }
+            }
+          });
+        }
+      }
+    };
+    const pool = {
+      subscribe(relays, _filter, options) {
+        const relay = relays[0];
+        if (relay === 'wss://nostr.wine/') {
+          setTimeout(function () {
+            options.onevent(profile);
+            options.oneose();
+          }, 30);
+          return { close: vi.fn(async function () {}) };
+        }
+        queueMicrotask(function () {
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      }
+    };
+    const channel = 'a'.repeat(64);
+    const actionId = 'b'.repeat(64);
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: 'https://x.com/btcsessions/status/42',
+      recipientNpub: nip19.npubEncode(profile.pubkey)
+    });
+
+    await listeners.get('message')({
+      source: pageWindow,
+      origin: 'https://x.com',
+      data: await createAuthenticatedRelayRequest(
+        channel,
+        'c'.repeat(32),
+        'getZapProvider',
+        {
+          actionId: actionId,
+          relays: [
+            'wss://relay.damus.io',
+            'wss://relay.getalby.com',
+            'wss://relay.primal.net',
+            'wss://nostr.wine'
+          ]
+        }
+      )
+    });
+
+    expect(responses[0].ok).toBe(true);
+    expect(responses[0].error).toBeUndefined();
+    expect(responses[0].result).toEqual({
+      lnurl: 'https://getalby.com/.well-known/lnurlp/btcsessions',
+      callback: 'https://getalby.com/lnurlp/btcsessions/callback',
+      nostrPubkey: servicePubkey
+    });
+    expect(profile.pubkey).not.toBe(servicePubkey);
+    expect(backgroundRequests[0].url).toBe(
+      'https://getalby.com/.well-known/lnurlp/btcsessions'
+    );
+    session.dispose();
+  });
 });
 
 describe('timeline component integration', function () {

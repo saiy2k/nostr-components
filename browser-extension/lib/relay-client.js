@@ -7725,11 +7725,12 @@
         (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
       )[0];
     }
-    function queryWithFastQuorum(pool, relays, filters) {
+    function queryWithFastQuorum(pool, relays, filters, options) {
       const selectedRelays = selectQueryRelays(relays);
       const filterList = Array.isArray(filters) ? filters : [filters];
       const eventsById = /* @__PURE__ */ new Map();
       const closers = [];
+      const requireEvent = options && options.requireEvent === true;
       return new Promise(function(resolve) {
         let successfulResponses = 0;
         let finished = false;
@@ -7768,13 +7769,13 @@
               recordedAt: Date.now()
             });
             if (succeeded) successfulResponses += 1;
-            if (successfulResponses >= requiredResponses || completedRelays.size === selectedRelays.length) {
+            if (completedRelays.size === selectedRelays.length || successfulResponses >= requiredResponses && (!requireEvent || eventsById.size > 0)) {
               finish();
             }
           };
           var settleRelay = settleRelay2;
           const relayStartedAt = Date.now();
-          const options = {
+          const options2 = {
             maxWait: QUERY_DEADLINE_MS,
             onevent(event) {
               if (event && event.id) eventsById.set(event.id, event);
@@ -7787,7 +7788,7 @@
             }
           };
           try {
-            const closer = filterList.length === 1 ? pool.subscribe([relay], filterList[0], options) : pool.subscribeMany([relay], filterList, options);
+            const closer = filterList.length === 1 ? pool.subscribe([relay], filterList[0], options2) : pool.subscribeMany([relay], filterList, options2);
             if (finished) void closer.close();
             else closers.push(closer);
           } catch (_error) {
@@ -8027,11 +8028,16 @@
       return null;
     }
     async function resolveZapProvider(pool, relays, actionId, context) {
-      const events = await queryWithFastQuorum(pool, relays, {
-        kinds: [0],
-        authors: [context.recipientPubkey],
-        limit: 1
-      });
+      const events = await queryWithFastQuorum(
+        pool,
+        relays,
+        {
+          kinds: [0],
+          authors: [context.recipientPubkey],
+          limit: 1
+        },
+        { requireEvent: true }
+      );
       requireCurrentActionContext(actionId, context);
       const profiles = events.filter(function(event) {
         return event?.kind === 0 && String(event.pubkey || "").toLowerCase() === context.recipientPubkey && verifyEvent(event);
