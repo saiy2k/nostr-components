@@ -13,6 +13,7 @@ vi.mock("./ingestion.js", () => ({
 
 import { queryRelay } from "./ingestion.js";
 import {
+  PROJECTION_KIND0_RELAY_LIMIT,
   fetchKind0s,
   metadataFromKind0,
   preferNewerKind0,
@@ -42,6 +43,17 @@ describe("kind 0 selection", () => {
     expect(preferNewerKind0(older, newer)).toBe(newer);
     expect(preferNewerKind0(newer, older)).toBe(newer);
     expect(preferNewerKind0(older, { kind: 1, created_at: 99 })).toBe(older);
+  });
+
+  it("keeps all 50 directory relays for kind 0 lookup", () => {
+    expect(PROJECTION_KIND0_RELAY_LIMIT).toBe(50);
+    const relays = Array.from(
+      { length: 50 },
+      (_, index) => `wss://relay-${index}.example`,
+    );
+    expect(relaysForKind0Lookup(relays, PROJECTION_KIND0_RELAY_LIMIT)).toEqual(
+      relays,
+    );
   });
 
   it("puts profile relays first and caps a long list", () => {

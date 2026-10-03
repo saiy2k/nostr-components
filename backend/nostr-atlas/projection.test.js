@@ -865,7 +865,7 @@ describe("external verification", () => {
     expect(transition.state.activeIdentity.metadata.name).toBeUndefined();
   });
 
-  it("queries profile relays before the rest of a long relay list", async () => {
+  it("queries profile relays before the rest of the relay list", async () => {
     vi.stubGlobal("fetch", async (url) => {
       if (String(url).includes("/2/profile/")) return fxTwitterProfile(null, 404);
       return fxTwitterTweet({
@@ -899,9 +899,9 @@ describe("external verification", () => {
       newest: true,
     });
     const queried = fetchKind0s.mock.calls[0][1];
-    expect(queried).toHaveLength(8);
+    expect(queried).toHaveLength(relays.length);
     expect(queried[0]).toBe("wss://purplepag.es");
-    expect(queried).not.toContain("wss://b.example");
+    expect(queried).toContain("wss://b.example");
   });
 
   it("still verifies a kind-10011 proof when the kind-0 lookup fails", async () => {

@@ -2,7 +2,9 @@
 
 (function (global) {
   const extension = global.NostrLikeExtension = global.NostrLikeExtension || {};
-  const MAX_URL_LENGTH = 2048;
+  // Invoice URLs embed the signed zap request, including every relay in the
+  // request. Fifty relay URLs plus a comment exceed 2048 characters.
+  const MAX_URL_LENGTH = 8192;
   const IPV4_PATTERN = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
   function isBlockedIPv4(hostname) {

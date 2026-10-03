@@ -78,6 +78,9 @@ export default class NostrZap extends NostrUserComponent {
     ) {
       this.#closeCachedAmountDialog();
     }
+    if (name === 'url' && this.user) {
+      void this.updateZapCount();
+    }
     this.render();
   }
 

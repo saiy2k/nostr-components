@@ -37,9 +37,9 @@
 
   function draftText(mode, handle) {
     if (mode === 'lightning') {
-      return '@' + handle + ' Add a Lightning address (name@domain) to your Nostr profile so people can zap this post. The wallet needs to allow Nostr payments.';
+      return '@' + handle + ' This post is waiting on a place to send bitcoin. Add a Lightning address (name@domain) to your Nostr profile, from a wallet that accepts Nostr payments, and people can zap it.';
     }
-    return '@' + handle + ' Link this account to your Nostr profile and add a Lightning address so people can zap posts like this. ' + ATLAS_URL;
+    return '@' + handle + ' This post can carry more than the story. Link this account to your Nostr profile, add a Lightning address, and readers can zap you right from the thread. ' + ATLAS_URL;
   }
 
   function tooltip(mode, handle) {
@@ -113,9 +113,26 @@
     button.innerHTML = ICON;
     if (!existing) {
       button.addEventListener('click', openReply);
-      slot.appendChild(button);
     }
+    placeInvite(slot, button);
     return button;
+  }
+
+  function placeInvite(slot, button) {
+    const zap = slot.querySelector?.('nostr-zap-button');
+    const like = slot.querySelector?.('nostr-like-button');
+    const anchor = zap || like || null;
+    const children = slot.children;
+    if (!anchor || typeof slot.insertBefore !== 'function' || !children) {
+      if (button.parentElement !== slot) slot.appendChild(button);
+      return;
+    }
+    const anchorIndex = Array.prototype.indexOf.call(children, anchor);
+    const buttonIndex = Array.prototype.indexOf.call(children, button);
+    if (buttonIndex === anchorIndex + 1) return;
+    const reference = children[anchorIndex + 1] || null;
+    if (reference === button) return;
+    slot.insertBefore(button, reference);
   }
 
   extension.zapInvite = {

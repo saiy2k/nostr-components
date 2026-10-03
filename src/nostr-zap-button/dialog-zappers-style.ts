@@ -79,11 +79,15 @@ export function getZappersDialogStyles(theme: 'light' | 'dark' = 'light'): strin
 
     .zap-comment {
       font-size: var(--nostrc-font-size-sm, 14px);
-      color: ${isDark ? '#d1d5db' : '#4b5563'};
+      color: #1a1a1a;
       margin: var(--nostrc-spacing-xs, 4px) 0;
       line-height: 1.4;
       word-wrap: break-word;
       white-space: pre-wrap;
+    }
+
+    .nostr-base-dialog[data-theme="dark"] .zap-comment {
+      color: var(--nostrc-theme-text-primary, #d1d5db);
     }
 
     .zap-amount-date {

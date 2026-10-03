@@ -77,6 +77,20 @@ describe('URL normalization', function () {
     expect(extension.url.parseTweetUrl('https://example.com/Jack/status/1234567890')).toBeNull();
   });
 
+  it('maps twitter and mobile status hosts onto x.com', function () {
+    const canonical = 'https://x.com/jack/status/1833951636005552366';
+    expect(
+      extension.url.parseTweetUrl(
+        'https://twitter.com/jack/status/1833951636005552366'
+      ).canonicalUrl
+    ).toBe(canonical);
+    expect(
+      extension.url.parseTweetUrl(
+        'https://m.x.com/jack/status/1833951636005552366?launch_app_store=true'
+      ).canonicalUrl
+    ).toBe(canonical);
+  });
+
   it('canonicalizes YouTube watch and Shorts URLs to one video identifier', function () {
     expect(
       extension.url.parseYouTubeUrl(
@@ -180,6 +194,16 @@ describe('Zap action integration', function () {
     appendChild(child) {
       child.parentElement = this;
       this.children.push(child);
+      return child;
+    }
+
+    insertBefore(child, reference) {
+      const existing = this.children.indexOf(child);
+      if (existing !== -1) this.children.splice(existing, 1);
+      child.parentElement = this;
+      const index = reference ? this.children.indexOf(reference) : -1;
+      if (index === -1) this.children.push(child);
+      else this.children.splice(index, 0, child);
       return child;
     }
 
@@ -359,6 +383,57 @@ describe('Zap action integration', function () {
     expect(getTrustedActionContext(trustedZap)).toBeNull();
   });
 
+  it('keeps Like ahead of a Zap control that was inserted first', function () {
+    const slot = new FakeElement('div');
+    const invite = new FakeElement('button');
+    invite.className = 'nostr-zap-invite';
+    slot.appendChild(invite);
+
+    class RegisteredLike extends FakeElement {
+      constructor() {
+        super('nostr-like-button');
+      }
+    }
+    class RegisteredZap extends FakeElement {
+      constructor() {
+        super('nostr-zap-button');
+      }
+    }
+    const registry = {
+      get(tagName) {
+        return tagName === 'nostr-like-button' ? RegisteredLike : RegisteredZap;
+      }
+    };
+    const context = {
+      actionId: 'd'.repeat(64),
+      kind: 'x',
+      url: 'https://x.com/alice/status/42',
+      theme: 'light',
+      recipientNpub: null
+    };
+
+    expect(hydrateActionSlot(slot, context, registry)).toBe(true);
+    expect(slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'button'
+    ]);
+
+    expect(
+      hydrateActionSlot(slot, { ...context, recipientNpub: recipientNpub }, registry)
+    ).toBe(true);
+    const like = slot.querySelector('nostr-like-button');
+    const zap = slot.querySelector('nostr-zap-button');
+    slot.children = [zap, invite, like];
+    expect(
+      hydrateActionSlot(slot, { ...context, recipientNpub: recipientNpub }, registry)
+    ).toBe(true);
+    expect(slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'nostr-zap-button',
+      'button'
+    ]);
+  });
+
   it('reads hydration target and detail through captured native accessors', function () {
     class EventSlot extends EventTarget {
       constructor() {
@@ -479,6 +554,33 @@ describe('Zap action integration', function () {
     expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
     expect(action.slot.dataset.zapRecipientNpub).toBeUndefined();
     expect(action.slot.querySelector('button.nostr-zap-invite').getAttribute('data-invite-mode')).toBe('link');
+    expect(action.slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'button'
+    ]);
+  });
+
+  it('keeps Like ahead of the Zap invite when directory lookup finishes first', function () {
+    const action = extension.dom.createNostrAction(
+      {
+        canonicalUrl: 'https://x.com/alokdangre/status/42',
+        statusId: '42',
+        username: 'alokdangre'
+      },
+      'dark'
+    );
+
+    extension.dom.applyDirectoryIdentity(action.slot, {
+      found: false,
+      verified: false
+    });
+    expect(action.slot.children.map((child) => child.tagName)).toEqual(['button']);
+
+    extension.dom.hydrateNostrAction(action.slot);
+    expect(action.slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'button'
+    ]);
   });
 
   function openInvite(slot) {
@@ -527,7 +629,7 @@ describe('Zap action integration', function () {
     expect(intent.origin + intent.pathname).toBe('https://x.com/intent/post');
     expect(intent.searchParams.get('in_reply_to')).toBe('42');
     expect(intent.searchParams.get('text')).toBe(
-      '@alokdangre Add a Lightning address (name@domain) to your Nostr profile so people can zap this post. The wallet needs to allow Nostr payments.'
+      '@alokdangre This post is waiting on a place to send bitcoin. Add a Lightning address (name@domain) to your Nostr profile, from a wallet that accepts Nostr payments, and people can zap it.'
     );
   });
 
@@ -548,7 +650,7 @@ describe('Zap action integration', function () {
     const intent = openInvite(action.slot);
     expect(intent.searchParams.get('in_reply_to')).toBe('42');
     expect(intent.searchParams.get('text')).toBe(
-      '@alokdangre Link this account to your Nostr profile and add a Lightning address so people can zap posts like this. https://nostr-atlas.web.app'
+      '@alokdangre This post can carry more than the story. Link this account to your Nostr profile, add a Lightning address, and readers can zap you right from the thread. https://nostr-atlas.web.app'
     );
   });
 
@@ -1265,10 +1367,86 @@ describe('X action placement', function () {
 
     expect(tweetInfo.statusId).toBe('2082355452583526840');
     expect(tweetInfo.username).toBe('jack');
+    expect(tweetInfo.canonicalUrl).toBe(
+      'https://x.com/jack/status/2082355452583526840'
+    );
     expect(selectedActionBar).toBe(actionBar);
     expect(actionBar.inserted).toEqual({
       slot: { name: 'nostr' },
       sibling: viewsContainer
+    });
+  });
+
+  it('uses the opened status URL when the article only links /i/status', function () {
+    const article = {
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [statusLink];
+        return [];
+      }
+    };
+    const statusLink = {
+      getAttribute() {
+        return '/i/status/1833951636005552366';
+      },
+      querySelector() {
+        return { closest() { return statusLink; } };
+      },
+      parentElement: article
+    };
+    globalThis.window = {
+      location: {
+        href: 'https://x.com/jack/status/1833951636005552366',
+        origin: 'https://x.com'
+      }
+    };
+
+    const tweetInfo = extension.dom.getTweetInfo(article);
+
+    expect(tweetInfo).toMatchObject({
+      username: 'jack',
+      statusId: '1833951636005552366',
+      canonicalUrl: 'https://x.com/jack/status/1833951636005552366'
+    });
+  });
+
+  it('keeps a reply identity when the opened post is only quoted inside it', function () {
+    const article = {
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [replyLink, quotedLink];
+        return [];
+      }
+    };
+    const replyLink = {
+      getAttribute() {
+        return '/Rene/status/1833951862879334400';
+      },
+      querySelector() {
+        return { closest() { return replyLink; } };
+      },
+      parentElement: article
+    };
+    const quotedLink = {
+      getAttribute() {
+        return '/jack/status/1833951636005552366';
+      },
+      querySelector() {
+        return null;
+      },
+      parentElement: { parentElement: { parentElement: article } }
+    };
+    globalThis.window = {
+      location: {
+        href: 'https://x.com/jack/status/1833951636005552366',
+        origin: 'https://x.com'
+      }
+    };
+
+    const tweetInfo = extension.dom.getTweetInfo(article);
+
+    expect(tweetInfo).toMatchObject({
+      username: 'rene',
+      statusId: '1833951862879334400',
+      canonicalUrl: 'https://x.com/Rene/status/1833951862879334400'
     });
   });
 
@@ -1349,8 +1527,19 @@ describe('X action placement', function () {
     expect(slotRule).not.toBeNull();
     expect(slotRule[0]).toMatch(/align-self:\s*stretch/);
     expect(slotRule[0]).toMatch(/gap:\s*2px/);
+    expect(slotRule[0]).toMatch(/flex-direction:\s*row/);
+    expect(slotRule[0]).toMatch(/direction:\s*ltr/);
     expect(slotRule[0]).not.toMatch(/(?:^|[^-])height:\s*34px/m);
     expect(standaloneRules).toHaveLength(1);
+    expect(css).toMatch(
+      /\.nostr-competency-action-slot > nostr-like-button\s*\{[^}]*order:\s*1/
+    );
+    expect(css).toMatch(
+      /\.nostr-competency-action-slot > nostr-zap-button\s*\{[^}]*order:\s*2/
+    );
+    expect(css).toMatch(
+      /\.nostr-competency-action-slot > button\.nostr-zap-invite\s*\{[^}]*order:\s*2/
+    );
   });
 
   it('gives YouTube actions native-sized 40px controls instead of X timeline geometry', function () {
@@ -2355,6 +2544,16 @@ describe('CSP-safe component and relay integration', function () {
     expect(extension.zapHttp.isAllowedZapHttpUrl('https://ln.example/.well-known/lnurlp/alice')).toBe(true);
     expect(extension.zapHttp.isAllowedZapHttpUrl('https://127.0.0.1/.well-known/lnurlp/alice')).toBe(false);
     expect(extension.zapHttp.isAllowedZapHttpUrl('https://192.168.1.9/.well-known/lnurlp/alice')).toBe(false);
+    expect(
+      extension.zapHttp.isAllowedZapHttpUrl(
+        'https://ln.example/callback?nostr=' + 'a'.repeat(3000)
+      )
+    ).toBe(true);
+    expect(
+      extension.zapHttp.isAllowedZapHttpUrl(
+        'https://ln.example/callback?nostr=' + 'a'.repeat(9000)
+      )
+    ).toBe(false);
     session.dispose();
   });
 
@@ -2584,6 +2783,348 @@ describe('CSP-safe component and relay integration', function () {
 
     expect(events).toContain(lateEvent);
   });
+
+  it('keeps a zap receipt that arrives after three empty relay replies', async function () {
+    const originalRelayClient = extension.relayClient;
+    await import('../src/relay-client.js?zap-receipt-quorum');
+    try {
+      const listeners = new Map();
+      const responses = [];
+      const pageWindow = {
+        location: { origin: 'https://x.com' },
+        addEventListener(type, listener) {
+          listeners.set(type, listener);
+        },
+        removeEventListener() {
+          listeners.delete('message');
+        },
+        postMessage(message) {
+          responses.push(message);
+        }
+      };
+      const pubkey = 'c'.repeat(64);
+      const statusUrl = 'https://x.com/jack/status/1833951636005552366';
+      const receipt = {
+        id: 'd'.repeat(64),
+        kind: 9735,
+        pubkey: 'e'.repeat(64)
+      };
+      const laterReceipt = {
+        id: 'f'.repeat(64),
+        kind: 9735,
+        pubkey: 'e'.repeat(64)
+      };
+      let subscriptionIndex = 0;
+      const pool = {
+        subscribe(_relays, _filter, options) {
+          const index = subscriptionIndex++;
+          if (index < 3) {
+            queueMicrotask(function () {
+              options.oneose();
+            });
+            return { close: vi.fn(async function () {}) };
+          }
+          setTimeout(function () {
+            options.onevent(receipt);
+            options.onevent(laterReceipt);
+            options.oneose();
+          }, 25);
+          return { close: vi.fn(async function () {}) };
+        }
+      };
+      const channel = 'a'.repeat(64);
+      const actionId = 'b'.repeat(64);
+      const session = extension.relayClient.configure(channel, {
+        pool: pool,
+        window: pageWindow
+      });
+      extension.relayClient.registerActionContext(actionId, {
+        kind: 'x',
+        url: statusUrl,
+        recipientNpub: nip19.npubEncode(pubkey)
+      });
+
+      await listeners.get('message')({
+        source: pageWindow,
+        origin: 'https://x.com',
+        data: await createAuthenticatedRelayRequest(
+          channel,
+          '1'.repeat(32),
+          'query',
+          {
+            actionId: actionId,
+            relays: [
+              'wss://relay.damus.io',
+              'wss://relay.getalby.com',
+              'wss://relay.primal.net',
+              'wss://nostr.wine'
+            ],
+            filter: {
+              kinds: [9735],
+              '#p': [pubkey],
+              '#a': ['39735:' + pubkey + ':' + statusUrl],
+              limit: 1000
+            }
+          }
+        )
+      });
+
+      expect(responses[0].ok).toBe(true);
+      expect(responses[0].result.map((event) => event.id)).toEqual([
+        receipt.id,
+        laterReceipt.id
+      ]);
+      session.dispose();
+    } finally {
+      extension.relayClient = originalRelayClient;
+    }
+  });
+
+  it('keeps the newer kind 0 when an older signed profile arrives first', async function () {
+    const originalRelayClient = extension.relayClient;
+    await import('../src/relay-client.js?profile-relay-quorum');
+    try {
+      const listeners = new Map();
+      const responses = [];
+      const subscribedRelays = [];
+      const pageWindow = {
+        location: { origin: 'https://x.com' },
+        addEventListener(type, listener) {
+          listeners.set(type, listener);
+        },
+        removeEventListener(type) {
+          listeners.delete(type);
+        },
+        postMessage(message) {
+          responses.push(message);
+        }
+      };
+      const profileKey = new Uint8Array(32).fill(23);
+      const profile = finalizeEvent(
+        {
+          kind: 0,
+          created_at: 50,
+          tags: [],
+          content: JSON.stringify({
+            name: 'LynAlden',
+            nip05: 'lyn@primal.net',
+            lud16: 'lyn@primal.net'
+          })
+        },
+        profileKey
+      );
+      const olderProfile = finalizeEvent(
+        {
+          kind: 0,
+          created_at: 10,
+          tags: [],
+          content: JSON.stringify({
+            name: 'LynAlden',
+            lud16: 'old@example.com'
+          })
+        },
+        profileKey
+      );
+      const wrongAuthor = finalizeEvent(
+        {
+          kind: 0,
+          created_at: 99,
+          tags: [],
+          content: JSON.stringify({ name: 'Someone Else', lud16: 'other@example.com' })
+        },
+        new Uint8Array(32).fill(24)
+      );
+      const requestedRelays = [
+        'wss://relay.damus.io',
+        'wss://relay.primal.net',
+        'wss://nostr.wine',
+        'wss://relay.nostr.net',
+        'wss://nos.lol',
+        'wss://purplepag.es'
+      ];
+      const pool = {
+        subscribe(relays, _filter, options) {
+          const relay = relays[0];
+          const close = vi.fn(async function () {});
+          subscribedRelays.push(relay);
+          if (relay.includes('relay.damus.io')) {
+            queueMicrotask(function () {
+              options.onevent(wrongAuthor);
+              options.onevent(olderProfile);
+              options.oneose();
+            });
+            return { close: close };
+          }
+          if (relay.includes('purplepag.es')) {
+            setTimeout(function () {
+              options.onevent(profile);
+              options.oneose();
+            }, 20);
+            return { close: close };
+          }
+          if (relay.includes('nostr.wine')) {
+            setTimeout(function () {
+              options.onevent(olderProfile);
+              options.oneose();
+            }, 40);
+            return { close: close };
+          }
+          queueMicrotask(function () {
+            options.oneose();
+          });
+          return { close: close };
+        }
+      };
+      const channel = 'd'.repeat(64);
+      const actionId = 'e'.repeat(64);
+      const session = extension.relayClient.configure(channel, {
+        pool: pool,
+        window: pageWindow
+      });
+      extension.relayClient.registerActionContext(actionId, {
+        kind: 'x',
+        url: 'https://x.com/LynAldenContact/status/42',
+        recipientNpub: nip19.npubEncode(profile.pubkey)
+      });
+
+      await listeners.get('message')({
+        source: pageWindow,
+        origin: 'https://x.com',
+        data: await createAuthenticatedRelayRequest(
+          channel,
+          'f'.repeat(32),
+          'query',
+          {
+            actionId: actionId,
+            relays: requestedRelays,
+            filter: {
+              kinds: [0],
+              authors: [profile.pubkey],
+              limit: 1
+            }
+          }
+        )
+      });
+
+      expect(subscribedRelays).toHaveLength(requestedRelays.length);
+      expect(subscribedRelays.some((relay) => relay.includes('purplepag.es'))).toBe(true);
+      expect(responses[0].ok).toBe(true);
+      expect(responses[0].result.map((event) => event.id)).toEqual([profile.id]);
+      expect(profile.pubkey).toBe(olderProfile.pubkey);
+      expect(profile.id).not.toBe(olderProfile.id);
+      session.dispose();
+    } finally {
+      extension.relayClient = originalRelayClient;
+    }
+  });
+
+  it('loads a Zap provider when only a slower relay has the profile', async function () {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: 'https://x.com' },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message) {
+        responses.push(message);
+      }
+    };
+    const profile = finalizeEvent(
+      {
+        kind: 0,
+        created_at: 50,
+        tags: [],
+        content: JSON.stringify({ lud16: 'btcsessions@getalby.com' })
+      },
+      new Uint8Array(32).fill(21)
+    );
+    const servicePubkey = 'b'.repeat(64);
+    const backgroundRequests = [];
+    globalThis.chrome = {
+      runtime: {
+        sendMessage(_message, callback) {
+          backgroundRequests.push(_message);
+          callback({
+            ok: true,
+            result: {
+              status: 200,
+              json: {
+                allowsNostr: true,
+                callback: 'https://getalby.com/lnurlp/btcsessions/callback',
+                nostrPubkey: servicePubkey,
+                minSendable: 1000,
+                maxSendable: 10000000000,
+                commentAllowed: 255
+              }
+            }
+          });
+        }
+      }
+    };
+    const pool = {
+      subscribe(relays, _filter, options) {
+        const relay = relays[0];
+        if (relay === 'wss://nostr.wine/') {
+          setTimeout(function () {
+            options.onevent(profile);
+            options.oneose();
+          }, 30);
+          return { close: vi.fn(async function () {}) };
+        }
+        queueMicrotask(function () {
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      }
+    };
+    const channel = 'a'.repeat(64);
+    const actionId = 'b'.repeat(64);
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: 'https://x.com/btcsessions/status/42',
+      recipientNpub: nip19.npubEncode(profile.pubkey)
+    });
+
+    await listeners.get('message')({
+      source: pageWindow,
+      origin: 'https://x.com',
+      data: await createAuthenticatedRelayRequest(
+        channel,
+        'c'.repeat(32),
+        'getZapProvider',
+        {
+          actionId: actionId,
+          relays: [
+            'wss://relay.damus.io',
+            'wss://relay.getalby.com',
+            'wss://relay.primal.net',
+            'wss://nostr.wine'
+          ]
+        }
+      )
+    });
+
+    expect(responses[0].ok).toBe(true);
+    expect(responses[0].error).toBeUndefined();
+    expect(responses[0].result).toEqual({
+      lnurl: 'https://getalby.com/.well-known/lnurlp/btcsessions',
+      callback: 'https://getalby.com/lnurlp/btcsessions/callback',
+      nostrPubkey: servicePubkey
+    });
+    expect(profile.pubkey).not.toBe(servicePubkey);
+    expect(backgroundRequests[0].url).toBe(
+      'https://getalby.com/.well-known/lnurlp/btcsessions'
+    );
+    session.dispose();
+  });
 });
 
 describe('timeline component integration', function () {
@@ -2674,7 +3215,8 @@ describe('timeline component integration', function () {
         }
         return null;
       },
-      querySelectorAll() {
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [statusAnchor];
         return [];
       }
     };
@@ -2784,6 +3326,225 @@ describe('timeline component integration', function () {
         }
       ]);
       expect(revokeAction).toHaveBeenCalledWith(slot);
+    } finally {
+      extension.directory.lookup = originalDirectoryLookup;
+    }
+  });
+
+  it('ignores a directory lookup that finishes after the author handle changes', async function () {
+    const scheduledCallbacks = [];
+    const observerCallbacks = [];
+    const aliceNpub = nip19.npubEncode('a'.repeat(64));
+    const bobNpub = nip19.npubEncode('b'.repeat(64));
+    let statusHref = '/alice/status/4242';
+    const pendingLookups = [];
+
+    class FakeElement {
+      constructor(tagName = 'div') {
+        this.tagName = tagName.toLowerCase();
+        this.children = [];
+        this.dataset = {};
+        this.attributes = {};
+        this.parentElement = null;
+        this.nextSibling = null;
+        this.className = '';
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+        if (name.startsWith('data-')) {
+          const key = name.slice(5).replace(/-([a-z])/g, function (_match, letter) {
+            return letter.toUpperCase();
+          });
+          this.dataset[key] = String(value);
+        }
+      }
+
+      getAttribute(name) {
+        return Object.prototype.hasOwnProperty.call(this.attributes, name)
+          ? this.attributes[name]
+          : null;
+      }
+
+      appendChild(child) {
+        child.parentElement = this;
+        this.children.push(child);
+        return child;
+      }
+
+      insertBefore(child, sibling) {
+        child.parentElement = this;
+        const index = this.children.indexOf(sibling);
+        if (index === -1) this.children.push(child);
+        else this.children.splice(index, 0, child);
+        return child;
+      }
+
+      remove() {
+        const parent = this.parentElement;
+        if (!parent) return;
+        parent.children = parent.children.filter((child) => child !== this);
+        this.parentElement = null;
+      }
+
+      addEventListener() {}
+
+      querySelector(selector) {
+        return this.querySelectorAll(selector)[0] || null;
+      }
+
+      querySelectorAll(selector) {
+        const matches = [];
+        const visit = (node) => {
+          for (const child of node.children || []) {
+            if (elementMatches(child, selector)) matches.push(child);
+            visit(child);
+          }
+        };
+        visit(this);
+        return matches;
+      }
+    }
+
+    function elementMatches(element, selector) {
+      if (selector === 'button') return element.tagName === 'button';
+      if (selector.includes('data-testid')) {
+        return element.getAttribute('data-testid') === 'like' ||
+          element.getAttribute('data-testid') === 'unlike';
+      }
+      const statusId = selector.match(/data-status-id="([^"]+)"/)?.[1];
+      return Boolean(statusId) &&
+        element.getAttribute('data-nostr-competency-like') === 'true' &&
+        element.getAttribute('data-status-id') === statusId;
+    }
+
+    const actionBar = new FakeElement();
+    const likeContainer = new FakeElement();
+    const replyButton = new FakeElement('button');
+    replyButton.setAttribute('aria-label', 'Reply');
+    const likeButton = new FakeElement('button');
+    likeButton.setAttribute('aria-label', 'Like');
+    likeButton.setAttribute('data-testid', 'like');
+    likeButton.closest = function () {
+      return actionBar;
+    };
+    likeContainer.appendChild(likeButton);
+    likeContainer.appendChild(replyButton);
+    actionBar.appendChild(likeContainer);
+    actionBar.appendChild(new FakeElement());
+    actionBar.appendChild(new FakeElement());
+
+    const statusAnchor = {
+      getAttribute() {
+        return statusHref;
+      },
+      querySelector() {
+        return {};
+      },
+      parentElement: null
+    };
+    const article = {
+      querySelector(selector) {
+        if (String(selector).includes('data-testid')) return likeButton;
+        return null;
+      },
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [statusAnchor];
+        if (selector === 'button') return [likeButton, replyButton];
+        return [];
+      }
+    };
+    statusAnchor.parentElement = article;
+
+    globalThis.document = {
+      body: new FakeElement('body'),
+      documentElement: new FakeElement('html'),
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      },
+      querySelectorAll() {
+        return [article];
+      }
+    };
+    globalThis.MutationObserver = class {
+      constructor(callback) {
+        observerCallbacks.push(callback);
+      }
+
+      observe() {}
+    };
+    globalThis.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+    };
+    globalThis.window = {
+      location: { hostname: 'x.com', origin: 'https://x.com', href: 'https://x.com/home' },
+      getComputedStyle() {
+        return { colorScheme: 'light' };
+      },
+      setTimeout(callback) {
+        scheduledCallbacks.push(callback);
+        return scheduledCallbacks.length;
+      },
+      requestAnimationFrame(callback) {
+        callback();
+      },
+      addEventListener() {}
+    };
+
+    function identityFor(handle, npub) {
+      return {
+        verified: true,
+        found: true,
+        source: 'directory',
+        activeIdentity: {
+          npub: npub,
+          zappable: true
+        },
+        handle: handle
+      };
+    }
+
+    const originalDirectoryLookup = extension.directory.lookup;
+    extension.directory.lookup = function (handle) {
+      let resolveLookup;
+      const promise = new Promise(function (resolve) {
+        resolveLookup = resolve;
+      });
+      pendingLookups.push({ handle: handle, resolve: resolveLookup });
+      return promise;
+    };
+    extension.componentLoader = {
+      ready: Promise.resolve(),
+      registerAction() {},
+      updateAction() {},
+      revokeAction() {}
+    };
+    vi.spyOn(console, 'warn').mockImplementation(function () {});
+
+    try {
+      await import('../content.js?directory-race');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      scheduledCallbacks.shift()();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(pendingLookups.map((entry) => entry.handle)).toEqual(['alice']);
+      statusHref = '/bob/status/4242';
+      observerCallbacks[0]();
+      scheduledCallbacks.shift()();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(pendingLookups.map((entry) => entry.handle)).toEqual(['alice', 'bob']);
+      const slot = actionBar.children.find(function (child) {
+        return child.getAttribute?.('data-nostr-competency-like') === 'true';
+      });
+      pendingLookups[1].resolve(identityFor('bob', bobNpub));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      pendingLookups[0].resolve(identityFor('alice', aliceNpub));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(slot.dataset.authorHandle).toBe('bob');
+      expect(slot.dataset.zapRecipientNpub).toBe(bobNpub);
     } finally {
       extension.directory.lookup = originalDirectoryLookup;
     }

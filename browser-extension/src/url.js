@@ -5,7 +5,18 @@ import { normalizeURL } from 'nostr-tools/utils';
 (function () {
   const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
   const STATUS_PATH_PATTERN = /^\/([^/]+)\/status\/(\d+)\/?$/;
-  const SUPPORTED_HOSTNAMES = new Set(['x.com', 'twitter.com']);
+  // One post must keep one zap/like identity. X serves the same status from
+  // x.com, twitter.com, and their mobile hosts.
+  const STATUS_HOSTS = new Set([
+    'x.com',
+    'www.x.com',
+    'm.x.com',
+    'mobile.x.com',
+    'twitter.com',
+    'www.twitter.com',
+    'm.twitter.com',
+    'mobile.twitter.com'
+  ]);
   const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
   const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
   const BECH32_GENERATORS = [
@@ -22,7 +33,7 @@ import { normalizeURL } from 'nostr-tools/utils';
         typeof window !== 'undefined' ? window.location.origin : undefined
       );
       const url = new URL(href, baseOrigin);
-      if (!SUPPORTED_HOSTNAMES.has(url.hostname)) {
+      if (!STATUS_HOSTS.has(url.hostname)) {
         return null;
       }
       const match = url.pathname.match(STATUS_PATH_PATTERN);
@@ -30,6 +41,8 @@ import { normalizeURL } from 'nostr-tools/utils';
         return null;
       }
 
+      url.protocol = 'https:';
+      url.hostname = 'x.com';
       url.search = '';
       url.hash = '';
 

@@ -18,7 +18,7 @@ const KIND0_RELAYS_FIRST = [
   "wss://relay.nostr.band",
 ];
 
-export const PROJECTION_KIND0_RELAY_LIMIT = 8;
+export const PROJECTION_KIND0_RELAY_LIMIT = 50;
 
 export function relaysForKind0Lookup(
   relays,

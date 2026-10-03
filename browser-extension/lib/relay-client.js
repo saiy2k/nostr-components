@@ -7513,14 +7513,57 @@
     ];
     const ALLOWED_RELAY_URLS = new Set(
       [
+        "wss://relay.momostr.pink",
+        "wss://relay.ditto.pub",
+        "wss://relay.primal.net",
         "wss://relay.damus.io",
-        "wss://nostr.wine",
-        "wss://relay.nostr.net",
-        "wss://relay.nostr.band",
         "wss://nos.lol",
+        "wss://nostr.mom",
+        "wss://nostr.twinkle.lol",
+        "wss://nostr.wine",
+        "wss://nostr.bitcoiner.social",
+        "wss://relay.nostr.band",
+        "wss://relay.snort.social",
+        "wss://nostr.data.haus",
+        "wss://purplepag.es",
+        "wss://nostr.oxtr.dev",
+        "wss://relay.0xchat.com",
+        "wss://nostr.land",
+        "wss://relay.us.whitenoise.chat",
+        "wss://relay.eu.whitenoise.chat",
+        "wss://relay.divine.video",
+        "wss://offchain.pub",
+        "wss://nostrelites.org",
+        "wss://relay.nostr.wirednet.jp",
+        "wss://relayable.org",
+        "wss://shu01.shugur.net",
+        "wss://www.nostr.ltd",
+        "wss://nostr.rocks",
+        "wss://relay.nostr.pub",
+        "wss://cache1.primal.net",
+        "wss://nostr-01.yakihonne.com",
+        "wss://wot.nostr.net",
+        "wss://relay.nyves.nl",
+        "wss://relay.fountain.fm",
+        "wss://relay.mostr.pub",
+        "wss://nostr.lol",
+        "wss://eden.nostr.land",
+        "wss://wot.utxo.one",
+        "wss://relay.current.fyi",
+        "wss://relay.nmail.li",
+        "wss://fanfares.nostr1.com",
+        "wss://pyramid.fiatjaf.com",
+        "wss://wot.nostr.party",
+        "wss://relay.mostro.network",
+        "wss://yabu.me",
+        "wss://nostr-02.yakihonne.com",
         "wss://nostr-pub.wellorder.net",
-        "wss://relay.getalby.com",
-        "wss://relay.primal.net"
+        "wss://relay.nostr.net",
+        "wss://nostr.einundzwanzig.space",
+        "wss://relay.f7z.io",
+        "wss://relay.wisp.talk",
+        "wss://relay.wavlake.com",
+        "wss://relay.getalby.com"
       ].map(normalizeURL2)
     );
     let activeSession = null;
@@ -7702,6 +7745,25 @@
     function selectQueryRelays(relays) {
       return [...relays].sort((left, right) => relayScore(left) - relayScore(right)).slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
     }
+    function isRequestedProfile(event, filterList) {
+      const filter = filterList.length === 1 ? filterList[0] : null;
+      if (!event || !filter || event.kind !== 0 || !Array.isArray(filter.authors)) {
+        return false;
+      }
+      const pubkey = String(event.pubkey || "").toLowerCase();
+      if (!filter.authors.includes(pubkey)) return false;
+      try {
+        return verifyEvent(event);
+      } catch (_error) {
+        return false;
+      }
+    }
+    function preferProfile(candidate, current) {
+      if (candidate.created_at !== current.created_at) {
+        return candidate.created_at > current.created_at;
+      }
+      return candidate.id < current.id;
+    }
     function summarizeReactionEvents(events) {
       const latestByPubkey = /* @__PURE__ */ new Map();
       for (const event of events) {
@@ -7725,11 +7787,14 @@
         (a, b) => b.created_at - a.created_at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1)
       )[0];
     }
-    function queryWithFastQuorum(pool, relays, filters) {
-      const selectedRelays = selectQueryRelays(relays);
+    function queryWithFastQuorum(pool, relays, filters, options) {
+      const selectedRelays = options && Array.isArray(options.selectedRelays) ? options.selectedRelays : selectQueryRelays(relays);
       const filterList = Array.isArray(filters) ? filters : [filters];
       const eventsById = /* @__PURE__ */ new Map();
+      const relaysWithEvents = /* @__PURE__ */ new Set();
       const closers = [];
+      const keepNewestProfile = options && options.keepNewestProfile === true;
+      const requireEvent = keepNewestProfile || options && options.requireEvent === true;
       return new Promise(function(resolve) {
         let successfulResponses = 0;
         let finished = false;
@@ -7741,7 +7806,7 @@
           clearTimeout(timeoutId);
           if (penalizePending) {
             for (const relay of selectedRelays) {
-              if (completedRelays.has(relay)) continue;
+              if (completedRelays.has(relay) || relaysWithEvents.has(relay)) continue;
               const previous = relayHealth.get(relay);
               relayHealth.set(relay, {
                 latencyMs: QUERY_DEADLINE_MS,
@@ -7768,16 +7833,30 @@
               recordedAt: Date.now()
             });
             if (succeeded) successfulResponses += 1;
-            if (successfulResponses >= requiredResponses || completedRelays.size === selectedRelays.length) {
+            if (completedRelays.size === selectedRelays.length || !requireEvent && successfulResponses >= requiredResponses) {
               finish();
             }
           };
           var settleRelay = settleRelay2;
           const relayStartedAt = Date.now();
-          const options = {
+          const options2 = {
             maxWait: QUERY_DEADLINE_MS,
             onevent(event) {
-              if (event && event.id) eventsById.set(event.id, event);
+              if (finished) return;
+              if (keepNewestProfile) {
+                if (!isRequestedProfile(event, filterList)) return;
+                const current = eventsById.values().next().value || null;
+                if (!current || preferProfile(event, current)) {
+                  eventsById.clear();
+                  eventsById.set(event.id, event);
+                }
+                relaysWithEvents.add(relay);
+                return;
+              }
+              if (event && event.id) {
+                eventsById.set(event.id, event);
+                relaysWithEvents.add(relay);
+              }
             },
             oneose() {
               settleRelay2(true);
@@ -7787,7 +7866,7 @@
             }
           };
           try {
-            const closer = filterList.length === 1 ? pool.subscribe([relay], filterList[0], options) : pool.subscribeMany([relay], filterList, options);
+            const closer = filterList.length === 1 ? pool.subscribe([relay], filterList[0], options2) : pool.subscribeMany([relay], filterList, options2);
             if (finished) void closer.close();
             else closers.push(closer);
           } catch (_error) {
@@ -7817,7 +7896,7 @@
     }
     const isAllowedStatusUrl = isAllowedContentUrl;
     function validateRelays(value) {
-      if (!Array.isArray(value) || value.length === 0 || value.length > 8) {
+      if (!Array.isArray(value) || value.length === 0 || value.length > 50) {
         return null;
       }
       const normalized = [];
@@ -8027,11 +8106,19 @@
       return null;
     }
     async function resolveZapProvider(pool, relays, actionId, context) {
-      const events = await queryWithFastQuorum(pool, relays, {
-        kinds: [0],
-        authors: [context.recipientPubkey],
-        limit: 1
-      });
+      const events = await queryWithFastQuorum(
+        pool,
+        relays,
+        {
+          kinds: [0],
+          authors: [context.recipientPubkey],
+          limit: 1
+        },
+        {
+          keepNewestProfile: true,
+          selectedRelays: relays
+        }
+      );
       requireCurrentActionContext(actionId, context);
       const profiles = events.filter(function(event) {
         return event?.kind === 0 && String(event.pubkey || "").toLowerCase() === context.recipientPubkey && verifyEvent(event);
@@ -8220,8 +8307,19 @@
         ) || !filter || !isFilterBoundToAction(filter, payload.actionId)) {
           throw new Error("Relay request contains an unsupported filter");
         }
-        const events = await queryWithFastQuorum(pool, relays, filter);
-        if (filter.kinds[0] !== 0) return events;
+        const profileQuery = filter.kinds[0] === 0;
+        const singleProfileLookup = profileQuery && filter.authors.length === 1;
+        const zapQuery = filter.kinds[0] === 9735;
+        const events = await queryWithFastQuorum(
+          pool,
+          relays,
+          filter,
+          singleProfileLookup ? {
+            keepNewestProfile: true,
+            selectedRelays: relays
+          } : zapQuery ? { requireEvent: true } : void 0
+        );
+        if (!profileQuery) return events;
         const authors = new Set(filter.authors);
         return events.filter(function(event) {
           return event?.kind === 0 && authors.has(String(event.pubkey || "").toLowerCase()) && verifyEvent(event);
