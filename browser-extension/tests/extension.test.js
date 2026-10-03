@@ -183,6 +183,16 @@ describe('Zap action integration', function () {
       return child;
     }
 
+    insertBefore(child, reference) {
+      const existing = this.children.indexOf(child);
+      if (existing !== -1) this.children.splice(existing, 1);
+      child.parentElement = this;
+      const index = reference ? this.children.indexOf(reference) : -1;
+      if (index === -1) this.children.push(child);
+      else this.children.splice(index, 0, child);
+      return child;
+    }
+
     remove() {
       if (!this.parentElement) return;
       this.parentElement.children = this.parentElement.children.filter((child) => child !== this);
@@ -359,6 +369,57 @@ describe('Zap action integration', function () {
     expect(getTrustedActionContext(trustedZap)).toBeNull();
   });
 
+  it('keeps Like ahead of a Zap control that was inserted first', function () {
+    const slot = new FakeElement('div');
+    const invite = new FakeElement('button');
+    invite.className = 'nostr-zap-invite';
+    slot.appendChild(invite);
+
+    class RegisteredLike extends FakeElement {
+      constructor() {
+        super('nostr-like-button');
+      }
+    }
+    class RegisteredZap extends FakeElement {
+      constructor() {
+        super('nostr-zap-button');
+      }
+    }
+    const registry = {
+      get(tagName) {
+        return tagName === 'nostr-like-button' ? RegisteredLike : RegisteredZap;
+      }
+    };
+    const context = {
+      actionId: 'd'.repeat(64),
+      kind: 'x',
+      url: 'https://x.com/alice/status/42',
+      theme: 'light',
+      recipientNpub: null
+    };
+
+    expect(hydrateActionSlot(slot, context, registry)).toBe(true);
+    expect(slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'button'
+    ]);
+
+    expect(
+      hydrateActionSlot(slot, { ...context, recipientNpub: recipientNpub }, registry)
+    ).toBe(true);
+    const like = slot.querySelector('nostr-like-button');
+    const zap = slot.querySelector('nostr-zap-button');
+    slot.children = [zap, invite, like];
+    expect(
+      hydrateActionSlot(slot, { ...context, recipientNpub: recipientNpub }, registry)
+    ).toBe(true);
+    expect(slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'nostr-zap-button',
+      'button'
+    ]);
+  });
+
   it('reads hydration target and detail through captured native accessors', function () {
     class EventSlot extends EventTarget {
       constructor() {
@@ -479,6 +540,33 @@ describe('Zap action integration', function () {
     expect(action.slot.querySelector('nostr-zap-button')).toBeNull();
     expect(action.slot.dataset.zapRecipientNpub).toBeUndefined();
     expect(action.slot.querySelector('button.nostr-zap-invite').getAttribute('data-invite-mode')).toBe('link');
+    expect(action.slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'button'
+    ]);
+  });
+
+  it('keeps Like ahead of the Zap invite when directory lookup finishes first', function () {
+    const action = extension.dom.createNostrAction(
+      {
+        canonicalUrl: 'https://x.com/alokdangre/status/42',
+        statusId: '42',
+        username: 'alokdangre'
+      },
+      'dark'
+    );
+
+    extension.dom.applyDirectoryIdentity(action.slot, {
+      found: false,
+      verified: false
+    });
+    expect(action.slot.children.map((child) => child.tagName)).toEqual(['button']);
+
+    extension.dom.hydrateNostrAction(action.slot);
+    expect(action.slot.children.map((child) => child.tagName)).toEqual([
+      'nostr-like-button',
+      'button'
+    ]);
   });
 
   function openInvite(slot) {
@@ -1349,8 +1437,19 @@ describe('X action placement', function () {
     expect(slotRule).not.toBeNull();
     expect(slotRule[0]).toMatch(/align-self:\s*stretch/);
     expect(slotRule[0]).toMatch(/gap:\s*2px/);
+    expect(slotRule[0]).toMatch(/flex-direction:\s*row/);
+    expect(slotRule[0]).toMatch(/direction:\s*ltr/);
     expect(slotRule[0]).not.toMatch(/(?:^|[^-])height:\s*34px/m);
     expect(standaloneRules).toHaveLength(1);
+    expect(css).toMatch(
+      /\.nostr-competency-action-slot > nostr-like-button\s*\{[^}]*order:\s*1/
+    );
+    expect(css).toMatch(
+      /\.nostr-competency-action-slot > nostr-zap-button\s*\{[^}]*order:\s*2/
+    );
+    expect(css).toMatch(
+      /\.nostr-competency-action-slot > button\.nostr-zap-invite\s*\{[^}]*order:\s*2/
+    );
   });
 
   it('gives YouTube actions native-sized 40px controls instead of X timeline geometry', function () {

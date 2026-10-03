@@ -113,9 +113,26 @@
     button.innerHTML = ICON;
     if (!existing) {
       button.addEventListener('click', openReply);
-      slot.appendChild(button);
     }
+    placeInvite(slot, button);
     return button;
+  }
+
+  function placeInvite(slot, button) {
+    const zap = slot.querySelector?.('nostr-zap-button');
+    const like = slot.querySelector?.('nostr-like-button');
+    const anchor = zap || like || null;
+    const children = slot.children;
+    if (!anchor || typeof slot.insertBefore !== 'function' || !children) {
+      if (button.parentElement !== slot) slot.appendChild(button);
+      return;
+    }
+    const anchorIndex = Array.prototype.indexOf.call(children, anchor);
+    const buttonIndex = Array.prototype.indexOf.call(children, button);
+    if (buttonIndex === anchorIndex + 1) return;
+    const reference = children[anchorIndex + 1] || null;
+    if (reference === button) return;
+    slot.insertBefore(button, reference);
   }
 
   extension.zapInvite = {

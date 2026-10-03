@@ -16,8 +16,13 @@ const forgetComponent = ownedComponents.delete.bind(ownedComponents);
 const elementPrototype = globalThis.Element?.prototype;
 const nativeQuerySelector = elementPrototype?.querySelector;
 const nativeAppendChild = elementPrototype?.appendChild;
+const nativeInsertBefore = elementPrototype?.insertBefore;
 const nativeRemove = elementPrototype?.remove;
 const nativeSetAttribute = elementPrototype?.setAttribute;
+const childrenGetter = Object.getOwnPropertyDescriptor(
+  elementPrototype || {},
+  'children',
+)?.get;
 const eventTargetPrototype = globalThis.EventTarget?.prototype;
 const nativeAddEventListener = eventTargetPrototype?.addEventListener;
 const watchedSlots = new WeakSet();
@@ -48,6 +53,34 @@ function appendChild(element, child) {
   return nativeAppendChild
     ? nativeAppendChild.call(element, child)
     : element.appendChild(child);
+}
+
+function readChildren(element) {
+  const children = childrenGetter ? childrenGetter.call(element) : element.children;
+  return children ? Array.prototype.slice.call(children) : [];
+}
+
+function insertBefore(parent, child, reference) {
+  const next = reference || null;
+  return nativeInsertBefore
+    ? nativeInsertBefore.call(parent, child, next)
+    : parent.insertBefore(child, next);
+}
+
+/**
+ * Keep Like in the leading slot and Zap immediately after it.
+ * Directory lookup can insert the lightning control before hydration.
+ */
+function placeActionControl(slot, child, previous) {
+  if (!child) return;
+  const children = readChildren(slot);
+  const currentIndex = children.indexOf(child);
+  const desiredIndex = previous ? children.indexOf(previous) + 1 : 0;
+  if (currentIndex === desiredIndex) return;
+  const reference =
+    desiredIndex < children.length ? children[desiredIndex] : null;
+  if (reference === child) return;
+  insertBefore(slot, child, reference);
 }
 
 function discardComponent(component) {
@@ -185,19 +218,25 @@ export function hydrateActionSlot(
   }
   if (!recipientNpub) {
     if (zap) discardComponent(zap);
+    placeActionControl(slot, like, null);
     return true;
   }
 
   const shouldAppendZap = !zap;
   if (shouldAppendZap) {
     zap = constructRegisteredElement(registry, 'nostr-zap-button');
-    if (!zap) return false;
+    if (!zap) {
+      placeActionControl(slot, like, null);
+      return false;
+    }
     rememberComponent(zap);
   }
   bindContext(zap, context);
   setCommonAttributes(zap, context);
   setAttribute(zap, 'npub', recipientNpub);
   if (shouldAppendZap) appendChild(slot, zap);
+  placeActionControl(slot, like, null);
+  placeActionControl(slot, zap, like);
   return true;
 }
 

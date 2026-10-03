@@ -1,8 +1,13 @@
 /* SPDX-License-Identifier: MIT */
 
-/* Stretch with the action row; fixed height misaligns on taller standalone rows. */
+/* Stretch with the action row; fixed height misaligns on taller standalone rows.
+   Like is always the leading control and Zap the trailing one. RTL tweets and
+   a lightning control inserted before hydration must not reverse that pair. */
 .nostr-competency-action-slot {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  direction: ltr;
   justify-content: center;
   align-items: center;
   align-self: stretch;
@@ -55,10 +60,17 @@
 
 .nostr-competency-action-slot > nostr-like-button {
   display: flex;
-  flex: 1 1 0;
-  width: 100%;
-  min-width: 0;
+  flex: 0 0 auto;
+  /* The compact host sets width: 100% inside shadow CSS. Keep both controls content-sized. */
+  width: auto !important;
+  min-width: 34px;
   height: 34px;
+  order: 1;
+}
+
+.nostr-competency-action-slot > nostr-zap-button {
+  flex: 0 0 auto;
+  order: 2;
 }
 
 .nostr-competency-action-slot > button.nostr-zap-invite {
@@ -71,6 +83,7 @@
   flex: 0 0 auto;
   height: 34px;
   justify-content: center;
+  order: 2;
   padding: 0;
   width: 34px;
 }

@@ -166,14 +166,39 @@
     }
 
     const existing = slot.querySelector('nostr-like-button');
-    if (existing) return existing;
+    if (existing) {
+      pinActionOrder(slot);
+      return existing;
+    }
     const component = document.createElement('nostr-like-button');
     component.setAttribute('url', slot.dataset.statusUrl);
     component.setAttribute('compact', '');
     component.setAttribute('data-theme', slot.dataset.theme || 'light');
     slot.appendChild(component);
     syncZapComponent(slot);
+    pinActionOrder(slot);
     return component;
+  }
+
+  function placeActionControl(slot, child, previous) {
+    if (!child || typeof slot.insertBefore !== 'function') return;
+    const children = slot.children;
+    if (!children) return;
+    const currentIndex = Array.prototype.indexOf.call(children, child);
+    const desiredIndex = previous
+      ? Array.prototype.indexOf.call(children, previous) + 1
+      : 0;
+    if (currentIndex === desiredIndex) return;
+    const reference = desiredIndex < children.length ? children[desiredIndex] : null;
+    if (reference === child) return;
+    slot.insertBefore(child, reference);
+  }
+
+  function pinActionOrder(slot) {
+    const like = slot.querySelector('nostr-like-button');
+    const zap = slot.querySelector('nostr-zap-button');
+    placeActionControl(slot, like, null);
+    if (zap) placeActionControl(slot, zap, like);
   }
 
   function syncZapComponent(slot) {
@@ -186,6 +211,7 @@
     const npub = slot.dataset.zapRecipientNpub;
     if (!extension.url.isValidNpub(npub)) {
       component?.remove();
+      placeActionControl(slot, slot.querySelector('nostr-like-button'), null);
       return null;
     }
     const shouldAppend = !component;
@@ -195,6 +221,7 @@
     component.setAttribute('compact', '');
     component.setAttribute('data-theme', slot.dataset.theme || 'light');
     if (shouldAppend) slot.appendChild(component);
+    pinActionOrder(slot);
     return component;
   }
 
