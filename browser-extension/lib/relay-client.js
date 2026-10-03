@@ -7834,7 +7834,7 @@
               recordedAt: Date.now()
             });
             if (succeeded) successfulResponses += 1;
-            if (completedRelays.size === selectedRelays.length || successfulResponses >= requiredResponses && (!requireEvent || eventsById.size > 0)) {
+            if (completedRelays.size === selectedRelays.length || !requireEvent && successfulResponses >= requiredResponses) {
               finish();
             }
           };
@@ -7863,9 +7863,6 @@
               if (event && event.id) {
                 eventsById.set(event.id, event);
                 relaysWithEvents.add(relay);
-              }
-              if (requireEvent && eventsById.size > 0 && successfulResponses >= requiredResponses) {
-                finish(false);
               }
             },
             oneose() {

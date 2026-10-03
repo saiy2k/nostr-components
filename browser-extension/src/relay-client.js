@@ -405,8 +405,7 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
           if (succeeded) successfulResponses += 1;
           if (
             completedRelays.size === selectedRelays.length ||
-            (successfulResponses >= requiredResponses &&
-              (!requireEvent || eventsById.size > 0))
+            (!requireEvent && successfulResponses >= requiredResponses)
           ) {
             finish();
           }
@@ -435,13 +434,6 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
             if (event && event.id) {
               eventsById.set(event.id, event);
               relaysWithEvents.add(relay);
-            }
-            if (
-              requireEvent &&
-              eventsById.size > 0 &&
-              successfulResponses >= requiredResponses
-            ) {
-              finish(false);
             }
           },
           oneose() {

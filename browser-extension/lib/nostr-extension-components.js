@@ -27359,7 +27359,7 @@ ${url}`;
     }
 
     .nostr-base-dialog[data-theme="dark"] .zap-comment {
-      color: var(--nostrc-theme-text-primary, #1a1a1a);
+      color: var(--nostrc-theme-text-primary, #d1d5db);
     }
 
     .zap-amount-date {
@@ -28221,7 +28221,7 @@ ${url}`;
       if (name === "npub" || name === "url" || name === "relays" || name === "amount" || name === "default-amount") {
         this.#closeCachedAmountDialog();
       }
-      if (name === "url" && oldValue !== null && this.user) {
+      if (name === "url" && this.user) {
         void this.updateZapCount();
       }
       this.render();

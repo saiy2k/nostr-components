@@ -2809,6 +2809,11 @@ describe('CSP-safe component and relay integration', function () {
         kind: 9735,
         pubkey: 'e'.repeat(64)
       };
+      const laterReceipt = {
+        id: 'f'.repeat(64),
+        kind: 9735,
+        pubkey: 'e'.repeat(64)
+      };
       let subscriptionIndex = 0;
       const pool = {
         subscribe(_relays, _filter, options) {
@@ -2821,6 +2826,7 @@ describe('CSP-safe component and relay integration', function () {
           }
           setTimeout(function () {
             options.onevent(receipt);
+            options.onevent(laterReceipt);
             options.oneose();
           }, 25);
           return { close: vi.fn(async function () {}) };
@@ -2864,7 +2870,10 @@ describe('CSP-safe component and relay integration', function () {
       });
 
       expect(responses[0].ok).toBe(true);
-      expect(responses[0].result.map((event) => event.id)).toContain(receipt.id);
+      expect(responses[0].result.map((event) => event.id)).toEqual([
+        receipt.id,
+        laterReceipt.id
+      ]);
       session.dispose();
     } finally {
       extension.relayClient = originalRelayClient;

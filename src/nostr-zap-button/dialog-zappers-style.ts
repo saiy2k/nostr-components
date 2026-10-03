@@ -87,7 +87,7 @@ export function getZappersDialogStyles(theme: 'light' | 'dark' = 'light'): strin
     }
 
     .nostr-base-dialog[data-theme="dark"] .zap-comment {
-      color: var(--nostrc-theme-text-primary, #1a1a1a);
+      color: var(--nostrc-theme-text-primary, #d1d5db);
     }
 
     .zap-amount-date {
