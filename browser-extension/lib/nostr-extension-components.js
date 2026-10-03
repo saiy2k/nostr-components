@@ -19835,6 +19835,35 @@
       return null;
     }
   }
+  function readExtensionZapCache(events) {
+    if (!Array.isArray(events) || events.length !== 1) return null;
+    const marker = events[0];
+    if (!marker || marker.id !== void 0 || marker.extensionZapCache !== true || !marker.cachedZapSummary || typeof marker.cachedZapSummary !== "object") {
+      return null;
+    }
+    const { totalSats, rows } = marker.cachedZapSummary;
+    if (typeof totalSats !== "number" || !Number.isFinite(totalSats) || totalSats < 0) {
+      return null;
+    }
+    if (!Array.isArray(rows)) return null;
+    const zapDetails = [];
+    for (const row of rows) {
+      const candidate = row;
+      if (!candidate || typeof candidate !== "object" || typeof candidate.amountSats !== "number" || !Number.isFinite(candidate.amountSats) || candidate.amountSats < 0) {
+        continue;
+      }
+      zapDetails.push({
+        amount: candidate.amountSats,
+        date: new Date((typeof candidate.createdAt === "number" ? candidate.createdAt : 0) * 1e3),
+        authorPubkey: typeof candidate.authorPubkey === "string" ? candidate.authorPubkey : "",
+        comment: typeof candidate.comment === "string" ? candidate.comment : ""
+      });
+    }
+    return {
+      totalAmount: totalSats,
+      zapDetails
+    };
+  }
   var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, profileCacheKey, getVerifiedProfileEvent, getProfileMetadata, PROFILE_QUERY_BATCH_SIZE, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoiceForAction, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
   var init_zap_utils = __esm({
     "src/nostr-zap-button/zap-utils.ts"() {
@@ -20113,8 +20142,14 @@
         const zapDetails = [];
         try {
           let provider = null;
+          let providerLookupFailed = false;
           if (actionId && transport?.getZapProvider) {
-            provider = await transport.getZapProvider(actionId, relays);
+            try {
+              provider = await transport.getZapProvider(actionId, relays);
+            } catch (error) {
+              providerLookupFailed = true;
+              if (!transport) throw error;
+            }
           } else {
             const profileMetadata = await getProfileMetadata(pubkey, relays);
             if (!profileMetadata) {
@@ -20122,7 +20157,7 @@
             }
             provider = await getZapProviderInfo(profileMetadata);
           }
-          if (!provider) {
+          if (!provider && !transport) {
             return { totalAmount: 0, zapDetails: [] };
           }
           const filter = {
@@ -20135,6 +20170,14 @@
             filter["#a"] = [expectedATag];
           }
           const events = transport ? await transport.query(relays, filter) : await pool.querySync(relays, filter);
+          const cached = transport ? readExtensionZapCache(events) : null;
+          if (cached) return cached;
+          if (!provider) {
+            if (providerLookupFailed || transport) {
+              throw new Error("Zap recipient has no valid LNURL provider");
+            }
+            return { totalAmount: 0, zapDetails: [] };
+          }
           for (const event of events) {
             const validated = validateZapReceipt(event, {
               recipientPubkey: pubkey,
@@ -20152,6 +20195,7 @@
             });
           }
         } catch (error) {
+          if (transport) throw error;
           console.error("Nostr-Components: Zap button: Error fetching zap receipts", error);
         } finally {
           pool?.close(relays);
@@ -28374,7 +28418,8 @@ ${url}`;
         });
         this.zapActionStatus.set(2 /* Ready */);
       } catch (e) {
-        this.zapActionStatus.set(3 /* Error */, e?.message || "Unable to zap");
+        console.error("Nostr-Components: Zap button: Unable to zap", e);
+        this.zapActionStatus.set(2 /* Ready */);
       } finally {
         this.render();
       }
@@ -28450,8 +28495,12 @@ ${url}`;
       } catch (e) {
         if (seq !== this.#zapCountLoadSeq) return;
         console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
-        this.#totalZapAmount = null;
-        this.zapListStatus.set(3 /* Error */);
+        if (getRelayTransport()) {
+          this.zapListStatus.set(2 /* Ready */);
+        } else {
+          this.#totalZapAmount = null;
+          this.zapListStatus.set(3 /* Error */);
+        }
       } finally {
         if (seq === this.#zapCountLoadSeq) {
           this.render();

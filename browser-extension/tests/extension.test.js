@@ -2535,7 +2535,7 @@ describe('CSP-safe component and relay integration', function () {
     expect(responses[1].ok).toBe(false);
     expect(responses[1].error).toContain('no longer active');
     expect(responses[2].ok).toBe(false);
-    expect(backgroundRequests).toHaveLength(4);
+    expect(backgroundRequests).toHaveLength(3);
     expect(backgroundRequests[0].url).toBe(canonicalLnurl);
     expect(backgroundRequests[1].url).toContain('amount=' + amount);
     expect(backgroundRequests[1].url).toContain(

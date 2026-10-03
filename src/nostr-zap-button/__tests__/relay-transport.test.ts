@@ -5,6 +5,7 @@ import { finalizeEvent } from 'nostr-tools';
 import * as zapReceiptModule from '../zap-receipt';
 import {
   fetchInvoice,
+  fetchTotalZapAmount,
   getBatchedProfileMetadata,
   getProfileMetadata,
   getZapProviderInfo,
@@ -440,5 +441,58 @@ describe('Zap component relay transport', () => {
 
     await vi.advanceTimersByTimeAsync(60 * 1000);
     expect(query).toHaveBeenCalledTimes(callsAtDeadline);
+  });
+
+  it('keeps a cached zap total when provider lookup fails', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        extensionZapCache: true,
+        cachedZapSummary: {
+          totalSats: 42,
+          rows: [
+            {
+              amountSats: 21,
+              createdAt: 10,
+              authorPubkey: 'a'.repeat(64),
+              comment: 'thanks',
+            },
+          ],
+        },
+      },
+    ]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query,
+        publish: vi.fn(),
+        getZapProvider: vi.fn().mockRejectedValue(new Error('LNURL request failed')),
+      },
+    });
+
+    await expect(fetchTotalZapAmount({
+      pubkey: 'c'.repeat(64),
+      relays: RELAYS,
+      actionId: 'd'.repeat(64),
+      url: 'https://x.com/alice/status/1',
+    })).resolves.toMatchObject({
+      totalAmount: 42,
+      zapDetails: [expect.objectContaining({ amount: 21, comment: 'thanks' })],
+    });
+  });
+
+  it('does not report a failed extension zap total as zero', async () => {
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query: vi.fn().mockResolvedValue([]),
+        publish: vi.fn(),
+        getZapProvider: vi.fn().mockRejectedValue(new Error('LNURL request failed')),
+      },
+    });
+
+    await expect(fetchTotalZapAmount({
+      pubkey: 'e'.repeat(64),
+      relays: RELAYS,
+      actionId: 'f'.repeat(64),
+      url: 'https://x.com/alice/status/2',
+    })).rejects.toThrow('Zap recipient has no valid LNURL provider');
   });
 });

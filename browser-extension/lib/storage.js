@@ -7,14 +7,27 @@
   const RECENT_REACTIONS_STORAGE_KEY = 'nostr-recent-reactions:v1';
   const RECENT_REACTION_CACHE_LIMIT = 100;
   const MAX_RECENT_REACTION_TTL_MS = 5 * 60 * 1000;
+  const ZAP_PROVIDER_STORAGE_KEY = 'nostr-zap-providers:v1';
+  const ZAP_PROFILE_STORAGE_KEY = 'nostr-zap-profiles:v1';
+  const ZAP_RECEIPT_STORAGE_KEY = 'nostr-zap-receipts:v1';
+  const ZAP_PROVIDER_LIMIT = 100;
+  const ZAP_PROFILE_LIMIT = 100;
+  const ZAP_RECEIPT_LIMIT = 50;
+  const ZAP_RECEIPT_ROW_LIMIT = 50;
+  const ZAP_COMMENT_LIMIT = 280;
+  const ZAP_PROFILE_CONTENT_LIMIT = 16384;
   const PUBLIC_KEY_PATTERN = /^[0-9a-f]{64}$/i;
+  const EVENT_ID_PATTERN = /^[0-9a-f]{64}$/i;
+  const EVENT_SIG_PATTERN = /^[0-9a-f]{128}$/i;
 
   function getBrowserStorage() {
-    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-      return { kind: 'browser', area: browser.storage.local };
+    const browserApi = typeof browser !== 'undefined' ? browser : globalThis.browser;
+    const chromeApi = typeof chrome !== 'undefined' ? chrome : globalThis.chrome;
+    if (browserApi && browserApi.storage && browserApi.storage.local) {
+      return { kind: 'browser', area: browserApi.storage.local };
     }
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      return { kind: 'chrome', area: chrome.storage.local };
+    if (chromeApi && chromeApi.storage && chromeApi.storage.local) {
+      return { kind: 'chrome', area: chromeApi.storage.local };
     }
     return null;
   }
@@ -193,12 +206,369 @@
     }).catch(function () {});
   }
 
+  function isHex64(value) {
+    return typeof value === 'string' && PUBLIC_KEY_PATTERN.test(value);
+  }
+
+  function activeZapEntries(value, now) {
+    if (!Array.isArray(value)) return [];
+    return value.filter(function (entry) {
+      return Boolean(
+        entry &&
+        typeof entry === 'object' &&
+        Number.isFinite(entry.expiresAt) &&
+        entry.expiresAt > now
+      );
+    });
+  }
+
+  async function readZapEntries(storageKey) {
+    const values = await getValues(storageKey).catch(function () {
+      return {};
+    });
+    const stored = values[storageKey];
+    const active = activeZapEntries(stored, Date.now());
+    if (Array.isArray(stored) && active.length !== stored.length) {
+      await setValues({ [storageKey]: active }).catch(function () {});
+    }
+    return active;
+  }
+
+  async function writeZapEntry(storageKey, limit, entry, sameEntry) {
+    const values = await getValues(storageKey).catch(function () {
+      return {};
+    });
+    const active = activeZapEntries(values[storageKey], Date.now()).filter(function (item) {
+      return !sameEntry(item);
+    });
+    active.unshift(entry);
+    await setValues({
+      [storageKey]: active.slice(0, limit)
+    }).catch(function () {});
+  }
+
+  function sanitizeProviderValue(value) {
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      typeof value.lnurl !== 'string' ||
+      typeof value.callback !== 'string' ||
+      !isHex64(value.nostrPubkey) ||
+      !(value.minSendable === null || Number.isFinite(value.minSendable)) ||
+      !(value.maxSendable === null || Number.isFinite(value.maxSendable)) ||
+      !Number.isInteger(value.commentAllowed) ||
+      value.commentAllowed < 0
+    ) {
+      return null;
+    }
+    return {
+      lnurl: value.lnurl,
+      callback: value.callback,
+      nostrPubkey: value.nostrPubkey.toLowerCase(),
+      minSendable: value.minSendable === null ? null : Number(value.minSendable),
+      maxSendable: value.maxSendable === null ? null : Number(value.maxSendable),
+      commentAllowed: value.commentAllowed
+    };
+  }
+
+  function sanitizeProviderEntry(entry) {
+    const value = sanitizeProviderValue(entry && entry.value);
+    if (
+      !entry ||
+      !isHex64(entry.pubkey) ||
+      !value ||
+      !Number.isFinite(entry.freshUntil) ||
+      !Number.isFinite(entry.expiresAt)
+    ) {
+      return null;
+    }
+    return {
+      pubkey: entry.pubkey.toLowerCase(),
+      value: value,
+      fetchedAt: Number(entry.fetchedAt) || 0,
+      freshUntil: entry.freshUntil,
+      expiresAt: entry.expiresAt
+    };
+  }
+
+  function sanitizeProfileEvent(event) {
+    if (
+      !event ||
+      typeof event !== 'object' ||
+      event.kind !== 0 ||
+      !EVENT_ID_PATTERN.test(String(event.id || '')) ||
+      !isHex64(event.pubkey) ||
+      !EVENT_SIG_PATTERN.test(String(event.sig || '')) ||
+      !Number.isInteger(event.created_at) ||
+      typeof event.content !== 'string' ||
+      event.content.length > ZAP_PROFILE_CONTENT_LIMIT ||
+      !Array.isArray(event.tags) ||
+      event.tags.length > 50
+    ) {
+      return null;
+    }
+    const tags = [];
+    for (const tag of event.tags) {
+      if (!Array.isArray(tag) || tag.length > 10) return null;
+      const copy = [];
+      for (const item of tag) {
+        if (typeof item !== 'string' || item.length > 500) return null;
+        copy.push(item);
+      }
+      tags.push(copy);
+    }
+    return {
+      id: String(event.id).toLowerCase(),
+      pubkey: event.pubkey.toLowerCase(),
+      created_at: event.created_at,
+      kind: 0,
+      tags: tags,
+      content: event.content,
+      sig: String(event.sig).toLowerCase()
+    };
+  }
+
+  function sanitizeProfileEntry(entry) {
+    const event = sanitizeProfileEvent(entry && entry.event);
+    if (
+      !entry ||
+      !isHex64(entry.pubkey) ||
+      !event ||
+      event.pubkey !== entry.pubkey.toLowerCase() ||
+      !Number.isFinite(entry.freshUntil) ||
+      !Number.isFinite(entry.expiresAt)
+    ) {
+      return null;
+    }
+    return {
+      pubkey: entry.pubkey.toLowerCase(),
+      event: event,
+      fetchedAt: Number(entry.fetchedAt) || 0,
+      freshUntil: entry.freshUntil,
+      expiresAt: entry.expiresAt
+    };
+  }
+
+  function sanitizeReceiptRow(row) {
+    if (
+      !row ||
+      typeof row !== 'object' ||
+      !EVENT_ID_PATTERN.test(String(row.id || '')) ||
+      !Number.isFinite(row.amountSats) ||
+      row.amountSats < 0 ||
+      !Number.isInteger(row.createdAt) ||
+      row.createdAt < 0 ||
+      (row.authorPubkey !== '' && !isHex64(row.authorPubkey)) ||
+      typeof row.comment !== 'string' ||
+      row.comment.length > ZAP_COMMENT_LIMIT
+    ) {
+      return null;
+    }
+    return {
+      id: String(row.id).toLowerCase(),
+      amountSats: Number(row.amountSats),
+      createdAt: row.createdAt,
+      authorPubkey: row.authorPubkey ? row.authorPubkey.toLowerCase() : '',
+      comment: row.comment
+    };
+  }
+
+  function sanitizeReceiptEntry(entry) {
+    if (
+      !entry ||
+      !isHex64(entry.pubkey) ||
+      typeof entry.aTag !== 'string' ||
+      entry.aTag.length > 2048 ||
+      !Number.isFinite(entry.totalSats) ||
+      entry.totalSats < 0 ||
+      !Number.isInteger(entry.eventCount) ||
+      entry.eventCount < 1 ||
+      !Array.isArray(entry.rows) ||
+      entry.rows.length > ZAP_RECEIPT_ROW_LIMIT ||
+      !Number.isFinite(entry.expiresAt)
+    ) {
+      return null;
+    }
+    const pubkey = entry.pubkey.toLowerCase();
+    if (entry.aTag !== '' && !entry.aTag.startsWith('39735:' + pubkey + ':')) {
+      return null;
+    }
+    const rows = [];
+    for (const row of entry.rows) {
+      const sanitized = sanitizeReceiptRow(row);
+      if (!sanitized) return null;
+      rows.push(sanitized);
+    }
+    return {
+      pubkey: pubkey,
+      aTag: entry.aTag,
+      totalSats: Number(entry.totalSats),
+      eventCount: entry.eventCount,
+      rows: rows,
+      fetchedAt: Number(entry.fetchedAt) || 0,
+      expiresAt: entry.expiresAt
+    };
+  }
+
+  async function getZapProvider(pubkey) {
+    if (!isHex64(pubkey)) return null;
+    const normalized = pubkey.toLowerCase();
+    const entries = await readZapEntries(ZAP_PROVIDER_STORAGE_KEY);
+    for (const entry of entries) {
+      const sanitized = sanitizeProviderEntry(entry);
+      if (sanitized && sanitized.pubkey === normalized) return sanitized;
+    }
+    return null;
+  }
+
+  async function setZapProvider(pubkey, value, freshMs, staleMs) {
+    const normalized = isHex64(pubkey) ? pubkey.toLowerCase() : null;
+    const sanitized = sanitizeProviderValue(value);
+    if (
+      !normalized ||
+      !sanitized ||
+      !Number.isFinite(freshMs) ||
+      freshMs <= 0 ||
+      !Number.isFinite(staleMs) ||
+      staleMs <= 0
+    ) {
+      return;
+    }
+    const now = Date.now();
+    await writeZapEntry(
+      ZAP_PROVIDER_STORAGE_KEY,
+      ZAP_PROVIDER_LIMIT,
+      {
+        pubkey: normalized,
+        value: sanitized,
+        fetchedAt: now,
+        freshUntil: now + freshMs,
+        expiresAt: now + staleMs
+      },
+      function (entry) {
+        return entry && String(entry.pubkey || '').toLowerCase() === normalized;
+      }
+    );
+  }
+
+  async function deleteZapProvider(pubkey) {
+    if (!isHex64(pubkey)) return;
+    const normalized = pubkey.toLowerCase();
+    const entries = await readZapEntries(ZAP_PROVIDER_STORAGE_KEY);
+    await setValues({
+      [ZAP_PROVIDER_STORAGE_KEY]: entries.filter(function (entry) {
+        return !entry || String(entry.pubkey || '').toLowerCase() !== normalized;
+      })
+    }).catch(function () {});
+  }
+
+  async function getZapProfile(pubkey) {
+    if (!isHex64(pubkey)) return null;
+    const normalized = pubkey.toLowerCase();
+    const entries = await readZapEntries(ZAP_PROFILE_STORAGE_KEY);
+    for (const entry of entries) {
+      const sanitized = sanitizeProfileEntry(entry);
+      if (sanitized && sanitized.pubkey === normalized) return sanitized;
+    }
+    return null;
+  }
+
+  async function setZapProfile(pubkey, event, freshMs, staleMs) {
+    const normalized = isHex64(pubkey) ? pubkey.toLowerCase() : null;
+    const sanitized = sanitizeProfileEvent(event);
+    if (
+      !normalized ||
+      !sanitized ||
+      sanitized.pubkey !== normalized ||
+      !Number.isFinite(freshMs) ||
+      freshMs <= 0 ||
+      !Number.isFinite(staleMs) ||
+      staleMs <= 0
+    ) {
+      return;
+    }
+    const now = Date.now();
+    await writeZapEntry(
+      ZAP_PROFILE_STORAGE_KEY,
+      ZAP_PROFILE_LIMIT,
+      {
+        pubkey: normalized,
+        event: sanitized,
+        fetchedAt: now,
+        freshUntil: now + freshMs,
+        expiresAt: now + staleMs
+      },
+      function (entry) {
+        return entry && String(entry.pubkey || '').toLowerCase() === normalized;
+      }
+    );
+  }
+
+  async function getZapReceipt(pubkey, aTag) {
+    if (!isHex64(pubkey) || typeof aTag !== 'string') return null;
+    const normalized = pubkey.toLowerCase();
+    const entries = await readZapEntries(ZAP_RECEIPT_STORAGE_KEY);
+    for (const entry of entries) {
+      const sanitized = sanitizeReceiptEntry(entry);
+      if (sanitized && sanitized.pubkey === normalized && sanitized.aTag === aTag) {
+        return sanitized;
+      }
+    }
+    return null;
+  }
+
+  async function setZapReceipt(pubkey, aTag, summary, staleMs) {
+    const normalized = isHex64(pubkey) ? pubkey.toLowerCase() : null;
+    if (
+      !normalized ||
+      typeof aTag !== 'string' ||
+      !summary ||
+      !Number.isFinite(staleMs) ||
+      staleMs <= 0
+    ) {
+      return;
+    }
+    const now = Date.now();
+    const sanitized = sanitizeReceiptEntry({
+      pubkey: normalized,
+      aTag: aTag,
+      totalSats: summary.totalSats,
+      eventCount: summary.eventCount,
+      rows: summary.rows,
+      fetchedAt: now,
+      expiresAt: now + staleMs
+    });
+    if (!sanitized) return;
+    await writeZapEntry(
+      ZAP_RECEIPT_STORAGE_KEY,
+      ZAP_RECEIPT_LIMIT,
+      sanitized,
+      function (entry) {
+        return Boolean(
+          entry &&
+          String(entry.pubkey || '').toLowerCase() === normalized &&
+          entry.aTag === aTag
+        );
+      }
+    );
+  }
+
   extension.storage = {
     getKnownPubkey: getKnownPubkey,
     setKnownPubkey: setKnownPubkey,
     getRecentReactions: getRecentReactions,
     setRecentReaction: setRecentReaction,
     getDirectoryEntry: getDirectoryEntry,
-    setDirectoryEntry: setDirectoryEntry
+    setDirectoryEntry: setDirectoryEntry,
+    getZapProvider: getZapProvider,
+    setZapProvider: setZapProvider,
+    deleteZapProvider: deleteZapProvider,
+    getZapProfile: getZapProfile,
+    setZapProfile: setZapProfile,
+    getZapReceipt: getZapReceipt,
+    setZapReceipt: setZapReceipt,
+    ZAP_PROVIDER_LIMIT: ZAP_PROVIDER_LIMIT,
+    ZAP_PROFILE_LIMIT: ZAP_PROFILE_LIMIT,
+    ZAP_RECEIPT_LIMIT: ZAP_RECEIPT_LIMIT
   };
 })();

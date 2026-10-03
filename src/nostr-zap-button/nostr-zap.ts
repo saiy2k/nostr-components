@@ -262,7 +262,8 @@ export default class NostrZap extends NostrUserComponent {
       });
       this.zapActionStatus.set(NCStatus.Ready);
     } catch (e: any) {
-      this.zapActionStatus.set(NCStatus.Error, e?.message || "Unable to zap");
+      console.error('Nostr-Components: Zap button: Unable to zap', e);
+      this.zapActionStatus.set(NCStatus.Ready);
     } finally {
       this.render();
     }
@@ -350,8 +351,12 @@ export default class NostrZap extends NostrUserComponent {
     } catch (e) {
       if (seq !== this.#zapCountLoadSeq) return;
       console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
-      this.#totalZapAmount = null;
-      this.zapListStatus.set(NCStatus.Error);
+      if (getRelayTransport()) {
+        this.zapListStatus.set(NCStatus.Ready);
+      } else {
+        this.#totalZapAmount = null;
+        this.zapListStatus.set(NCStatus.Error);
+      }
     } finally {
       if (seq === this.#zapCountLoadSeq) {
         this.render();
