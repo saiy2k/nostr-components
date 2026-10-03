@@ -7511,7 +7511,6 @@
       "wss://nostr-pub.wellorder.net/",
       "wss://relay.nostr.band/"
     ];
-    const PROFILE_RELAY = normalizeURL2("wss://purplepag.es");
     const ALLOWED_RELAY_URLS = new Set(
       [
         "wss://relay.momostr.pink",
@@ -7746,12 +7745,24 @@
     function selectQueryRelays(relays) {
       return [...relays].sort((left, right) => relayScore(left) - relayScore(right)).slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
     }
-    function selectProfileRelays(relays) {
-      const ranked = selectQueryRelays(relays);
-      if (ranked.includes(PROFILE_RELAY) || !relays.includes(PROFILE_RELAY)) {
-        return ranked;
+    function isRequestedProfile(event, filterList) {
+      const filter = filterList.length === 1 ? filterList[0] : null;
+      if (!event || !filter || event.kind !== 0 || !Array.isArray(filter.authors)) {
+        return false;
       }
-      return [PROFILE_RELAY, ...ranked];
+      const pubkey = String(event.pubkey || "").toLowerCase();
+      if (!filter.authors.includes(pubkey)) return false;
+      try {
+        return verifyEvent(event);
+      } catch (_error) {
+        return false;
+      }
+    }
+    function preferProfile(candidate, current) {
+      if (candidate.created_at !== current.created_at) {
+        return candidate.created_at > current.created_at;
+      }
+      return candidate.id < current.id;
     }
     function summarizeReactionEvents(events) {
       const latestByPubkey = /* @__PURE__ */ new Map();
@@ -7782,10 +7793,12 @@
       const eventsById = /* @__PURE__ */ new Map();
       const relaysWithEvents = /* @__PURE__ */ new Set();
       const closers = [];
-      const requireEvent = options && options.requireEvent === true;
+      const finishOnFirstEvent = options && options.finishOnFirstEvent === true;
+      const requireEvent = finishOnFirstEvent || options && options.requireEvent === true;
       return new Promise(function(resolve) {
         let successfulResponses = 0;
         let finished = false;
+        let profileFinishScheduled = false;
         const completedRelays = /* @__PURE__ */ new Set();
         const requiredResponses = Math.min(QUERY_RESPONSE_QUORUM, selectedRelays.length);
         function finish(penalizePending = true) {
@@ -7830,6 +7843,23 @@
           const options2 = {
             maxWait: QUERY_DEADLINE_MS,
             onevent(event) {
+              if (finished) return;
+              if (finishOnFirstEvent) {
+                if (!isRequestedProfile(event, filterList)) return;
+                const current = eventsById.values().next().value || null;
+                if (!current || preferProfile(event, current)) {
+                  eventsById.clear();
+                  eventsById.set(event.id, event);
+                }
+                relaysWithEvents.add(relay);
+                if (!profileFinishScheduled) {
+                  profileFinishScheduled = true;
+                  queueMicrotask(function() {
+                    if (!finished) finish(false);
+                  });
+                }
+                return;
+              }
               if (event && event.id) {
                 eventsById.set(event.id, event);
                 relaysWithEvents.add(relay);
@@ -8095,8 +8125,8 @@
           limit: 1
         },
         {
-          requireEvent: true,
-          selectedRelays: selectProfileRelays(relays)
+          finishOnFirstEvent: true,
+          selectedRelays: relays
         }
       );
       requireCurrentActionContext(actionId, context);
@@ -8288,14 +8318,15 @@
           throw new Error("Relay request contains an unsupported filter");
         }
         const profileQuery = filter.kinds[0] === 0;
+        const singleProfileLookup = profileQuery && filter.authors.length === 1;
         const zapQuery = filter.kinds[0] === 9735;
         const events = await queryWithFastQuorum(
           pool,
           relays,
           filter,
-          profileQuery ? {
-            requireEvent: true,
-            selectedRelays: selectProfileRelays(relays)
+          singleProfileLookup ? {
+            finishOnFirstEvent: true,
+            selectedRelays: relays
           } : zapQuery ? { requireEvent: true } : void 0
         );
         if (!profileQuery) return events;

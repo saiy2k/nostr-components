@@ -2871,13 +2871,14 @@ describe('CSP-safe component and relay integration', function () {
     }
   });
 
-  it('loads a profile from purplepag.es when the fast relays have none', async function () {
+  it('loads a profile from any relay and closes the rest on the first match', async function () {
     const originalRelayClient = extension.relayClient;
     await import('../src/relay-client.js?profile-relay-quorum');
     try {
       const listeners = new Map();
       const responses = [];
       const subscribedRelays = [];
+      const closes = new Map();
       const pageWindow = {
         location: { origin: 'https://x.com' },
         addEventListener(type, listener) {
@@ -2903,21 +2904,50 @@ describe('CSP-safe component and relay integration', function () {
         },
         new Uint8Array(32).fill(23)
       );
+      const otherProfile = finalizeEvent(
+        {
+          kind: 0,
+          created_at: 10,
+          tags: [],
+          content: JSON.stringify({ name: 'Someone Else' })
+        },
+        new Uint8Array(32).fill(24)
+      );
+      const requestedRelays = [
+        'wss://relay.damus.io',
+        'wss://relay.primal.net',
+        'wss://nostr.wine',
+        'wss://relay.nostr.net',
+        'wss://nos.lol',
+        'wss://purplepag.es'
+      ];
       const pool = {
         subscribe(relays, _filter, options) {
           const relay = relays[0];
+          const close = vi.fn(async function () {});
           subscribedRelays.push(relay);
+          closes.set(relay, close);
+          if (relay.includes('relay.damus.io')) {
+            queueMicrotask(function () {
+              options.onevent(otherProfile);
+              options.oneose();
+            });
+            return { close: close };
+          }
           if (relay.includes('purplepag.es')) {
             setTimeout(function () {
               options.onevent(profile);
               options.oneose();
             }, 20);
-            return { close: vi.fn(async function () {}) };
+            return { close: close };
+          }
+          if (relay.includes('nos.lol')) {
+            return { close: close };
           }
           queueMicrotask(function () {
             options.oneose();
           });
-          return { close: vi.fn(async function () {}) };
+          return { close: close };
         }
       };
       const channel = 'd'.repeat(64);
@@ -2941,13 +2971,7 @@ describe('CSP-safe component and relay integration', function () {
           'query',
           {
             actionId: actionId,
-            relays: [
-              'wss://relay.damus.io',
-              'wss://relay.primal.net',
-              'wss://nostr.wine',
-              'wss://relay.nostr.net',
-              'wss://purplepag.es'
-            ],
+            relays: requestedRelays,
             filter: {
               kinds: [0],
               authors: [profile.pubkey],
@@ -2957,9 +2981,13 @@ describe('CSP-safe component and relay integration', function () {
         )
       });
 
+      expect(subscribedRelays).toHaveLength(requestedRelays.length);
       expect(subscribedRelays.some((relay) => relay.includes('purplepag.es'))).toBe(true);
+      expect(subscribedRelays.some((relay) => relay.includes('nos.lol'))).toBe(true);
+      const silentRelay = [...closes.keys()].find((relay) => relay.includes('nos.lol'));
+      expect(closes.get(silentRelay)).toHaveBeenCalled();
       expect(responses[0].ok).toBe(true);
-      expect(responses[0].result.map((event) => event.id)).toContain(profile.id);
+      expect(responses[0].result.map((event) => event.id)).toEqual([profile.id]);
       session.dispose();
     } finally {
       extension.relayClient = originalRelayClient;

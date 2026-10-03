@@ -31,7 +31,6 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     'wss://nostr-pub.wellorder.net/',
     'wss://relay.nostr.band/'
   ];
-  const PROFILE_RELAY = normalizeURL('wss://purplepag.es');
   const ALLOWED_RELAY_URLS = new Set(
     [
       'wss://relay.momostr.pink',
@@ -288,14 +287,30 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     return [...relays].sort((left, right) => relayScore(left) - relayScore(right)).slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
   }
 
-  function selectProfileRelays(relays) {
-    const ranked = selectQueryRelays(relays);
-    if (ranked.includes(PROFILE_RELAY) || !relays.includes(PROFILE_RELAY)) {
-      return ranked;
+  function isRequestedProfile(event, filterList) {
+    const filter = filterList.length === 1 ? filterList[0] : null;
+    if (
+      !event ||
+      !filter ||
+      event.kind !== 0 ||
+      !Array.isArray(filter.authors)
+    ) {
+      return false;
     }
-    // Kind 0 often lives only on the profile relay. Keep the fast quorum
-    // and ask that relay too, instead of dropping it for a lower score.
-    return [PROFILE_RELAY, ...ranked];
+    const pubkey = String(event.pubkey || '').toLowerCase();
+    if (!filter.authors.includes(pubkey)) return false;
+    try {
+      return verifyEvent(event);
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function preferProfile(candidate, current) {
+    if (candidate.created_at !== current.created_at) {
+      return candidate.created_at > current.created_at;
+    }
+    return candidate.id < current.id;
   }
 
   function summarizeReactionEvents(events) {
@@ -339,13 +354,16 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     const eventsById = new Map();
     const relaysWithEvents = new Set();
     const closers = [];
-    // Kind 0 often lives on a slower relay. Empty replies from the fastest
-    // relays must not cancel that request before the profile arrives.
-    const requireEvent = options && options.requireEvent === true;
+    // A single profile may live on any relay in the allowed list. Empty
+    // replies must not cancel the rest, and the first match closes them.
+    const finishOnFirstEvent = options && options.finishOnFirstEvent === true;
+    const requireEvent =
+      finishOnFirstEvent || (options && options.requireEvent === true);
 
     return new Promise(function (resolve) {
       let successfulResponses = 0;
       let finished = false;
+      let profileFinishScheduled = false;
       const completedRelays = new Set();
       const requiredResponses = Math.min(QUERY_RESPONSE_QUORUM, selectedRelays.length);
 
@@ -396,6 +414,24 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         const options = {
           maxWait: QUERY_DEADLINE_MS,
           onevent(event) {
+            if (finished) return;
+            if (finishOnFirstEvent) {
+              if (!isRequestedProfile(event, filterList)) return;
+              const current = eventsById.values().next().value || null;
+              if (!current || preferProfile(event, current)) {
+                eventsById.clear();
+                eventsById.set(event.id, event);
+              }
+              relaysWithEvents.add(relay);
+              // Let this relay finish its burst, then close every other relay.
+              if (!profileFinishScheduled) {
+                profileFinishScheduled = true;
+                queueMicrotask(function () {
+                  if (!finished) finish(false);
+                });
+              }
+              return;
+            }
             if (event && event.id) {
               eventsById.set(event.id, event);
               relaysWithEvents.add(relay);
@@ -784,8 +820,8 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         limit: 1
       },
       {
-        requireEvent: true,
-        selectedRelays: selectProfileRelays(relays)
+        finishOnFirstEvent: true,
+        selectedRelays: relays
       }
     );
     requireCurrentActionContext(actionId, context);
@@ -1085,6 +1121,8 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         throw new Error('Relay request contains an unsupported filter');
       }
       const profileQuery = filter.kinds[0] === 0;
+      const singleProfileLookup =
+        profileQuery && filter.authors.length === 1;
       // A zap for one post often lives on a single slower relay. Three fast
       // empty replies are not proof the post has no receipts.
       const zapQuery = filter.kinds[0] === 9735;
@@ -1092,10 +1130,10 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         pool,
         relays,
         filter,
-        profileQuery
+        singleProfileLookup
           ? {
-              requireEvent: true,
-              selectedRelays: selectProfileRelays(relays)
+              finishOnFirstEvent: true,
+              selectedRelays: relays
             }
           : zapQuery
             ? { requireEvent: true }
