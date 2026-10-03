@@ -4,6 +4,7 @@ import { SimplePool, nip19, verifyEvent } from 'nostr-tools';
 import { normalizeURL } from 'nostr-tools/utils';
 import { bech32 } from '@scure/base';
 import { decode as decodeBolt11 } from 'light-bolt11-decoder';
+import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
 
 (function () {
   const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
@@ -1103,12 +1104,33 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     return matches.length === 1 ? matches[0][1] : null;
   }
 
-  function isMatchingReceipt(event, filter) {
-    if (!event || event.kind !== 9735 || !eventVerified(event)) return false;
-    const pubkey = filter['#p'][0];
-    if (String(receiptTag(event, 'p') || '').toLowerCase() !== pubkey) return false;
-    if (filter['#a'] && receiptTag(event, 'a') !== filter['#a'][0]) return false;
-    return true;
+  function validatedZapReceipts(events, filter, provider) {
+    if (!provider || !Array.isArray(events)) return [];
+    const expectedATag = filter['#a'] ? filter['#a'][0] : undefined;
+    const accepted = [];
+    for (const event of events) {
+      const result = validateZapReceipt(event, {
+        recipientPubkey: filter['#p'][0],
+        provider: {
+          lnurl: provider.lnurl,
+          callback: provider.callback,
+          nostrPubkey: provider.nostrPubkey
+        },
+        expectedATag: expectedATag
+      });
+      if (result && result.ok) accepted.push(event);
+    }
+    return accepted;
+  }
+
+  function receiptCacheMarker(summary) {
+    return [{
+      extensionZapCache: true,
+      cachedZapSummary: {
+        totalSats: summary.totalSats,
+        rows: summary.rows
+      }
+    }];
   }
 
   function summarizeReceipts(events) {
@@ -1152,21 +1174,60 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     };
   }
 
-  function presentReceiptCache(stored) {
-    if (
-      stored.events &&
-      stored.events.length > 0 &&
-      stored.events.length === stored.summary.eventCount
-    ) {
-      return stored.events;
-    }
-    return [{
-      extensionZapCache: true,
-      cachedZapSummary: {
-        totalSats: stored.summary.totalSats,
-        rows: stored.summary.rows
+  function mergeStoredSummary(summary, novelEvents) {
+    const known = new Set(summary.rows.map(function (row) {
+      return row.id;
+    }));
+    const rows = summary.rows.slice();
+    let totalSats = summary.totalSats;
+    let eventCount = summary.eventCount;
+    const capped = summary.rows.length < summary.eventCount;
+    const oldest = summary.rows.reduce(function (min, row) {
+      return Math.min(min, row.createdAt);
+    }, Infinity);
+    for (const event of novelEvents) {
+      const id = String(event.id || '').toLowerCase();
+      if (!id || known.has(id)) continue;
+      const amountMsats = getInvoiceAmountMsats(receiptTag(event, 'bolt11') || '');
+      if (!amountMsats) continue;
+      if (capped && (!Number.isInteger(event.created_at) || event.created_at <= oldest)) {
+        continue;
       }
-    }];
+      known.add(id);
+      totalSats += amountMsats / 1000;
+      eventCount += 1;
+      let authorPubkey = '';
+      let comment = '';
+      const description = receiptTag(event, 'description');
+      if (description) {
+        try {
+          const parsed = JSON.parse(description);
+          if (parsed && HEX_64_PATTERN.test(String(parsed.pubkey || ''))) {
+            authorPubkey = String(parsed.pubkey).toLowerCase();
+          }
+          if (parsed && typeof parsed.content === 'string') {
+            comment = parsed.content.slice(0, 280);
+          }
+        } catch (_error) {
+          comment = '';
+        }
+      }
+      rows.push({
+        id: id,
+        amountSats: amountMsats / 1000,
+        createdAt: Number.isInteger(event.created_at) ? event.created_at : 0,
+        authorPubkey: authorPubkey,
+        comment: comment
+      });
+    }
+    rows.sort(function (left, right) {
+      return right.createdAt - left.createdAt;
+    });
+    return {
+      totalSats: totalSats,
+      eventCount: eventCount,
+      rows: rows.slice(0, RECEIPT_ROW_LIMIT)
+    };
   }
 
   async function readReceipt(pubkey, aTag) {
@@ -1190,19 +1251,26 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     return entry;
   }
 
-  async function rememberReceipts(pubkey, aTag, events) {
-    const summary = summarizeReceipts(events);
-    if (summary.eventCount < 1) return;
+  async function rememberSummary(pubkey, aTag, summary, events) {
+    if (!summary || summary.eventCount < 1) return;
     const key = pubkey + '\n' + aTag;
     const now = Date.now();
+    const keepEvents = Array.isArray(events) &&
+      events.length === summary.eventCount &&
+      events.length <= RECEIPT_ROW_LIMIT;
     rememberBounded(receiptMemory, key, {
       summary: summary,
-      events: events.length <= RECEIPT_ROW_LIMIT ? events : null,
+      events: keepEvents ? events : null,
       expiresAt: now + ZAP_CACHE_STALE_MS
     }, MEMORY_RECEIPT_LIMIT);
     if (typeof extension.storage.setZapReceipt === 'function') {
       await extension.storage.setZapReceipt(pubkey, aTag, summary, ZAP_CACHE_STALE_MS);
     }
+  }
+
+  async function rememberReceipts(pubkey, aTag, events) {
+    const summary = summarizeReceipts(events);
+    await rememberSummary(pubkey, aTag, summary, events);
   }
 
   async function queryZapReceiptsUncached(pool, relays, filter) {
@@ -1214,16 +1282,49 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
       filter,
       { requireEvent: true }
     );
-    const verified = live.filter(function (event) {
-      return isMatchingReceipt(event, filter);
-    });
     const stored = await readReceipt(pubkey, aTag);
-    if (verified.length === 0 || (stored && verified.length < stored.summary.eventCount)) {
-      if (stored) return presentReceiptCache(stored);
+    const providerEntry = await readProvider(pubkey);
+    const provider = providerEntry && providerEntry.value;
+    const validated = validatedZapReceipts(live, filter, provider);
+
+    if (validated.length === 0) {
+      if (stored) return receiptCacheMarker(stored.summary);
       return live;
     }
-    await rememberReceipts(pubkey, aTag, verified);
-    return live;
+
+    if (!stored) {
+      await rememberReceipts(pubkey, aTag, validated);
+      return validated;
+    }
+
+    const haveEvents = Boolean(
+      stored.events &&
+      stored.events.length > 0 &&
+      stored.events.length === stored.summary.eventCount
+    );
+    if (haveEvents) {
+      const byId = new Map();
+      for (const event of validatedZapReceipts(stored.events, filter, provider)) {
+        byId.set(String(event.id).toLowerCase(), event);
+      }
+      for (const event of validated) {
+        byId.set(String(event.id).toLowerCase(), event);
+      }
+      const union = Array.from(byId.values());
+      await rememberReceipts(pubkey, aTag, union);
+      return union;
+    }
+
+    const known = new Set(stored.summary.rows.map(function (row) {
+      return row.id;
+    }));
+    const novel = validated.filter(function (event) {
+      return !known.has(String(event.id || '').toLowerCase());
+    });
+    if (novel.length === 0) return receiptCacheMarker(stored.summary);
+    const summary = mergeStoredSummary(stored.summary, novel);
+    await rememberSummary(pubkey, aTag, summary, null);
+    return receiptCacheMarker(summary);
   }
 
   function queryZapReceipts(pool, relays, filter) {
@@ -1324,32 +1425,49 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
 
     let lastError = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const provider = await resolveZapProvider(
-        pool,
-        relays,
-        payload.actionId,
-        context,
-        {
-          allowStale: false,
-          bypassCache: attempt > 0
-        }
-      );
-      if (
-        (provider.minSendable !== null && amount < provider.minSendable) ||
-        (provider.maxSendable !== null && amount > provider.maxSendable) ||
-        comment.length > provider.commentAllowed
-      ) {
-        throw new Error('Zap amount or comment is not supported by the provider');
-      }
-      const callback = new URL(provider.callback);
-      callback.searchParams.set('amount', String(amount));
-      callback.searchParams.set('nostr', JSON.stringify(zapEvent));
-      if (comment) callback.searchParams.set('comment', comment);
-
-      let response;
       try {
+        const provider = await resolveZapProvider(
+          pool,
+          relays,
+          payload.actionId,
+          context,
+          {
+            allowStale: false,
+            bypassCache: attempt > 0
+          }
+        );
+        if (
+          (provider.minSendable !== null && amount < provider.minSendable) ||
+          (provider.maxSendable !== null && amount > provider.maxSendable) ||
+          comment.length > provider.commentAllowed
+        ) {
+          throw new Error('Zap amount or comment is not supported by the provider');
+        }
+        const callback = new URL(provider.callback);
+        callback.searchParams.set('amount', String(amount));
+        callback.searchParams.set('nostr', JSON.stringify(zapEvent));
+        if (comment) callback.searchParams.set('comment', comment);
+
         requireCurrentActionContext(payload.actionId, context);
-        response = await sendHttpsJsonRequest(callback.toString());
+        const response = await sendHttpsJsonRequest(callback.toString());
+        requireCurrentActionContext(payload.actionId, context);
+        const invoice = response?.json?.pr;
+        if (
+          response?.status < 200 ||
+          response?.status >= 300 ||
+          typeof invoice !== 'string' ||
+          getInvoiceAmountMsats(invoice) !== amount
+        ) {
+          throw new Error('Zap provider returned an invalid invoice');
+        }
+        return {
+          invoice: invoice,
+          provider: {
+            lnurl: provider.lnurl,
+            callback: provider.callback,
+            nostrPubkey: provider.nostrPubkey
+          }
+        };
       } catch (error) {
         requireCurrentActionContext(payload.actionId, context);
         lastError = error;
@@ -1359,29 +1477,6 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         }
         throw error;
       }
-      requireCurrentActionContext(payload.actionId, context);
-      const invoice = response?.json?.pr;
-      if (
-        response?.status < 200 ||
-        response?.status >= 300 ||
-        typeof invoice !== 'string' ||
-        getInvoiceAmountMsats(invoice) !== amount
-      ) {
-        lastError = new Error('Zap provider returned an invalid invoice');
-        if (attempt === 0) {
-          await dropProvider(context.recipientPubkey);
-          continue;
-        }
-        throw lastError;
-      }
-      return {
-        invoice: invoice,
-        provider: {
-          lnurl: provider.lnurl,
-          callback: provider.callback,
-          nostrPubkey: provider.nostrPubkey
-        }
-      };
     }
     throw lastError || new Error('Zap provider returned an invalid invoice');
   }

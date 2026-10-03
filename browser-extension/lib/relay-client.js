@@ -7484,7 +7484,195 @@
   }
 
   // browser-extension/src/relay-client.js
+  var import_light_bolt11_decoder2 = __toESM(require_bolt11(), 1);
+
+  // src/nostr-zap-button/zap-receipt.ts
   var import_light_bolt11_decoder = __toESM(require_bolt11(), 1);
+
+  // src/common/nostr-event.ts
+  function cloneVerifiedEvent(value) {
+    if (!value || typeof value !== "object") return null;
+    const event = value;
+    if (typeof event.id !== "string" || typeof event.pubkey !== "string" || typeof event.created_at !== "number" || !Number.isInteger(event.created_at) || typeof event.kind !== "number" || !Number.isInteger(event.kind) || typeof event.content !== "string" || typeof event.sig !== "string" || !Array.isArray(event.tags) || event.tags.some(
+      (tag) => !Array.isArray(tag) || tag.some((value2) => typeof value2 !== "string")
+    )) {
+      return null;
+    }
+    const candidate = {
+      // Shadow any inherited nostr-tools cache value while still retaining
+      // Object.prototype: nostr-tools' validator requires `instanceof Object`.
+      [verifiedSymbol]: void 0,
+      id: event.id,
+      pubkey: event.pubkey,
+      created_at: event.created_at,
+      kind: event.kind,
+      tags: event.tags.map((tag) => [...tag]),
+      content: event.content,
+      sig: event.sig
+    };
+    try {
+      return verifyEvent(candidate) ? candidate : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // src/nostr-zap-button/zap-receipt.ts
+  function getTagEntries(tags, name) {
+    return Array.isArray(tags) ? tags.filter((tag) => Array.isArray(tag) && tag[0] === name) : [];
+  }
+  function getUniqueTagValue(tags, name) {
+    const matches = getTagEntries(tags, name);
+    return matches.length === 1 && typeof matches[0][1] === "string" && matches[0][1].length > 0 ? matches[0][1] : null;
+  }
+  function normalizeLnurlTag(value) {
+    try {
+      let urlString = value;
+      if (/^lnurl1/i.test(value)) {
+        const { words } = bech32.decode(value.toLowerCase(), 1e3);
+        urlString = new TextDecoder().decode(Uint8Array.from(bech32.fromWords(words)));
+      }
+      return new URL(urlString).toString();
+    } catch {
+      return null;
+    }
+  }
+  function getBolt11AmountMsats(bolt11) {
+    try {
+      const decoded = (0, import_light_bolt11_decoder.decode)(bolt11);
+      const amountSection = decoded.sections.find(
+        (section) => section.name === "amount"
+      );
+      if (!amountSection?.value) return null;
+      const amount = Number(amountSection.value);
+      return Number.isFinite(amount) && amount > 0 ? amount : null;
+    } catch {
+      return null;
+    }
+  }
+  function validateZapReceipt(receipt, opts) {
+    if (receipt.kind !== 9735) {
+      return { ok: false, reason: "not-kind-9735" };
+    }
+    const verifiedReceipt = cloneVerifiedEvent(receipt);
+    if (!verifiedReceipt) {
+      return { ok: false, reason: "receipt-sig" };
+    }
+    if (verifiedReceipt.pubkey.toLowerCase() !== opts.provider.nostrPubkey.toLowerCase()) {
+      return { ok: false, reason: "receipt-pubkey-mismatch" };
+    }
+    const receiptPTags = getTagEntries(verifiedReceipt.tags, "p");
+    const receiptP = getUniqueTagValue(verifiedReceipt.tags, "p");
+    if (receiptPTags.length > 1) {
+      return { ok: false, reason: "duplicate-receipt-p" };
+    }
+    if (!receiptP || receiptP.toLowerCase() !== opts.recipientPubkey.toLowerCase()) {
+      return { ok: false, reason: "receipt-p-mismatch" };
+    }
+    const descriptionTags = getTagEntries(
+      verifiedReceipt.tags,
+      "description"
+    );
+    const description = getUniqueTagValue(
+      verifiedReceipt.tags,
+      "description"
+    );
+    if (descriptionTags.length > 1) {
+      return { ok: false, reason: "duplicate-description" };
+    }
+    if (!description) {
+      return { ok: false, reason: "missing-description" };
+    }
+    const zapRequestError = nip57_exports.validateZapRequest(description);
+    if (zapRequestError) {
+      return { ok: false, reason: `invalid-zap-request:${zapRequestError}` };
+    }
+    let parsedZapRequest;
+    try {
+      parsedZapRequest = JSON.parse(description);
+    } catch {
+      return { ok: false, reason: "description-json" };
+    }
+    if (parsedZapRequest.kind !== 9734) {
+      return { ok: false, reason: "zap-request-kind" };
+    }
+    const zapRequest = cloneVerifiedEvent(parsedZapRequest);
+    if (!zapRequest) {
+      return { ok: false, reason: "zap-request-sig" };
+    }
+    const requestPTags = getTagEntries(zapRequest.tags, "p");
+    const requestP = getUniqueTagValue(zapRequest.tags, "p");
+    if (requestPTags.length > 1) {
+      return { ok: false, reason: "duplicate-zap-request-p" };
+    }
+    if (!requestP || requestP.toLowerCase() !== opts.recipientPubkey.toLowerCase()) {
+      return { ok: false, reason: "zap-request-p-mismatch" };
+    }
+    const bolt11Tags = getTagEntries(verifiedReceipt.tags, "bolt11");
+    const bolt11 = getUniqueTagValue(verifiedReceipt.tags, "bolt11");
+    if (bolt11Tags.length > 1) {
+      return { ok: false, reason: "duplicate-bolt11" };
+    }
+    if (!bolt11) {
+      return { ok: false, reason: "missing-bolt11" };
+    }
+    if (opts.expectedBolt11 && bolt11 !== opts.expectedBolt11) {
+      return { ok: false, reason: "bolt11-mismatch" };
+    }
+    const invoiceAmountMsats = getBolt11AmountMsats(bolt11);
+    if (invoiceAmountMsats == null) {
+      return { ok: false, reason: "invalid-bolt11-amount" };
+    }
+    const amountTags = getTagEntries(zapRequest.tags, "amount");
+    if (amountTags.length > 1) {
+      return { ok: false, reason: "duplicate-amount" };
+    }
+    const amountTag = getUniqueTagValue(zapRequest.tags, "amount");
+    if (amountTags.length === 1 && !amountTag) {
+      return { ok: false, reason: "invalid-amount" };
+    }
+    if (amountTag) {
+      const requestAmount = Number(amountTag);
+      if (!Number.isFinite(requestAmount) || requestAmount !== invoiceAmountMsats) {
+        return { ok: false, reason: "amount-mismatch" };
+      }
+    }
+    const lnurlTags = getTagEntries(zapRequest.tags, "lnurl");
+    if (lnurlTags.length > 1) {
+      return { ok: false, reason: "duplicate-lnurl" };
+    }
+    const requestLnurl = getUniqueTagValue(zapRequest.tags, "lnurl");
+    if (lnurlTags.length === 1 && !requestLnurl) {
+      return { ok: false, reason: "lnurl-mismatch" };
+    }
+    if (requestLnurl) {
+      const normalized = normalizeLnurlTag(requestLnurl);
+      if (!normalized || normalized !== opts.provider.lnurl) {
+        return { ok: false, reason: "lnurl-mismatch" };
+      }
+    }
+    const receiptATags = getTagEntries(verifiedReceipt.tags, "a");
+    const requestATags = getTagEntries(zapRequest.tags, "a");
+    if (receiptATags.length > 1 || requestATags.length > 1) {
+      return { ok: false, reason: "duplicate-a" };
+    }
+    const receiptA = getUniqueTagValue(verifiedReceipt.tags, "a");
+    const requestA = getUniqueTagValue(zapRequest.tags, "a");
+    if (opts.expectedATag) {
+      if (receiptA !== opts.expectedATag || requestA !== opts.expectedATag) {
+        return { ok: false, reason: "a-mismatch" };
+      }
+    } else if (receiptATags.length !== requestATags.length || receiptA !== requestA) {
+      return { ok: false, reason: "a-mismatch" };
+    }
+    return {
+      ok: true,
+      amountMsats: invoiceAmountMsats,
+      zapRequest
+    };
+  }
+
+  // browser-extension/src/relay-client.js
   (function() {
     const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
     const REQUEST_SOURCE = "nostr-components-relay-main";
@@ -8375,12 +8563,32 @@
       });
       return matches.length === 1 ? matches[0][1] : null;
     }
-    function isMatchingReceipt(event, filter) {
-      if (!event || event.kind !== 9735 || !eventVerified(event)) return false;
-      const pubkey = filter["#p"][0];
-      if (String(receiptTag(event, "p") || "").toLowerCase() !== pubkey) return false;
-      if (filter["#a"] && receiptTag(event, "a") !== filter["#a"][0]) return false;
-      return true;
+    function validatedZapReceipts(events, filter, provider) {
+      if (!provider || !Array.isArray(events)) return [];
+      const expectedATag = filter["#a"] ? filter["#a"][0] : void 0;
+      const accepted = [];
+      for (const event of events) {
+        const result = validateZapReceipt(event, {
+          recipientPubkey: filter["#p"][0],
+          provider: {
+            lnurl: provider.lnurl,
+            callback: provider.callback,
+            nostrPubkey: provider.nostrPubkey
+          },
+          expectedATag
+        });
+        if (result && result.ok) accepted.push(event);
+      }
+      return accepted;
+    }
+    function receiptCacheMarker(summary) {
+      return [{
+        extensionZapCache: true,
+        cachedZapSummary: {
+          totalSats: summary.totalSats,
+          rows: summary.rows
+        }
+      }];
     }
     function summarizeReceipts(events) {
       let totalMsats = 0;
@@ -8422,17 +8630,60 @@
         rows
       };
     }
-    function presentReceiptCache(stored) {
-      if (stored.events && stored.events.length > 0 && stored.events.length === stored.summary.eventCount) {
-        return stored.events;
-      }
-      return [{
-        extensionZapCache: true,
-        cachedZapSummary: {
-          totalSats: stored.summary.totalSats,
-          rows: stored.summary.rows
+    function mergeStoredSummary(summary, novelEvents) {
+      const known = new Set(summary.rows.map(function(row) {
+        return row.id;
+      }));
+      const rows = summary.rows.slice();
+      let totalSats = summary.totalSats;
+      let eventCount = summary.eventCount;
+      const capped = summary.rows.length < summary.eventCount;
+      const oldest = summary.rows.reduce(function(min, row) {
+        return Math.min(min, row.createdAt);
+      }, Infinity);
+      for (const event of novelEvents) {
+        const id = String(event.id || "").toLowerCase();
+        if (!id || known.has(id)) continue;
+        const amountMsats = getInvoiceAmountMsats(receiptTag(event, "bolt11") || "");
+        if (!amountMsats) continue;
+        if (capped && (!Number.isInteger(event.created_at) || event.created_at <= oldest)) {
+          continue;
         }
-      }];
+        known.add(id);
+        totalSats += amountMsats / 1e3;
+        eventCount += 1;
+        let authorPubkey = "";
+        let comment = "";
+        const description = receiptTag(event, "description");
+        if (description) {
+          try {
+            const parsed = JSON.parse(description);
+            if (parsed && HEX_64_PATTERN.test(String(parsed.pubkey || ""))) {
+              authorPubkey = String(parsed.pubkey).toLowerCase();
+            }
+            if (parsed && typeof parsed.content === "string") {
+              comment = parsed.content.slice(0, 280);
+            }
+          } catch (_error) {
+            comment = "";
+          }
+        }
+        rows.push({
+          id,
+          amountSats: amountMsats / 1e3,
+          createdAt: Number.isInteger(event.created_at) ? event.created_at : 0,
+          authorPubkey,
+          comment
+        });
+      }
+      rows.sort(function(left, right) {
+        return right.createdAt - left.createdAt;
+      });
+      return {
+        totalSats,
+        eventCount,
+        rows: rows.slice(0, RECEIPT_ROW_LIMIT)
+      };
     }
     async function readReceipt(pubkey, aTag) {
       const key = pubkey + "\n" + aTag;
@@ -8454,19 +8705,23 @@
       rememberBounded(receiptMemory, key, entry, MEMORY_RECEIPT_LIMIT);
       return entry;
     }
-    async function rememberReceipts(pubkey, aTag, events) {
-      const summary = summarizeReceipts(events);
-      if (summary.eventCount < 1) return;
+    async function rememberSummary(pubkey, aTag, summary, events) {
+      if (!summary || summary.eventCount < 1) return;
       const key = pubkey + "\n" + aTag;
       const now2 = Date.now();
+      const keepEvents = Array.isArray(events) && events.length === summary.eventCount && events.length <= RECEIPT_ROW_LIMIT;
       rememberBounded(receiptMemory, key, {
         summary,
-        events: events.length <= RECEIPT_ROW_LIMIT ? events : null,
+        events: keepEvents ? events : null,
         expiresAt: now2 + ZAP_CACHE_STALE_MS
       }, MEMORY_RECEIPT_LIMIT);
       if (typeof extension.storage.setZapReceipt === "function") {
         await extension.storage.setZapReceipt(pubkey, aTag, summary, ZAP_CACHE_STALE_MS);
       }
+    }
+    async function rememberReceipts(pubkey, aTag, events) {
+      const summary = summarizeReceipts(events);
+      await rememberSummary(pubkey, aTag, summary, events);
     }
     async function queryZapReceiptsUncached(pool, relays, filter) {
       const pubkey = filter["#p"][0];
@@ -8477,16 +8732,43 @@
         filter,
         { requireEvent: true }
       );
-      const verified = live.filter(function(event) {
-        return isMatchingReceipt(event, filter);
-      });
       const stored = await readReceipt(pubkey, aTag);
-      if (verified.length === 0 || stored && verified.length < stored.summary.eventCount) {
-        if (stored) return presentReceiptCache(stored);
+      const providerEntry = await readProvider(pubkey);
+      const provider = providerEntry && providerEntry.value;
+      const validated = validatedZapReceipts(live, filter, provider);
+      if (validated.length === 0) {
+        if (stored) return receiptCacheMarker(stored.summary);
         return live;
       }
-      await rememberReceipts(pubkey, aTag, verified);
-      return live;
+      if (!stored) {
+        await rememberReceipts(pubkey, aTag, validated);
+        return validated;
+      }
+      const haveEvents = Boolean(
+        stored.events && stored.events.length > 0 && stored.events.length === stored.summary.eventCount
+      );
+      if (haveEvents) {
+        const byId = /* @__PURE__ */ new Map();
+        for (const event of validatedZapReceipts(stored.events, filter, provider)) {
+          byId.set(String(event.id).toLowerCase(), event);
+        }
+        for (const event of validated) {
+          byId.set(String(event.id).toLowerCase(), event);
+        }
+        const union = Array.from(byId.values());
+        await rememberReceipts(pubkey, aTag, union);
+        return union;
+      }
+      const known = new Set(stored.summary.rows.map(function(row) {
+        return row.id;
+      }));
+      const novel = validated.filter(function(event) {
+        return !known.has(String(event.id || "").toLowerCase());
+      });
+      if (novel.length === 0) return receiptCacheMarker(stored.summary);
+      const summary = mergeStoredSummary(stored.summary, novel);
+      await rememberSummary(pubkey, aTag, summary, null);
+      return receiptCacheMarker(summary);
     }
     function queryZapReceipts(pool, relays, filter) {
       const key = filter["#p"][0] + "\n" + (filter["#a"] ? filter["#a"][0] : "");
@@ -8520,7 +8802,7 @@
     }
     function getInvoiceAmountMsats(invoice) {
       try {
-        const decoded = (0, import_light_bolt11_decoder.decode)(invoice);
+        const decoded = (0, import_light_bolt11_decoder2.decode)(invoice);
         const amount = decoded.sections.find(function(section) {
           return section.name === "amount";
         });
@@ -8551,27 +8833,39 @@
       }
       let lastError = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const provider = await resolveZapProvider(
-          pool,
-          relays,
-          payload.actionId,
-          context,
-          {
-            allowStale: false,
-            bypassCache: attempt > 0
-          }
-        );
-        if (provider.minSendable !== null && amount < provider.minSendable || provider.maxSendable !== null && amount > provider.maxSendable || comment.length > provider.commentAllowed) {
-          throw new Error("Zap amount or comment is not supported by the provider");
-        }
-        const callback = new URL(provider.callback);
-        callback.searchParams.set("amount", String(amount));
-        callback.searchParams.set("nostr", JSON.stringify(zapEvent));
-        if (comment) callback.searchParams.set("comment", comment);
-        let response;
         try {
+          const provider = await resolveZapProvider(
+            pool,
+            relays,
+            payload.actionId,
+            context,
+            {
+              allowStale: false,
+              bypassCache: attempt > 0
+            }
+          );
+          if (provider.minSendable !== null && amount < provider.minSendable || provider.maxSendable !== null && amount > provider.maxSendable || comment.length > provider.commentAllowed) {
+            throw new Error("Zap amount or comment is not supported by the provider");
+          }
+          const callback = new URL(provider.callback);
+          callback.searchParams.set("amount", String(amount));
+          callback.searchParams.set("nostr", JSON.stringify(zapEvent));
+          if (comment) callback.searchParams.set("comment", comment);
           requireCurrentActionContext(payload.actionId, context);
-          response = await sendHttpsJsonRequest(callback.toString());
+          const response = await sendHttpsJsonRequest(callback.toString());
+          requireCurrentActionContext(payload.actionId, context);
+          const invoice = response?.json?.pr;
+          if (response?.status < 200 || response?.status >= 300 || typeof invoice !== "string" || getInvoiceAmountMsats(invoice) !== amount) {
+            throw new Error("Zap provider returned an invalid invoice");
+          }
+          return {
+            invoice,
+            provider: {
+              lnurl: provider.lnurl,
+              callback: provider.callback,
+              nostrPubkey: provider.nostrPubkey
+            }
+          };
         } catch (error) {
           requireCurrentActionContext(payload.actionId, context);
           lastError = error;
@@ -8581,24 +8875,6 @@
           }
           throw error;
         }
-        requireCurrentActionContext(payload.actionId, context);
-        const invoice = response?.json?.pr;
-        if (response?.status < 200 || response?.status >= 300 || typeof invoice !== "string" || getInvoiceAmountMsats(invoice) !== amount) {
-          lastError = new Error("Zap provider returned an invalid invoice");
-          if (attempt === 0) {
-            await dropProvider(context.recipientPubkey);
-            continue;
-          }
-          throw lastError;
-        }
-        return {
-          invoice,
-          provider: {
-            lnurl: provider.lnurl,
-            callback: provider.callback,
-            nostrPubkey: provider.nostrPubkey
-          }
-        };
       }
       throw lastError || new Error("Zap provider returned an invalid invoice");
     }

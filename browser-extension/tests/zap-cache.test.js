@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { finalizeEvent, nip19 } from 'nostr-tools';
+import { finalizeEvent, generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import {
   BOLT11_20U,
   BOLT11_20U_AMOUNT_MSATS
@@ -72,6 +72,38 @@ function openRelaySession() {
     }
   };
   return { listeners: listeners, responses: responses, pageWindow: pageWindow };
+}
+
+function makeValidatedReceipt(recipientPubkey, providerSk, senderSk, aTag, createdAt) {
+  const amount = String(BOLT11_20U_AMOUNT_MSATS);
+  const zapRequest = finalizeEvent(
+    {
+      kind: 9734,
+      created_at: createdAt,
+      content: 'thanks',
+      tags: [
+        ['p', recipientPubkey],
+        ['amount', amount],
+        ['relays', 'wss://relay.damus.io/'],
+        ['a', aTag]
+      ]
+    },
+    senderSk
+  );
+  return finalizeEvent(
+    {
+      kind: 9735,
+      created_at: createdAt,
+      content: '',
+      tags: [
+        ['p', recipientPubkey],
+        ['bolt11', BOLT11_20U],
+        ['description', JSON.stringify(zapRequest)],
+        ['a', aTag]
+      ]
+    },
+    providerSk
+  );
 }
 
 async function sendRelay(session, channel, requestId, operation, payload) {
@@ -346,24 +378,28 @@ describe('extension zap cache', function () {
       },
       new Uint8Array(32).fill(46)
     );
+    const providerSk = generateSecretKey();
     const statusUrl = 'https://x.com/ada/status/44';
     const aTag = '39735:' + recipient.pubkey + ':' + statusUrl;
-    const receipt = finalizeEvent(
+    await extension.storage.setZapProvider(
+      recipient.pubkey,
       {
-        kind: 9735,
-        created_at: 40,
-        tags: [
-          ['p', recipient.pubkey],
-          ['bolt11', BOLT11_20U],
-          ['description', JSON.stringify({
-            pubkey: 'a'.repeat(64),
-            content: 'thanks'
-          })],
-          ['a', aTag]
-        ],
-        content: ''
+        lnurl: 'https://ln.example/.well-known/lnurlp/ada',
+        callback: 'https://ln.example/callback',
+        nostrPubkey: getPublicKey(providerSk),
+        minSendable: 1000,
+        maxSendable: 100000000,
+        commentAllowed: 280
       },
-      new Uint8Array(32).fill(47)
+      60 * 60 * 1000,
+      24 * 60 * 60 * 1000
+    );
+    const receipt = makeValidatedReceipt(
+      recipient.pubkey,
+      providerSk,
+      generateSecretKey(),
+      aTag,
+      40
     );
     let emitReceipt = true;
     const pool = {
@@ -404,7 +440,17 @@ describe('extension zap cache', function () {
     await sendRelay(session, channel, '54'.repeat(16), 'query', receiptRequest);
 
     expect(session.responses[0].result.map(function (event) { return event.id; })).toEqual([receipt.id]);
-    expect(session.responses[1].result.map(function (event) { return event.id; })).toEqual([receipt.id]);
+    expect(session.responses[1].result).toEqual([{
+      extensionZapCache: true,
+      cachedZapSummary: {
+        totalSats: BOLT11_20U_AMOUNT_MSATS / 1000,
+        rows: [expect.objectContaining({
+          id: receipt.id,
+          amountSats: BOLT11_20U_AMOUNT_MSATS / 1000,
+          comment: 'thanks'
+        })]
+      }
+    }]);
     expect(stored['nostr-zap-receipts:v1'][0]).toMatchObject({
       pubkey: recipient.pubkey,
       totalSats: BOLT11_20U_AMOUNT_MSATS / 1000,
@@ -585,5 +631,307 @@ describe('extension zap cache', function () {
     expect(stored['nostr-zap-receipts:v1'].map(function (entry) {
       return entry.pubkey;
     }).sort()).toEqual([firstPubkey, secondPubkey].sort());
+  });
+
+  it('does not cache a receipt that fails NIP-57 checks', async function () {
+    const stored = installStorage();
+    const recipient = finalizeEvent(
+      {
+        kind: 0,
+        created_at: 1,
+        tags: [],
+        content: '{}'
+      },
+      new Uint8Array(32).fill(50)
+    );
+    const providerSk = generateSecretKey();
+    const statusUrl = 'https://x.com/ada/status/46';
+    const aTag = '39735:' + recipient.pubkey + ':' + statusUrl;
+    await extension.storage.setZapProvider(
+      recipient.pubkey,
+      {
+        lnurl: 'https://ln.example/.well-known/lnurlp/ada',
+        callback: 'https://ln.example/callback',
+        nostrPubkey: getPublicKey(providerSk),
+        minSendable: 1000,
+        maxSendable: 100000000,
+        commentAllowed: 0
+      },
+      60_000,
+      60_000
+    );
+    const forged = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: 40,
+        tags: [
+          ['p', recipient.pubkey],
+          ['bolt11', BOLT11_20U],
+          ['description', JSON.stringify({
+            pubkey: 'a'.repeat(64),
+            content: 'pay me'
+          })],
+          ['a', aTag]
+        ],
+        content: ''
+      },
+      generateSecretKey()
+    );
+    let emitReceipt = true;
+    const pool = {
+      subscribe(_relays, _filter, options) {
+        queueMicrotask(function () {
+          if (emitReceipt) options.onevent(forged);
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      },
+      destroy: vi.fn()
+    };
+    const session = openRelaySession();
+    const channel = '71'.repeat(32);
+    const actionId = '72'.repeat(32);
+    const relaySession = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: session.pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: statusUrl,
+      recipientNpub: nip19.npubEncode(recipient.pubkey)
+    });
+    const receiptRequest = {
+      actionId: actionId,
+      relays: ['wss://relay.damus.io'],
+      filter: {
+        kinds: [9735],
+        '#p': [recipient.pubkey],
+        '#a': [aTag],
+        limit: 1000
+      }
+    };
+
+    await sendRelay(session, channel, '73'.repeat(16), 'query', receiptRequest);
+    emitReceipt = false;
+    await sendRelay(session, channel, '74'.repeat(16), 'query', receiptRequest);
+
+    expect(stored['nostr-zap-receipts:v1']).toBeUndefined();
+    expect(session.responses[1].result).toEqual([]);
+    relaySession.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+  });
+
+  it('keeps an older cached zap when a later query returns only the new one', async function () {
+    const stored = installStorage();
+    const recipient = finalizeEvent(
+      {
+        kind: 0,
+        created_at: 1,
+        tags: [],
+        content: '{}'
+      },
+      new Uint8Array(32).fill(51)
+    );
+    const providerSk = generateSecretKey();
+    const senderSk = generateSecretKey();
+    const statusUrl = 'https://x.com/ada/status/47';
+    const aTag = '39735:' + recipient.pubkey + ':' + statusUrl;
+    await extension.storage.setZapProvider(
+      recipient.pubkey,
+      {
+        lnurl: 'https://ln.example/.well-known/lnurlp/ada',
+        callback: 'https://ln.example/callback',
+        nostrPubkey: getPublicKey(providerSk),
+        minSendable: 1000,
+        maxSendable: 100000000,
+        commentAllowed: 280
+      },
+      60_000,
+      60_000
+    );
+    const older = makeValidatedReceipt(recipient.pubkey, providerSk, senderSk, aTag, 40);
+    const newer = makeValidatedReceipt(recipient.pubkey, providerSk, senderSk, aTag, 50);
+    let emit = [older];
+    const pool = {
+      subscribe(_relays, _filter, options) {
+        const batch = emit;
+        queueMicrotask(function () {
+          batch.forEach(function (event) {
+            options.onevent(event);
+          });
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      },
+      destroy: vi.fn()
+    };
+    const session = openRelaySession();
+    const channel = '81'.repeat(32);
+    const actionId = '82'.repeat(32);
+    const relaySession = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: session.pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: statusUrl,
+      recipientNpub: nip19.npubEncode(recipient.pubkey)
+    });
+    const receiptRequest = {
+      actionId: actionId,
+      relays: ['wss://relay.damus.io'],
+      filter: {
+        kinds: [9735],
+        '#p': [recipient.pubkey],
+        '#a': [aTag],
+        limit: 1000
+      }
+    };
+
+    await sendRelay(session, channel, '83'.repeat(16), 'query', receiptRequest);
+    emit = [newer];
+    await sendRelay(session, channel, '84'.repeat(16), 'query', receiptRequest);
+
+    expect(session.responses[1].result.map(function (event) {
+      return event.id;
+    }).sort()).toEqual([older.id, newer.id].sort());
+    expect(stored['nostr-zap-receipts:v1'][0]).toMatchObject({
+      totalSats: (BOLT11_20U_AMOUNT_MSATS / 1000) * 2,
+      eventCount: 2
+    });
+    relaySession.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+  });
+
+  it('leaves stored providers in place when the storage read fails', async function () {
+    const stored = {};
+    let failReads = false;
+    globalThis.browser = {
+      storage: {
+        local: {
+          async get(key) {
+            if (failReads) throw new Error('storage unavailable');
+            return { [key]: stored[key] };
+          },
+          async set(next) {
+            Object.assign(stored, next);
+          }
+        }
+      }
+    };
+    const provider = {
+      lnurl: 'https://ln.example/.well-known/lnurlp/ada',
+      callback: 'https://ln.example/callback',
+      nostrPubkey: 'cd'.repeat(32),
+      minSendable: 1000,
+      maxSendable: 2000,
+      commentAllowed: 0
+    };
+    const pubkey = 'ab'.repeat(32);
+    await extension.storage.setZapProvider(pubkey, provider, 60_000, 60_000);
+    failReads = true;
+    await extension.storage.setZapProvider('ef'.repeat(32), provider, 60_000, 60_000);
+    await extension.storage.deleteZapProvider(pubkey);
+    failReads = false;
+
+    expect(stored['nostr-zap-providers:v1']).toHaveLength(1);
+    expect(stored['nostr-zap-providers:v1'][0].pubkey).toBe(pubkey);
+  });
+
+  it('retries the invoice after the provider lookup fails', async function () {
+    installStorage();
+    const profile = finalizeEvent(
+      {
+        kind: 0,
+        created_at: 12,
+        tags: [],
+        content: JSON.stringify({ lud16: 'bea@ln.example' })
+      },
+      new Uint8Array(32).fill(52)
+    );
+    const contentUrl = 'https://x.com/bea/status/48';
+    const amount = BOLT11_20U_AMOUNT_MSATS;
+    const zapEvent = finalizeEvent(
+      {
+        kind: 9734,
+        created_at: 13,
+        content: '',
+        tags: [
+          ['p', profile.pubkey],
+          ['amount', String(amount)],
+          ['a', '39735:' + profile.pubkey + ':' + contentUrl],
+          ['relays', 'wss://relay.damus.io/']
+        ]
+      },
+      new Uint8Array(32).fill(53)
+    );
+    let lnurlAttempts = 0;
+    globalThis.browser.runtime = {
+      async sendMessage(message) {
+        if (message.url.includes('/.well-known/lnurlp/')) {
+          lnurlAttempts += 1;
+          if (lnurlAttempts === 1) {
+            return { ok: false, error: 'LNURL request failed' };
+          }
+          return {
+            ok: true,
+            result: {
+              status: 200,
+              json: {
+                allowsNostr: true,
+                callback: 'https://ln.example/callback',
+                nostrPubkey: 'f'.repeat(64),
+                minSendable: amount,
+                maxSendable: amount,
+                commentAllowed: 0
+              }
+            }
+          };
+        }
+        return {
+          ok: true,
+          result: {
+            status: 200,
+            json: { pr: BOLT11_20U }
+          }
+        };
+      }
+    };
+    const pool = {
+      subscribe(_relays, _filter, options) {
+        queueMicrotask(function () {
+          options.onevent(profile);
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      },
+      destroy: vi.fn()
+    };
+    const session = openRelaySession();
+    const channel = '91'.repeat(32);
+    const actionId = '92'.repeat(32);
+    const relaySession = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: session.pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: contentUrl,
+      recipientNpub: nip19.npubEncode(profile.pubkey)
+    });
+
+    await sendRelay(session, channel, '93'.repeat(16), 'fetchZapInvoice', {
+      actionId: actionId,
+      relays: ['wss://relay.damus.io'],
+      amount: amount,
+      comment: '',
+      zapEvent: zapEvent
+    });
+
+    expect(session.responses[0].ok).toBe(true);
+    expect(session.responses[0].result.invoice).toBe(BOLT11_20U);
+    expect(lnurlAttempts).toBe(2);
+    relaySession.dispose();
+    extension.relayClient.revokeActionContext(actionId);
   });
 });

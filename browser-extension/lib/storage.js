@@ -253,9 +253,12 @@
 
   async function writeZapEntry(storageKey, limit, entry, sameEntry) {
     return withZapLock(storageKey, async function () {
-      const values = await getValues(storageKey).catch(function () {
-        return {};
-      });
+      let values;
+      try {
+        values = await getValues(storageKey);
+      } catch (_error) {
+        return;
+      }
       const active = activeZapEntries(values[storageKey], Date.now()).filter(function (item) {
         return !sameEntry(item);
       });
@@ -474,9 +477,12 @@
     if (!isHex64(pubkey)) return;
     const normalized = pubkey.toLowerCase();
     return withZapLock(ZAP_PROVIDER_STORAGE_KEY, async function () {
-      const values = await getValues(ZAP_PROVIDER_STORAGE_KEY).catch(function () {
-        return {};
-      });
+      let values;
+      try {
+        values = await getValues(ZAP_PROVIDER_STORAGE_KEY);
+      } catch (_error) {
+        return;
+      }
       const active = activeZapEntries(
         values[ZAP_PROVIDER_STORAGE_KEY],
         Date.now()
