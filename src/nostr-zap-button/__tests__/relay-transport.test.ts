@@ -479,6 +479,49 @@ describe('Zap component relay transport', () => {
     });
   });
 
+  it('returns a cached summary without a provider lookup', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        extensionZapCache: true,
+        cachedZapSummary: {
+          totalSats: 15,
+          rows: [
+            {
+              amountSats: 4,
+              createdAt: 5,
+              authorPubkey: 'a'.repeat(64),
+              comment: 'old',
+            },
+            {
+              amountSats: 11,
+              createdAt: 30,
+              authorPubkey: 'b'.repeat(64),
+              comment: 'new',
+            },
+          ],
+        },
+      },
+    ]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query,
+        publish: vi.fn(),
+      },
+    });
+
+    const result = await fetchTotalZapAmount({
+      pubkey: 'c'.repeat(64),
+      relays: RELAYS,
+      url: 'https://x.com/alice/status/3',
+    });
+
+    expect(result.totalAmount).toBe(15);
+    expect(result.zapDetails.map((detail) => detail.comment)).toEqual([
+      'new',
+      'old',
+    ]);
+  });
+
   it('does not report a failed extension zap total as zero', async () => {
     Object.assign(globalThis, {
       __nostrComponentsRelayTransport: {

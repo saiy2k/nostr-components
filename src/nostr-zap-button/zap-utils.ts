@@ -523,6 +523,7 @@ function readExtensionZapCache(events: unknown[]): ZapAmountResult | null {
       comment: typeof candidate.comment === 'string' ? candidate.comment : '',
     });
   }
+  zapDetails.sort((left, right) => right.date.getTime() - left.date.getTime());
   return {
     totalAmount: totalSats,
     zapDetails,
@@ -557,10 +558,11 @@ export const fetchTotalZapAmount = async ({
       }
     } else {
       const profileMetadata = await getProfileMetadata(pubkey, relays);
-      if (!profileMetadata) {
+      if (profileMetadata) {
+        provider = await getZapProviderInfo(profileMetadata);
+      } else if (!transport) {
         return { totalAmount: 0, zapDetails: [] };
       }
-      provider = await getZapProviderInfo(profileMetadata);
     }
     if (!provider && !transport) {
       // Fail closed: without LNURL nostrPubkey we cannot authenticate receipts.

@@ -210,6 +210,21 @@
     return typeof value === 'string' && PUBLIC_KEY_PATTERN.test(value);
   }
 
+  const zapWriteQueues = new Map();
+
+  function withZapLock(storageKey, task) {
+    const previous = zapWriteQueues.get(storageKey) || Promise.resolve();
+    const next = previous.then(task, task);
+    const settled = next.catch(function () {});
+    zapWriteQueues.set(storageKey, settled);
+    settled.then(function () {
+      if (zapWriteQueues.get(storageKey) === settled) {
+        zapWriteQueues.delete(storageKey);
+      }
+    });
+    return next;
+  }
+
   function activeZapEntries(value, now) {
     if (!Array.isArray(value)) return [];
     return value.filter(function (entry) {
@@ -223,28 +238,32 @@
   }
 
   async function readZapEntries(storageKey) {
-    const values = await getValues(storageKey).catch(function () {
-      return {};
+    return withZapLock(storageKey, async function () {
+      const values = await getValues(storageKey).catch(function () {
+        return {};
+      });
+      const stored = values[storageKey];
+      const active = activeZapEntries(stored, Date.now());
+      if (Array.isArray(stored) && active.length !== stored.length) {
+        await setValues({ [storageKey]: active }).catch(function () {});
+      }
+      return active;
     });
-    const stored = values[storageKey];
-    const active = activeZapEntries(stored, Date.now());
-    if (Array.isArray(stored) && active.length !== stored.length) {
-      await setValues({ [storageKey]: active }).catch(function () {});
-    }
-    return active;
   }
 
   async function writeZapEntry(storageKey, limit, entry, sameEntry) {
-    const values = await getValues(storageKey).catch(function () {
-      return {};
+    return withZapLock(storageKey, async function () {
+      const values = await getValues(storageKey).catch(function () {
+        return {};
+      });
+      const active = activeZapEntries(values[storageKey], Date.now()).filter(function (item) {
+        return !sameEntry(item);
+      });
+      active.unshift(entry);
+      await setValues({
+        [storageKey]: active.slice(0, limit)
+      }).catch(function () {});
     });
-    const active = activeZapEntries(values[storageKey], Date.now()).filter(function (item) {
-      return !sameEntry(item);
-    });
-    active.unshift(entry);
-    await setValues({
-      [storageKey]: active.slice(0, limit)
-    }).catch(function () {});
   }
 
   function sanitizeProviderValue(value) {
@@ -454,12 +473,20 @@
   async function deleteZapProvider(pubkey) {
     if (!isHex64(pubkey)) return;
     const normalized = pubkey.toLowerCase();
-    const entries = await readZapEntries(ZAP_PROVIDER_STORAGE_KEY);
-    await setValues({
-      [ZAP_PROVIDER_STORAGE_KEY]: entries.filter(function (entry) {
+    return withZapLock(ZAP_PROVIDER_STORAGE_KEY, async function () {
+      const values = await getValues(ZAP_PROVIDER_STORAGE_KEY).catch(function () {
+        return {};
+      });
+      const active = activeZapEntries(
+        values[ZAP_PROVIDER_STORAGE_KEY],
+        Date.now()
+      ).filter(function (entry) {
         return !entry || String(entry.pubkey || '').toLowerCase() !== normalized;
-      })
-    }).catch(function () {});
+      });
+      await setValues({
+        [ZAP_PROVIDER_STORAGE_KEY]: active
+      }).catch(function () {});
+    });
   }
 
   async function getZapProfile(pubkey) {

@@ -527,4 +527,63 @@ describe('extension zap cache', function () {
     relaySession.dispose();
     extension.relayClient.revokeActionContext(actionId);
   });
+
+  it('keeps concurrent receipt writes on the same storage key', async function () {
+    let releaseRead;
+    const gate = new Promise(function (resolve) {
+      releaseRead = resolve;
+    });
+    let reads = 0;
+    const stored = {};
+    globalThis.browser = {
+      storage: {
+        local: {
+          async get(key) {
+            reads += 1;
+            if (reads === 1) await gate;
+            return { [key]: stored[key] };
+          },
+          async set(next) {
+            Object.assign(stored, next);
+          }
+        }
+      }
+    };
+    function receipt(amount) {
+      return {
+        totalSats: amount,
+        eventCount: 1,
+        rows: [{
+          id: amount.toString(16).padStart(64, 'a'),
+          amountSats: amount,
+          createdAt: amount,
+          authorPubkey: 'b'.repeat(64),
+          comment: 'zap ' + amount
+        }]
+      };
+    }
+    const firstPubkey = '1'.padStart(64, 'c');
+    const secondPubkey = '2'.padStart(64, 'c');
+    const pending = Promise.all([
+      extension.storage.setZapReceipt(
+        firstPubkey,
+        '39735:' + firstPubkey + ':https://x.com/ada/status/1',
+        receipt(1),
+        60_000
+      ),
+      extension.storage.setZapReceipt(
+        secondPubkey,
+        '39735:' + secondPubkey + ':https://x.com/ada/status/2',
+        receipt(2),
+        60_000
+      )
+    ]);
+    await Promise.resolve();
+    releaseRead();
+    await pending;
+
+    expect(stored['nostr-zap-receipts:v1'].map(function (entry) {
+      return entry.pubkey;
+    }).sort()).toEqual([firstPubkey, secondPubkey].sort());
+  });
 });

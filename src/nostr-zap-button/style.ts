@@ -190,6 +190,18 @@ export function getZapButtonStyles(): string {
       height: var(--nostrc-icon-height);
     }
 
+    .zap-action-notice {
+      border: 0;
+      clip: rect(0 0 0 0);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+
     /* Total zap amount display */
     .total-zap-amount {
       font-size: var(--nostrc-font-size-sm);
