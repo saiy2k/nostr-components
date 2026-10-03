@@ -95,6 +95,9 @@
     const existingAction = extension.dom.findAction(actionBar, tweetInfo.statusId);
     if (existingAction) {
       extension.dom.updateActionTheme(existingAction, theme);
+      if (extension.dom.retargetAction(existingAction, tweetInfo)) {
+        void loadDirectoryIdentity(existingAction, tweetInfo.username);
+      }
       return;
     }
 

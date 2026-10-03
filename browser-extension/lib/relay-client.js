@@ -7511,6 +7511,7 @@
       "wss://nostr-pub.wellorder.net/",
       "wss://relay.nostr.band/"
     ];
+    const PROFILE_RELAY = normalizeURL2("wss://purplepag.es");
     const ALLOWED_RELAY_URLS = new Set(
       [
         "wss://relay.momostr.pink",
@@ -7745,6 +7746,13 @@
     function selectQueryRelays(relays) {
       return [...relays].sort((left, right) => relayScore(left) - relayScore(right)).slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
     }
+    function selectProfileRelays(relays) {
+      const ranked = selectQueryRelays(relays);
+      if (ranked.includes(PROFILE_RELAY) || !relays.includes(PROFILE_RELAY)) {
+        return ranked;
+      }
+      return [PROFILE_RELAY, ...ranked];
+    }
     function summarizeReactionEvents(events) {
       const latestByPubkey = /* @__PURE__ */ new Map();
       for (const event of events) {
@@ -7769,9 +7777,10 @@
       )[0];
     }
     function queryWithFastQuorum(pool, relays, filters, options) {
-      const selectedRelays = selectQueryRelays(relays);
+      const selectedRelays = options && Array.isArray(options.selectedRelays) ? options.selectedRelays : selectQueryRelays(relays);
       const filterList = Array.isArray(filters) ? filters : [filters];
       const eventsById = /* @__PURE__ */ new Map();
+      const relaysWithEvents = /* @__PURE__ */ new Set();
       const closers = [];
       const requireEvent = options && options.requireEvent === true;
       return new Promise(function(resolve) {
@@ -7785,7 +7794,7 @@
           clearTimeout(timeoutId);
           if (penalizePending) {
             for (const relay of selectedRelays) {
-              if (completedRelays.has(relay)) continue;
+              if (completedRelays.has(relay) || relaysWithEvents.has(relay)) continue;
               const previous = relayHealth.get(relay);
               relayHealth.set(relay, {
                 latencyMs: QUERY_DEADLINE_MS,
@@ -7821,7 +7830,13 @@
           const options2 = {
             maxWait: QUERY_DEADLINE_MS,
             onevent(event) {
-              if (event && event.id) eventsById.set(event.id, event);
+              if (event && event.id) {
+                eventsById.set(event.id, event);
+                relaysWithEvents.add(relay);
+              }
+              if (requireEvent && eventsById.size > 0 && successfulResponses >= requiredResponses) {
+                finish(false);
+              }
             },
             oneose() {
               settleRelay2(true);
@@ -8079,7 +8094,10 @@
           authors: [context.recipientPubkey],
           limit: 1
         },
-        { requireEvent: true }
+        {
+          requireEvent: true,
+          selectedRelays: selectProfileRelays(relays)
+        }
       );
       requireCurrentActionContext(actionId, context);
       const profiles = events.filter(function(event) {
@@ -8269,8 +8287,18 @@
         ) || !filter || !isFilterBoundToAction(filter, payload.actionId)) {
           throw new Error("Relay request contains an unsupported filter");
         }
-        const events = await queryWithFastQuorum(pool, relays, filter);
-        if (filter.kinds[0] !== 0) return events;
+        const profileQuery = filter.kinds[0] === 0;
+        const zapQuery = filter.kinds[0] === 9735;
+        const events = await queryWithFastQuorum(
+          pool,
+          relays,
+          filter,
+          profileQuery ? {
+            requireEvent: true,
+            selectedRelays: selectProfileRelays(relays)
+          } : zapQuery ? { requireEvent: true } : void 0
+        );
+        if (!profileQuery) return events;
         const authors = new Set(filter.authors);
         return events.filter(function(event) {
           return event?.kind === 0 && authors.has(String(event.pubkey || "").toLowerCase()) && verifyEvent(event);

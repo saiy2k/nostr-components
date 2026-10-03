@@ -13,17 +13,12 @@
     return current === ancestor ? depth : Number.POSITIVE_INFINITY;
   }
 
-  function getTweetInfo(article) {
-    const timeLink = article.querySelector('a[href*="/status/"] time');
-    if (timeLink && timeLink.closest('a')) {
-      const parsedTimeLink = extension.url.parseTweetUrl(
-        timeLink.closest('a').getAttribute('href')
-      );
-      if (parsedTimeLink) {
-        return parsedTimeLink;
-      }
-    }
+  function linkHasTime(link) {
+    return typeof link.querySelector === 'function' &&
+      Boolean(link.querySelector('time'));
+  }
 
+  function getTweetInfo(article) {
     const parsedLinks = [];
     const links = Array.from(article.querySelectorAll('a[href*="/status/"]'));
     for (const link of links) {
@@ -31,29 +26,49 @@
       if (!parsed) continue;
       parsedLinks.push({
         info: parsed,
-        depth: nestingDepth(link, article)
+        depth: nestingDepth(link, article),
+        hasTime: linkHasTime(link)
       });
     }
     if (parsedLinks.length === 0) {
       return null;
     }
 
+    let shallowestDepth = Number.POSITIVE_INFINITY;
+    for (const entry of parsedLinks) {
+      if (entry.depth < shallowestDepth) shallowestDepth = entry.depth;
+    }
+
     const page = extension.url.parseTweetUrl(
       typeof window !== 'undefined' ? window.location.href : ''
     );
+    // The address bar is the post the reader opened. A timestamp earlier in
+    // the article can belong to a quote, and /i/status or twitter.com links
+    // are a different zap target than https://x.com/{handle}/status/{id}.
     if (page) {
-      const matchingPage = parsedLinks.find(function (entry) {
-        return entry.info.statusId === page.statusId;
+      const pageIsThisPost = parsedLinks.some(function (entry) {
+        return entry.info.statusId === page.statusId &&
+          entry.depth === shallowestDepth;
       });
-      if (matchingPage) {
-        return matchingPage.info;
+      if (pageIsThisPost) {
+        if (page.username !== 'i') return page;
+        const named = parsedLinks.find(function (entry) {
+          return entry.info.statusId === page.statusId &&
+            entry.info.username !== 'i' &&
+            entry.depth === shallowestDepth;
+        });
+        return named ? named.info : page;
       }
     }
 
-    parsedLinks.sort(function (left, right) {
+    const timeLinks = parsedLinks.filter(function (entry) {
+      return entry.hasTime;
+    });
+    const candidates = timeLinks.length > 0 ? timeLinks : parsedLinks;
+    candidates.sort(function (left, right) {
       return left.depth - right.depth;
     });
-    return parsedLinks[0].info;
+    return candidates[0].info;
   }
 
   function isLikeAriaLabel(value) {
@@ -225,6 +240,27 @@
     return component;
   }
 
+  function retargetAction(slot, tweetInfo) {
+    const urlChanged = slot.dataset.statusUrl !== tweetInfo.canonicalUrl;
+    const handleChanged = slot.dataset.authorHandle !== tweetInfo.username;
+    if (!urlChanged && !handleChanged) return false;
+    slot.setAttribute('data-status-id', tweetInfo.statusId);
+    slot.setAttribute('data-author-handle', tweetInfo.username);
+    slot.setAttribute('data-status-url', tweetInfo.canonicalUrl);
+    if (handleChanged) {
+      slot.setAttribute('data-directory-status', 'loading');
+      delete slot.dataset.zapRecipientNpub;
+    }
+    extension.componentLoader?.updateAction?.(slot, {
+      url: tweetInfo.canonicalUrl,
+      ...(handleChanged ? { recipientNpub: null } : {})
+    });
+    if (typeof slot.querySelector === 'function' && slot.querySelector('nostr-like-button')) {
+      hydrateNostrAction(slot);
+    }
+    return handleChanged;
+  }
+
   function updateActionTheme(slot, theme) {
     slot.dataset.theme = theme;
     extension.componentLoader?.updateAction?.(slot, { theme: theme });
@@ -314,6 +350,7 @@
     createNostrAction: createNostrAction,
     hydrateNostrAction: hydrateNostrAction,
     updateActionTheme: updateActionTheme,
+    retargetAction: retargetAction,
     insertAfterNativeLike: insertAfterNativeLike,
     applyDirectoryIdentity: applyDirectoryIdentity
   };

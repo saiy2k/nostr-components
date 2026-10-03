@@ -31,6 +31,7 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     'wss://nostr-pub.wellorder.net/',
     'wss://relay.nostr.band/'
   ];
+  const PROFILE_RELAY = normalizeURL('wss://purplepag.es');
   const ALLOWED_RELAY_URLS = new Set(
     [
       'wss://relay.momostr.pink',
@@ -287,6 +288,16 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
     return [...relays].sort((left, right) => relayScore(left) - relayScore(right)).slice(0, Math.min(QUERY_RELAY_QUORUM, relays.length));
   }
 
+  function selectProfileRelays(relays) {
+    const ranked = selectQueryRelays(relays);
+    if (ranked.includes(PROFILE_RELAY) || !relays.includes(PROFILE_RELAY)) {
+      return ranked;
+    }
+    // Kind 0 often lives only on the profile relay. Keep the fast quorum
+    // and ask that relay too, instead of dropping it for a lower score.
+    return [PROFILE_RELAY, ...ranked];
+  }
+
   function summarizeReactionEvents(events) {
     const latestByPubkey = new Map();
     for (const event of events) {
@@ -320,9 +331,13 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
   }
 
   function queryWithFastQuorum(pool, relays, filters, options) {
-    const selectedRelays = selectQueryRelays(relays);
+    const selectedRelays =
+      options && Array.isArray(options.selectedRelays)
+        ? options.selectedRelays
+        : selectQueryRelays(relays);
     const filterList = Array.isArray(filters) ? filters : [filters];
     const eventsById = new Map();
+    const relaysWithEvents = new Set();
     const closers = [];
     // Kind 0 often lives on a slower relay. Empty replies from the fastest
     // relays must not cancel that request before the profile arrives.
@@ -340,7 +355,7 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         clearTimeout(timeoutId);
         if (penalizePending) {
           for (const relay of selectedRelays) {
-            if (completedRelays.has(relay)) continue;
+            if (completedRelays.has(relay) || relaysWithEvents.has(relay)) continue;
             const previous = relayHealth.get(relay);
             relayHealth.set(relay, {
               latencyMs: QUERY_DEADLINE_MS,
@@ -381,7 +396,17 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         const options = {
           maxWait: QUERY_DEADLINE_MS,
           onevent(event) {
-            if (event && event.id) eventsById.set(event.id, event);
+            if (event && event.id) {
+              eventsById.set(event.id, event);
+              relaysWithEvents.add(relay);
+            }
+            if (
+              requireEvent &&
+              eventsById.size > 0 &&
+              successfulResponses >= requiredResponses
+            ) {
+              finish(false);
+            }
           },
           oneose() {
             settleRelay(true);
@@ -758,7 +783,10 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
         authors: [context.recipientPubkey],
         limit: 1
       },
-      { requireEvent: true }
+      {
+        requireEvent: true,
+        selectedRelays: selectProfileRelays(relays)
+      }
     );
     requireCurrentActionContext(actionId, context);
     const profiles = events
@@ -1056,8 +1084,24 @@ import { decode as decodeBolt11 } from 'light-bolt11-decoder';
       ) {
         throw new Error('Relay request contains an unsupported filter');
       }
-      const events = await queryWithFastQuorum(pool, relays, filter);
-      if (filter.kinds[0] !== 0) return events;
+      const profileQuery = filter.kinds[0] === 0;
+      // A zap for one post often lives on a single slower relay. Three fast
+      // empty replies are not proof the post has no receipts.
+      const zapQuery = filter.kinds[0] === 9735;
+      const events = await queryWithFastQuorum(
+        pool,
+        relays,
+        filter,
+        profileQuery
+          ? {
+              requireEvent: true,
+              selectedRelays: selectProfileRelays(relays)
+            }
+          : zapQuery
+            ? { requireEvent: true }
+            : undefined
+      );
+      if (!profileQuery) return events;
       const authors = new Set(filter.authors);
       return events.filter(function (event) {
         return (

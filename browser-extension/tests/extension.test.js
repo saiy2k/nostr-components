@@ -77,6 +77,20 @@ describe('URL normalization', function () {
     expect(extension.url.parseTweetUrl('https://example.com/Jack/status/1234567890')).toBeNull();
   });
 
+  it('maps twitter and mobile status hosts onto x.com', function () {
+    const canonical = 'https://x.com/jack/status/1833951636005552366';
+    expect(
+      extension.url.parseTweetUrl(
+        'https://twitter.com/jack/status/1833951636005552366'
+      ).canonicalUrl
+    ).toBe(canonical);
+    expect(
+      extension.url.parseTweetUrl(
+        'https://m.x.com/jack/status/1833951636005552366?launch_app_store=true'
+      ).canonicalUrl
+    ).toBe(canonical);
+  });
+
   it('canonicalizes YouTube watch and Shorts URLs to one video identifier', function () {
     expect(
       extension.url.parseYouTubeUrl(
@@ -1353,10 +1367,86 @@ describe('X action placement', function () {
 
     expect(tweetInfo.statusId).toBe('2082355452583526840');
     expect(tweetInfo.username).toBe('jack');
+    expect(tweetInfo.canonicalUrl).toBe(
+      'https://x.com/jack/status/2082355452583526840'
+    );
     expect(selectedActionBar).toBe(actionBar);
     expect(actionBar.inserted).toEqual({
       slot: { name: 'nostr' },
       sibling: viewsContainer
+    });
+  });
+
+  it('uses the opened status URL when the article only links /i/status', function () {
+    const article = {
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [statusLink];
+        return [];
+      }
+    };
+    const statusLink = {
+      getAttribute() {
+        return '/i/status/1833951636005552366';
+      },
+      querySelector() {
+        return { closest() { return statusLink; } };
+      },
+      parentElement: article
+    };
+    globalThis.window = {
+      location: {
+        href: 'https://x.com/jack/status/1833951636005552366',
+        origin: 'https://x.com'
+      }
+    };
+
+    const tweetInfo = extension.dom.getTweetInfo(article);
+
+    expect(tweetInfo).toMatchObject({
+      username: 'jack',
+      statusId: '1833951636005552366',
+      canonicalUrl: 'https://x.com/jack/status/1833951636005552366'
+    });
+  });
+
+  it('keeps a reply identity when the opened post is only quoted inside it', function () {
+    const article = {
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [replyLink, quotedLink];
+        return [];
+      }
+    };
+    const replyLink = {
+      getAttribute() {
+        return '/Rene/status/1833951862879334400';
+      },
+      querySelector() {
+        return { closest() { return replyLink; } };
+      },
+      parentElement: article
+    };
+    const quotedLink = {
+      getAttribute() {
+        return '/jack/status/1833951636005552366';
+      },
+      querySelector() {
+        return null;
+      },
+      parentElement: { parentElement: { parentElement: article } }
+    };
+    globalThis.window = {
+      location: {
+        href: 'https://x.com/jack/status/1833951636005552366',
+        origin: 'https://x.com'
+      }
+    };
+
+    const tweetInfo = extension.dom.getTweetInfo(article);
+
+    expect(tweetInfo).toMatchObject({
+      username: 'rene',
+      statusId: '1833951862879334400',
+      canonicalUrl: 'https://x.com/Rene/status/1833951862879334400'
     });
   });
 
@@ -2694,6 +2784,188 @@ describe('CSP-safe component and relay integration', function () {
     expect(events).toContain(lateEvent);
   });
 
+  it('keeps a zap receipt that arrives after three empty relay replies', async function () {
+    const originalRelayClient = extension.relayClient;
+    await import('../src/relay-client.js?zap-receipt-quorum');
+    try {
+      const listeners = new Map();
+      const responses = [];
+      const pageWindow = {
+        location: { origin: 'https://x.com' },
+        addEventListener(type, listener) {
+          listeners.set(type, listener);
+        },
+        removeEventListener() {
+          listeners.delete('message');
+        },
+        postMessage(message) {
+          responses.push(message);
+        }
+      };
+      const pubkey = 'c'.repeat(64);
+      const statusUrl = 'https://x.com/jack/status/1833951636005552366';
+      const receipt = {
+        id: 'd'.repeat(64),
+        kind: 9735,
+        pubkey: 'e'.repeat(64)
+      };
+      let subscriptionIndex = 0;
+      const pool = {
+        subscribe(_relays, _filter, options) {
+          const index = subscriptionIndex++;
+          if (index < 3) {
+            queueMicrotask(function () {
+              options.oneose();
+            });
+            return { close: vi.fn(async function () {}) };
+          }
+          setTimeout(function () {
+            options.onevent(receipt);
+            options.oneose();
+          }, 25);
+          return { close: vi.fn(async function () {}) };
+        }
+      };
+      const channel = 'a'.repeat(64);
+      const actionId = 'b'.repeat(64);
+      const session = extension.relayClient.configure(channel, {
+        pool: pool,
+        window: pageWindow
+      });
+      extension.relayClient.registerActionContext(actionId, {
+        kind: 'x',
+        url: statusUrl,
+        recipientNpub: nip19.npubEncode(pubkey)
+      });
+
+      await listeners.get('message')({
+        source: pageWindow,
+        origin: 'https://x.com',
+        data: await createAuthenticatedRelayRequest(
+          channel,
+          '1'.repeat(32),
+          'query',
+          {
+            actionId: actionId,
+            relays: [
+              'wss://relay.damus.io',
+              'wss://relay.getalby.com',
+              'wss://relay.primal.net',
+              'wss://nostr.wine'
+            ],
+            filter: {
+              kinds: [9735],
+              '#p': [pubkey],
+              '#a': ['39735:' + pubkey + ':' + statusUrl],
+              limit: 1000
+            }
+          }
+        )
+      });
+
+      expect(responses[0].ok).toBe(true);
+      expect(responses[0].result.map((event) => event.id)).toContain(receipt.id);
+      session.dispose();
+    } finally {
+      extension.relayClient = originalRelayClient;
+    }
+  });
+
+  it('loads a profile from purplepag.es when the fast relays have none', async function () {
+    const originalRelayClient = extension.relayClient;
+    await import('../src/relay-client.js?profile-relay-quorum');
+    try {
+      const listeners = new Map();
+      const responses = [];
+      const subscribedRelays = [];
+      const pageWindow = {
+        location: { origin: 'https://x.com' },
+        addEventListener(type, listener) {
+          listeners.set(type, listener);
+        },
+        removeEventListener(type) {
+          listeners.delete(type);
+        },
+        postMessage(message) {
+          responses.push(message);
+        }
+      };
+      const profile = finalizeEvent(
+        {
+          kind: 0,
+          created_at: 50,
+          tags: [],
+          content: JSON.stringify({
+            name: 'LynAlden',
+            nip05: 'lyn@primal.net',
+            lud16: 'lyn@primal.net'
+          })
+        },
+        new Uint8Array(32).fill(23)
+      );
+      const pool = {
+        subscribe(relays, _filter, options) {
+          const relay = relays[0];
+          subscribedRelays.push(relay);
+          if (relay.includes('purplepag.es')) {
+            setTimeout(function () {
+              options.onevent(profile);
+              options.oneose();
+            }, 20);
+            return { close: vi.fn(async function () {}) };
+          }
+          queueMicrotask(function () {
+            options.oneose();
+          });
+          return { close: vi.fn(async function () {}) };
+        }
+      };
+      const channel = 'd'.repeat(64);
+      const actionId = 'e'.repeat(64);
+      const session = extension.relayClient.configure(channel, {
+        pool: pool,
+        window: pageWindow
+      });
+      extension.relayClient.registerActionContext(actionId, {
+        kind: 'x',
+        url: 'https://x.com/LynAldenContact/status/42',
+        recipientNpub: nip19.npubEncode(profile.pubkey)
+      });
+
+      await listeners.get('message')({
+        source: pageWindow,
+        origin: 'https://x.com',
+        data: await createAuthenticatedRelayRequest(
+          channel,
+          'f'.repeat(32),
+          'query',
+          {
+            actionId: actionId,
+            relays: [
+              'wss://relay.damus.io',
+              'wss://relay.primal.net',
+              'wss://nostr.wine',
+              'wss://relay.nostr.net',
+              'wss://purplepag.es'
+            ],
+            filter: {
+              kinds: [0],
+              authors: [profile.pubkey],
+              limit: 1
+            }
+          }
+        )
+      });
+
+      expect(subscribedRelays.some((relay) => relay.includes('purplepag.es'))).toBe(true);
+      expect(responses[0].ok).toBe(true);
+      expect(responses[0].result.map((event) => event.id)).toContain(profile.id);
+      session.dispose();
+    } finally {
+      extension.relayClient = originalRelayClient;
+    }
+  });
+
   it('loads a Zap provider when only a slower relay has the profile', async function () {
     const listeners = new Map();
     const responses = [];
@@ -2891,7 +3163,8 @@ describe('timeline component integration', function () {
         }
         return null;
       },
-      querySelectorAll() {
+      querySelectorAll(selector) {
+        if (selector === 'a[href*="/status/"]') return [statusAnchor];
         return [];
       }
     };
