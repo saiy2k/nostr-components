@@ -120,7 +120,8 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Function: `listenForZapReceipt()` in `zap-utils.ts`
 - Purpose: Listen for zap receipt events (kind 9735) matching the invoice
 - Status: ACTIVELY USED in dialog implementation
-- Behavior: Shows success overlay only after NIP-57 Appendix F validation succeeds
+- Behavior: Shows success overlay only after NIP-57 Appendix F validation succeeds, or immediately after WebLN `sendPayment` resolves
+- Button total: `markSuccess()` reports the paid bolt11 amount and the comment stored on that invoice through `onZapPaid`, once per invoice, then stops the receipt listener. The button credits that invoice once. A later receipt row for the same sender, amount, and time replaces the credit. A refresh that lacks the receipt cannot lower the visible total.
 
 ### Close Behavior
 - ESC Key: Closes dialog
@@ -128,7 +129,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Close Button (×): Closes dialog
 - WebLN Success: Modal closes automatically after successful WebLN payment
 - WebLN Failure: Modal closes automatically after failed WebLN payment
-- Cleanup: Receipt listener cleanup on dialog close event
+- Cleanup: Receipt listener cleanup when the payment is reported, and again on dialog close
 
 ### CSS Management
 - Content Styles: Separate files for each dialog type
@@ -152,6 +153,9 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - `fetchInvoice()`: Generates Lightning invoices with URL-based zap `a` tag
 - `makeZapEvent()`: Creates zap request events with `["a", "39735:pubkey:url"]` for URL-based zaps
 - `listenForZapReceipt()`: Monitors for zap payment confirmations
+
+### Zap display (`src/nostr-zap-button/zap-display.ts`)
+- `creditPaidZap()` / `applyRelayZapResult()`: Add a confirmed payment to the visible total immediately. Drop that credit when a new receipt row matches the sender, amount, and time. A row already in the previous result does not match. Keep the credit on top of a fetch that does not contain it.
 
 ## Zap Count
 
@@ -181,6 +185,7 @@ All dialogs use the shared `DialogComponent` base class (see `src/base/dialog-co
 - Delegated click handler on `.total-zap-amount` class
 - `handleZapClick` early-returns while `zapActionStatus` is Loading
 - Primary zap button is `disabled` + `aria-busy` during the action
+- After a confirmed zap, the visible total includes that payment immediately. The follow-up `updateZapCount({ preserveVisibleTotal: true })` does not show the amount skeleton. The credit stays until a receipt row matches that payment.
 
 ## Individual Zaps
 

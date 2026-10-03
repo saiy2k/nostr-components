@@ -23,6 +23,7 @@ import {
  * the need for redundant validation and resolution logic.
  */
 
+import { getBolt11AmountMsats } from './zap-receipt';
 import { 
   fetchInvoice, 
   fetchInvoiceForAction,
@@ -43,6 +44,12 @@ declare global {
   }
 }
 
+export interface ZapPaidNotice {
+  invoice: string;
+  amountSats: number;
+  comment: string;
+}
+
 export interface OpenZapModalParams {
   actionId?: string;
   npub: string;
@@ -55,6 +62,7 @@ export interface OpenZapModalParams {
   initialAmount?: number; // legacy support
   anon?: boolean;
   url?: string; // URL to send zap to (enables URL-based zaps)
+  onZapPaid?: (payment: ZapPaidNotice) => void;
 }
 
 export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
@@ -120,7 +128,9 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   }
   let customComment = '';
   let currentInvoice = '';
+  let invoicedComment = '';
   let cleanupReceipt: (() => void) | null = null;
+  const reportedInvoices = new Set<string>();
   let invoiceRequestSeq = 0;
 
   // -----------------------------------------------------------------------------
@@ -172,17 +182,20 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     }
     if (requestSeq !== invoiceRequestSeq) return null;
     currentInvoice = invoice;
+    invoicedComment = comment;
 
     // Zap receipt listener
     // Dispose previous listener before creating a new one
     if (cleanupReceipt) cleanupReceipt();
+    const paidInvoice = invoice;
+    const paidComment = comment;
     cleanupReceipt = listenForZapReceipt({
       relays: relaysArray,
       receiversPubKey: npubHex,
       invoice,
       provider,
       url,
-      onSuccess: markSuccess
+      onSuccess: () => markSuccess(paidInvoice, paidComment),
     });
     return invoice;
   }
@@ -235,6 +248,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   async function refreshUI(dialog: HTMLDialogElement) {
     const requestSeq = ++invoiceRequestSeq;
     currentInvoice = '';
+    invoicedComment = '';
     if (cleanupReceipt) {
       cleanupReceipt();
       cleanupReceipt = null;
@@ -455,12 +469,14 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     async (event) => {
       if (!isTrustedUserEvent(event)) return;
       if (!currentInvoice) return;
+      const paidInvoice = currentInvoice;
+      const paidComment = invoicedComment;
       // try WebLN first
       if (window.webln) {
         try {
           await window.webln.enable();
-          await window.webln.sendPayment(currentInvoice);
-          markSuccess();
+          await window.webln.sendPayment(paidInvoice);
+          markSuccess(paidInvoice, paidComment);
           return;
         } catch (e) {
           console.error('Nostr-Components: Zap button: webln payment failed', e);
@@ -471,7 +487,18 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     },
   );
 
-  function markSuccess() {
+  function stopReceiptListener() {
+    if (!cleanupReceipt) return;
+    cleanupReceipt();
+    cleanupReceipt = null;
+  }
+
+  function markSuccess(paidInvoice = currentInvoice, paidComment = invoicedComment) {
+    const invoice = paidInvoice;
+    const comment = paidComment;
+    const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
+    const amountSats = amountMsats != null ? amountMsats / 1000 : selectedAmount;
+
     dialog.classList.add('success');
     const overlay = dialog.querySelector('.success-overlay') as HTMLElement;
     overlay.style.opacity = '1';
@@ -483,11 +510,22 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       if (el instanceof HTMLElement) el.style.display = 'none';
     });
     // DialogComponent close button is always clickable
+
+    if (invoice && amountSats > 0 && !reportedInvoices.has(invoice)) {
+      reportedInvoices.add(invoice);
+      stopReceiptListener();
+      params.onZapPaid?.({
+        invoice,
+        amountSats,
+        comment,
+      });
+    }
   }
 
   dialog.addEventListener('close', () => {
     invoiceRequestSeq += 1;
     currentInvoice = '';
+    invoicedComment = '';
     if (cleanupReceipt) {
       cleanupReceipt();
       cleanupReceipt = null;

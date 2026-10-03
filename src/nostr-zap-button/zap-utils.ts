@@ -735,7 +735,10 @@ export const listenForZapReceipt = ({
     }
   );
 
+  let closed = false;
   const cleanup = () => {
+    if (closed) return;
+    closed = true;
     pool.close(normalizedRelays);
   };
 

@@ -2,12 +2,22 @@
 
 import { NostrUserComponent } from '../base/user-component/nostr-user-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
-import { init as openZapModal } from './dialog-zap';
+import { init as openZapModal, type ZapPaidNotice } from './dialog-zap';
 import { showHelpDialog } from './dialog-help';
 import { openZappersDialog } from './dialog-zappers';
 import { renderZapButton, RenderZapButtonOptions } from './render';
 import { getZapButtonStyles } from './style';
 import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
+import {
+  applyRelayZapResult,
+  creditPaidZap,
+  displayedZapDetails,
+  displayedZapTotal,
+  emptyZapDisplay,
+  hasPendingZapCredit,
+  resetZapDisplay,
+  type ZapDisplayState,
+} from './zap-display';
 import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { ensureSignerForAction } from '../common/auth-onboarding';
@@ -39,6 +49,7 @@ export default class NostrZap extends NostrUserComponent {
   
   #totalZapAmount: number | null = null;
   #cachedZapDetails: ZapDetails[] = [];
+  #zapDisplay: ZapDisplayState = emptyZapDisplay();
   #cachedAmountDialog: DialogComponent | null = null;
   #countedZapSubject: string | null = null;
   #zapActionNotice = '';
@@ -221,6 +232,8 @@ export default class NostrZap extends NostrUserComponent {
         return;
       }
 
+      const senderPubkey = signerResult.publicKey;
+
       const trustedContext = getTrustedActionContext(this);
       if (hasInstalledRelayTransport() && !trustedContext) {
         throw new Error('Untrusted extension action');
@@ -265,6 +278,9 @@ export default class NostrZap extends NostrUserComponent {
         })(),
         url: trustedContext?.url || this.getAttribute("url") || undefined,
         anon: false,
+        onZapPaid: (payment) => {
+          this.#recordPaidZap(payment, senderPubkey);
+        },
       });
       this.zapActionStatus.set(NCStatus.Ready);
     } catch (e: any) {
@@ -346,21 +362,47 @@ export default class NostrZap extends NostrUserComponent {
 
   #forgetZapCountUnlessSubject(subjectKey: string) {
     if (this.#countedZapSubject === subjectKey) return;
-    this.#totalZapAmount = null;
-    this.#cachedZapDetails = [];
+    this.#applyZapDisplay(resetZapDisplay());
     this.#countedZapSubject = null;
   }
 
-  private async updateZapCount() {
+  #applyZapDisplay(next: ZapDisplayState) {
+    this.#zapDisplay = next;
+    this.#totalZapAmount = displayedZapTotal(next);
+    this.#cachedZapDetails = displayedZapDetails(next);
+  }
+
+  #recordPaidZap(payment: ZapPaidNotice, authorPubkey: string) {
+    const subjectKey = this.#zapSubjectKey();
+    this.#forgetZapCountUnlessSubject(subjectKey);
+    this.#applyZapDisplay(creditPaidZap(this.#zapDisplay, {
+      invoice: payment.invoice,
+      amountSats: payment.amountSats,
+      comment: payment.comment,
+      authorPubkey,
+      paidAt: new Date(),
+    }));
+    this.#countedZapSubject = subjectKey;
+    this.zapListStatus.set(NCStatus.Ready);
+    this.render();
+    void this.updateZapCount({ preserveVisibleTotal: true });
+  }
+
+  private async updateZapCount(options?: { preserveVisibleTotal?: boolean }) {
     if (!this.user) return;
     const subjectKey = this.#zapSubjectKey();
     this.#forgetZapCountUnlessSubject(subjectKey);
     const seq = ++this.#zapCountLoadSeq;
     const trustedContext = getTrustedActionContext(this);
+    const preserveVisibleTotal =
+      options?.preserveVisibleTotal === true &&
+      displayedZapTotal(this.#zapDisplay) !== null;
 
     try {
-      this.zapListStatus.set(NCStatus.Loading);
-      this.render();
+      if (!preserveVisibleTotal) {
+        this.zapListStatus.set(NCStatus.Loading);
+        this.render();
+      }
       
       await this.ensureNostrConnected();
       if (seq !== this.#zapCountLoadSeq) return;
@@ -373,22 +415,22 @@ export default class NostrZap extends NostrUserComponent {
       });
       if (seq !== this.#zapCountLoadSeq) return;
 
-      this.#totalZapAmount = result.totalAmount;
-      this.#cachedZapDetails = result.zapDetails;
+      this.#applyZapDisplay(applyRelayZapResult(this.#zapDisplay, result));
       this.#countedZapSubject = subjectKey;
       this.zapListStatus.set(NCStatus.Ready);
     } catch (e) {
       if (seq !== this.#zapCountLoadSeq) return;
       console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
+      const keepCreditedTotal = hasPendingZapCredit(this.#zapDisplay);
       if (getRelayTransport()) {
-        if (this.#countedZapSubject !== subjectKey) {
-          this.#totalZapAmount = null;
-          this.#cachedZapDetails = [];
+        if (this.#countedZapSubject !== subjectKey && !keepCreditedTotal) {
+          this.#applyZapDisplay(resetZapDisplay());
         }
         this.zapListStatus.set(NCStatus.Ready);
+      } else if (keepCreditedTotal) {
+        this.zapListStatus.set(NCStatus.Ready);
       } else {
-        this.#totalZapAmount = null;
-        this.#cachedZapDetails = [];
+        this.#applyZapDisplay(resetZapDisplay());
         this.#countedZapSubject = null;
         this.zapListStatus.set(NCStatus.Error);
       }
