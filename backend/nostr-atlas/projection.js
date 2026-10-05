@@ -39,6 +39,7 @@ import {
   discoverXBioIdentities,
   verifyTweetCandidate,
 } from "./x-identity.js";
+import { fetchPublicHttps } from "./public-network.js";
 import {
   isHexPubkey,
   isPublicHostname,
@@ -691,7 +692,7 @@ export async function checkZapSupport(
   result,
   metadata,
   timeoutMs,
-  fetchImpl = fetch,
+  fetchImpl = fetchPublicHttps,
 ) {
   const zapCheckedAt = new Date().toISOString();
   const lightningAddress = metadata?.lud16 || null;

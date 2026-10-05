@@ -2,8 +2,8 @@
 
 import { createHash } from "node:crypto";
 import { FieldValue } from "@google-cloud/firestore";
-import NDK from "@nostr-dev-kit/ndk";
 import { validateEvent, verifyEvent } from "nostr-tools";
+import { createRelayClient } from "./public-network.js";
 import {
   DEFAULT_COLLECTIONS,
   serializeFirestoreDataForJson,
@@ -14,49 +14,11 @@ import { backfillStateId, firestoreSafeId } from "./utils.js";
 /** Leave headroom under Firestore's 1 MiB document limit for metadata fields. */
 export const MAX_DEAD_LETTER_PAYLOAD_BYTES = 700_000;
 
-export function createNdkRelayClient(url) {
-  const ndk = new NDK({ explicitRelayUrls: [url] });
-  return {
-    connect: (timeoutMs) => ndk.connect(timeoutMs),
-    subscribe(filter, { max, onEvent, onEose, onClosed }) {
-      // NDK auto-starts unless the third arg is false; attach handlers first so
-      // cached/EOSE signals cannot fire before listeners are registered.
-      const subscription = ndk.subscribe(
-        Number.isFinite(max) ? { ...filter, limit: max } : filter,
-        {
-          closeOnEose: false,
-          dontSaveToCache: true,
-          groupable: false,
-          relayUrls: [url],
-        },
-        false,
-      );
-      subscription.on("event", (event) => onEvent(event.rawEvent()));
-      subscription.on("eose", () => onEose?.());
-      subscription.on("closed", (_relay, reason) => onClosed?.(reason));
-      void subscription.start();
-      return () => subscription.stop();
-    },
-    close() {
-      for (const relay of [...ndk.pool.relays.values()]) {
-        try {
-          relay.disconnect();
-        } catch {}
-      }
-      for (const relayUrl of [...ndk.pool.relays.keys()]) {
-        try {
-          ndk.pool.removeRelay(relayUrl);
-        } catch {}
-      }
-    },
-  };
-}
-
 export function queryRelay(
   url,
   filter,
   { timeoutMs, max, client: existingClient },
-  clientFactory = createNdkRelayClient,
+  clientFactory = createRelayClient,
 ) {
   return new Promise((resolve) => {
     const events = [];

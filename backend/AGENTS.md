@@ -14,3 +14,4 @@ firebase deploy --only firestore:rules --project nostr-components \
 
 - Deploy those rules to `nostr-components` only. Leave `sat-the-standard` alone. A root `firebase deploy` does not include this file.
 - Job behavior, scheduler, and IAM: [README.md](README.md).
+- Relay sockets are opened only by `nostr-atlas/public-network.js`. `createRelayClient` refuses a host that resolves to a private address.

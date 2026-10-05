@@ -5,10 +5,10 @@ import {
   buildBackfillCheckpointWrite,
   buildBackfillGapWrite,
   buildHandleWriteFailureWrite,
-  createNdkRelayClient,
   isValidSignedEvent,
   queryRelay,
 } from "./ingestion.js";
+import { createRelayClient } from "./public-network.js";
 import {
   DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
   DEFAULT_MAX_PENDING_CLAIMS,
@@ -196,7 +196,7 @@ export async function runBackfillCursors(db, config, dependencies = {}) {
 
     if (ownsRelayClient) {
       try {
-        relayClient = (dependencies.createRelayClient || createNdkRelayClient)(
+        relayClient = (dependencies.createRelayClient || createRelayClient)(
           relay,
         );
         await relayClient.connect(config.timeoutMs);
@@ -266,7 +266,7 @@ export async function runBackfillCursor(
   let relayClient = dependencies.relayClient || null;
   const ownsRelayClient = !dependencies.queryRelay && !relayClient;
   if (ownsRelayClient) {
-    relayClient = (dependencies.createRelayClient || createNdkRelayClient)(
+    relayClient = (dependencies.createRelayClient || createRelayClient)(
       relay,
     );
     await relayClient.connect(config.timeoutMs);
