@@ -1251,7 +1251,14 @@ describe("top-level cursor coordination", () => {
       },
     );
 
-    expect(db.readCount("handles")).toBe(2);
+    // The second relay merges its source relay into relayHints, so the
+    // commit re-reads the handle. The plan read itself stays cached.
+    expect(db.readCount("handles")).toBe(3);
+    const handleWrite = db.writes.filter((write) => write.collection === "handles").at(-1);
+    expect(handleWrite.data.claims[0].relayHints).toEqual([
+      "wss://one.example/",
+      "wss://two.example/",
+    ]);
   });
 
   it("advances past a poison-pill handle while dead-lettering the failure", async () => {

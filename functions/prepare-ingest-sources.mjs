@@ -6,6 +6,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const copyRoot = join(root, "functions/nostr-atlas");
 
 await cp(join(root, "backend/relays.json"), join(root, "functions/relays.json"));
+await cp(
+  join(root, "backend/relay-roles.json"),
+  join(root, "functions/relay-roles.json"),
+);
 await rm(copyRoot, { recursive: true, force: true });
 await cp(join(root, "backend/nostr-atlas"), copyRoot, {
   recursive: true,

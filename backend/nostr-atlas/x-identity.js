@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 import { nip19 } from "nostr-tools";
+import { upgradeTwitterAvatarUrl } from "./picture-url.js";
+import { fetchPublicHttps } from "./public-network.js";
+import { normalizeRelayHints } from "./relay-hints.js";
 import {
   extractTweetId,
   isHexPubkey,
@@ -168,7 +171,7 @@ export function extractNostrIdentifiers(text) {
 export async function resolveNostrIdentifier(
   identifier,
   timeoutMs,
-  fetchImpl = fetch,
+  fetchImpl = fetchPublicHttps,
 ) {
   if (identifier.type === "npub" || identifier.type === "nprofile") {
     try {
@@ -189,6 +192,9 @@ export async function resolveNostrIdentifier(
         npub: nip19.npubEncode(normalizedPubkey),
         identifier: identifier.value,
         identifierType: identifier.type,
+        relays: normalizeRelayHints(
+          decoded.type === "nprofile" ? decoded.data?.relays : [],
+        ),
       };
     } catch {
       return { ok: false, reason: "invalid_nip19_profile" };
@@ -232,12 +238,16 @@ export async function resolveNostrIdentifier(
       return { ok: false, reason: "nip05_name_not_found" };
     }
     const normalizedPubkey = pubkey.toLowerCase();
+    const relayMap = json?.relays && typeof json.relays === "object" ? json.relays : {};
     return {
       ok: true,
       pubkey: normalizedPubkey,
       npub: nip19.npubEncode(normalizedPubkey),
       identifier: identifier.value,
       identifierType: "nip05",
+      relays: normalizeRelayHints(
+        relayMap[normalizedPubkey] || relayMap[pubkey] || [],
+      ),
     };
   } catch (error) {
     return {
@@ -253,7 +263,7 @@ export async function discoverXBioIdentities({
   additionalHandles = [],
   timeoutMs,
   maxProfiles,
-  fetchImpl = fetch,
+  fetchImpl = fetchPublicHttps,
 }) {
   const seedsByHandle = new Map();
   for (const seed of handleSeeds || []) {
@@ -339,6 +349,8 @@ export async function discoverXBioIdentities({
         proofSource: profileResult.source,
         xUserId: profileResult.profile.id,
         verifiedAt: new Date().toISOString(),
+        relayHints: resolved.relays || [],
+        xAvatarUrl: upgradeTwitterAvatarUrl(profileResult.profile.avatar_url),
       });
     }
   }

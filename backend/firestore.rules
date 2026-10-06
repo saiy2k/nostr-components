@@ -30,6 +30,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /nostrProfiles/{pubkey} {
+      allow read, write: if false;
+    }
+
+    match /nostrRelayHealth/{relayId} {
+      allow read, write: if false;
+    }
+
     // Anything else in this database is server-only too.
     match /{document=**} {
       allow read, write: if false;

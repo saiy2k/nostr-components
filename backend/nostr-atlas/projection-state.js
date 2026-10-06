@@ -11,6 +11,7 @@ import {
   mergeProfileMetadata,
   newerKind0CreatedAt,
 } from "./handle-state.js";
+import { mergeRelayHints } from "./relay-hints.js";
 import {
   claimRecency,
   compareClaimsNewestFirst,
@@ -251,6 +252,11 @@ export function buildHandleProjectionWrites(
   ];
 }
 
+function storedRelayHints(current, incoming) {
+  const relayHints = mergeRelayHints(current, incoming);
+  return relayHints.length ? relayHints : undefined;
+}
+
 function nextAttemptCount(claim) {
   const prior = Number(claim?.attemptCount || 0);
   return (Number.isInteger(prior) && prior >= 0 ? prior : 0) + 1;
@@ -284,14 +290,7 @@ function verifiedClaim(current, result, nowIso) {
       clean.kind0CreatedAt,
       result.kind0CreatedAt,
     ),
-    zappable: result.zappable,
-    zapReason: result.zapReason,
-    lud16: result.lud16,
-    lnurlp: result.lnurlp,
-    lnurlAllowsNostr: result.lnurlAllowsNostr,
-    lnurlNostrPubkey: result.lnurlNostrPubkey,
-    zapCheckedAt: result.zapCheckedAt,
-    zapCheckTransient: result.zapCheckTransient,
+    relayHints: storedRelayHints(clean.relayHints, result.relayHints),
   });
 }
 

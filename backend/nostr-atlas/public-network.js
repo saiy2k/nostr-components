@@ -117,7 +117,7 @@ export async function fetchPublicHttps(url, options = {}) {
         family: chosen.family,
         method: "GET",
         path: `${parsed.pathname}${parsed.search}`,
-        headers: { host: parsed.hostname, accept: "application/json" },
+        headers: requestHeaders(parsed.hostname, options),
       },
       (res) => {
         const chunks = [];
@@ -137,6 +137,13 @@ export async function fetchPublicHttps(url, options = {}) {
           finish(resolve, {
             ok: status >= 200 && status < 300,
             status,
+            headers: {
+              get(name) {
+                const value = res.headers[String(name || "").toLowerCase()];
+                if (Array.isArray(value)) return value[0] || null;
+                return value || null;
+              },
+            },
             json: async () => JSON.parse(body),
           });
         });
@@ -149,6 +156,22 @@ export async function fetchPublicHttps(url, options = {}) {
     req.setTimeout(LNURL_TIMEOUT_MS, () => req.destroy(new Error("timeout")));
     req.end();
   });
+}
+
+function requestHeaders(hostname, options) {
+  const headers = {
+    host: hostname,
+    accept: "application/json",
+  };
+  const source = options.headers;
+  const userAgent =
+    source && typeof source === "object" && !Array.isArray(source)
+      ? source["User-Agent"] || source["user-agent"]
+      : null;
+  if (typeof userAgent === "string" && userAgent && userAgent.length <= 200) {
+    headers["user-agent"] = userAgent;
+  }
+  return headers;
 }
 
 function hostnameOf(url) {

@@ -1295,9 +1295,11 @@ describe("external verification", () => {
     expect(writes).toHaveLength(1);
     expect(writes[0].data.activeIdentity).toMatchObject({
       claimId: "proof",
-      zapReason: "zap-check-skipped",
       status: "verified",
     });
+    expect(writes[0].data.activeIdentity.zapReason).toBeUndefined();
+    expect(writes[0].data.activeIdentity.zappable).toBeUndefined();
+    expect(writes[0].data.activeIdentity.lud16).toBeUndefined();
   });
 
   it("checks NIP-57 support after identity verification", async () => {
@@ -1360,15 +1362,12 @@ describe("external verification", () => {
       { id: "twitter:alice", data: { handle: "alice" } },
       transition,
     );
-    expect(transition.state.activeIdentity).toMatchObject({
-      zapCheckTransient: true,
-      zapCheckedAt: expect.any(String),
-    });
+    expect(transition.state.activeIdentity.zapCheckTransient).toBeUndefined();
+    expect(transition.state.activeIdentity.zapCheckedAt).toBeUndefined();
+    expect(transition.state.activeIdentity.zappable).toBeUndefined();
     expect(writes).toHaveLength(1);
-    expect(writes[0].data.activeIdentity).toMatchObject({
-      zapCheckTransient: true,
-      zapCheckedAt: expect.any(String),
-    });
+    expect(writes[0].data.activeIdentity.zapCheckTransient).toBeUndefined();
+    expect(writes[0].data.activeIdentity.zappable).toBeUndefined();
   });
 });
 
@@ -1880,6 +1879,7 @@ function projectionArgs(overrides = {}) {
     maxRejectionTombstones: 100,
     maxRetryAttempts: 5,
     out: null,
+    fetchImpl: (url, options) => globalThis.fetch(url, options),
     ...overrides,
   };
 }

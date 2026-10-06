@@ -16,8 +16,12 @@ import {
   applyProjectionResults,
   buildHandleProjectionWrites,
 } from "./projection-state.js";
+import {
+  flushRelayHealth,
+  refreshProfiles,
+} from "./profile-store.js";
 import { DEFAULT_COLLECTIONS } from "./runtime.js";
-import { normalizeTwitterHandle } from "./utils.js";
+import { isHexPubkey, normalizeTwitterHandle } from "./utils.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -171,7 +175,47 @@ async function projectHandle(db, handle, claimId, collection, config) {
     }
     return transition.state;
   });
-  return statusForClaim(committed, claimId);
+  const status = statusForClaim(committed, claimId);
+  if (status === "verified" && config.profileRefresh !== false) {
+    await refreshVerifiedClaim(db, committed, claimId, id, config);
+  }
+  return status;
+}
+
+async function refreshVerifiedClaim(db, state, claimId, handleId, config) {
+  const identity =
+    state?.activeIdentity?.claimId === claimId
+      ? state.activeIdentity
+      : (state?.claims || []).find((claim) => claim?.claimId === claimId);
+  if (!isHexPubkey(identity?.pubkey)) return;
+  const health = new Map();
+  try {
+    await refreshProfiles(
+      db,
+      [
+        {
+          pubkey: identity.pubkey,
+          hints: identity.relayHints,
+          handleId,
+          handle: identity.handle,
+          role: "directory",
+        },
+      ],
+      {
+        health,
+        timeoutMs: config.timeoutMs ?? 12_000,
+        queryRelay: config.queryRelay,
+        fetchImpl: config.fetchImpl,
+        handlesCollection: config.firestoreHandlesCollection,
+        nowMs: config.now instanceof Date ? config.now.getTime() : Date.now(),
+      },
+    );
+    await flushRelayHealth(db, health);
+  } catch (error) {
+    console.warn(
+      `Profile refresh failed: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 }
 
 export async function claimEventOnRelay(relay, eventId, timeoutMs = 8_000) {

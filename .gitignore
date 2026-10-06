@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 functions/relays.json
+functions/relay-roles.json
 functions/nostr-atlas
 lib
 !browser-extension/lib/

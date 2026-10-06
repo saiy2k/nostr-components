@@ -19,6 +19,8 @@ const SERVER_ONLY_COLLECTIONS = [
   "relayCrawlerGaps",
   "nostrDirectoryHandleWriteFailures",
   "relayProjectionRuns",
+  "nostrProfiles",
+  "nostrRelayHealth",
 ];
 
 describe("directory Firestore rules", () => {
