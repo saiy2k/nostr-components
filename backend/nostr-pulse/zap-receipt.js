@@ -115,7 +115,7 @@ function senderPubkeyFor(zapRequest) {
  * tag string. A zap request with an anon tag has no sender.
  */
 export function validateZapReceipt(receipt, opts) {
-  if (receipt.kind !== 9735) {
+  if (!receipt || typeof receipt !== "object" || receipt.kind !== 9735) {
     return { ok: false, reason: "not-kind-9735" };
   }
 
@@ -221,7 +221,7 @@ export function validateZapReceipt(receipt, opts) {
   }
   if (requestLnurl) {
     const normalized = normalizeLnurlTag(requestLnurl);
-    if (!normalized || normalized !== opts.provider.lnurl) {
+    if (!normalized || normalized !== normalizeLnurlTag(opts.provider.lnurl)) {
       return { ok: false, reason: "lnurl-mismatch" };
     }
   }

@@ -2,7 +2,7 @@
 
 import https from "node:https";
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { BlockList, isIP } from "node:net";
 import WebSocket from "ws";
 import { verifyEvent } from "nostr-tools";
 import { AbstractRelay } from "nostr-tools/relay";
@@ -13,6 +13,37 @@ export const LNURL_TIMEOUT_MS = 8000;
 
 /** Longer than any relay query, so only a real EOSE or the caller's timer ends it. */
 const RELAY_EOSE_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+
+const privateIPv6 = new BlockList();
+for (const [subnet, prefix] of [
+  ["::", 128],
+  ["::1", 128],
+  ["fe80::", 10],
+  ["fc00::", 7],
+]) {
+  privateIPv6.addSubnet(subnet, prefix, "ipv6");
+}
+
+function canonicalIPv6(address) {
+  try {
+    const hostname = new URL(`http://[${address}]/`).hostname;
+    if (!hostname.startsWith("[") || !hostname.endsWith("]")) return null;
+    return hostname.slice(1, -1).toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function ipv4FromMapped(ipv6) {
+  const hex = ipv6.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const high = Number.parseInt(hex[1], 16);
+    const low = Number.parseInt(hex[2], 16);
+    return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+  }
+  const dotted = ipv6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  return dotted ? dotted[1] : null;
+}
 
 export function isPrivateAddress(address) {
   const version = isIP(address);
@@ -26,16 +57,23 @@ export function isPrivateAddress(address) {
     return false;
   }
   if (version === 6) {
-    const normalized = address.toLowerCase();
-    if (normalized === "::" || normalized === "::1") return true;
-    if (normalized.startsWith("fe80:") || normalized.startsWith("fc") || normalized.startsWith("fd")) {
+    const normalized = canonicalIPv6(address);
+    if (!normalized) return true;
+    const mapped = ipv4FromMapped(normalized);
+    if (mapped) return isPrivateAddress(mapped);
+    try {
+      return privateIPv6.check(normalized, "ipv6");
+    } catch {
       return true;
     }
-    const mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isPrivateAddress(mapped[1]);
-    return false;
   }
   return true;
+}
+
+function throwIfAborted(signal) {
+  if (!signal?.aborted) return;
+  const reason = signal.reason;
+  throw reason instanceof Error ? reason : new Error("aborted");
 }
 
 export async function fetchPublicHttps(url, options = {}) {
@@ -43,7 +81,9 @@ export async function fetchPublicHttps(url, options = {}) {
   if (parsed.protocol !== "https:") {
     return { ok: false, status: 400, json: async () => ({}) };
   }
+  throwIfAborted(options.signal);
   const records = await lookup(parsed.hostname, { all: true });
+  throwIfAborted(options.signal);
   if (!records.length || records.some((record) => isPrivateAddress(record.address))) {
     return { ok: false, status: 403, json: async () => ({}) };
   }
@@ -89,6 +129,7 @@ export async function fetchPublicHttps(url, options = {}) {
     );
     const abort = () => req.destroy(new Error("aborted"));
     options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) abort();
     req.on("error", (error) => finish(reject, error));
     req.setTimeout(LNURL_TIMEOUT_MS, () => req.destroy(new Error("timeout")));
     req.end();

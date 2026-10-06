@@ -5,7 +5,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { queryRelay } from "./ingestion.js";
-import { createRelayClient } from "./public-network.js";
+import { createRelayClient, fetchPublicHttps } from "./public-network.js";
 
 const backendRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const allowedRelayFile = "nostr-atlas/public-network.js";
@@ -71,6 +71,30 @@ describe("relay connection boundary", () => {
     } finally {
       client.close();
     }
+  });
+
+  it.each(["wss://[::ffff:7f00:1]/", "wss://[fe81::1]/", "wss://[febf::1]/"])(
+    "refuses %s before connecting",
+    async (url) => {
+      const client = createRelayClient(url);
+      try {
+        await client.connect(1000);
+        expect.fail("expected a private-address refusal");
+      } catch (error) {
+        expect(String(error?.message || error)).toMatch(/private-address/);
+      } finally {
+        client.close();
+      }
+    },
+  );
+
+  it("does not fetch when the caller already aborted", async () => {
+    const signal = AbortSignal.abort(new Error("aborted"));
+    await expect(
+      fetchPublicHttps("https://example.com/.well-known/lnurlp/alice", {
+        signal,
+      }),
+    ).rejects.toThrow(/aborted/);
   });
 
   it("uses that client for relay queries by default", async () => {

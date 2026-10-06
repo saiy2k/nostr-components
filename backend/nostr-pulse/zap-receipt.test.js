@@ -102,6 +102,21 @@ describe("getBolt11AmountMsats", () => {
 });
 
 describe("validateZapReceipt", () => {
+  it("returns a result for a missing receipt", () => {
+    expect(
+      validateZapReceipt(null, {
+        recipientPubkey: RECIPIENT_PK,
+        provider: PROVIDER,
+      }),
+    ).toEqual({ ok: false, reason: "not-kind-9735" });
+    expect(
+      validateZapReceipt(undefined, {
+        recipientPubkey: RECIPIENT_PK,
+        provider: PROVIDER,
+      }),
+    ).toEqual({ ok: false, reason: "not-kind-9735" });
+  });
+
   it("accepts a receipt that satisfies NIP-57 Appendix F checks", () => {
     const result = validateZapReceipt(makeValidReceipt(), {
       recipientPubkey: RECIPIENT_PK,
@@ -374,6 +389,24 @@ describe("validateZapReceipt", () => {
       { recipientPubkey: RECIPIENT_PK, provider: PROVIDER },
     );
     expect(result).toEqual({ ok: false, reason: "lnurl-mismatch" });
+  });
+
+  it("accepts an lnurl tag that matches the provider after URL normalization", () => {
+    const result = validateZapReceipt(
+      receiptForRequest(
+        makeZapRequest(BOLT11_AMOUNT_MSATS, [
+          ["lnurl", "https://ln.example/.well-known/lnurlp/alice"],
+        ]),
+      ),
+      {
+        recipientPubkey: RECIPIENT_PK,
+        provider: {
+          ...PROVIDER,
+          lnurl: "https://LN.Example:443/.well-known/lnurlp/alice",
+        },
+      },
+    );
+    expect(result.ok).toBe(true);
   });
 
   it("accepts a bech32-encoded lnurl tag that decodes to the provider LNURL", () => {
