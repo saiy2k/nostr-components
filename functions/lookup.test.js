@@ -2,6 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { nip19 } from 'nostr-tools';
 import {
   handleDocumentId,
   lookupAtlasHandle,
@@ -111,6 +112,76 @@ test('uses nostrProfiles.zap when a signed profile exists', async function () {
   assert.equal(hidden.body.activeIdentity.zappable, false);
   assert.equal(hidden.body.activeIdentity.lud16, null);
 });
+
+test('keeps an unfinished zap check null and returns the signed profile', async function () {
+  const pubkey = 'd'.repeat(64);
+  const profileEvent = { kind: 0, pubkey, content: '{"name":"Ada"}' };
+  const relayListEvent = { kind: 10002, pubkey, tags: [['r', 'wss://relay.ditto.pub']] };
+  const writeRelays = [
+    'wss://relay.ditto.pub',
+    'wss://nostr.mom',
+    'wss://relay.damus.io',
+    'https://not-a-relay.example'
+  ];
+  const db = docDb({
+    'nostrDirectoryHandles/twitter:ada': {
+      activeIdentity: {
+        status: 'verified',
+        pubkey,
+        zappable: true,
+        lud16: 'stale@example.com'
+      }
+    },
+    [`nostrProfiles/${pubkey}`]: {
+      kind0Json: JSON.stringify(profileEvent),
+      relayListJson: JSON.stringify(relayListEvent),
+      writeRelays,
+      zap: { zappable: null, transient: true }
+    }
+  });
+
+  const result = await lookupAtlasHandle(db, 'ada');
+  assert.equal(result.body.activeIdentity.zappable, null);
+  assert.equal(result.body.activeIdentity.lud16, null);
+  assert.deepEqual(result.body.activeIdentity.profileEvent, profileEvent);
+  assert.deepEqual(result.body.activeIdentity.relayListEvent, relayListEvent);
+  const decoded = nip19.decode(result.body.activeIdentity.nprofile);
+  assert.equal(decoded.type, 'nprofile');
+  assert.equal(decoded.data.pubkey, pubkey);
+  assert.deepEqual(decoded.data.relays, writeRelays.slice(0, 2));
+});
+
+test('leaves zap unknown when neither the profile nor the claim has a finished check', async function () {
+  const pubkey = 'e'.repeat(64);
+  const db = docDb({
+    'nostrDirectoryHandles/twitter:ada': {
+      activeIdentity: { status: 'verified', pubkey }
+    }
+  });
+
+  const result = await lookupAtlasHandle(db, 'ada');
+  assert.equal(result.body.activeIdentity.zappable, null);
+  assert.equal(result.body.activeIdentity.lud16, null);
+  assert.equal(result.body.activeIdentity.profileEvent, null);
+  assert.equal(result.body.activeIdentity.nprofile.startsWith('nprofile1'), true);
+});
+
+function docDb(docs) {
+  return {
+    collection(collection) {
+      return {
+        doc(id) {
+          return {
+            async get() {
+              const data = docs[`${collection}/${id}`];
+              return { exists: data !== undefined, data: () => data || null };
+            }
+          };
+        }
+      };
+    }
+  };
+}
 
 test('keeps claim zap fields when the profile document is missing', async function () {
   const pubkey = 'c'.repeat(64);

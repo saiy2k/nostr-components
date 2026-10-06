@@ -244,6 +244,7 @@ describe("ingestUrlEvent reactions", () => {
       .doc(ALICE_PK)
       .get();
     expect(alice.data()).toMatchObject({
+      pubkey: ALICE_PK,
       reaction: "dislike",
       content: "-",
       url: PAGE,

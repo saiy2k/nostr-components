@@ -121,6 +121,7 @@ async function ingestReaction(db, event, meta) {
     });
     tx.set(urlRef, written, { merge: true });
     tx.set(reactionRef, {
+      pubkey,
       eventId: event.id,
       content: event.content,
       reaction: bucket,

@@ -55,6 +55,52 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "nostrUrlZaps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "urlKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "recipientPubkey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "nostrUrlZaps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "urlKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reactions",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "pubkey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

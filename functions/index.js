@@ -7,6 +7,13 @@ import { lookupAtlasHandle as lookupAtlasRecord } from "./lookup.js";
 import { createAtlasListHandler } from "./profiles.js";
 import { createClaimProofHandler } from "./claim-proof.js";
 import { createIngestClaimHandler, defaultIngestDb } from "./ingest-claim.js";
+import { createProfileLookupHandler } from "./profile-lookup.js";
+import {
+  createIngestUrlEventHandler,
+  createUrlActivityHandler,
+  createUrlEventsHandler,
+  createViewerReactionsHandler,
+} from "./url-activity.js";
 
 initializeApp();
 const db = getFirestore();
@@ -39,6 +46,7 @@ export const lookupAtlasHandle = onRequest(
   {
     region: "us-central1",
     cors: true,
+    invoker: "public",
     maxInstances: 10,
     timeoutSeconds: 10,
   },
@@ -47,6 +55,11 @@ export const lookupAtlasHandle = onRequest(
 
 const ingestProjectId =
   process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
+const crawlerServiceAccount = ingestProjectId
+  ? {
+      serviceAccount: `nostr-atlas-crawler@${ingestProjectId}.iam.gserviceaccount.com`,
+    }
+  : {};
 
 export const ingestClaim = onRequest(
   {
@@ -55,11 +68,7 @@ export const ingestClaim = onRequest(
     invoker: "public",
     maxInstances: 5,
     timeoutSeconds: 60,
-    ...(ingestProjectId
-      ? {
-          serviceAccount: `nostr-atlas-crawler@${ingestProjectId}.iam.gserviceaccount.com`,
-        }
-      : {}),
+    ...crawlerServiceAccount,
   },
   createIngestClaimHandler({ createDb: defaultIngestDb }),
 );
@@ -90,4 +99,50 @@ export const listAtlasProfiles = onRequest(
         process.env.FIRESTORE_HANDLES_COLLECTION || "nostrDirectoryHandles",
     },
   ),
+);
+
+const readLimit = {
+  region: "us-central1",
+  cors: true,
+  invoker: "public",
+  maxInstances: 10,
+  timeoutSeconds: 10,
+};
+
+export const lookupNostrProfiles = onRequest(
+  {
+    region: "us-central1",
+    cors: true,
+    invoker: "public",
+    maxInstances: 10,
+    timeoutSeconds: 15,
+  },
+  createProfileLookupHandler({ createDb: defaultIngestDb }),
+);
+
+export const getUrlActivity = onRequest(
+  { ...readLimit },
+  createUrlActivityHandler(db),
+);
+
+export const listUrlEvents = onRequest(
+  { ...readLimit },
+  createUrlEventsHandler(db),
+);
+
+export const listViewerReactions = onRequest(
+  { ...readLimit },
+  createViewerReactionsHandler(db),
+);
+
+export const ingestUrlEvent = onRequest(
+  {
+    region: "us-central1",
+    cors: true,
+    invoker: "public",
+    maxInstances: 5,
+    timeoutSeconds: 15,
+    ...crawlerServiceAccount,
+  },
+  createIngestUrlEventHandler({ createDb: defaultIngestDb }),
 );
