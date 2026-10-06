@@ -111,8 +111,9 @@ function senderPubkeyFor(zapRequest) {
 
 /**
  * Validate a kind-9735 zap receipt per NIP-57 Appendix F.
- * The bolt11 description hash must equal the sha256 of the raw description
- * tag string. A zap request with an anon tag has no sender.
+ * A description-hash mismatch does not reject the receipt. It sets
+ * descriptionHashMismatch so callers can count it. A zap request with an
+ * anon tag, including one with no value, has no sender.
  */
 export function validateZapReceipt(receipt, opts) {
   if (!receipt || typeof receipt !== "object" || receipt.kind !== 9735) {
@@ -192,9 +193,7 @@ export function validateZapReceipt(receipt, opts) {
   if (invoiceAmountMsats == null) {
     return { ok: false, reason: "invalid-bolt11-amount" };
   }
-  if (!descriptionHashMatches(bolt11, description)) {
-    return { ok: false, reason: "description-hash" };
-  }
+  const descriptionHashMismatch = !descriptionHashMatches(bolt11, description);
 
   const amountTags = getTagEntries(zapRequest.tags, "amount");
   if (amountTags.length > 1) {
@@ -241,10 +240,12 @@ export function validateZapReceipt(receipt, opts) {
     return { ok: false, reason: "a-mismatch" };
   }
 
-  return {
+  const result = {
     ok: true,
     amountMsats: invoiceAmountMsats,
     zapRequest,
     senderPubkey: senderPubkeyFor(zapRequest),
   };
+  if (descriptionHashMismatch) result.descriptionHashMismatch = true;
+  return result;
 }

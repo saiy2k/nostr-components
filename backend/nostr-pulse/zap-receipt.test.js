@@ -158,7 +158,7 @@ describe("validateZapReceipt", () => {
     expect(JSON.stringify(JSON.parse(description))).not.toBe(description);
   });
 
-  it("rejects a description hash that does not match the raw description", () => {
+  it("flags a description hash that does not match the raw description", () => {
     const zapRequest = makeZapRequest();
     const receipt = finalizeEvent(
       {
@@ -177,7 +177,21 @@ describe("validateZapReceipt", () => {
       recipientPubkey: RECIPIENT_PK,
       provider: PROVIDER,
     });
-    expect(result).toEqual({ ok: false, reason: "description-hash" });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.descriptionHashMismatch).toBe(true);
+      expect(result.amountMsats).toBe(BOLT11_AMOUNT_MSATS);
+      expect(result.senderPubkey).toBe(SENDER_PK);
+    }
+  });
+
+  it("has no sender when the anon tag has no value", () => {
+    const result = validateZapReceipt(
+      receiptForRequest(makeZapRequest(BOLT11_AMOUNT_MSATS, [["anon"]])),
+      { recipientPubkey: RECIPIENT_PK, provider: PROVIDER },
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.senderPubkey).toBeNull();
   });
 
   it.each([
