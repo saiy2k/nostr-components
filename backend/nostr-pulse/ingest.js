@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { FieldValue } from "@google-cloud/firestore";
+import { FieldPath, FieldValue } from "@google-cloud/firestore";
 import { validateEvent, verifyEvent } from "nostr-tools";
 import { canonicalUrl, urlKey as urlKeyFor } from "./url-key.js";
 import { validateZapReceipt } from "./zap-receipt.js";
@@ -71,6 +71,46 @@ export function applyReactionChange(totals, previousBucket, nextBucket) {
   return next;
 }
 
+const REACTION_PUBKEY_PAGE = 400;
+
+/**
+ * Copy each reaction document id onto `pubkey` when that field is missing.
+ * `listViewerReactions` filters on the field, so older documents stay invisible until this runs.
+ */
+export async function backfillReactionPubkeys(db, options = {}) {
+  const limit = options.limit ?? REACTION_PUBKEY_PAGE;
+  let query = db.collection(URL_ACTIVITY_COLLECTION).orderBy(FieldPath.documentId());
+  if (options.afterId) query = query.startAfter(options.afterId);
+  const page = await query.limit(limit).get();
+  let updated = 0;
+  let batch = db.batch();
+  let writes = 0;
+  const commit = async () => {
+    if (!writes) return;
+    await batch.commit();
+    batch = db.batch();
+    writes = 0;
+  };
+  for (const urlDoc of page.docs) {
+    const reactions = await urlDoc.ref.collection("reactions").get();
+    for (const reaction of reactions.docs) {
+      const pubkey = String(reaction.id || "").toLowerCase();
+      if (!isHexPubkey(pubkey) || reaction.data()?.pubkey === pubkey) continue;
+      batch.set(reaction.ref, { pubkey }, { merge: true });
+      writes += 1;
+      updated += 1;
+      if (writes === 400) await commit();
+    }
+  }
+  await commit();
+  return {
+    updated,
+    scanned: page.docs.length,
+    done: page.docs.length < limit,
+    afterId: page.docs.length ? page.docs.at(-1).id : options.afterId || null,
+  };
+}
+
 /**
  * Store one kind 17 or kind 9735 URL event.
  * Returns the URL activity afterwards. A repeat is a no-op.
@@ -103,6 +143,9 @@ async function ingestReaction(db, event, meta) {
       ? { id: current.eventId, created_at: current.createdAt }
       : null;
     if (preferNewerReaction(stored, candidate) !== candidate) {
+      if (current && current.pubkey !== pubkey) {
+        tx.set(reactionRef, { pubkey }, { merge: true });
+      }
       return {
         ok: true,
         stored: false,

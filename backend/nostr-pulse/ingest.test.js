@@ -11,6 +11,7 @@ import {
   URL_ACTIVITY_COLLECTION,
   URL_ZAPS_COLLECTION,
   applyReactionChange,
+  backfillReactionPubkeys,
   domainFromCanonical,
   ingestUrlEvent,
   preferNewerReaction,
@@ -172,6 +173,107 @@ async function storedUrl(db, rawUrl = PAGE) {
   return { key, data: snap.data() };
 }
 
+describe("reaction pubkey backfill", () => {
+  it("copies the document id onto pubkey and resumes after the page", async () => {
+    const first = "a".repeat(64);
+    const second = "b".repeat(64);
+    const alice = "1".repeat(64);
+    const bob = "2".repeat(64);
+    const db = reactionPageDb({
+      [`nostrUrlActivity/${first}`]: { url: "https://example.com/a" },
+      [`nostrUrlActivity/${first}/reactions/${alice}`]: { content: "+" },
+      [`nostrUrlActivity/${first}/reactions/not-a-pubkey`]: { content: "+" },
+      [`nostrUrlActivity/${second}`]: { url: "https://example.com/b" },
+      [`nostrUrlActivity/${second}/reactions/${bob}`]: { content: "-", pubkey: bob },
+    });
+
+    const page = await backfillReactionPubkeys(db, { limit: 1 });
+    expect(page).toMatchObject({ updated: 1, scanned: 1, done: false, afterId: first });
+    expect(db.data.get(`nostrUrlActivity/${first}/reactions/${alice}`).pubkey).toBe(alice);
+    expect(db.data.has(`nostrUrlActivity/${first}/reactions/not-a-pubkey`)).toBe(true);
+    expect(db.data.get(`nostrUrlActivity/${first}/reactions/not-a-pubkey`).pubkey).toBeUndefined();
+
+    const rest = await backfillReactionPubkeys(db, { afterId: page.afterId, limit: 1 });
+    expect(rest).toMatchObject({ updated: 0, scanned: 1, done: false, afterId: second });
+    expect(db.data.get(`nostrUrlActivity/${second}/reactions/${bob}`)).toMatchObject({
+      pubkey: bob,
+      content: "-",
+    });
+    const empty = await backfillReactionPubkeys(db, { afterId: rest.afterId, limit: 1 });
+    expect(empty).toMatchObject({ updated: 0, scanned: 0, done: true, afterId: second });
+  });
+});
+
+function reactionPageDb(initial) {
+  const data = new Map(Object.entries(initial));
+  function reactions(urlId) {
+    return {
+      async get() {
+        const prefix = `nostrUrlActivity/${urlId}/reactions/`;
+        const docs = [];
+        for (const [path, value] of data) {
+          if (!path.startsWith(prefix) || path.slice(prefix.length).includes("/")) continue;
+          const id = path.slice(prefix.length);
+          docs.push({
+            id,
+            ref: { path },
+            data: () => ({ ...value }),
+          });
+        }
+        return { docs };
+      },
+    };
+  }
+  return {
+    data,
+    batch() {
+      const ops = [];
+      return {
+        set(ref, patch, options) {
+          ops.push({ ref, patch, options });
+        },
+        async commit() {
+          for (const op of ops) {
+            const prev = data.get(op.ref.path) || {};
+            data.set(op.ref.path, op.options?.merge ? { ...prev, ...op.patch } : { ...op.patch });
+          }
+        },
+      };
+    },
+    collection() {
+      return {
+        orderBy() {
+          const state = { after: null, max: 100 };
+          return {
+            startAfter(id) {
+              state.after = id;
+              return this;
+            },
+            limit(n) {
+              state.max = n;
+              return this;
+            },
+            async get() {
+              const ids = [...data.keys()]
+                .filter((path) => path.split("/").length === 2)
+                .map((path) => path.split("/")[1])
+                .filter((id) => state.after == null || id > state.after)
+                .sort()
+                .slice(0, state.max);
+              return {
+                docs: ids.map((id) => ({
+                  id,
+                  ref: { collection: () => reactions(id) },
+                })),
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
 describe("reaction vectors shared with like-netting", () => {
   it("sorts content into the same buckets", () => {
     for (const row of vectors.buckets) {
@@ -270,6 +372,44 @@ describe("ingestUrlEvent reactions", () => {
       .doc(ALICE_PK)
       .get();
     expect(doc.data().content).toBe("-");
+    expect(doc.data().pubkey).toBe(ALICE_PK);
+  });
+
+  it("fills pubkey on an older reaction document that was stored without it", async () => {
+    const key = urlKey(canonicalUrl(PAGE));
+    const db = memoryDb({
+      [`${URL_ACTIVITY_COLLECTION}/${key}`]: {
+        url: PAGE,
+        likeCount: 0,
+        dislikeCount: 1,
+        emojiCount: 0,
+        reactionCount: 1,
+      },
+      [`${URL_ACTIVITY_COLLECTION}/${key}/reactions/${ALICE_PK}`]: {
+        eventId: "f".repeat(64),
+        content: "-",
+        reaction: "dislike",
+        createdAt: 200,
+        url: PAGE,
+        urlKey: key,
+        domain: "x.com",
+      },
+    });
+    const older = await ingestUrlEvent(db, reaction(ALICE, "+", 100), {
+      source: "sweep",
+    });
+    expect(older).toMatchObject({ ok: true, stored: false });
+    const doc = await db
+      .collection(URL_ACTIVITY_COLLECTION)
+      .doc(key)
+      .collection("reactions")
+      .doc(ALICE_PK)
+      .get();
+    expect(doc.data()).toMatchObject({
+      pubkey: ALICE_PK,
+      content: "-",
+      reaction: "dislike",
+    });
   });
 
   it("rejects a reaction that is not a signed web page", async () => {

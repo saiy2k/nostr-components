@@ -14,7 +14,7 @@ import {
   terminateFirestore,
 } from "../nostr-atlas/runtime.js";
 import { backfillStateId, numberFromEnv } from "../nostr-atlas/utils.js";
-import { ingestUrlEvent } from "./ingest.js";
+import { URL_ACTIVITY_COLLECTION, backfillReactionPubkeys, ingestUrlEvent } from "./ingest.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -198,6 +198,7 @@ export async function runSweep(config, options = {}) {
       maxPages: config.maxPages,
       windowEnd: config.nowSec,
     });
+    await repairReactionPubkeys(db);
     for (const relay of config.relays) {
       for (const kind of config.kinds) {
         try {
@@ -229,6 +230,30 @@ export async function runSweep(config, options = {}) {
     throw new Error(`pulse sweep failed for ${failed} relay/kind cursors`);
   }
   return { summaries };
+}
+
+async function repairReactionPubkeys(db) {
+  const urls = db.collection(URL_ACTIVITY_COLLECTION);
+  if (typeof urls.orderBy !== "function") return;
+  const ref = db.collection(SWEEP_STATE_COLLECTION).doc("reaction-pubkey");
+  const snap = await ref.get();
+  const state = snap.exists ? snap.data() || {} : {};
+  if (state.done === true) return;
+  const result = await backfillReactionPubkeys(db, {
+    afterId: state.afterId || null,
+    limit: 400,
+  });
+  await saveCursor(
+    db,
+    ref,
+    {
+      afterId: result.done ? null : result.afterId || null,
+      done: result.done === true,
+      updated: Number(state.updated || 0) + result.updated,
+      lastRunAt: new Date().toISOString(),
+    },
+    snap.exists ? Number(state.revision) || 0 : 0,
+  );
 }
 
 async function sweepRelayKind(db, relay, kind, config, options) {
