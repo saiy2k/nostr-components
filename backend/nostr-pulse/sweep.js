@@ -198,7 +198,14 @@ export async function runSweep(config, options = {}) {
       maxPages: config.maxPages,
       windowEnd: config.nowSec,
     });
-    await repairReactionPubkeys(db);
+    try {
+      await repairReactionPubkeys(db);
+    } catch (error) {
+      logSweep("sweep_reaction_pubkey_repair_failed", {
+        severity: "ERROR",
+        lastError: error?.message || String(error),
+      });
+    }
     for (const relay of config.relays) {
       for (const kind of config.kinds) {
         try {

@@ -255,6 +255,38 @@ describe("runSweep", () => {
     expect(stateOf(db)).toMatchObject({ status: "complete", syncedUntil: NOW, windowEnd: null });
   });
 
+  it("keeps sweeping when pubkey repair fails", async () => {
+    const db = memoryDb();
+    const collection = db.collection.bind(db);
+    db.collection = (name) => {
+      const col = collection(name);
+      if (name !== "nostrUrlActivity") return col;
+      return {
+        orderBy() {
+          throw new Error("repair-down");
+        },
+      };
+    };
+    const logs = [];
+    const write = console.log;
+    console.log = (line) => logs.push(String(line));
+    try {
+      const result = await runSweep(config({ kinds: [17], maxPages: 1 }), {
+        db,
+        flushHealth: false,
+        queryRelay: async () => ({ reason: "eose", events: [] }),
+        ingestUrlEvent: async () => ({ ok: true, stored: false, retry: false }),
+      });
+      expect(result.summaries[0].status).toBe("complete");
+    } finally {
+      console.log = write;
+    }
+    expect(logs.some((line) => line.includes("sweep_reaction_pubkey_repair_failed"))).toBe(
+      true,
+    );
+    expect(logs.some((line) => line.includes("repair-down"))).toBe(true);
+  });
+
   it("asks relays for web reactions and every receipt, then stores both", async () => {
     const db = memoryDb();
     const filters = [];
