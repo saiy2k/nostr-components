@@ -70,10 +70,30 @@ export function isPrivateAddress(address) {
   return true;
 }
 
+function abortError(signal) {
+  const reason = signal?.reason;
+  return reason instanceof Error ? reason : new Error("aborted");
+}
+
 function throwIfAborted(signal) {
-  if (!signal?.aborted) return;
-  const reason = signal.reason;
-  throw reason instanceof Error ? reason : new Error("aborted");
+  if (signal?.aborted) throw abortError(signal);
+}
+
+/** dns.lookup has no signal, so a stalled lookup is raced against abort. */
+async function lookupAll(hostname, signal) {
+  throwIfAborted(signal);
+  const pending = lookup(hostname, { all: true });
+  if (!signal) return pending;
+  let onAbort;
+  const aborted = new Promise((_, reject) => {
+    onAbort = () => reject(abortError(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([pending, aborted]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }
 
 export async function fetchPublicHttps(url, options = {}) {
@@ -81,8 +101,7 @@ export async function fetchPublicHttps(url, options = {}) {
   if (parsed.protocol !== "https:") {
     return { ok: false, status: 400, json: async () => ({}) };
   }
-  throwIfAborted(options.signal);
-  const records = await lookup(parsed.hostname, { all: true });
+  const records = await lookupAll(parsed.hostname, options.signal);
   throwIfAborted(options.signal);
   if (!records.length || records.some((record) => isPrivateAddress(record.address))) {
     return { ok: false, status: 403, json: async () => ({}) };
