@@ -90,6 +90,19 @@ gcloud firestore indexes composite create \
 Use the configured `FIRESTORE_HANDLES_COLLECTION` and `FIRESTORE_DATABASE`
 values when they differ from the defaults.
 
+`nostr-pulse/import-web-pulse.js` copies historical URL reactions and zap receipts
+into this project. It only reads `Nostr_reactions` and `Nostr_zaps` in
+`sat-the-standard`. The default run is a dry run and writes nothing. Pass
+`--write` to store the events it still finds on relays into `nostr-components`
+through the URL ingest. Do not point it at any other project, and do not
+write to `sat-the-standard`.
+
+```sh
+cd backend
+node --env-file-if-exists=.env nostr-pulse/import-web-pulse.js
+node --env-file-if-exists=.env nostr-pulse/import-web-pulse.js --write
+```
+
 Client Firestore rules for this database live in `backend/firestore.rules`.
 Nostr Atlas, the browser extension, and Storybook never read these collections
 directly. Deploy the rules only to the new directory project (`nostr-components`):
