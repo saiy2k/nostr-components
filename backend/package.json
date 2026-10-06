@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google-cloud/firestore": "8.6.0",
+    "@nostr-dev-kit/ndk": "2.13.1",
     "@scure/base": "1.1.1",
     "light-bolt11-decoder": "3.2.0",
     "nostr-tools": "2.12.0",

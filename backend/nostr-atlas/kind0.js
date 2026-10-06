@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { isValidSignedEvent, queryRelay } from "./ingestion.js";
-import { createRelayClient } from "./public-network.js";
+import { createNdkRelayClient, isValidSignedEvent, queryRelay } from "./ingestion.js";
 
 const PROFILE_TIMEOUT_MS = 8000;
 const RELAY_CONCURRENCY = 8;
@@ -106,7 +105,7 @@ function chunkPubkeys(pubkeys, size) {
 }
 
 async function queryRelayProfiles(url, pubkeys) {
-  const client = createRelayClient(url);
+  const client = createNdkRelayClient(url);
   try {
     await client.connect(PROFILE_TIMEOUT_MS);
   } catch {

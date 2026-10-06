@@ -12,7 +12,12 @@ function readPackage(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-const COPIED_DEPENDENCIES = ["@google-cloud/firestore", "nostr-tools", "ws"];
+const COPIED_DEPENDENCIES = [
+  "@google-cloud/firestore",
+  "@nostr-dev-kit/ndk",
+  "nostr-tools",
+  "ws",
+];
 
 test("functions pin the backend versions used by the copied crawler code", () => {
   const functionsPkg = readPackage(join(here, "package.json"));
@@ -23,6 +28,4 @@ test("functions pin the backend versions used by the copied crawler code", () =>
     assert.equal(functionsVersion, backendVersion, name);
     assert.match(functionsVersion, /^\d+\.\d+\.\d+$/, name);
   }
-  assert.equal(functionsPkg.dependencies["@nostr-dev-kit/ndk"], undefined);
-  assert.equal(backendPkg.dependencies["@nostr-dev-kit/ndk"], undefined);
 });

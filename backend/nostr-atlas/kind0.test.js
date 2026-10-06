@@ -2,14 +2,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./public-network.js", () => ({
-  createRelayClient: () => ({
+vi.mock("./ingestion.js", () => ({
+  createNdkRelayClient: () => ({
     connect: async () => {},
     close: () => {},
   }),
-}));
-
-vi.mock("./ingestion.js", () => ({
   isValidSignedEvent: (event) => event?.sig === "ok",
   queryRelay: vi.fn(),
 }));
