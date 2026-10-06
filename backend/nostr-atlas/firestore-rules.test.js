@@ -21,6 +21,11 @@ const SERVER_ONLY_COLLECTIONS = [
   "relayProjectionRuns",
   "nostrProfiles",
   "nostrRelayHealth",
+  "nostrUrlActivity",
+  "reactions",
+  "recipients",
+  "nostrUrlZaps",
+  "nostrPulseSweepState",
 ];
 
 describe("directory Firestore rules", () => {

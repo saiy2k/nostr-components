@@ -30,7 +30,7 @@ Read the surface README for runbooks. This file only routes work and names the t
 ### Crawler jobs
 
 - Source: `backend/`. Own `package.json`. Local notes: [backend/AGENTS.md](backend/AGENTS.md).
-- Cloud Run: `backend/deploy-nostr-atlas-backfill.sh` and `backend/deploy-nostr-atlas-projection.sh`.
+- Cloud Run: `backend/deploy-nostr-atlas-backfill.sh`, `backend/deploy-nostr-atlas-projection.sh`, and `backend/deploy-nostr-pulse-sweep.sh`.
 - Firestore rules live in [backend/firebase.json](backend/firebase.json). Deploy them with `--config backend/firebase.json --project nostr-components`. A root `firebase deploy` does not publish those rules. Leave project `sat-the-standard` alone.
 
 ### Browser extension

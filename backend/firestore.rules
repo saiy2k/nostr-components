@@ -38,6 +38,26 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /nostrUrlActivity/{urlKey} {
+      allow read, write: if false;
+
+      match /reactions/{pubkey} {
+        allow read, write: if false;
+      }
+
+      match /recipients/{pubkey} {
+        allow read, write: if false;
+      }
+    }
+
+    match /nostrUrlZaps/{receiptId} {
+      allow read, write: if false;
+    }
+
+    match /nostrPulseSweepState/{stateId} {
+      allow read, write: if false;
+    }
+
     // Anything else in this database is server-only too.
     match /{document=**} {
       allow read, write: if false;

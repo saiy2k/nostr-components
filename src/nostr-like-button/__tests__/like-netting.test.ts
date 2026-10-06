@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Event } from 'nostr-tools';
+import vectors from '../../../backend/nostr-pulse/reaction-vectors.json';
 import { netLikesByPubkey } from '../like-netting';
 
 function reaction(
@@ -55,5 +56,30 @@ describe('netLikesByPubkey', () => {
     const result = netLikesByPubkey([reaction('aaa', '', 100)]);
     expect(result.totalCount).toBe(1);
     expect(result.likedCount).toBe(1);
+  });
+
+  it('uses the shared newest-reaction and content-bucket vectors', () => {
+    for (const row of vectors.buckets) {
+      const result = netLikesByPubkey([reaction('aaa', row.content, 1, 'bucket')]);
+      if (row.bucket === 'like') expect(result.likedCount).toBe(1);
+      if (row.bucket === 'dislike') expect(result.dislikedCount).toBe(1);
+      if (row.bucket === 'emoji') {
+        expect(result.likedCount).toBe(0);
+        expect(result.dislikedCount).toBe(0);
+        expect(result.likeDetails[0]?.content).toBe(row.content);
+      }
+    }
+
+    for (const row of vectors.newest) {
+      const result = netLikesByPubkey(
+        row.events.map((event) =>
+          reaction('aaa', event.content, event.created_at, event.id),
+        ),
+      );
+      const winner = row.events.find((event) => event.id === row.winnerId);
+      expect(result.likeDetails.map((detail) => detail.content)).toEqual([
+        winner?.content,
+      ]);
+    }
   });
 });
