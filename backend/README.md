@@ -59,8 +59,10 @@ Prefer a dedicated GCP project or Firestore database for this job, and grant the
 only. The scheduler uses a separate `nostr-atlas-scheduler` service account
 with `roles/run.invoker` on the Cloud Run Job.
 
-Relay connections and subscriptions use NDK. The jobs retain explicit event
-validation, pagination, deduplication, Firestore writes, and checkpoint logic.
+Relay connections use NDK. Every relay socket goes through `PublicWebSocket`
+in `nostr-atlas/public-network.js`, which resolves the host and refuses a
+private address before connecting. The jobs retain explicit event validation,
+pagination, deduplication, Firestore writes, and checkpoint logic.
 
 Run projection after backfill because it consumes the handle documents created
 by backfill. `deploy-nostr-atlas-projection.sh` schedules

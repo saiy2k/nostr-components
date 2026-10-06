@@ -1,0 +1,6 @@
+{
+  "rendezvous": ["wss://relay.ditto.pub", "wss://nostr.mom", "wss://relay.damus.io", "wss://nostr.oxtr.dev", "wss://relay.nostr.wirednet.jp"],
+  "sweepExtra": ["wss://nos.lol", "wss://relay.primal.net", "wss://nostr.wine", "wss://yabu.me", "wss://nostr-pub.wellorder.net", "wss://relay.fountain.fm", "wss://offchain.pub", "wss://relay.momostr.pink"],
+  "indexers": ["wss://purplepag.es", "wss://indexer.coracle.social", "wss://user.kindpag.es", "wss://directory.yabu.me"],
+  "profileArchives": ["wss://relay.ditto.pub", "wss://directory.yabu.me", "wss://nostr.oxtr.dev", "wss://relay.nostr.wirednet.jp"]
+}

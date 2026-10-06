@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { queryRelay } from "./ingestion.js";
 
-describe("NDK relay query adapter", () => {
+describe("relay query adapter", () => {
   it("returns every subscription event without replaceable-event collapsing", async () => {
     const stopped = [];
     const closed = [];

@@ -95,4 +95,13 @@ describe("isPrivateAddress", () => {
     expect(isPrivateAddress("fe80::1")).toBe(true);
     expect(isPrivateAddress("1.1.1.1")).toBe(false);
   });
+
+  it("blocks mapped IPv4 and the whole link-local range", () => {
+    expect(isPrivateAddress("::ffff:7f00:1")).toBe(true);
+    expect(isPrivateAddress("::ffff:127.0.0.1")).toBe(true);
+    expect(isPrivateAddress("fe81::1")).toBe(true);
+    expect(isPrivateAddress("febf::1")).toBe(true);
+    expect(isPrivateAddress("fec0::1")).toBe(false);
+    expect(isPrivateAddress("::ffff:808:808")).toBe(false);
+  });
 });

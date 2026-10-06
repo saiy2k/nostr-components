@@ -3,7 +3,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { SimplePool, validateEvent, verifyEvent } from "nostr-tools";
+import { validateEvent, verifyEvent } from "nostr-tools";
+import { createRelayPool } from "./public-network.js";
 import {
   buildMergedHandleWrite,
   handleDocumentId,
@@ -174,7 +175,7 @@ async function projectHandle(db, handle, claimId, collection, config) {
 }
 
 export async function claimEventOnRelay(relay, eventId, timeoutMs = 8_000) {
-  const pool = new SimplePool();
+  const pool = createRelayPool();
   try {
     const found = await pool.querySync(
       [relay],

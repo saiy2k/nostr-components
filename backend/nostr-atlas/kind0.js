@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import {
-  createNdkRelayClient,
-  isValidSignedEvent,
-  queryRelay,
-} from "./ingestion.js";
+import { createNdkRelayClient, isValidSignedEvent, queryRelay } from "./ingestion.js";
 
 const PROFILE_TIMEOUT_MS = 8000;
 const RELAY_CONCURRENCY = 8;

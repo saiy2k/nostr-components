@@ -14,3 +14,4 @@ firebase deploy --only firestore:rules --project nostr-components \
 
 - Deploy those rules to `nostr-components` only. Leave `sat-the-standard` alone. A root `firebase deploy` does not include this file.
 - Job behavior, scheduler, and IAM: [README.md](README.md).
+- NDK is created only in `nostr-atlas/ingestion.js`. NDK and the claim pool open sockets through `PublicWebSocket`, which refuses a host that resolves to a private address.

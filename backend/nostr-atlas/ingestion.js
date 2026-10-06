@@ -2,8 +2,9 @@
 
 import { createHash } from "node:crypto";
 import { FieldValue } from "@google-cloud/firestore";
-import NDK from "@nostr-dev-kit/ndk";
 import { validateEvent, verifyEvent } from "nostr-tools";
+import NDK from "@nostr-dev-kit/ndk";
+import { PublicWebSocket } from "./public-network.js";
 import {
   DEFAULT_COLLECTIONS,
   serializeFirestoreDataForJson,
@@ -15,9 +16,14 @@ import { backfillStateId, firestoreSafeId } from "./utils.js";
 export const MAX_DEAD_LETTER_PAYLOAD_BYTES = 700_000;
 
 export function createNdkRelayClient(url) {
+  // NDK 2.13.1 opens each socket with the global WebSocket at connect time.
+  globalThis.WebSocket = PublicWebSocket;
   const ndk = new NDK({ explicitRelayUrls: [url] });
   return {
-    connect: (timeoutMs) => ndk.connect(timeoutMs),
+    connect(timeoutMs) {
+      globalThis.WebSocket = PublicWebSocket;
+      return ndk.connect(timeoutMs);
+    },
     subscribe(filter, { max, onEvent, onEose, onClosed }) {
       // NDK auto-starts unless the third arg is false; attach handlers first so
       // cached/EOSE signals cannot fire before listeners are registered.
