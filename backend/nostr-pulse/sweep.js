@@ -153,7 +153,9 @@ export function planSweepCursor({
     if (reason === "eose") return { action: "complete", reason, completed: true, gap: null };
     return { action: "pause", reason: "empty-page", completed: false };
   }
-  if (reason === "eose" || pageOldest < windowStart) {
+  // A relay may cap the page below `limit` and still send EOSE. Keep paging
+  // until the page is empty or its oldest event is already before the window.
+  if (pageOldest < windowStart) {
     return { action: "complete", reason, completed: true, gap: null };
   }
   const decision = decideBackfillCursor({
@@ -241,7 +243,14 @@ async function sweepRelayKind(db, relay, kind, config, options) {
   }
   let cursor = resumed.cursor;
   let window = { windowStart: resumed.windowStart, windowEnd: resumed.windowEnd };
-  await writeState(ref, stateFields({
+  let revision = snap.exists ? Number(state.revision) || 0 : 0;
+  const persist = async (fields) => {
+    const next = await saveCursor(db, ref, fields, revision);
+    if (next == null) return false;
+    revision = next;
+    return true;
+  };
+  if (!(await persist(stateFields({
     relay,
     kind,
     state,
@@ -249,7 +258,9 @@ async function sweepRelayKind(db, relay, kind, config, options) {
     cursor,
     status: "running",
     config,
-  }));
+  })))) {
+    return { relay, kind, status: "yielded", pages: 0 };
+  }
 
   let pages = 0;
   let lastReason = "running";
@@ -263,7 +274,7 @@ async function sweepRelayKind(db, relay, kind, config, options) {
       );
     } catch (error) {
       lastReason = error?.message || String(error);
-      await writeState(ref, stateFields({
+      if (!(await persist(stateFields({
         relay,
         kind,
         state,
@@ -272,7 +283,9 @@ async function sweepRelayKind(db, relay, kind, config, options) {
         status: "retry_later",
         lastError: lastReason,
         config,
-      }));
+      })))) {
+        return { relay, kind, status: "yielded", pages };
+      }
       return { relay, kind, status: "retry_later", lastError: lastReason, pages };
     }
     pages += 1;
@@ -284,7 +297,7 @@ async function sweepRelayKind(db, relay, kind, config, options) {
       maxPageLimit: config.maxPageLimit,
     });
     if (plan.action === "unsupported") {
-      await writeState(ref, stateFields({
+      if (!(await persist(stateFields({
         relay,
         kind,
         state,
@@ -294,11 +307,13 @@ async function sweepRelayKind(db, relay, kind, config, options) {
         lastError: plan.reason,
         config,
         clearWindow: true,
-      }));
+      })))) {
+        return { relay, kind, status: "yielded", pages };
+      }
       return { relay, kind, status: "unsupported", lastError: plan.reason, pages };
     }
     if (plan.action === "pause") {
-      await writeState(ref, stateFields({
+      if (!(await persist(stateFields({
         relay,
         kind,
         state,
@@ -307,7 +322,9 @@ async function sweepRelayKind(db, relay, kind, config, options) {
         status: "retry_later",
         lastError: plan.reason,
         config,
-      }));
+      })))) {
+        return { relay, kind, status: "yielded", pages };
+      }
       return { relay, kind, status: "retry_later", lastError: plan.reason, pages };
     }
 
@@ -317,7 +334,7 @@ async function sweepRelayKind(db, relay, kind, config, options) {
       { relay, kind, windowStart: window.windowStart, config, options, cursor },
     );
     if (outcome.failed) {
-      await writeState(ref, stateFields({
+      if (!(await persist(stateFields({
         relay,
         kind,
         state,
@@ -326,12 +343,14 @@ async function sweepRelayKind(db, relay, kind, config, options) {
         status: "failed",
         lastError: outcome.error,
         config,
-      }));
+      })))) {
+        return { relay, kind, status: "yielded", pages };
+      }
       return { relay, kind, status: "failed", lastError: outcome.error, pages };
     }
     if (outcome.retry) {
       const attempts = (cursor.transientAttempts || 0) + 1;
-      await writeState(ref, stateFields({
+      if (!(await persist(stateFields({
         relay,
         kind,
         state,
@@ -340,7 +359,9 @@ async function sweepRelayKind(db, relay, kind, config, options) {
         status: "retry_later",
         lastError: "provider-unavailable",
         config,
-      }));
+      })))) {
+        return { relay, kind, status: "yielded", pages };
+      }
       return {
         relay,
         kind,
@@ -352,7 +373,7 @@ async function sweepRelayKind(db, relay, kind, config, options) {
 
     lastReason = plan.reason;
     if (plan.completed) {
-      await writeState(ref, stateFields({
+      if (!(await persist(stateFields({
         relay,
         kind,
         state,
@@ -364,7 +385,9 @@ async function sweepRelayKind(db, relay, kind, config, options) {
         lastGap: plan.gap,
         config,
         clearWindow: true,
-      }));
+      })))) {
+        return { relay, kind, status: "yielded", pages };
+      }
       logSweep("sweep_cursor_result", {
         relay,
         kind,
@@ -375,7 +398,7 @@ async function sweepRelayKind(db, relay, kind, config, options) {
       return { relay, kind, status: "complete", pages, syncedUntil: window.windowEnd };
     }
     cursor = { ...plan.cursor, transientAttempts: 0 };
-    await writeState(ref, stateFields({
+    if (!(await persist(stateFields({
       relay,
       kind,
       state,
@@ -385,7 +408,9 @@ async function sweepRelayKind(db, relay, kind, config, options) {
       lastError: null,
       lastGap: plan.gap,
       config,
-    }));
+    })))) {
+      return { relay, kind, status: "yielded", pages };
+    }
   }
   logSweep("sweep_cursor_result", {
     relay,
@@ -484,8 +509,16 @@ function positiveInteger(value, name) {
   }
 }
 
-async function writeState(ref, data) {
-  await ref.set(data, { merge: true });
+async function saveCursor(db, ref, data, revision) {
+  const next = revision + 1;
+  const wrote = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists ? Number(snap.data()?.revision) || 0 : 0;
+    if (current !== revision) return false;
+    tx.set(ref, { ...data, revision: next }, { merge: true });
+    return true;
+  });
+  return wrote ? next : null;
 }
 
 function logSweep(message, fields = {}) {

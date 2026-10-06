@@ -62,6 +62,12 @@ function memoryDb() {
         },
       };
     },
+    async runTransaction(fn) {
+      return fn({
+        get: (ref) => ref.get(),
+        set: (ref, data, options) => ref.set(data, options),
+      });
+    },
   };
 }
 
@@ -142,10 +148,28 @@ describe("planSweepCursor", () => {
     stuckCount: 0,
   };
 
-  it("finishes the window on eose and pauses on a failed page", () => {
+  it("keeps paging a nonempty eose page and finishes an empty one", () => {
+    const nonempty = planSweepCursor({
+      page: { reason: "eose", events: [{ id: "a", created_at: 500 }] },
+      cursor,
+      windowStart: 100,
+      defaultPageLimit: 500,
+      maxPageLimit: 2000,
+    });
+    expect(nonempty.completed).toBe(false);
+    expect(nonempty.cursor.cursorUntil).toBe(500);
     expect(
       planSweepCursor({
-        page: { reason: "eose", events: [{ id: "a", created_at: 500 }] },
+        page: { reason: "eose", events: [] },
+        cursor,
+        windowStart: 100,
+        defaultPageLimit: 500,
+        maxPageLimit: 2000,
+      }).completed,
+    ).toBe(true);
+    expect(
+      planSweepCursor({
+        page: { reason: "eose", events: [{ id: "old", created_at: 50 }] },
         cursor,
         windowStart: 100,
         defaultPageLimit: 500,
@@ -284,7 +308,33 @@ describe("runSweep", () => {
     expect(stateOf(db).transientAttempts).toBe(1);
     const done = await runSweep(cfg, { db, queryRelay, ingestUrlEvent, flushHealth: false });
     expect(options).toEqual([false, true]);
-    expect(done.summaries[0].status).toBe("complete");
+    expect(done.summaries[0].status).toBe("running");
+    expect(stateOf(db).cursorUntil).toBe(NOW - 10);
+  });
+
+  it("leaves the cursor alone when another execution has moved its revision", async () => {
+    const db = memoryDb();
+    let commits = 0;
+    const runTransaction = db.runTransaction.bind(db);
+    db.runTransaction = async (fn) => {
+      commits += 1;
+      if (commits === 2) {
+        const [key, data] = [...db.docs.entries()][0];
+        db.docs.set(key, { ...data, revision: data.revision + 5, cursorUntil: 123 });
+      }
+      return runTransaction(fn);
+    };
+    const result = await runSweep(config({ kinds: [17], maxPages: 2 }), {
+      db,
+      flushHealth: false,
+      queryRelay: async () => ({
+        reason: "max",
+        events: [{ id: "e", created_at: NOW - 50, kind: 17 }],
+      }),
+      ingestUrlEvent: async () => ({ ok: true, stored: true, retry: false }),
+    });
+    expect(result.summaries[0].status).toBe("yielded");
+    expect(stateOf(db)).toMatchObject({ revision: 6, cursorUntil: 123 });
   });
 
   it("does not query a relay that rejects the kind", async () => {
