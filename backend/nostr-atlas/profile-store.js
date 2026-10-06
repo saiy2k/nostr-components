@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FieldPath } from "@google-cloud/firestore";
+import { FieldPath, FieldValue } from "@google-cloud/firestore";
 import {
   isValidSignedEvent,
   queryRelay as defaultQueryRelay,
@@ -686,7 +686,7 @@ async function applyHandlePlans(db, plans, options) {
         stripUndefined({
           activeIdentity: next.activeIdentity,
           claims: next.claims,
-          updatedAt: new Date(options.nowMs ?? Date.now()).toISOString(),
+          updatedAt: FieldValue.serverTimestamp(),
         }),
         { merge: true },
       );
