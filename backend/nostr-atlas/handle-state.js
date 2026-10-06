@@ -4,6 +4,7 @@ import { FieldValue } from "@google-cloud/firestore";
 import { nip19 } from "nostr-tools";
 import { DEFAULT_COLLECTIONS, stripUndefined } from "./runtime.js";
 import { httpsPictureUrl } from "./picture-url.js";
+import { mergeRelayHints, normalizeRelayHints } from "./relay-hints.js";
 import {
   compareClaimsNewestFirst,
   extractTweetId,
@@ -85,6 +86,7 @@ export async function extractIdentityClaims(
     }
 
     for (const candidate of byHandle.values()) {
+      const relayHints = normalizeRelayHints([relay]);
       const claim = stripUndefined({
         claimId: event.id,
         platform: "twitter",
@@ -99,6 +101,7 @@ export async function extractIdentityClaims(
         sourceKind: event.kind,
         sourceCreatedAt: event.created_at,
         sourceRelay: relay,
+        relayHints: relayHints.length ? relayHints : undefined,
         signatureVerified: true,
         discoveredAt,
         metadata: metadata
@@ -143,6 +146,14 @@ export function mergeHandleClaims(existing, incomingClaims = [], options = {}) {
       continue;
     }
     if (claimsById.has(claim.claimId)) {
+      const current = claimsById.get(claim.claimId);
+      const relayHints = mergeRelayHints(current.relayHints, claim.relayHints);
+      if (
+        relayHints.length &&
+        JSON.stringify(relayHints) !== JSON.stringify(current.relayHints || [])
+      ) {
+        claimsById.set(claim.claimId, { ...current, relayHints });
+      }
       skippedExisting += 1;
       continue;
     }

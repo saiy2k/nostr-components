@@ -63,3 +63,83 @@ test('reads nostrDirectoryHandles by twitter handle', async function () {
   assert.equal(result.body.verified, false);
   assert.equal(result.body.pending, true);
 });
+
+test('uses nostrProfiles.zap when a signed profile exists', async function () {
+  const pubkey = 'b'.repeat(64);
+  const docs = {
+    'nostrDirectoryHandles/twitter:alice': {
+      activeIdentity: {
+        status: 'verified',
+        pubkey,
+        zappable: false,
+        lud16: 'stale@example.com'
+      }
+    },
+    [`nostrProfiles/${pubkey}`]: {
+      zap: {
+        zappable: true,
+        lud16: 'alice@example.com',
+        transient: false
+      }
+    }
+  };
+  const db = {
+    collection(collection) {
+      return {
+        doc(id) {
+          return {
+            async get() {
+              const data = docs[`${collection}/${id}`];
+              return { exists: data !== undefined, data: () => data || null };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const result = await lookupAtlasHandle(db, 'alice');
+  assert.equal(result.body.activeIdentity.zappable, true);
+  assert.equal(result.body.activeIdentity.lud16, 'alice@example.com');
+
+  docs[`nostrProfiles/${pubkey}`].zap = {
+    zappable: false,
+    lud16: 'alice@example.com',
+    transient: false
+  };
+  const hidden = await lookupAtlasHandle(db, 'alice');
+  assert.equal(hidden.body.activeIdentity.zappable, false);
+  assert.equal(hidden.body.activeIdentity.lud16, null);
+});
+
+test('keeps claim zap fields when the profile document is missing', async function () {
+  const pubkey = 'c'.repeat(64);
+  const db = {
+    collection(collection) {
+      return {
+        doc() {
+          return {
+            async get() {
+              if (collection === 'nostrProfiles') return { exists: false, data: () => null };
+              return {
+                exists: true,
+                data: () => ({
+                  activeIdentity: {
+                    status: 'verified',
+                    pubkey,
+                    zappable: true,
+                    lud16: 'kept@example.com'
+                  }
+                })
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const result = await lookupAtlasHandle(db, 'alice');
+  assert.equal(result.body.activeIdentity.zappable, true);
+  assert.equal(result.body.activeIdentity.lud16, 'kept@example.com');
+});

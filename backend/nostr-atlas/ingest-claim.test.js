@@ -108,6 +108,7 @@ describe("ingestPublishedClaim", () => {
       {
         relays: ["wss://relay.damus.io"],
         eventOnRelay: onRelay,
+        queryRelay: async () => ({ events: [], reason: "eose" }),
         verifyHandleClaims: async (handleData) => {
           seen.push(handleData.handle);
           const claim = handleData.claims[0];
@@ -152,6 +153,7 @@ describe("ingestPublishedClaim", () => {
       {
         relays: [RELAY],
         eventOnRelay: onRelay,
+        queryRelay: async () => ({ events: [], reason: "eose" }),
         verifyHandleClaims: async (handleData) => {
           seen.push(handleData.handle);
           const claim = handleData.claims.find(

@@ -41,6 +41,12 @@ import {
 } from "./x-identity.js";
 import { fetchPublicHttps } from "./public-network.js";
 import {
+  flushRelayHealth,
+  refreshProfiles,
+  runDueProfilePass,
+} from "./profile-store.js";
+import { mergeRelayHints } from "./relay-hints.js";
+import {
   isHexPubkey,
   isPublicHostname,
   normalizeTwitterHandle,
@@ -83,6 +89,10 @@ export function loadProjectionConfig(env = process.env) {
       DEFAULT_MAX_RETRY_ATTEMPTS,
     ),
     relays: projectionRelays(env),
+    profileLookup: true,
+    profileRefresh: true,
+    profileRefreshLimit: numberFromEnv(env, "PROFILE_REFRESH_LIMIT", 40),
+    profileScanLimit: numberFromEnv(env, "PROFILE_SCAN_LIMIT", 500),
   };
   validateProjectionArgs(args);
   return args;
@@ -168,8 +178,11 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     deferReasons: {},
     pendingDropped: 0,
     firestoreWrites: 0,
+    profilesRefreshed: 0,
+    profilesScanned: 0,
     stoppedReason: null,
   };
+  const verifiedProfiles = [];
   let proofsRemaining = args.maxProofs === 0 ? Infinity : args.maxProofs;
   const deadlineAt =
     args.runDeadlineMs > 0 ? now() + args.runDeadlineMs : Infinity;
@@ -329,6 +342,10 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       },
     });
 
+    if (args.profileRefresh === true) {
+      collectVerifiedProfiles(verifiedProfiles, handleDoc, verification.results);
+    }
+
     if (verification.stopRun) {
       stats.stoppedReason = verification.stoppedReason;
       logProjectionEvent("projection_run_stopped", {
@@ -340,6 +357,18 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
       });
       break;
     }
+  }
+
+  if (args.profileRefresh === true) {
+    const profileStats = await refreshProjectionProfiles(
+      db,
+      args,
+      verifiedProfiles,
+      now,
+    );
+    stats.profilesRefreshed = profileStats.refreshed;
+    stats.profilesScanned = profileStats.scanned;
+    stats.firestoreWrites += profileStats.writes;
   }
 
   const output = {
@@ -367,6 +396,57 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   return output;
 }
 
+function collectVerifiedProfiles(targets, handleDoc, results) {
+  for (const result of results || []) {
+    if (result?.identityStatus !== "verified") continue;
+    const pubkey = String(
+      result.pubkey || result.claim?.pubkey || "",
+    ).toLowerCase();
+    if (!isHexPubkey(pubkey)) continue;
+    targets.push({
+      pubkey,
+      hints: mergeRelayHints(result.relayHints, result.claim?.relayHints),
+      handleId: handleDoc.id,
+      handle: handleDoc.data?.handle || result.handle,
+      role: "directory",
+    });
+  }
+}
+
+async function refreshProjectionProfiles(db, args, verifiedProfiles, now) {
+  const health = new Map();
+  const nowMs = now();
+  let refreshed = 0;
+  let writes = 0;
+  if (verifiedProfiles.length) {
+    const immediate = await refreshProfiles(db, verifiedProfiles, {
+      health,
+      nowMs,
+      timeoutMs: args.timeoutMs,
+      fetchImpl: args.fetchImpl,
+      handlesCollection: args.firestoreHandlesCollection,
+      flushHealth: false,
+    });
+    refreshed += immediate.refreshed;
+    writes += immediate.refreshed + immediate.handlesChanged;
+  }
+  const due = await runDueProfilePass(db, args, {
+    health,
+    nowMs,
+    timeoutMs: args.timeoutMs,
+    fetchImpl: args.fetchImpl,
+    skipPubkeys: new Set(verifiedProfiles.map((target) => target.pubkey)),
+  });
+  refreshed += due.refreshed;
+  writes += due.refreshed + due.handlesChanged + 1;
+  const healthWrites = await flushRelayHealth(db, health);
+  return {
+    refreshed,
+    scanned: due.scanned,
+    writes: writes + healthWrites,
+  };
+}
+
 /** Best-effort: run summaries aid debugging but must not fail a healthy run. */
 async function persistRunSummary(db, output, args) {
   try {
@@ -387,6 +467,7 @@ async function persistRunSummary(db, output, args) {
 
 export async function verifyHandleClaims(handleData, args, limits = {}) {
   const pending = pendingClaimsForHandle(handleData);
+  const fetchImpl = args.fetchImpl || fetchPublicHttps;
   const results = [];
   const completedClaimIds = new Set();
   const attemptedClaimIds = new Set();
@@ -406,6 +487,7 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       additionalHandles: [],
       timeoutMs: args.timeoutMs,
       maxProfiles: 1,
+      fetchImpl,
     });
     xProfilesAttempted = bioDiscovery.profilesAttempted;
     xProfilesFailed = bioDiscovery.profilesFailed;
@@ -418,7 +500,7 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       const existing = findClaimForBioRecord(handleData, record);
       if (!existing && distinctBioPubkeys.size !== 1) continue;
       const claim = existing || syntheticBioClaim(handleData, record);
-      const verified = await enrichVerifiedResult(
+      let verified = await enrichVerifiedResult(
         {
           ...record,
           claimId: claim.claimId,
@@ -428,6 +510,17 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
         claim.metadata,
         args,
       );
+      if (record.xAvatarUrl) {
+        verified = {
+          ...verified,
+          metadata: mergeProfileMetadata(verified.metadata || claim.metadata, {
+            xPicture: record.xAvatarUrl,
+          }),
+        };
+      }
+      if (record.relayHints?.length) {
+        verified = { ...verified, relayHints: record.relayHints };
+      }
       results.push(verified);
       completedClaimIds.add(claim.claimId);
     }
@@ -495,7 +588,9 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
       if (proofTweetsAttempted >= proofsRemaining) break;
       proofTweetsAttempted += 1;
       attemptedClaimIds.add(claim.claimId);
-      let result = await verifyTweetCandidate(claim, args.timeoutMs);
+      let result = await verifyTweetCandidate(claim, args.timeoutMs, {
+        fetchImpl,
+      });
       if (result.identityStatus === "verified") {
         let metadata = claim.metadata;
         const profile = kind0Metadata.get(
@@ -559,6 +654,9 @@ export async function verifyHandleClaims(handleData, args, limits = {}) {
 }
 
 async function kind0MetadataByPubkey(claims, args) {
+  // Production refreshes the signed profile after verification and rebuilds
+  // listing metadata there, so this lookup does not open a second set of sockets.
+  if (args?.profileRefresh === true) return new Map();
   const pubkeys = [
     ...new Set(
       (claims || [])
@@ -797,6 +895,8 @@ function printProjectionSummary(output, args) {
     `  X bio ids resolved:   ${output.stats.xBioIdentifiersResolved}`,
   );
   console.log(`  verified:             ${output.stats.verified}`);
+  console.log(`  profiles refreshed:   ${output.stats.profilesRefreshed || 0}`);
+  console.log(`  profiles scanned:     ${output.stats.profilesScanned || 0}`);
   console.log(`  rejected:             ${output.stats.rejected}`);
   console.log(`  retry later:          ${output.stats.retryLater}`);
   console.log(`  handles deferred:     ${output.stats.handlesDeferred}`);

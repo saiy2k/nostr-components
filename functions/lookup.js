@@ -60,12 +60,28 @@ export function publicDirectoryResponse(handle, data) {
       npub: boundedString(active.npub, 80),
       proofTweetId: boundedString(active.proofTweetId, 30),
       verifiedAt: boundedString(active.verifiedAt, 50),
-      zappable: active.zappable === true,
-      lud16: active.zappable === true ? boundedString(active.lud16, 320) : null
+      ...zapFields(active)
     };
   }
 
   return response;
+}
+
+function zapFields(source) {
+  const zappable = source?.zappable === true;
+  return {
+    zappable,
+    lud16: zappable ? boundedString(source.lud16, 320) : null
+  };
+}
+
+function withProfileZap(identity, profile) {
+  const zap = profile && profile.zap;
+  if (!zap || typeof zap !== 'object' || Array.isArray(zap)) return identity;
+  return {
+    ...identity,
+    ...zapFields(zap)
+  };
 }
 
 export async function lookupAtlasHandle(db, value, options = {}) {
@@ -89,8 +105,18 @@ export async function lookupAtlasHandle(db, value, options = {}) {
     };
   }
 
+  const data = snapshot.data() || {};
+  const body = publicDirectoryResponse(handle, data);
+  if (body.activeIdentity?.pubkey) {
+    const profiles = options.profilesCollection || 'nostrProfiles';
+    const profileSnap = await db.collection(profiles).doc(body.activeIdentity.pubkey).get();
+    if (profileSnap.exists) {
+      body.activeIdentity = withProfileZap(body.activeIdentity, profileSnap.data() || {});
+    }
+  }
+
   return {
     status: 200,
-    body: publicDirectoryResponse(handle, snapshot.data() || {})
+    body
   };
 }
