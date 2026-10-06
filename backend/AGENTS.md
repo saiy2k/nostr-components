@@ -1,10 +1,11 @@
 # Nostr Atlas crawler
 
-Cloud Run jobs for backfill and projection. This package is separate from the repo-root install.
+Cloud Run jobs for backfill, projection, and the URL activity sweep. This package is separate from the repo-root install.
 
 - From `backend/`: `npm ci`, then `npm test`.
 - Run projection after backfill. Backfill writes handle documents; projection consumes them.
-- Deploy with `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh` and `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-projection.sh` from the repo root.
+- Deploy with `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh`, `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-projection.sh`, and `PROJECT_ID=nostr-components backend/deploy-nostr-pulse-sweep.sh` from the repo root.
+- The pulse sweep runs every 10 minutes as Cloud Run job `nostr-pulse-sweep`. It reads the rendezvous relays plus `sweepExtra` and writes `nostrUrlActivity` (with `reactions` and `recipients`), `nostrUrlZaps`, and `nostrPulseSweepState`. Ingest keeps each pubkey's newest web reaction and counts a zap receipt only after the NIP-57 check. Repeats are no-ops. A provider check that is still failing on the third try is left unstored so one address cannot stall the job. A second that does not fit in one page is stored on that cursor as `lastGap`. Deploy the sweep only when asked.
 - Client Firestore rules are [firestore.rules](firestore.rules), deployed only with:
 
 ```sh

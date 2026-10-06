@@ -3,3 +3,4 @@
 **/.env
 **/*.log
 backend/nostr-atlas/**/*.test.js
+backend/nostr-pulse/**/*.test.js

@@ -8,6 +8,7 @@ RUN npm ci --omit=dev
 COPY --chown=node:node backend/relays.json ./relays.json
 COPY --chown=node:node backend/relay-roles.json ./relay-roles.json
 COPY --chown=node:node backend/nostr-atlas ./nostr-atlas
+COPY --chown=node:node backend/nostr-pulse ./nostr-pulse
 COPY --chown=node:node functions/featured-handles.js /functions/featured-handles.js
 
 ENV NODE_ENV=production
