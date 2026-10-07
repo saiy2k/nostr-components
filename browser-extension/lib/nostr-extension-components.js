@@ -19397,6 +19397,314 @@
     }
   });
 
+  // src/common/relay-routing.ts
+  function normalizeRelayUrl2(value) {
+    return normalizeRelayUrlFor(value, false);
+  }
+  function normalizeClientRelayUrl(value) {
+    return normalizeRelayUrlFor(value, true);
+  }
+  function normalizeRelayUrlFor(value, allowWs) {
+    let url;
+    try {
+      url = new URL(String(value ?? "").trim());
+    } catch {
+      return null;
+    }
+    const allowed = allowWs ? url.protocol === "wss:" || url.protocol === "ws:" : url.protocol === "wss:";
+    if (!allowed || url.username || url.password) return null;
+    url.hash = "";
+    url.hostname = url.hostname.toLowerCase();
+    if (url.protocol === "wss:" && url.port === "443" || url.protocol === "ws:" && url.port === "80") {
+      url.port = "";
+    }
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+      url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    }
+    return url.toString();
+  }
+  function dedupe(values) {
+    const out = [];
+    for (const value of values) {
+      if (value && !out.includes(value)) out.push(value);
+    }
+    return out;
+  }
+  function normalizeList(values) {
+    return dedupe(values.map((value) => normalizeClientRelayUrl(value)));
+  }
+  function preferNewerReplaceable(current, event, nowSec = Math.floor(Date.now() / 1e3)) {
+    if (!event || event.id == null) return current || null;
+    const createdAt = Number(event.created_at);
+    if (!Number.isFinite(createdAt)) return current || null;
+    if (createdAt > nowSec + FUTURE_SKEW_SECONDS) return current || null;
+    if (!current) return event;
+    const currentAt = Number(current.created_at);
+    if (createdAt > currentAt) return event;
+    if (createdAt < currentAt) return current;
+    return String(event.id) < String(current.id) ? event : current;
+  }
+  function relayListFromEvent(event) {
+    const read = [];
+    const write = [];
+    for (const tag of event?.tags || []) {
+      if (!Array.isArray(tag) || tag[0] !== "r") continue;
+      const url = normalizeRelayUrl2(tag[1]);
+      if (!url) continue;
+      const marker = tag[2];
+      if (marker === "read") read.push(url);
+      else if (marker === "write") write.push(url);
+      else if (marker == null || marker === "") {
+        read.push(url);
+        write.push(url);
+      }
+    }
+    return { readRelays: dedupe(read), writeRelays: dedupe(write) };
+  }
+  function relayIsHealthy(health, url) {
+    const row = health.get(url);
+    if (!row) return true;
+    return Number(row.consecutiveFailures || 0) < 3;
+  }
+  function selectKind0Relays({
+    readRelays = [],
+    writeRelays = [],
+    hints = [],
+    archives = PROFILE_ARCHIVE_RELAYS,
+    health = /* @__PURE__ */ new Map(),
+    limit: limit2 = WRITE_RELAY_LIMIT
+  } = {}) {
+    const markedWrite = normalizeList(writeRelays);
+    const writes = markedWrite.filter((url) => relayIsHealthy(health, url)).slice(0, limit2);
+    const reads = markedWrite.length === 0 ? normalizeList(readRelays).filter((url) => relayIsHealthy(health, url)).slice(0, limit2) : [];
+    return dedupe([
+      ...normalizeList(archives),
+      ...writes,
+      ...reads,
+      ...normalizeList(hints)
+    ]);
+  }
+  function countAnsweredRelays(reasons) {
+    return reasons.filter((reason) => reason === "closed by caller").length;
+  }
+  async function queryRelays(relays, filter) {
+    const urls = normalizeList(relays);
+    if (urls.length === 0) return emptyResult();
+    const pool = new SimplePool();
+    try {
+      return await new Promise((resolve) => {
+        const events = [];
+        pool.subscribeEose(urls, filter, {
+          maxWait: RELAY_QUERY_TIMEOUT_MS,
+          onevent(event) {
+            events.push(event);
+          },
+          onclose(reasons) {
+            resolve({
+              events,
+              answered: countAnsweredRelays(reasons)
+            });
+          }
+        });
+      });
+    } finally {
+      pool.close(urls);
+    }
+  }
+  function newestOfKind(events, pubkey, kind, nowSec) {
+    let chosen = null;
+    const author = pubkey.toLowerCase();
+    for (const event of events) {
+      if (event.kind !== kind) continue;
+      if ((event.pubkey || "").toLowerCase() !== author) continue;
+      chosen = preferNewerReplaceable(chosen, event, nowSec);
+    }
+    return chosen;
+  }
+  async function fetchRelayList(pubkey, query = queryRelays) {
+    const useCache = query === queryRelays;
+    const cacheKey = pubkey.toLowerCase();
+    if (useCache && relayListCache.has(cacheKey)) {
+      return relayListCache.get(cacheKey) ?? null;
+    }
+    const relays = normalizeList(INDEXER_RELAYS);
+    if (relays.length === 0) return null;
+    const result = await query(relays, { authors: [pubkey], kinds: [10002] });
+    const list = newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1e3));
+    if (useCache && (list || result.answered > 0)) relayListCache.set(cacheKey, list);
+    return list;
+  }
+  async function fetchProfileOutbox(pubkey, relays = [], query = queryRelays) {
+    const hints = normalizeList(relays);
+    const useCache = query === queryRelays;
+    const cacheKey = `${pubkey.toLowerCase()}|${hints.join(",")}`;
+    if (useCache) {
+      const cached = outboxCache.get(cacheKey);
+      if (cached) return cached;
+      const missUntil = outboxMisses.get(cacheKey) ?? 0;
+      if (missUntil > Date.now()) return null;
+    }
+    const nowSec = Math.floor(Date.now() / 1e3);
+    const indexers = normalizeList(INDEXER_RELAYS);
+    const archives = normalizeList(PROFILE_ARCHIVE_RELAYS);
+    const immediateRelays = dedupe([...archives, ...hints]);
+    const listPromise = indexers.length ? query(indexers, { authors: [pubkey], kinds: [10002] }) : Promise.resolve(emptyResult());
+    const immediatePromise = immediateRelays.length ? query(immediateRelays, { authors: [pubkey], kinds: [0] }) : Promise.resolve(emptyResult());
+    const listResult = await listPromise;
+    const listEvent = newestOfKind(listResult.events, pubkey, 10002, nowSec);
+    const list = listEvent ? relayListFromEvent(listEvent) : { readRelays: [], writeRelays: [] };
+    const chosen = selectKind0Relays({
+      ...list,
+      hints,
+      archives
+    }).filter((url) => !immediateRelays.includes(url));
+    const extraResult = chosen.length ? await query(chosen, { authors: [pubkey], kinds: [0] }) : emptyResult();
+    const immediate = await immediatePromise;
+    const asked = immediateRelays.length + chosen.length;
+    const answered = immediate.answered + extraResult.answered;
+    const kind0 = newestOfKind(
+      [...immediate.events, ...extraResult.events],
+      pubkey,
+      0,
+      nowSec
+    );
+    if (!kind0 && asked > 0 && answered === 0) {
+      throw new Error("No relay answered the profile query");
+    }
+    const profile = kind0 ?? null;
+    if (useCache && profile) {
+      outboxCache.set(cacheKey, profile);
+      outboxMisses.delete(cacheKey);
+    } else if (useCache && answered > 0) {
+      outboxMisses.set(cacheKey, Date.now() + PROFILE_MISS_TTL_MS);
+    }
+    return profile;
+  }
+  async function zapRelaysFor(pubkey, attributeRelays = [], query = queryRelays) {
+    const explicit = normalizeList(attributeRelays);
+    const base = explicit.length ? explicit : normalizeList(RENDEZVOUS_RELAYS);
+    let reads = [];
+    try {
+      const list = await fetchRelayList(pubkey, query);
+      if (list) reads = relayListFromEvent(list).readRelays;
+    } catch {
+      reads = [];
+    }
+    const extra = reads.filter((url) => !base.includes(url)).slice(0, WRITE_RELAY_LIMIT);
+    return [...base, ...extra].slice(0, ZAP_RELAY_LIMIT);
+  }
+  async function likePublishRelays(baseRelays, signerPubkey, query = queryRelays) {
+    const base = normalizeList(baseRelays);
+    if (getRelayTransport()) return baseRelays;
+    let writes = [];
+    try {
+      const list = await fetchRelayList(signerPubkey, query);
+      if (list) writes = relayListFromEvent(list).writeRelays.slice(0, WRITE_RELAY_LIMIT);
+    } catch {
+      writes = [];
+    }
+    return dedupe([...base, ...writes]);
+  }
+  function relaysForComponent(relaysAttr) {
+    const explicit = explicitRelays(relaysAttr);
+    if (explicit.length) return explicit;
+    if (getRelayTransport()) return [...DEFAULT_RELAYS];
+    return [...RENDEZVOUS_RELAYS];
+  }
+  function explicitRelays(relaysAttr) {
+    if (!relaysAttr) return [];
+    return normalizeList(
+      relaysAttr.split(",").map((relay) => relay.trim()).filter(Boolean)
+    );
+  }
+  var FUTURE_SKEW_SECONDS, WRITE_RELAY_LIMIT, ZAP_RELAY_LIMIT, RELAY_QUERY_TIMEOUT_MS, emptyResult, relayListCache, outboxCache, outboxMisses, PROFILE_MISS_TTL_MS;
+  var init_relay_routing = __esm({
+    "src/common/relay-routing.ts"() {
+      "use strict";
+      init_esm2();
+      init_constants();
+      init_relay_transport();
+      FUTURE_SKEW_SECONDS = 15 * 60;
+      WRITE_RELAY_LIMIT = 3;
+      ZAP_RELAY_LIMIT = 8;
+      RELAY_QUERY_TIMEOUT_MS = 8e3;
+      emptyResult = () => ({ events: [], answered: 0 });
+      relayListCache = /* @__PURE__ */ new Map();
+      outboxCache = /* @__PURE__ */ new Map();
+      outboxMisses = /* @__PURE__ */ new Map();
+      PROFILE_MISS_TTL_MS = 5 * 60 * 1e3;
+    }
+  });
+
+  // backend/nostr-pulse/url-canonical.js
+  function stripMobileHost(hostname) {
+    let host = hostname;
+    let previous;
+    do {
+      previous = host;
+      host = host.replace(/^(?:m|mobile)\./, "");
+    } while (host !== previous);
+    return host;
+  }
+  function canonicalStatus(url) {
+    if (!STATUS_HOSTS.has(url.hostname)) return null;
+    const match = url.pathname.match(STATUS_PATH);
+    if (!match) return null;
+    return `https://x.com/${match[1].toLowerCase()}/status/${match[2]}`;
+  }
+  function canonicalVideo(url) {
+    let videoId = null;
+    if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname === "/watch") {
+      videoId = url.searchParams.get("v");
+    } else if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname.startsWith("/shorts/")) {
+      videoId = url.pathname.split("/")[2] || null;
+    } else if (url.hostname === "youtu.be") {
+      videoId = url.pathname.split("/")[1] || null;
+    }
+    if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
+  function canonicalGeneric(url) {
+    const host = stripMobileHost(url.hostname);
+    if (!host) return null;
+    const port = url.port ? `:${url.port}` : "";
+    const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
+    const params = new URLSearchParams(url.search);
+    params.sort();
+    const query = params.toString();
+    return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;
+  }
+  function canonicalUrl(raw) {
+    if (typeof raw !== "string" || !raw) return null;
+    let url;
+    try {
+      url = new URL(raw);
+    } catch {
+      return null;
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return canonicalStatus(url) || canonicalVideo(url) || canonicalGeneric(url);
+  }
+  var STATUS_HOSTS, STATUS_PATH, YOUTUBE_HOSTS, YOUTUBE_ID;
+  var init_url_canonical = __esm({
+    "backend/nostr-pulse/url-canonical.js"() {
+      "use strict";
+      STATUS_HOSTS = /* @__PURE__ */ new Set([
+        "x.com",
+        "www.x.com",
+        "m.x.com",
+        "mobile.x.com",
+        "twitter.com",
+        "www.twitter.com",
+        "m.twitter.com",
+        "mobile.twitter.com"
+      ]);
+      STATUS_PATH = /^\/([^/]+)\/status\/(\d+)\/?$/;
+      YOUTUBE_HOSTS = /* @__PURE__ */ new Set(["www.youtube.com", "youtube.com", "m.youtube.com"]);
+      YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+    }
+  });
+
   // src/common/utils.ts
   function hexToNpub(hex2) {
     if (!hex2 || !isValidHex(hex2)) return "";
@@ -19550,297 +19858,6 @@
         }
         return "";
       };
-    }
-  });
-
-  // src/common/relay-routing.ts
-  function normalizeRelayUrl2(value) {
-    let url;
-    try {
-      url = new URL(String(value ?? "").trim());
-    } catch {
-      return null;
-    }
-    if (url.protocol !== "wss:" || url.username || url.password) return null;
-    url.hash = "";
-    url.hostname = url.hostname.toLowerCase();
-    if (url.port === "443") url.port = "";
-    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
-      url.pathname = url.pathname.replace(/\/+$/, "") || "/";
-    }
-    return url.toString();
-  }
-  function dedupe(values) {
-    const out = [];
-    for (const value of values) {
-      if (value && !out.includes(value)) out.push(value);
-    }
-    return out;
-  }
-  function normalizeList(values) {
-    return dedupe(values.map((value) => normalizeRelayUrl2(value)));
-  }
-  function preferNewerReplaceable(current, event, nowSec = Math.floor(Date.now() / 1e3)) {
-    if (!event || event.id == null) return current || null;
-    const createdAt = Number(event.created_at);
-    if (!Number.isFinite(createdAt)) return current || null;
-    if (createdAt > nowSec + FUTURE_SKEW_SECONDS) return current || null;
-    if (!current) return event;
-    const currentAt = Number(current.created_at);
-    if (createdAt > currentAt) return event;
-    if (createdAt < currentAt) return current;
-    return String(event.id) < String(current.id) ? event : current;
-  }
-  function relayListFromEvent(event) {
-    const read = [];
-    const write = [];
-    for (const tag of event?.tags || []) {
-      if (!Array.isArray(tag) || tag[0] !== "r") continue;
-      const url = normalizeRelayUrl2(tag[1]);
-      if (!url) continue;
-      const marker = tag[2];
-      if (marker === "read") read.push(url);
-      else if (marker === "write") write.push(url);
-      else if (marker == null || marker === "") {
-        read.push(url);
-        write.push(url);
-      }
-    }
-    return { readRelays: dedupe(read), writeRelays: dedupe(write) };
-  }
-  function relayIsHealthy(health, url) {
-    const row = health.get(url);
-    if (!row) return true;
-    return Number(row.consecutiveFailures || 0) < 3;
-  }
-  function selectKind0Relays({
-    readRelays = [],
-    writeRelays = [],
-    hints = [],
-    archives = PROFILE_ARCHIVE_RELAYS,
-    health = /* @__PURE__ */ new Map(),
-    limit: limit2 = WRITE_RELAY_LIMIT
-  } = {}) {
-    const markedWrite = normalizeList(writeRelays);
-    const writes = markedWrite.filter((url) => relayIsHealthy(health, url)).slice(0, limit2);
-    const reads = markedWrite.length === 0 ? normalizeList(readRelays).filter((url) => relayIsHealthy(health, url)).slice(0, limit2) : [];
-    return dedupe([
-      ...normalizeList(archives),
-      ...writes,
-      ...reads,
-      ...normalizeList(hints)
-    ]);
-  }
-  function countAnsweredRelays(reasons) {
-    return reasons.filter((reason) => reason === "closed by caller").length;
-  }
-  async function queryRelays(relays, filter) {
-    const urls = normalizeList(relays);
-    if (urls.length === 0) return emptyResult();
-    const pool = new SimplePool();
-    try {
-      return await new Promise((resolve) => {
-        const events = [];
-        pool.subscribeEose(urls, filter, {
-          maxWait: RELAY_QUERY_TIMEOUT_MS,
-          onevent(event) {
-            events.push(event);
-          },
-          onclose(reasons) {
-            resolve({
-              events,
-              answered: countAnsweredRelays(reasons)
-            });
-          }
-        });
-      });
-    } finally {
-      pool.close(urls);
-    }
-  }
-  function newestOfKind(events, pubkey, kind, nowSec) {
-    let chosen = null;
-    const author = pubkey.toLowerCase();
-    for (const event of events) {
-      if (event.kind !== kind) continue;
-      if ((event.pubkey || "").toLowerCase() !== author) continue;
-      chosen = preferNewerReplaceable(chosen, event, nowSec);
-    }
-    return chosen;
-  }
-  async function fetchRelayList(pubkey, query = queryRelays) {
-    const useCache = query === queryRelays;
-    const cacheKey = pubkey.toLowerCase();
-    if (useCache && relayListCache.has(cacheKey)) {
-      return relayListCache.get(cacheKey) ?? null;
-    }
-    const relays = normalizeList(INDEXER_RELAYS);
-    if (relays.length === 0) return null;
-    const result = await query(relays, { authors: [pubkey], kinds: [10002] });
-    const list = newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1e3));
-    if (useCache) relayListCache.set(cacheKey, list);
-    return list;
-  }
-  async function fetchProfileOutbox(pubkey, relays = [], query = queryRelays) {
-    const hints = normalizeList(relays);
-    const useCache = query === queryRelays;
-    const cacheKey = `${pubkey.toLowerCase()}|${hints.join(",")}`;
-    if (useCache) {
-      const cached = outboxCache.get(cacheKey);
-      if (cached) return cached;
-    }
-    const nowSec = Math.floor(Date.now() / 1e3);
-    const indexers = normalizeList(INDEXER_RELAYS);
-    const archives = normalizeList(PROFILE_ARCHIVE_RELAYS);
-    const immediateRelays = dedupe([...archives, ...hints]);
-    const listPromise = indexers.length ? query(indexers, { authors: [pubkey], kinds: [10002] }) : Promise.resolve(emptyResult());
-    const immediatePromise = immediateRelays.length ? query(immediateRelays, { authors: [pubkey], kinds: [0] }) : Promise.resolve(emptyResult());
-    const listResult = await listPromise;
-    const listEvent = newestOfKind(listResult.events, pubkey, 10002, nowSec);
-    const list = listEvent ? relayListFromEvent(listEvent) : { readRelays: [], writeRelays: [] };
-    const chosen = selectKind0Relays({
-      ...list,
-      hints,
-      archives
-    }).filter((url) => !immediateRelays.includes(url));
-    const extraResult = chosen.length ? await query(chosen, { authors: [pubkey], kinds: [0] }) : emptyResult();
-    const immediate = await immediatePromise;
-    const asked = immediateRelays.length + chosen.length;
-    const answered = immediate.answered + extraResult.answered;
-    const kind0 = newestOfKind(
-      [...immediate.events, ...extraResult.events],
-      pubkey,
-      0,
-      nowSec
-    );
-    if (!kind0 && asked > 0 && answered === 0) {
-      throw new Error("No relay answered the profile query");
-    }
-    const profile = kind0 ?? null;
-    if (useCache && profile) outboxCache.set(cacheKey, profile);
-    return profile;
-  }
-  async function zapRelaysFor(pubkey, attributeRelays = [], query = queryRelays) {
-    const explicit = normalizeList(attributeRelays);
-    const base = explicit.length ? explicit : normalizeList(RENDEZVOUS_RELAYS);
-    let reads = [];
-    try {
-      const list = await fetchRelayList(pubkey, query);
-      if (list) reads = relayListFromEvent(list).readRelays;
-    } catch {
-      reads = [];
-    }
-    const extra = reads.filter((url) => !base.includes(url)).slice(0, WRITE_RELAY_LIMIT);
-    return [...base, ...extra].slice(0, ZAP_RELAY_LIMIT);
-  }
-  async function likePublishRelays(baseRelays, signerPubkey, query = queryRelays) {
-    const base = normalizeList(baseRelays);
-    if (getRelayTransport()) return baseRelays;
-    let writes = [];
-    try {
-      const list = await fetchRelayList(signerPubkey, query);
-      if (list) writes = relayListFromEvent(list).writeRelays.slice(0, WRITE_RELAY_LIMIT);
-    } catch {
-      writes = [];
-    }
-    return dedupe([...base, ...writes]);
-  }
-  function relaysForComponent(relaysAttr) {
-    if (relaysAttr) {
-      const list = relaysAttr.split(",").map((relay) => relay.trim()).filter((relay) => relay && isValidRelayUrl(relay));
-      if (list.length) return Array.from(new Set(list));
-    }
-    if (getRelayTransport()) return [...DEFAULT_RELAYS];
-    return [...RENDEZVOUS_RELAYS];
-  }
-  function explicitRelays(relaysAttr) {
-    if (!relaysAttr) return [];
-    return relaysAttr.split(",").map((relay) => relay.trim()).filter((relay) => relay && isValidRelayUrl(relay));
-  }
-  var FUTURE_SKEW_SECONDS, WRITE_RELAY_LIMIT, ZAP_RELAY_LIMIT, RELAY_QUERY_TIMEOUT_MS, emptyResult, relayListCache, outboxCache;
-  var init_relay_routing = __esm({
-    "src/common/relay-routing.ts"() {
-      "use strict";
-      init_esm2();
-      init_constants();
-      init_relay_transport();
-      init_utils8();
-      FUTURE_SKEW_SECONDS = 15 * 60;
-      WRITE_RELAY_LIMIT = 3;
-      ZAP_RELAY_LIMIT = 8;
-      RELAY_QUERY_TIMEOUT_MS = 8e3;
-      emptyResult = () => ({ events: [], answered: 0 });
-      relayListCache = /* @__PURE__ */ new Map();
-      outboxCache = /* @__PURE__ */ new Map();
-    }
-  });
-
-  // backend/nostr-pulse/url-canonical.js
-  function stripMobileHost(hostname) {
-    let host = hostname;
-    let previous;
-    do {
-      previous = host;
-      host = host.replace(/^(?:m|mobile)\./, "");
-    } while (host !== previous);
-    return host;
-  }
-  function canonicalStatus(url) {
-    if (!STATUS_HOSTS.has(url.hostname)) return null;
-    const match = url.pathname.match(STATUS_PATH);
-    if (!match) return null;
-    return `https://x.com/${match[1].toLowerCase()}/status/${match[2]}`;
-  }
-  function canonicalVideo(url) {
-    let videoId = null;
-    if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname === "/watch") {
-      videoId = url.searchParams.get("v");
-    } else if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname.startsWith("/shorts/")) {
-      videoId = url.pathname.split("/")[2] || null;
-    } else if (url.hostname === "youtu.be") {
-      videoId = url.pathname.split("/")[1] || null;
-    }
-    if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
-    return `https://www.youtube.com/watch?v=${videoId}`;
-  }
-  function canonicalGeneric(url) {
-    const host = stripMobileHost(url.hostname);
-    if (!host) return null;
-    const port = url.port ? `:${url.port}` : "";
-    const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
-    const params = new URLSearchParams(url.search);
-    params.sort();
-    const query = params.toString();
-    return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;
-  }
-  function canonicalUrl(raw) {
-    if (typeof raw !== "string" || !raw) return null;
-    let url;
-    try {
-      url = new URL(raw);
-    } catch {
-      return null;
-    }
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    return canonicalStatus(url) || canonicalVideo(url) || canonicalGeneric(url);
-  }
-  var STATUS_HOSTS, STATUS_PATH, YOUTUBE_HOSTS, YOUTUBE_ID;
-  var init_url_canonical = __esm({
-    "backend/nostr-pulse/url-canonical.js"() {
-      "use strict";
-      STATUS_HOSTS = /* @__PURE__ */ new Set([
-        "x.com",
-        "www.x.com",
-        "m.x.com",
-        "mobile.x.com",
-        "twitter.com",
-        "www.twitter.com",
-        "m.twitter.com",
-        "mobile.twitter.com"
-      ]);
-      STATUS_PATH = /^\/([^/]+)\/status\/(\d+)\/?$/;
-      YOUTUBE_HOSTS = /* @__PURE__ */ new Set(["www.youtube.com", "youtube.com", "m.youtube.com"]);
-      YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
     }
   });
 
@@ -27449,6 +27466,7 @@ ${url}`;
       const relaysArray = relays.split(",").map((r) => r.trim()).filter(Boolean);
       let provider;
       let invoice;
+      let anonymous = false;
       if (params.actionId && url) {
         const trusted = await fetchInvoiceForAction({
           actionId: params.actionId,
@@ -27461,7 +27479,7 @@ ${url}`;
         });
         provider = trusted.provider;
         invoice = trusted.invoice;
-        currentAnonymous = trusted.anonymous;
+        anonymous = trusted.anonymous;
       } else {
         const meta = await getProfileMetadata(authorId, relaysArray);
         if (!meta) {
@@ -27482,21 +27500,23 @@ ${url}`;
           url
         });
         invoice = paid.invoice;
-        currentAnonymous = paid.anonymous;
+        anonymous = paid.anonymous;
       }
       if (requestSeq !== invoiceRequestSeq) return null;
       currentInvoice = invoice;
       invoicedComment = comment;
+      currentAnonymous = anonymous;
       if (cleanupReceipt) cleanupReceipt();
       const paidInvoice = invoice;
       const paidComment = comment;
+      const paidAnonymous = anonymous;
       cleanupReceipt = listenForZapReceipt({
         relays: relaysArray,
         receiversPubKey: npubHex,
         invoice,
         provider,
         url,
-        onSuccess: () => markSuccess(paidInvoice, paidComment)
+        onSuccess: () => markSuccess(paidInvoice, paidComment, paidAnonymous)
       });
       return invoice;
     }
@@ -27721,11 +27741,12 @@ ${url}`;
         if (!currentInvoice) return;
         const paidInvoice = currentInvoice;
         const paidComment = invoicedComment;
+        const paidAnonymous = currentAnonymous;
         if (window.webln) {
           try {
             await window.webln.enable();
             await window.webln.sendPayment(paidInvoice);
-            markSuccess(paidInvoice, paidComment);
+            markSuccess(paidInvoice, paidComment, paidAnonymous);
             return;
           } catch (e) {
             console.error("Nostr-Components: Zap button: webln payment failed", e);
@@ -27740,7 +27761,7 @@ ${url}`;
       cleanupReceipt();
       cleanupReceipt = null;
     }
-    function markSuccess(paidInvoice = currentInvoice, paidComment = invoicedComment) {
+    function markSuccess(paidInvoice = currentInvoice, paidComment = invoicedComment, paidAnonymous = currentAnonymous) {
       const invoice = paidInvoice;
       const comment = paidComment;
       const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
@@ -27760,7 +27781,7 @@ ${url}`;
           invoice,
           amountSats,
           comment,
-          anonymous: currentAnonymous
+          anonymous: paidAnonymous
         });
       }
     }

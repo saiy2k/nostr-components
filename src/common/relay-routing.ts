@@ -8,7 +8,6 @@ import {
   RENDEZVOUS_RELAYS,
 } from './constants';
 import { getRelayTransport } from './relay-transport';
-import { isValidRelayUrl } from './utils';
 
 export const FUTURE_SKEW_SECONDS = 15 * 60;
 export const WRITE_RELAY_LIMIT = 3;
@@ -44,18 +43,33 @@ interface Kind0RelayChoice {
   limit?: number;
 }
 
-/** Canonical `wss://` relay URL. Anything else is dropped. */
+/** Canonical `wss://` relay URL. Anything else, including `ws://`, is dropped. */
 export function normalizeRelayUrl(value: unknown): string | null {
+  return normalizeRelayUrlFor(value, false);
+}
+
+/** Page-configured relay URL. Keeps an explicit `ws://` target. */
+function normalizeClientRelayUrl(value: unknown): string | null {
+  return normalizeRelayUrlFor(value, true);
+}
+
+function normalizeRelayUrlFor(value: unknown, allowWs: boolean): string | null {
   let url: URL;
   try {
     url = new URL(String(value ?? '').trim());
   } catch {
     return null;
   }
-  if (url.protocol !== 'wss:' || url.username || url.password) return null;
+  const allowed = allowWs ? url.protocol === 'wss:' || url.protocol === 'ws:' : url.protocol === 'wss:';
+  if (!allowed || url.username || url.password) return null;
   url.hash = '';
   url.hostname = url.hostname.toLowerCase();
-  if (url.port === '443') url.port = '';
+  if (
+    (url.protocol === 'wss:' && url.port === '443') ||
+    (url.protocol === 'ws:' && url.port === '80')
+  ) {
+    url.port = '';
+  }
   if (url.pathname !== '/' && url.pathname.endsWith('/')) {
     url.pathname = url.pathname.replace(/\/+$/, '') || '/';
   }
@@ -71,7 +85,7 @@ function dedupe(values: Array<string | null | undefined>): string[] {
 }
 
 function normalizeList(values: string[]): string[] {
-  return dedupe(values.map((value) => normalizeRelayUrl(value)));
+  return dedupe(values.map((value) => normalizeClientRelayUrl(value)));
 }
 
 export function preferNewerReplaceable<T extends ReplaceableEvent>(
@@ -209,14 +223,17 @@ export async function fetchRelayList(
   if (relays.length === 0) return null;
   const result = await query(relays, { authors: [pubkey], kinds: [10002] });
   const list = newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1000));
-  if (useCache) relayListCache.set(cacheKey, list);
+  if (useCache && (list || result.answered > 0)) relayListCache.set(cacheKey, list);
   return list;
 }
 
 const outboxCache = new Map<string, Event>();
+const outboxMisses = new Map<string, number>();
+const PROFILE_MISS_TTL_MS = 5 * 60 * 1000;
 
 export function clearOutboxCache(): void {
   outboxCache.clear();
+  outboxMisses.clear();
   relayListCache.clear();
 }
 
@@ -235,6 +252,8 @@ export async function fetchProfileOutbox(
   if (useCache) {
     const cached = outboxCache.get(cacheKey);
     if (cached) return cached;
+    const missUntil = outboxMisses.get(cacheKey) ?? 0;
+    if (missUntil > Date.now()) return null;
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -272,7 +291,12 @@ export async function fetchProfileOutbox(
     throw new Error('No relay answered the profile query');
   }
   const profile = (kind0 as Event | null) ?? null;
-  if (useCache && profile) outboxCache.set(cacheKey, profile);
+  if (useCache && profile) {
+    outboxCache.set(cacheKey, profile);
+    outboxMisses.delete(cacheKey);
+  } else if (useCache && answered > 0) {
+    outboxMisses.set(cacheKey, Date.now() + PROFILE_MISS_TTL_MS);
+  }
   return profile;
 }
 
@@ -313,21 +337,15 @@ export async function likePublishRelays(
 
 /** Explicit `relays` attribute, otherwise today's list while a transport is installed. */
 export function relaysForComponent(relaysAttr: string | null): string[] {
-  if (relaysAttr) {
-    const list = relaysAttr
-      .split(',')
-      .map((relay) => relay.trim())
-      .filter((relay) => relay && isValidRelayUrl(relay));
-    if (list.length) return Array.from(new Set(list));
-  }
+  const explicit = explicitRelays(relaysAttr);
+  if (explicit.length) return explicit;
   if (getRelayTransport()) return [...DEFAULT_RELAYS];
   return [...RENDEZVOUS_RELAYS];
 }
 
 export function explicitRelays(relaysAttr: string | null): string[] {
   if (!relaysAttr) return [];
-  return relaysAttr
-    .split(',')
-    .map((relay) => relay.trim())
-    .filter((relay) => relay && isValidRelayUrl(relay));
+  return normalizeList(
+    relaysAttr.split(',').map((relay) => relay.trim()).filter(Boolean),
+  );
 }

@@ -97,8 +97,14 @@ describe('relaysForComponent', () => {
 
   it('uses an explicit relays attribute on either path', () => {
     expect(relaysForComponent('wss://one.example, wss://two.example')).toEqual([
-      'wss://one.example',
-      'wss://two.example',
+      'wss://one.example/',
+      'wss://two.example/',
+    ]);
+  });
+
+  it('keeps an explicit ws relay instead of dropping it', () => {
+    expect(relaysForComponent('ws://localhost:7777')).toEqual([
+      'ws://localhost:7777/',
     ]);
   });
 });
@@ -175,6 +181,28 @@ describe('zapRelaysFor', () => {
       'wss://read-1.example/',
       'wss://read-2.example/',
       'wss://read-3.example/',
+    ]);
+  });
+
+  it('keeps an explicit ws relay ahead of the recipient read relays', async () => {
+    const pubkey = 'ef'.repeat(32);
+    const query: RelayQuery = async () => ({
+      events: [
+        {
+          id: 'a'.repeat(64),
+          pubkey,
+          created_at: 50,
+          kind: 10002,
+          tags: [['r', 'wss://read.example', 'read']],
+          content: '',
+          sig: 'b'.repeat(128),
+        },
+      ],
+      answered: 1,
+    });
+    await expect(zapRelaysFor(pubkey, ['ws://localhost:7777'], query)).resolves.toEqual([
+      'ws://localhost:7777/',
+      'wss://read.example/',
     ]);
   });
 });
