@@ -277,7 +277,7 @@ export async function ingestPushedUrlEvent(db, body = {}, options = {}) {
   return { status: result?.ok ? 200 : 400, body: result };
 }
 
-function readHandler(work, failure) {
+function readHandler(work, failure, { cacheSeconds = 0 } = {}) {
   return async function handleRead(request, response) {
     response.set("Cache-Control", "no-store");
     if (request.method !== "GET") {
@@ -287,8 +287,8 @@ function readHandler(work, failure) {
     }
     try {
       const result = await work(request);
-      if (result.status === 200) {
-        response.set("Cache-Control", "public, max-age=30");
+      if (result.status === 200 && cacheSeconds > 0) {
+        response.set("Cache-Control", `public, max-age=${cacheSeconds}`);
       }
       response.status(result.status).json(result.body);
     } catch (error) {
@@ -304,6 +304,7 @@ export function createUrlActivityHandler(db) {
   return readHandler(
     (request) => getUrlActivity(db, request.query),
     "URL activity lookup failed",
+    { cacheSeconds: 30 },
   );
 }
 

@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   createIngestUrlEventHandler,
   createUrlActivityHandler,
+  createViewerReactionsHandler,
   getUrlActivity,
   ingestPushedUrlEvent,
   listUrlEvents,
@@ -262,6 +263,24 @@ test("caches a URL activity read for thirty seconds", async () => {
   assert.equal(response.statusCode, 200);
   assert.equal(response.headers["Cache-Control"], "public, max-age=30");
   assert.equal(response.body.items[0].likes, 1);
+});
+
+test("does not cache a viewer's reaction list", async () => {
+  const handler = createViewerReactionsHandler(
+    activityDb({
+      [`nostrUrlActivity/${KEY}/reactions/${PUBKEY}`]: {
+        pubkey: PUBKEY,
+        reaction: "like",
+        content: "+",
+        createdAt: 10,
+        urlKey: KEY,
+      },
+    }),
+  );
+  const response = responseDouble();
+  await handler({ method: "GET", query: { pubkey: PUBKEY } }, response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers["Cache-Control"], "no-store");
 });
 
 test("pushes a URL event only after a sweep relay returns it", async () => {
