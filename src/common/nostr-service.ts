@@ -15,6 +15,7 @@ import {
   getProfileMetadata,
   getZapProviderInfo,
 } from '../nostr-zap-button/zap-utils';
+import { fetchProfileOutbox } from './relay-routing';
 import { validateZapReceipt } from '../nostr-zap-button/zap-receipt';
 import { getRelayTransport } from './relay-transport';
 
@@ -200,29 +201,19 @@ export class NostrService {
     if (!user) return null;
 
     const transport = getRelayTransport();
-    if (transport) {
-      const event = await getProfileMetadata(user.pubkey, relays);
-      if (!event) return null;
-      try {
-        const profile = profileFromEvent(new NDKEvent(this.ndk, event));
-        if (profile.picture === undefined || profile.picture === null) {
-          profile.picture = DEFAULT_PROFILE_IMAGE;
-        }
-        return profile;
-      } catch {
-        return null;
+    const event = transport
+      ? await getProfileMetadata(user.pubkey, relays)
+      : await fetchProfileOutbox(user.pubkey, relays);
+    if (!event) return null;
+    try {
+      const profile = profileFromEvent(new NDKEvent(this.ndk, event));
+      if (profile.picture === undefined || profile.picture === null) {
+        profile.picture = DEFAULT_PROFILE_IMAGE;
       }
+      return profile;
+    } catch {
+      return null;
     }
-
-    await user.fetchProfile();
-
-    const profile = user.profile;
-
-    if (profile && (profile.picture === undefined || profile.picture === null)) {
-      profile.picture = DEFAULT_PROFILE_IMAGE;
-    }
-
-    return profile as NDKUserProfile;
   }
 
   public async getPost(eventId: string): Promise<NDKEvent | null> {

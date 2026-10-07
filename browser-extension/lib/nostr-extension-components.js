@@ -19091,11 +19091,29 @@
     }
   });
 
+  // backend/relay-roles.json
+  var relay_roles_default;
+  var init_relay_roles = __esm({
+    "backend/relay-roles.json"() {
+      relay_roles_default = {
+        rendezvous: ["wss://relay.ditto.pub", "wss://nostr.mom", "wss://relay.damus.io", "wss://nostr.oxtr.dev", "wss://relay.nostr.wirednet.jp"],
+        sweepExtra: ["wss://nos.lol", "wss://relay.primal.net", "wss://nostr.wine", "wss://yabu.me", "wss://nostr-pub.wellorder.net", "wss://relay.fountain.fm", "wss://offchain.pub", "wss://relay.momostr.pink"],
+        indexers: ["wss://purplepag.es", "wss://indexer.coracle.social", "wss://user.kindpag.es", "wss://directory.yabu.me"],
+        profileArchives: ["wss://relay.ditto.pub", "wss://directory.yabu.me", "wss://nostr.oxtr.dev", "wss://relay.nostr.wirednet.jp"]
+      };
+    }
+  });
+
   // src/common/constants.ts
-  var DEFAULT_RELAYS, DEFAULT_PROFILE_IMAGE;
+  var roles, RENDEZVOUS_RELAYS, INDEXER_RELAYS, PROFILE_ARCHIVE_RELAYS, DEFAULT_RELAYS, DEFAULT_PROFILE_IMAGE;
   var init_constants = __esm({
     "src/common/constants.ts"() {
       "use strict";
+      init_relay_roles();
+      roles = relay_roles_default;
+      RENDEZVOUS_RELAYS = [...roles.rendezvous];
+      INDEXER_RELAYS = [...roles.indexers];
+      PROFILE_ARCHIVE_RELAYS = [...roles.profileArchives];
       DEFAULT_RELAYS = [
         "wss://relay.momostr.pink",
         "wss://relay.ditto.pub",
@@ -19171,162 +19189,6 @@
     "node_modules/nostr-tools/lib/esm/utils.js"() {
       utf8Decoder2 = new TextDecoder("utf-8");
       utf8Encoder2 = new TextEncoder();
-    }
-  });
-
-  // src/common/utils.ts
-  function hexToNpub(hex2) {
-    if (!hex2 || !isValidHex(hex2)) return "";
-    try {
-      return nip19_exports.npubEncode(hex2.toLowerCase());
-    } catch (error) {
-      console.error("Failed to encode hex to npub:", error);
-      return "";
-    }
-  }
-  function parseRelays(relaysAttr) {
-    if (relaysAttr) {
-      const list = relaysAttr.split(",").map((r) => r.trim()).filter(Boolean).filter(isValidRelayUrl);
-      return list.length ? Array.from(new Set(list)) : [...DEFAULT_RELAYS];
-    }
-    return [...DEFAULT_RELAYS];
-  }
-  function parseTheme(themeAttr) {
-    const theme = themeAttr?.trim().toLowerCase();
-    if (theme === "light" || theme === "dark") {
-      return theme;
-    }
-    return "light";
-  }
-  function escapeHtml(text2) {
-    if (text2 === null || text2 === void 0) {
-      return "";
-    }
-    return String(text2).replace(/[&<>"']/g, (char) => {
-      switch (char) {
-        case "&":
-          return "&amp;";
-        case "<":
-          return "&lt;";
-        case ">":
-          return "&gt;";
-        case '"':
-          return "&quot;";
-        case "'":
-          return "&#39;";
-        default:
-          return char;
-      }
-    });
-  }
-  function sanitizeUrl(input) {
-    const trimmed = (input ?? "").trim();
-    if (!trimmed) return "";
-    try {
-      const url = new URL(trimmed);
-      if (url.protocol === "http:" || url.protocol === "https:") {
-        return escapeHtml(url.toString());
-      }
-    } catch {
-    }
-    return "";
-  }
-  function isValidUrl(url) {
-    try {
-      const parsed = new URL(url);
-      return ["http:", "https:"].includes(parsed.protocol);
-    } catch {
-      return false;
-    }
-  }
-  function normalizeURL3(raw) {
-    try {
-      const url = new URL(raw);
-      const host = url.hostname.replace(/^(m|mobile)\./, "");
-      const port = url.port ? `:${url.port}` : "";
-      const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/*$/, "");
-      return `https://${host}${port}${pathname}${url.search}`;
-    } catch {
-      console.error("normalizeURL: unparseable URL, returning input unchanged");
-      return raw;
-    }
-  }
-  function isValidRelayUrl(url) {
-    try {
-      const u = new URL(url);
-      return u.protocol === "wss:" || u.protocol === "ws:";
-    } catch {
-      return false;
-    }
-  }
-  function isValidHex(hex2) {
-    return /^[0-9a-fA-F]+$/.test(hex2) && hex2.length === 64;
-  }
-  function validateNpub(npub2) {
-    try {
-      const { type } = nip19_exports.decode(npub2);
-      return type === "npub";
-    } catch (e) {
-      return false;
-    }
-  }
-  function validateNip05(nip05) {
-    const nip05Regex = /^[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+\.[a-zA-Z]{2,}$/;
-    return nip05Regex.test(nip05);
-  }
-  function formatRelativeTime(ts) {
-    try {
-      const now2 = Date.now();
-      const messageTime = ts * 1e3;
-      const diffMs = now2 - messageTime;
-      const diffSec = Math.floor(diffMs / 1e3);
-      if (diffSec < 60) {
-        return "just now";
-      }
-      if (diffSec < 3600) {
-        const mins = Math.floor(diffSec / 60);
-        return `${mins} ${mins === 1 ? "min" : "mins"} ago`;
-      }
-      if (diffSec < 86400) {
-        const hours = Math.floor(diffSec / 3600);
-        return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
-      }
-      if (diffSec < 2592e3) {
-        const days = Math.floor(diffSec / 86400);
-        return `${days} ${days === 1 ? "day" : "days"} ago`;
-      }
-      if (diffSec < 31536e3) {
-        const months = Math.floor(diffSec / 2592e3);
-        return `${months} ${months === 1 ? "month" : "months"} ago`;
-      }
-      const years = Math.floor(diffSec / 31536e3);
-      return `${years} ${years === 1 ? "year" : "years"} ago`;
-    } catch (error) {
-      console.error("Error formatting relative time:", error);
-      return "unknown";
-    }
-  }
-  var decodeNpub;
-  var init_utils8 = __esm({
-    "src/common/utils.ts"() {
-      "use strict";
-      init_dist();
-      init_esm2();
-      init_constants();
-      decodeNpub = (npub2) => {
-        if (typeof npub2 !== "string" || !npub2.startsWith("npub1")) {
-          return "";
-        }
-        try {
-          const decoded = nip19_exports.decode(npub2);
-          if (decoded && typeof decoded.data === "string") {
-            return decoded.data;
-          }
-        } catch (error) {
-          console.error("Failed to decode npub:", error);
-        }
-        return "";
-      };
     }
   });
 
@@ -19535,6 +19397,494 @@
     }
   });
 
+  // src/common/utils.ts
+  function hexToNpub(hex2) {
+    if (!hex2 || !isValidHex(hex2)) return "";
+    try {
+      return nip19_exports.npubEncode(hex2.toLowerCase());
+    } catch (error) {
+      console.error("Failed to encode hex to npub:", error);
+      return "";
+    }
+  }
+  function parseRelays(relaysAttr) {
+    if (relaysAttr) {
+      const list = relaysAttr.split(",").map((r) => r.trim()).filter(Boolean).filter(isValidRelayUrl);
+      return list.length ? Array.from(new Set(list)) : [...DEFAULT_RELAYS];
+    }
+    return [...DEFAULT_RELAYS];
+  }
+  function parseTheme(themeAttr) {
+    const theme = themeAttr?.trim().toLowerCase();
+    if (theme === "light" || theme === "dark") {
+      return theme;
+    }
+    return "light";
+  }
+  function escapeHtml(text2) {
+    if (text2 === null || text2 === void 0) {
+      return "";
+    }
+    return String(text2).replace(/[&<>"']/g, (char) => {
+      switch (char) {
+        case "&":
+          return "&amp;";
+        case "<":
+          return "&lt;";
+        case ">":
+          return "&gt;";
+        case '"':
+          return "&quot;";
+        case "'":
+          return "&#39;";
+        default:
+          return char;
+      }
+    });
+  }
+  function sanitizeUrl(input) {
+    const trimmed = (input ?? "").trim();
+    if (!trimmed) return "";
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol === "http:" || url.protocol === "https:") {
+        return escapeHtml(url.toString());
+      }
+    } catch {
+    }
+    return "";
+  }
+  function isValidUrl(url) {
+    try {
+      const parsed = new URL(url);
+      return ["http:", "https:"].includes(parsed.protocol);
+    } catch {
+      return false;
+    }
+  }
+  function normalizeURL3(raw) {
+    try {
+      const url = new URL(raw);
+      const host = url.hostname.replace(/^(m|mobile)\./, "");
+      const port = url.port ? `:${url.port}` : "";
+      const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/*$/, "");
+      return `https://${host}${port}${pathname}${url.search}`;
+    } catch {
+      console.error("normalizeURL: unparseable URL, returning input unchanged");
+      return raw;
+    }
+  }
+  function isValidRelayUrl(url) {
+    try {
+      const u = new URL(url);
+      return u.protocol === "wss:" || u.protocol === "ws:";
+    } catch {
+      return false;
+    }
+  }
+  function isValidHex(hex2) {
+    return /^[0-9a-fA-F]+$/.test(hex2) && hex2.length === 64;
+  }
+  function validateNpub(npub2) {
+    try {
+      const { type } = nip19_exports.decode(npub2);
+      return type === "npub";
+    } catch (e) {
+      return false;
+    }
+  }
+  function validateNip05(nip05) {
+    const nip05Regex = /^[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+\.[a-zA-Z]{2,}$/;
+    return nip05Regex.test(nip05);
+  }
+  function formatRelativeTime(ts) {
+    try {
+      const now2 = Date.now();
+      const messageTime = ts * 1e3;
+      const diffMs = now2 - messageTime;
+      const diffSec = Math.floor(diffMs / 1e3);
+      if (diffSec < 60) {
+        return "just now";
+      }
+      if (diffSec < 3600) {
+        const mins = Math.floor(diffSec / 60);
+        return `${mins} ${mins === 1 ? "min" : "mins"} ago`;
+      }
+      if (diffSec < 86400) {
+        const hours = Math.floor(diffSec / 3600);
+        return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+      }
+      if (diffSec < 2592e3) {
+        const days = Math.floor(diffSec / 86400);
+        return `${days} ${days === 1 ? "day" : "days"} ago`;
+      }
+      if (diffSec < 31536e3) {
+        const months = Math.floor(diffSec / 2592e3);
+        return `${months} ${months === 1 ? "month" : "months"} ago`;
+      }
+      const years = Math.floor(diffSec / 31536e3);
+      return `${years} ${years === 1 ? "year" : "years"} ago`;
+    } catch (error) {
+      console.error("Error formatting relative time:", error);
+      return "unknown";
+    }
+  }
+  var decodeNpub;
+  var init_utils8 = __esm({
+    "src/common/utils.ts"() {
+      "use strict";
+      init_dist();
+      init_esm2();
+      init_constants();
+      decodeNpub = (npub2) => {
+        if (typeof npub2 !== "string" || !npub2.startsWith("npub1")) {
+          return "";
+        }
+        try {
+          const decoded = nip19_exports.decode(npub2);
+          if (decoded && typeof decoded.data === "string") {
+            return decoded.data;
+          }
+        } catch (error) {
+          console.error("Failed to decode npub:", error);
+        }
+        return "";
+      };
+    }
+  });
+
+  // src/common/relay-routing.ts
+  function normalizeRelayUrl2(value) {
+    let url;
+    try {
+      url = new URL(String(value ?? "").trim());
+    } catch {
+      return null;
+    }
+    if (url.protocol !== "wss:" || url.username || url.password) return null;
+    url.hash = "";
+    url.hostname = url.hostname.toLowerCase();
+    if (url.port === "443") url.port = "";
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+      url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    }
+    return url.toString();
+  }
+  function dedupe(values) {
+    const out = [];
+    for (const value of values) {
+      if (value && !out.includes(value)) out.push(value);
+    }
+    return out;
+  }
+  function normalizeList(values) {
+    return dedupe(values.map((value) => normalizeRelayUrl2(value)));
+  }
+  function preferNewerReplaceable(current, event, nowSec = Math.floor(Date.now() / 1e3)) {
+    if (!event || event.id == null) return current || null;
+    const createdAt = Number(event.created_at);
+    if (!Number.isFinite(createdAt)) return current || null;
+    if (createdAt > nowSec + FUTURE_SKEW_SECONDS) return current || null;
+    if (!current) return event;
+    const currentAt = Number(current.created_at);
+    if (createdAt > currentAt) return event;
+    if (createdAt < currentAt) return current;
+    return String(event.id) < String(current.id) ? event : current;
+  }
+  function relayListFromEvent(event) {
+    const read = [];
+    const write = [];
+    for (const tag of event?.tags || []) {
+      if (!Array.isArray(tag) || tag[0] !== "r") continue;
+      const url = normalizeRelayUrl2(tag[1]);
+      if (!url) continue;
+      const marker = tag[2];
+      if (marker === "read") read.push(url);
+      else if (marker === "write") write.push(url);
+      else if (marker == null || marker === "") {
+        read.push(url);
+        write.push(url);
+      }
+    }
+    return { readRelays: dedupe(read), writeRelays: dedupe(write) };
+  }
+  function relayIsHealthy(health, url) {
+    const row = health.get(url);
+    if (!row) return true;
+    return Number(row.consecutiveFailures || 0) < 3;
+  }
+  function selectKind0Relays({
+    readRelays = [],
+    writeRelays = [],
+    hints = [],
+    archives = PROFILE_ARCHIVE_RELAYS,
+    health = /* @__PURE__ */ new Map(),
+    limit: limit2 = WRITE_RELAY_LIMIT
+  } = {}) {
+    const markedWrite = normalizeList(writeRelays);
+    const writes = markedWrite.filter((url) => relayIsHealthy(health, url)).slice(0, limit2);
+    const reads = markedWrite.length === 0 ? normalizeList(readRelays).filter((url) => relayIsHealthy(health, url)).slice(0, limit2) : [];
+    return dedupe([
+      ...normalizeList(archives),
+      ...writes,
+      ...reads,
+      ...normalizeList(hints)
+    ]);
+  }
+  function countAnsweredRelays(reasons) {
+    return reasons.filter((reason) => reason === "closed by caller").length;
+  }
+  async function queryRelays(relays, filter) {
+    const urls = normalizeList(relays);
+    if (urls.length === 0) return emptyResult();
+    const pool = new SimplePool();
+    try {
+      return await new Promise((resolve) => {
+        const events = [];
+        pool.subscribeEose(urls, filter, {
+          maxWait: RELAY_QUERY_TIMEOUT_MS,
+          onevent(event) {
+            events.push(event);
+          },
+          onclose(reasons) {
+            resolve({
+              events,
+              answered: countAnsweredRelays(reasons)
+            });
+          }
+        });
+      });
+    } finally {
+      pool.close(urls);
+    }
+  }
+  function newestOfKind(events, pubkey, kind, nowSec) {
+    let chosen = null;
+    const author = pubkey.toLowerCase();
+    for (const event of events) {
+      if (event.kind !== kind) continue;
+      if ((event.pubkey || "").toLowerCase() !== author) continue;
+      chosen = preferNewerReplaceable(chosen, event, nowSec);
+    }
+    return chosen;
+  }
+  async function fetchRelayList(pubkey, query = queryRelays) {
+    const relays = normalizeList(INDEXER_RELAYS);
+    if (relays.length === 0) return null;
+    const result = await query(relays, { authors: [pubkey], kinds: [10002] });
+    return newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1e3));
+  }
+  async function fetchProfileOutbox(pubkey, relays = [], query = queryRelays) {
+    const hints = normalizeList(relays);
+    const useCache = query === queryRelays;
+    const cacheKey = `${pubkey.toLowerCase()}|${hints.join(",")}`;
+    if (useCache) {
+      const cached = outboxCache.get(cacheKey);
+      if (cached) return cached;
+    }
+    const nowSec = Math.floor(Date.now() / 1e3);
+    const indexers = normalizeList(INDEXER_RELAYS);
+    const archives = normalizeList(PROFILE_ARCHIVE_RELAYS);
+    const immediateRelays = dedupe([...archives, ...hints]);
+    const listPromise = indexers.length ? query(indexers, { authors: [pubkey], kinds: [10002] }) : Promise.resolve(emptyResult());
+    const immediatePromise = immediateRelays.length ? query(immediateRelays, { authors: [pubkey], kinds: [0] }) : Promise.resolve(emptyResult());
+    const listResult = await listPromise;
+    const listEvent = newestOfKind(listResult.events, pubkey, 10002, nowSec);
+    const list = listEvent ? relayListFromEvent(listEvent) : { readRelays: [], writeRelays: [] };
+    const chosen = selectKind0Relays({
+      ...list,
+      hints,
+      archives
+    }).filter((url) => !immediateRelays.includes(url));
+    const extraResult = chosen.length ? await query(chosen, { authors: [pubkey], kinds: [0] }) : emptyResult();
+    const immediate = await immediatePromise;
+    const asked = immediateRelays.length + chosen.length;
+    const answered = immediate.answered + extraResult.answered;
+    const kind0 = newestOfKind(
+      [...immediate.events, ...extraResult.events],
+      pubkey,
+      0,
+      nowSec
+    );
+    if (!kind0 && asked > 0 && answered === 0) {
+      throw new Error("No relay answered the profile query");
+    }
+    const profile = kind0 ?? null;
+    if (useCache && profile) outboxCache.set(cacheKey, profile);
+    return profile;
+  }
+  async function zapRelaysFor(pubkey, attributeRelays = [], query = queryRelays) {
+    const explicit = normalizeList(attributeRelays);
+    const base = explicit.length ? explicit : normalizeList(RENDEZVOUS_RELAYS);
+    let reads = [];
+    try {
+      const list = await fetchRelayList(pubkey, query);
+      if (list) reads = relayListFromEvent(list).readRelays;
+    } catch {
+      reads = [];
+    }
+    const extra = reads.filter((url) => !base.includes(url)).slice(0, WRITE_RELAY_LIMIT);
+    return [...base, ...extra].slice(0, ZAP_RELAY_LIMIT);
+  }
+  async function likePublishRelays(baseRelays, signerPubkey, query = queryRelays) {
+    const base = normalizeList(baseRelays);
+    if (getRelayTransport()) return baseRelays;
+    let writes = [];
+    try {
+      const list = await fetchRelayList(signerPubkey, query);
+      if (list) writes = relayListFromEvent(list).writeRelays.slice(0, WRITE_RELAY_LIMIT);
+    } catch {
+      writes = [];
+    }
+    return dedupe([...base, ...writes]);
+  }
+  function relaysForComponent(relaysAttr) {
+    if (relaysAttr) {
+      const list = relaysAttr.split(",").map((relay) => relay.trim()).filter((relay) => relay && isValidRelayUrl(relay));
+      if (list.length) return Array.from(new Set(list));
+    }
+    if (getRelayTransport()) return [...DEFAULT_RELAYS];
+    return [...RENDEZVOUS_RELAYS];
+  }
+  function explicitRelays(relaysAttr) {
+    if (!relaysAttr) return [];
+    return relaysAttr.split(",").map((relay) => relay.trim()).filter((relay) => relay && isValidRelayUrl(relay));
+  }
+  var FUTURE_SKEW_SECONDS, WRITE_RELAY_LIMIT, ZAP_RELAY_LIMIT, RELAY_QUERY_TIMEOUT_MS, emptyResult, outboxCache;
+  var init_relay_routing = __esm({
+    "src/common/relay-routing.ts"() {
+      "use strict";
+      init_esm2();
+      init_constants();
+      init_relay_transport();
+      init_utils8();
+      FUTURE_SKEW_SECONDS = 15 * 60;
+      WRITE_RELAY_LIMIT = 3;
+      ZAP_RELAY_LIMIT = 8;
+      RELAY_QUERY_TIMEOUT_MS = 8e3;
+      emptyResult = () => ({ events: [], answered: 0 });
+      outboxCache = /* @__PURE__ */ new Map();
+    }
+  });
+
+  // backend/nostr-pulse/url-canonical.js
+  function stripMobileHost(hostname) {
+    let host = hostname;
+    let previous;
+    do {
+      previous = host;
+      host = host.replace(/^(?:m|mobile)\./, "");
+    } while (host !== previous);
+    return host;
+  }
+  function canonicalStatus(url) {
+    if (!STATUS_HOSTS.has(url.hostname)) return null;
+    const match = url.pathname.match(STATUS_PATH);
+    if (!match) return null;
+    return `https://x.com/${match[1].toLowerCase()}/status/${match[2]}`;
+  }
+  function canonicalVideo(url) {
+    let videoId = null;
+    if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname === "/watch") {
+      videoId = url.searchParams.get("v");
+    } else if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname.startsWith("/shorts/")) {
+      videoId = url.pathname.split("/")[2] || null;
+    } else if (url.hostname === "youtu.be") {
+      videoId = url.pathname.split("/")[1] || null;
+    }
+    if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
+  function canonicalGeneric(url) {
+    const host = stripMobileHost(url.hostname);
+    if (!host) return null;
+    const port = url.port ? `:${url.port}` : "";
+    const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
+    const params = new URLSearchParams(url.search);
+    params.sort();
+    const query = params.toString();
+    return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;
+  }
+  function canonicalUrl(raw) {
+    if (typeof raw !== "string" || !raw) return null;
+    let url;
+    try {
+      url = new URL(raw);
+    } catch {
+      return null;
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return canonicalStatus(url) || canonicalVideo(url) || canonicalGeneric(url);
+  }
+  var STATUS_HOSTS, STATUS_PATH, YOUTUBE_HOSTS, YOUTUBE_ID;
+  var init_url_canonical = __esm({
+    "backend/nostr-pulse/url-canonical.js"() {
+      "use strict";
+      STATUS_HOSTS = /* @__PURE__ */ new Set([
+        "x.com",
+        "www.x.com",
+        "m.x.com",
+        "mobile.x.com",
+        "twitter.com",
+        "www.twitter.com",
+        "m.twitter.com",
+        "mobile.twitter.com"
+      ]);
+      STATUS_PATH = /^\/([^/]+)\/status\/(\d+)\/?$/;
+      YOUTUBE_HOSTS = /* @__PURE__ */ new Set(["www.youtube.com", "youtube.com", "m.youtube.com"]);
+      YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+    }
+  });
+
+  // src/common/url-tags.ts
+  function addSpelling(values, value) {
+    if (value && !values.includes(value)) values.push(value);
+  }
+  function pageUrlSpellings(raw) {
+    const values = [];
+    addSpelling(values, canonicalUrl(raw));
+    try {
+      addSpelling(values, normalizeURL2(raw));
+    } catch {
+    }
+    addSpelling(values, normalizeURL3(raw));
+    return values;
+  }
+  function likeTagUrl(raw) {
+    if (getRelayTransport()) {
+      try {
+        return normalizeURL2(raw);
+      } catch {
+        return null;
+      }
+    }
+    return canonicalUrl(raw);
+  }
+  function zapTagUrl(raw) {
+    if (getRelayTransport()) return normalizeURL3(raw);
+    return canonicalUrl(raw) ?? normalizeURL3(raw);
+  }
+  function likeFilterUrls(raw) {
+    if (getRelayTransport()) {
+      const tag = likeTagUrl(raw);
+      return tag ? [tag] : [];
+    }
+    return pageUrlSpellings(raw);
+  }
+  function zapFilterUrls(raw) {
+    if (getRelayTransport()) return [zapTagUrl(raw)];
+    return pageUrlSpellings(raw);
+  }
+  var init_url_tags = __esm({
+    "src/common/url-tags.ts"() {
+      "use strict";
+      init_utils7();
+      init_url_canonical();
+      init_relay_transport();
+      init_utils8();
+    }
+  });
+
   // src/common/nostr-event.ts
   function cloneVerifiedEvent(value) {
     if (!value || typeof value !== "object") return null;
@@ -19648,6 +19998,21 @@
       return null;
     }
   }
+  function descriptionHashMatches(bolt11, description) {
+    try {
+      const decoded = (0, import_light_bolt11_decoder2.decode)(bolt11);
+      const sections = decoded.sections;
+      const section = sections.find((item) => item.name === "description_hash");
+      if (!section?.value || typeof section.value !== "string") return false;
+      const hashed = bytesToHex3(sha2563(new TextEncoder().encode(description)));
+      return section.value.toLowerCase() === hashed;
+    } catch {
+      return false;
+    }
+  }
+  function senderPubkeyFor(zapRequest) {
+    return getTagEntries(zapRequest.tags, "anon").length > 0 ? null : zapRequest.pubkey;
+  }
   function getBolt11AmountMsats(bolt11) {
     try {
       const decoded = (0, import_light_bolt11_decoder2.decode)(bolt11);
@@ -19734,6 +20099,7 @@
     if (invoiceAmountMsats == null) {
       return { ok: false, reason: "invalid-bolt11-amount" };
     }
+    const descriptionHashMismatch = !descriptionHashMatches(bolt11, description);
     const amountTags = getTagEntries(zapRequest.tags, "amount");
     if (amountTags.length > 1) {
       return { ok: false, reason: "duplicate-amount" };
@@ -19770,22 +20136,30 @@
     const receiptA = getUniqueTagValue(verifiedReceipt.tags, "a");
     const requestA = getUniqueTagValue(zapRequest.tags, "a");
     if (opts.expectedATag) {
-      if (receiptA !== opts.expectedATag || requestA !== opts.expectedATag) {
+      const allowed = Array.isArray(opts.expectedATag) ? opts.expectedATag : [opts.expectedATag];
+      if (!receiptA || !requestA || receiptA !== requestA || !allowed.includes(receiptA)) {
         return { ok: false, reason: "a-mismatch" };
       }
     } else if (receiptATags.length !== requestATags.length || receiptA !== requestA) {
       return { ok: false, reason: "a-mismatch" };
     }
-    return {
+    const result = {
       ok: true,
       amountMsats: invoiceAmountMsats,
-      zapRequest
+      zapRequest,
+      senderPubkey: senderPubkeyFor(zapRequest)
     };
+    if (result.ok && descriptionHashMismatch) {
+      result.descriptionHashMismatch = true;
+    }
+    return result;
   }
   var import_light_bolt11_decoder2;
   var init_zap_receipt = __esm({
     "src/nostr-zap-button/zap-receipt.ts"() {
       "use strict";
+      init_utils5();
+      init_sha2563();
       init_esm();
       import_light_bolt11_decoder2 = __toESM(require_bolt11(), 1);
       init_esm2();
@@ -19800,6 +20174,7 @@
     buildUrlATag: () => buildUrlATag,
     extractProfileMetadataContent: () => extractProfileMetadataContent,
     fetchInvoice: () => fetchInvoice,
+    fetchInvoiceDetails: () => fetchInvoiceDetails,
     fetchInvoiceForAction: () => fetchInvoiceForAction,
     fetchTotalZapAmount: () => fetchTotalZapAmount,
     getBatchedProfileMetadata: () => getBatchedProfileMetadata,
@@ -19808,8 +20183,15 @@
     getZapProviderInfo: () => getZapProviderInfo,
     isNip07ExtAvailable: () => isNip07ExtAvailable,
     listenForZapReceipt: () => listenForZapReceipt,
-    resolveNip05: () => resolveNip05
+    relaysForZapRequest: () => relaysForZapRequest,
+    resolveNip05: () => resolveNip05,
+    zapATagValues: () => zapATagValues
   });
+  function newestVerifiedProfile(events, authorId) {
+    return [...events].map((candidate) => getVerifiedProfileEvent(candidate, authorId)).filter((candidate) => candidate !== null).sort(
+      (left, right) => right.created_at - left.created_at || left.id.localeCompare(right.id)
+    )[0] || null;
+  }
   function cacheVerifiedProfiles(events, requestedIds, relayList) {
     for (const event of events) {
       const candidate = event;
@@ -19825,6 +20207,83 @@
         profileCache.set(cacheKey, verifiedEvent);
       }
     }
+  }
+  function zapATagValues(pubkey, url) {
+    return zapFilterUrls(url).map((value) => `39735:${pubkey}:${value}`);
+  }
+  function relaysForSignedZap(relays) {
+    if (getRelayTransport()) {
+      return Array.from(new Set(relays.filter(Boolean)));
+    }
+    const out = [];
+    for (const relay of relays) {
+      let normalized;
+      try {
+        normalized = normalizeURL2(relay);
+      } catch {
+        continue;
+      }
+      if (!out.includes(normalized)) out.push(normalized);
+    }
+    return out;
+  }
+  async function fetchInvoiceDetails({
+    zapEndpoint,
+    amount,
+    comment,
+    authorId,
+    normalizedRelays,
+    anon,
+    url
+  }) {
+    const zapEvent = await makeZapEvent({
+      profile: authorId,
+      amount,
+      relays: normalizedRelays,
+      comment: comment ?? "",
+      anon,
+      url
+    });
+    const anonymous = Array.isArray(zapEvent.tags) && zapEvent.tags.some((tag) => tag[0] === "anon");
+    let invoiceUrl = `${zapEndpoint}?amount=${amount}&nostr=${encodeURIComponent(
+      JSON.stringify(zapEvent)
+    )}`;
+    if (comment) invoiceUrl += `&comment=${encodeURIComponent(comment ?? "")}`;
+    const { status, json } = await httpGetJson(invoiceUrl);
+    if (status < 200 || status >= 300) {
+      throw new Error(`LNURL request failed: ${status}`);
+    }
+    if (json == null || typeof json !== "object") {
+      throw new Error("Invalid JSON from LNURL endpoint");
+    }
+    const { pr: invoice, reason, status: lnurlStatus } = json || {};
+    if (typeof invoice === "string" && invoice.length > 0) {
+      const invoiceAmount = getBolt11AmountMsats(invoice);
+      if (invoiceAmount == null) {
+        throw new Error("LNURL endpoint returned an invalid invoice");
+      }
+      if (invoiceAmount !== amount) {
+        throw new Error("LNURL invoice amount does not match requested amount");
+      }
+      return { invoice, anonymous };
+    }
+    if (lnurlStatus === "ERROR") throw new Error(reason ?? "Unable to fetch invoice");
+    throw new Error("Unable to fetch invoice");
+  }
+  async function relaysForZapRequest({
+    actionId,
+    pubkey,
+    attributeRelays,
+    transportRelays
+  }) {
+    const transport = getRelayTransport();
+    if (actionId && transport?.getZapRoute) {
+      const route = await transport.getZapRoute(actionId);
+      return route.zapRelays;
+    }
+    if (transport) return transportRelays;
+    if (!pubkey) return transportRelays;
+    return zapRelaysFor(pubkey, attributeRelays);
   }
   async function resolveNip05(nip05Identifier) {
     try {
@@ -19855,7 +20314,7 @@
       zapDetails.push({
         amount: candidate.amountSats,
         date: new Date((typeof candidate.createdAt === "number" ? candidate.createdAt : 0) * 1e3),
-        authorPubkey: typeof candidate.authorPubkey === "string" ? candidate.authorPubkey : "",
+        authorPubkey: typeof candidate.authorPubkey === "string" && candidate.authorPubkey ? candidate.authorPubkey : null,
         comment: typeof candidate.comment === "string" ? candidate.comment : ""
       });
     }
@@ -19865,16 +20324,75 @@
       zapDetails
     };
   }
+  function zapRowsFromReceipts(events, pubkey, provider, expectedATag) {
+    let totalMsats = 0;
+    const zapDetails = [];
+    for (const event of events) {
+      const validated = validateZapReceipt(event, {
+        recipientPubkey: pubkey,
+        provider,
+        expectedATag
+      });
+      if (!validated.ok) continue;
+      totalMsats += validated.amountMsats;
+      zapDetails.push({
+        amount: validated.amountMsats / 1e3,
+        date: new Date((event.created_at || 0) * 1e3),
+        authorPubkey: validated.senderPubkey,
+        comment: validated.zapRequest.content
+      });
+    }
+    zapDetails.sort((left, right) => right.date.getTime() - left.date.getTime());
+    return { totalMsats, zapDetails };
+  }
+  async function fetchLibraryZapAmount({
+    pubkey,
+    relays,
+    url
+  }) {
+    const profileMetadata = await fetchProfileOutbox(pubkey, relays);
+    if (!profileMetadata) {
+      throw new Error("Zap recipient profile was not found");
+    }
+    const provider = await getZapProviderInfo(profileMetadata);
+    if (!provider) {
+      throw new Error("Zap recipient has no valid LNURL provider");
+    }
+    const filter = {
+      kinds: [9735],
+      "#p": [pubkey],
+      limit: 1e3
+    };
+    const expectedATag = url ? zapATagValues(pubkey, url) : void 0;
+    if (expectedATag && expectedATag.length > 0) {
+      filter["#a"] = expectedATag;
+    }
+    const { events, answered } = await queryRelays(relays, filter);
+    if (answered === 0) {
+      throw new Error("No relay answered the zap query");
+    }
+    const { totalMsats, zapDetails } = zapRowsFromReceipts(
+      events,
+      pubkey,
+      provider,
+      expectedATag
+    );
+    return {
+      totalAmount: totalMsats / 1e3,
+      zapDetails
+    };
+  }
   var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, profileCacheKey, getVerifiedProfileEvent, getProfileMetadata, PROFILE_QUERY_BATCH_SIZE, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoiceForAction, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
   var init_zap_utils = __esm({
     "src/nostr-zap-button/zap-utils.ts"() {
       "use strict";
       init_esm2();
       init_utils7();
-      init_utils8();
       init_nostr_login_service();
       init_constants();
+      init_relay_routing();
       init_relay_transport();
+      init_url_tags();
       init_nostr_event();
       init_zap_receipt();
       profileCache = /* @__PURE__ */ new Map();
@@ -19910,6 +20428,12 @@
         const cached = profileCache.get(cacheKey);
         if (cached) return cached;
         const transport = getRelayTransport();
+        if (actionId && transport?.getProfiles) {
+          const events = await transport.getProfiles(actionId, [authorId]);
+          const event2 = newestVerifiedProfile(events, authorId);
+          if (event2) profileCache.set(cacheKey, event2);
+          return event2;
+        }
         if (transport) {
           const filter = {
             authors: [authorId],
@@ -19917,24 +20441,14 @@
             limit: 1
           };
           const events = actionId ? await transport.query(relayList, filter, actionId) : await transport.query(relayList, filter);
-          const event = [...events].map((candidate) => getVerifiedProfileEvent(candidate, authorId)).filter((candidate) => candidate !== null).sort(
-            (left, right) => right.created_at - left.created_at || left.id.localeCompare(right.id)
-          )[0] || null;
-          if (event) profileCache.set(cacheKey, event);
-          return event;
+          const event2 = newestVerifiedProfile(events, authorId);
+          if (event2) profileCache.set(cacheKey, event2);
+          return event2;
         }
-        const pool = new SimplePool();
-        try {
-          const event = await pool.get(relayList, {
-            authors: [authorId],
-            kinds: [0]
-          });
-          const verifiedEvent = getVerifiedProfileEvent(event, authorId);
-          if (verifiedEvent) profileCache.set(cacheKey, verifiedEvent);
-          return verifiedEvent;
-        } finally {
-          pool.close(relayList);
-        }
+        const event = await fetchProfileOutbox(authorId, relayList);
+        const verifiedEvent = getVerifiedProfileEvent(event, authorId);
+        if (verifiedEvent) profileCache.set(cacheKey, verifiedEvent);
+        return verifiedEvent;
       };
       PROFILE_QUERY_BATCH_SIZE = 50;
       getBatchedProfileMetadata = async (authorIds, relays, actionId) => {
@@ -19953,26 +20467,34 @@
           }));
         }
         const transport = getRelayTransport();
-        const pool = transport ? null : new SimplePool();
         const requestedIds = new Set(uncachedIds);
-        try {
-          for (let offset = 0; offset < uncachedIds.length; offset += PROFILE_QUERY_BATCH_SIZE) {
-            const batch = uncachedIds.slice(offset, offset + PROFILE_QUERY_BATCH_SIZE);
-            const filter = {
-              authors: batch,
-              kinds: [0],
-              limit: batch.length
-            };
-            const events = transport ? actionId ? await transport.query(relayList, filter, actionId) : await transport.query(relayList, filter) : await pool.querySync(relayList, filter);
+        for (let offset = 0; offset < uncachedIds.length; offset += PROFILE_QUERY_BATCH_SIZE) {
+          const batch = uncachedIds.slice(offset, offset + PROFILE_QUERY_BATCH_SIZE);
+          const filter = {
+            authors: batch,
+            kinds: [0],
+            limit: batch.length
+          };
+          if (actionId && transport?.getProfiles) {
+            cacheVerifiedProfiles(
+              await transport.getProfiles(actionId, batch),
+              requestedIds,
+              relayList
+            );
+          } else if (transport) {
+            const events = actionId ? await transport.query(relayList, filter, actionId) : await transport.query(relayList, filter);
+            cacheVerifiedProfiles(events, requestedIds, relayList);
+          } else {
+            const events = await Promise.all(
+              batch.map((authorId) => fetchProfileOutbox(authorId, relayList))
+            );
             cacheVerifiedProfiles(events, requestedIds, relayList);
           }
-          return authorIds.map((id) => ({
-            id,
-            profile: profileCache.get(profileCacheKey(id, relayList)) || null
-          }));
-        } finally {
-          pool?.close(relayList);
         }
+        return authorIds.map((id) => ({
+          id,
+          profile: profileCache.get(profileCacheKey(id, relayList)) || null
+        }));
       };
       extractProfileMetadataContent = (profileMetadata) => {
         try {
@@ -20007,7 +20529,7 @@
         }
         return provider;
       };
-      buildUrlATag = (pubkey, url) => `39735:${pubkey}:${normalizeURL3(url)}`;
+      buildUrlATag = (pubkey, url) => `39735:${pubkey}:${zapTagUrl(url)}`;
       signEvent2 = async (zapEvent, anon) => {
         if (!anon) {
           try {
@@ -20015,6 +20537,9 @@
             return await signEvent(zapEvent);
           } catch {
           }
+        }
+        if (!zapEvent.tags.some((tag) => tag[0] === "anon")) {
+          zapEvent.tags.push(["anon"]);
         }
         return finalizeEvent(zapEvent, generateRandomPrivKey());
       };
@@ -20032,7 +20557,10 @@
           relays,
           comment: comment || ""
         };
-        const event = nip57_exports.makeZapRequest(req);
+        const event = nip57_exports.makeZapRequest({
+          ...req,
+          relays: relaysForSignedZap(relays)
+        });
         if (url) {
           event.tags.push(["a", buildUrlATag(profile, url)]);
         }
@@ -20071,54 +20599,19 @@
           anon,
           url
         });
-        return transport.fetchZapInvoice(actionId, {
+        const paid = await transport.fetchZapInvoice(actionId, {
           relays: normalizedRelays,
           amount,
           comment: comment ?? "",
           zapEvent
         });
+        return {
+          ...paid,
+          anonymous: Array.isArray(zapEvent.tags) && zapEvent.tags.some((tag) => tag[0] === "anon")
+        };
       };
-      fetchInvoice = async ({
-        zapEndpoint,
-        amount,
-        comment,
-        authorId,
-        normalizedRelays,
-        anon,
-        url
-      }) => {
-        const zapEvent = await makeZapEvent({
-          profile: authorId,
-          amount,
-          relays: normalizedRelays,
-          comment: comment ?? "",
-          anon,
-          url
-        });
-        let invoiceUrl = `${zapEndpoint}?amount=${amount}&nostr=${encodeURIComponent(
-          JSON.stringify(zapEvent)
-        )}`;
-        if (comment) invoiceUrl += `&comment=${encodeURIComponent(comment ?? "")}`;
-        const { status, json } = await httpGetJson(invoiceUrl);
-        if (status < 200 || status >= 300) {
-          throw new Error(`LNURL request failed: ${status}`);
-        }
-        if (json == null || typeof json !== "object") {
-          throw new Error("Invalid JSON from LNURL endpoint");
-        }
-        const { pr: invoice, reason, status: lnurlStatus } = json || {};
-        if (typeof invoice === "string" && invoice.length > 0) {
-          const invoiceAmount = getBolt11AmountMsats(invoice);
-          if (invoiceAmount == null) {
-            throw new Error("LNURL endpoint returned an invalid invoice");
-          }
-          if (invoiceAmount !== amount) {
-            throw new Error("LNURL invoice amount does not match requested amount");
-          }
-          return invoice;
-        }
-        if (lnurlStatus === "ERROR") throw new Error(reason ?? "Unable to fetch invoice");
-        throw new Error("Unable to fetch invoice");
+      fetchInvoice = async (request) => {
+        return (await fetchInvoiceDetails(request)).invoice;
       };
       generateRandomPrivKey = () => {
         if (typeof crypto === "undefined" || typeof crypto.getRandomValues !== "function") {
@@ -20138,6 +20631,18 @@
         actionId
       }) => {
         const transport = getRelayTransport();
+        if (actionId && transport?.getZapSummary) {
+          const summary = await transport.getZapSummary(actionId);
+          return {
+            totalAmount: summary.totalAmount,
+            zapDetails: [...summary.zapDetails].sort(
+              (left, right) => right.date.getTime() - left.date.getTime()
+            )
+          };
+        }
+        if (!transport) {
+          return fetchLibraryZapAmount({ pubkey, relays, url });
+        }
         const pool = transport ? null : new SimplePool();
         let totalAmount = 0;
         const zapDetails = [];
@@ -20192,7 +20697,7 @@
               amount: validated.amountMsats / 1e3,
               // convert from msats to sats
               date: new Date(event.created_at * 1e3),
-              authorPubkey: validated.zapRequest.pubkey,
+              authorPubkey: validated.senderPubkey,
               comment: validated.zapRequest.content
             });
           }
@@ -24177,6 +24682,7 @@
   init_constants();
   init_utils7();
   init_zap_utils();
+  init_relay_routing();
   init_zap_receipt();
   init_relay_transport();
   var CONNECT_GRACE_MS = 5e3;
@@ -24275,8 +24781,8 @@
       return connected;
     }
     getRelays() {
-      const explicitRelays = this.ndk.explicitRelayUrls;
-      return explicitRelays && explicitRelays.length > 0 ? explicitRelays : [...DEFAULT_RELAYS];
+      const explicitRelays2 = this.ndk.explicitRelayUrls;
+      return explicitRelays2 && explicitRelays2.length > 0 ? explicitRelays2 : [...DEFAULT_RELAYS];
     }
     async resolveNDKUser(identifier) {
       if (identifier.npub) {
@@ -24307,25 +24813,17 @@
     async getProfile(user, relays = this.getRelays()) {
       if (!user) return null;
       const transport = getRelayTransport();
-      if (transport) {
-        const event = await getProfileMetadata(user.pubkey, relays);
-        if (!event) return null;
-        try {
-          const profile2 = profileFromEvent(new NDKEvent(this.ndk, event));
-          if (profile2.picture === void 0 || profile2.picture === null) {
-            profile2.picture = DEFAULT_PROFILE_IMAGE;
-          }
-          return profile2;
-        } catch {
-          return null;
+      const event = transport ? await getProfileMetadata(user.pubkey, relays) : await fetchProfileOutbox(user.pubkey, relays);
+      if (!event) return null;
+      try {
+        const profile = profileFromEvent(new NDKEvent(this.ndk, event));
+        if (profile.picture === void 0 || profile.picture === null) {
+          profile.picture = DEFAULT_PROFILE_IMAGE;
         }
+        return profile;
+      } catch {
+        return null;
       }
-      await user.fetchProfile();
-      const profile = user.profile;
-      if (profile && (profile.picture === void 0 || profile.picture === null)) {
-        profile.picture = DEFAULT_PROFILE_IMAGE;
-      }
-      return profile;
     }
     async getPost(eventId) {
       const event = await this.ndk.fetchEvent(eventId);
@@ -25510,9 +26008,10 @@ ${url}`;
 
   // src/nostr-like-button/like-utils.ts
   init_esm2();
-  init_utils7();
   init_nostr_login_service();
   init_relay_transport();
+  init_relay_routing();
+  init_url_tags();
 
   // src/nostr-like-button/like-netting.ts
   function isLikeContent(content) {
@@ -25559,22 +26058,25 @@ ${url}`;
   async function fetchCachedLikeStateForUrl(url, relays) {
     const transport = getRelayTransport();
     if (!transport?.getCachedLikeState) return null;
-    const state = await transport.getCachedLikeState(relays, normalizeURL2(url));
+    const state = await transport.getCachedLikeState(relays, likeTagUrl(url) || url);
     return state.found ? state.isLiked : null;
   }
   async function fetchLikesForUrl(url, relays) {
-    const normalizedUrl = normalizeURL2(url);
+    const filterUrls = likeFilterUrls(url);
+    if (filterUrls.length === 0) {
+      return netLikesByPubkey([]);
+    }
     const pool = new SimplePool();
     try {
       const filter = {
         kinds: [17],
         "#k": ["web"],
-        "#i": [normalizedUrl],
+        "#i": filterUrls,
         limit: 1e3
       };
       const transport = getRelayTransport();
       if (transport?.getLikeState) {
-        const state = await transport.getLikeState(relays, normalizedUrl);
+        const state = await transport.getLikeState(relays, filterUrls[0]);
         return {
           ...state,
           // The extension deliberately keeps liker pubkeys out of MAIN-world
@@ -25609,13 +26111,17 @@ ${url}`;
   }
   async function hasUserLiked(url, userPubkey, relays) {
     const pool = new SimplePool();
-    const normalizedUrl = url;
+    const filterUrls = likeFilterUrls(url);
+    if (filterUrls.length === 0) {
+      pool.close(relays);
+      return false;
+    }
     try {
       const filter = {
         kinds: [17],
         authors: [userPubkey],
         "#k": ["web"],
-        "#i": [normalizedUrl],
+        "#i": filterUrls,
         limit: 1
       };
       const transport = getRelayTransport();
@@ -25644,6 +26150,21 @@ ${url}`;
       return;
     }
     await publishWithNdk();
+  }
+  async function publishToWriteRelays(event, baseRelays) {
+    if (getRelayTransport() || !event.pubkey) return;
+    const targets = await likePublishRelays(baseRelays, event.pubkey);
+    const base = new Set(
+      baseRelays.map((relay) => normalizeRelayUrl2(relay)).filter((relay) => !!relay)
+    );
+    const extra = targets.filter((relay) => !base.has(relay));
+    if (extra.length === 0) return;
+    const pool = new SimplePool();
+    try {
+      await Promise.allSettled(pool.publish(extra, event));
+    } finally {
+      pool.close(extra);
+    }
   }
   async function signEvent3(event) {
     try {
@@ -26053,7 +26574,8 @@ ${url}`;
 
   // src/nostr-like-button/nostr-like.ts
   init_relay_transport();
-  init_utils7();
+  init_relay_routing();
+  init_url_tags();
   init_trusted_html();
 
   // src/common/trusted-action-context.ts
@@ -26117,6 +26639,9 @@ ${url}`;
   var NostrLike = class extends NostrBaseComponent {
     likeActionStatus = this.channel("likeAction");
     likeListStatus = this.channel("likeList");
+    getRelays() {
+      return relaysForComponent(this.getAttribute("relays"));
+    }
     currentUrl = "";
     isLiked = false;
     likeCount = 0;
@@ -26231,7 +26756,7 @@ ${url}`;
     }
     ensureCurrentUrl() {
       if (!this.currentUrl) {
-        this.currentUrl = normalizeURL2(this.getActionUrl());
+        this.currentUrl = likeTagUrl(this.getActionUrl()) || "";
       }
     }
     async updateLikeCount() {
@@ -26239,7 +26764,8 @@ ${url}`;
       try {
         await this.ensureNostrConnected();
         if (seq !== this.loadSeq) return;
-        this.currentUrl = normalizeURL2(this.getActionUrl());
+        const pageUrl = this.getActionUrl();
+        this.currentUrl = likeTagUrl(pageUrl) || "";
         this.likeListStatus.set(1 /* Loading */);
         this.render();
         try {
@@ -26255,7 +26781,7 @@ ${url}`;
         } catch (cacheError) {
           console.warn("[NostrLike] Failed to restore cached like state:", cacheError);
         }
-        const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
+        const result = await fetchLikesForUrl(pageUrl, this.getRelays());
         if (seq !== this.loadSeq) return;
         this.likeCount = clampLikeCount(result.totalCount);
         if (typeof result.isLiked === "boolean") {
@@ -26340,7 +26866,7 @@ ${url}`;
         }
         if (isStale()) return;
         this.isLiked = await hasUserLiked(
-          targetUrl,
+          this.getActionUrl(),
           signerResult.publicKey,
           this.getRelays()
         );
@@ -26393,6 +26919,7 @@ ${url}`;
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         }, getTrustedActionContext(this)?.actionId);
+        await publishToWriteRelays(signedEvent, this.getRelays());
         await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {
@@ -26437,6 +26964,7 @@ ${url}`;
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         }, getTrustedActionContext(this)?.actionId);
+        await publishToWriteRelays(signedEvent, this.getRelays());
         await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {
@@ -26888,6 +27416,7 @@ ${url}`;
     let customComment = "";
     let currentInvoice = "";
     let invoicedComment = "";
+    let currentAnonymous = false;
     let cleanupReceipt = null;
     const reportedInvoices = /* @__PURE__ */ new Set();
     let invoiceRequestSeq = 0;
@@ -26908,6 +27437,7 @@ ${url}`;
         });
         provider = trusted.provider;
         invoice = trusted.invoice;
+        currentAnonymous = trusted.anonymous;
       } else {
         const meta = await getProfileMetadata(authorId, relaysArray);
         if (!meta) {
@@ -26917,7 +27447,7 @@ ${url}`;
         if (!provider) {
           throw new Error("Zap endpoint not found. The user may not have a Lightning address configured.");
         }
-        invoice = await fetchInvoice({
+        const paid = await fetchInvoiceDetails({
           zapEndpoint: provider.callback,
           amount: amountSats * 1e3,
           // -> msats
@@ -26927,6 +27457,8 @@ ${url}`;
           anon: params.anon ?? false,
           url
         });
+        invoice = paid.invoice;
+        currentAnonymous = paid.anonymous;
       }
       if (requestSeq !== invoiceRequestSeq) return null;
       currentInvoice = invoice;
@@ -27203,7 +27735,8 @@ ${url}`;
         params.onZapPaid?.({
           invoice,
           amountSats,
-          comment
+          comment,
+          anonymous: currentAnonymous
         });
       }
     }
@@ -27547,8 +28080,11 @@ ${url}`;
   init_utils8();
   init_sanitize();
   function renderZapEntry(zap, index) {
-    const authorNameSafe = escapeHtml(zap.authorName || "Unknown zapper");
-    const npubSafe = validateNpub(zap.authorNpub || "") ? zap.authorNpub : "";
+    const anonymous = !zap.authorPubkey;
+    const authorNameSafe = escapeHtml(
+      zap.authorName || (anonymous ? "Anonymous" : "Unknown zapper")
+    );
+    const npubSafe = !anonymous && validateNpub(zap.authorNpub || "") ? zap.authorNpub : "";
     const njumpUrl = npubSafe ? sanitizeHttpUrl(`https://njump.me/${npubSafe}`) : "";
     const profilePictureSafe = sanitizeHttpUrl(zap.authorPicture);
     const authorPubkeySafe = escapeHtml(zap.authorPubkey);
@@ -27592,7 +28128,7 @@ ${url}`;
         <div class="skeleton-picture"></div>
         <div class="zap-author-details">
           <div class="zap-author-link skeleton-name">
-            ${escapeHtml(npub2)}
+            ${escapeHtml(zap.authorPubkey ? npub2 : "Anonymous")}
           </div>
           <div class="zap-amount-date">
             ${zap.amount.toLocaleString()} \u26A1 \u2022 ${formatRelativeTime(Math.floor(zap.date.getTime() / 1e3))}
@@ -27648,7 +28184,9 @@ ${url}`;
       </div>
     `;
     }
-    const npubs = zapDetails.map((zap) => hexToNpub(zap.authorPubkey));
+    const npubs = zapDetails.map(
+      (zap) => zap.authorPubkey ? hexToNpub(zap.authorPubkey) : ""
+    );
     const skeletonEntries = zapDetails.map((zap, index) => renderSkeletonZapEntry(zap, npubs[index], index)).join("");
     return `
     <div class="zappers-dialog-content">
@@ -27662,7 +28200,9 @@ ${url}`;
     const zappersList = dialog.querySelector(".zappers-list");
     if (!zappersList) return;
     const uniqueAuthorIds = [
-      ...new Set(zapDetails.map((zap) => zap.authorPubkey))
+      ...new Set(
+        zapDetails.map((zap) => zap.authorPubkey).filter((pubkey) => !!pubkey)
+      )
     ];
     console.log(
       "Nostr-Components: Zappers dialog: Fetching profiles for",
@@ -27685,6 +28225,18 @@ ${url}`;
       });
       for (let index = 0; index < zapDetails.length; index++) {
         const zap = zapDetails[index];
+        if (!zap.authorPubkey) {
+          const skeletonEntry2 = zappersList.querySelector(
+            `[data-zap-index="${index}"]`
+          );
+          if (skeletonEntry2) {
+            setTrustedOuterHTML(
+              skeletonEntry2,
+              renderZapEntry({ ...zap, authorName: "Anonymous" }, index)
+            );
+          }
+          continue;
+        }
         const profile = profileMap.get(zap.authorPubkey);
         const npub2 = npubMap.get(zap.authorPubkey) || zap.authorPubkey;
         let enhanced;
@@ -27737,7 +28289,17 @@ ${url}`;
     if (!zappersList) return;
     const profileCache2 = /* @__PURE__ */ new Map();
     const profilePromises = zapDetails.map(async (zap, index) => {
-      if (profileCache2.has(zap.authorPubkey)) {
+      if (!zap.authorPubkey) {
+        return {
+          index,
+          enhanced: {
+            ...zap,
+            authorName: "Anonymous"
+          }
+        };
+      }
+      const authorPubkey = zap.authorPubkey;
+      if (profileCache2.has(authorPubkey)) {
         const cachedProfile = profileCache2.get(zap.authorPubkey);
         return {
           index,
@@ -28385,7 +28947,8 @@ ${url}`;
     return fresh;
   }
   function receiptKey(detail) {
-    return `${detail.authorPubkey.toLowerCase()}|${detail.amount}|${detail.date.getTime()}`;
+    const author = detail.authorPubkey?.toLowerCase() ?? "";
+    return `${author}|${detail.amount}|${detail.date.getTime()}`;
   }
   function receiptMatchesCredit(detail, credit) {
     if (!sameAuthor(detail.authorPubkey, credit.authorPubkey)) return false;
@@ -28393,6 +28956,7 @@ ${url}`;
     return detail.date.getTime() >= credit.paidAt.getTime() - RECEIPT_MATCH_SKEW_MS;
   }
   function sameAuthor(left, right) {
+    if (left == null || right == null) return left == null && right == null;
     return left.length > 0 && left.toLowerCase() === right.toLowerCase();
   }
   function pendingZapDetails(zap) {
@@ -28416,10 +28980,14 @@ ${url}`;
   // src/nostr-zap-button/nostr-zap.ts
   init_utils8();
   init_relay_transport();
+  init_relay_routing();
   init_trusted_html();
   var NostrZap = class extends NostrUserComponent {
     zapActionStatus = this.channel("zapAction");
     zapListStatus = this.channel("zapList");
+    getRelays() {
+      return relaysForComponent(this.getAttribute("relays"));
+    }
     #totalZapAmount = null;
     #cachedZapDetails = [];
     #zapDisplay = emptyZapDisplay();
@@ -28580,7 +29148,12 @@ ${url}`;
           this.render();
           return;
         }
-        const relays = this.getRelays().join(",");
+        const relays = (await relaysForZapRequest({
+          actionId: trustedContext?.actionId,
+          pubkey: this.user?.pubkey,
+          attributeRelays: explicitRelays(this.getAttribute("relays")),
+          transportRelays: this.getRelays()
+        })).join(",");
         this.#cachedAmountDialog = await init({
           actionId: trustedContext?.actionId,
           npub: npub2,
@@ -28610,7 +29183,7 @@ ${url}`;
           url: trustedContext?.url || this.getAttribute("url") || void 0,
           anon: false,
           onZapPaid: (payment) => {
-            this.#recordPaidZap(payment, senderPubkey);
+            this.#recordPaidZap(payment, payment.anonymous ? null : senderPubkey);
           }
         });
         this.zapActionStatus.set(2 /* Ready */);
@@ -28634,11 +29207,14 @@ ${url}`;
         return;
       }
       try {
+        const transport = getRelayTransport();
+        const actionId = getTrustedActionContext(this)?.actionId;
+        const zapDetails = actionId && transport?.listZaps ? await transport.listZaps(actionId) : this.#cachedZapDetails;
         await openZappersDialog({
-          zapDetails: this.#cachedZapDetails,
+          zapDetails,
           theme: this.theme === "dark" ? "dark" : "light",
           relays: this.getRelays(),
-          actionId: getTrustedActionContext(this)?.actionId
+          actionId
         });
       } catch (error) {
         console.error("Nostr-Components: Zap button: Error opening zappers dialog", error);
@@ -28731,12 +29307,8 @@ ${url}`;
         if (seq !== this.#zapCountLoadSeq) return;
         console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
         const keepCreditedTotal = hasPendingZapCredit(this.#zapDisplay);
-        if (getRelayTransport()) {
-          if (this.#countedZapSubject !== subjectKey && !keepCreditedTotal) {
-            this.#applyZapDisplay(resetZapDisplay());
-          }
-          this.zapListStatus.set(2 /* Ready */);
-        } else if (keepCreditedTotal) {
+        const countedThisSubject = this.#countedZapSubject === subjectKey;
+        if (countedThisSubject || keepCreditedTotal) {
           this.zapListStatus.set(2 /* Ready */);
         } else {
           this.#applyZapDisplay(resetZapDisplay());

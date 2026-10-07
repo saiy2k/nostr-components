@@ -43,4 +43,19 @@ describe('renderZapEntry', () => {
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     expect(html).not.toContain('<script>alert(1)</script>');
   });
+
+  it('shows an anonymous zap without a profile link', () => {
+    const html = renderZapEntry(
+      {
+        authorPubkey: null,
+        amount: 21,
+        comment: 'thanks',
+        date: new Date('2024-01-01T00:00:00.000Z'),
+      },
+      0,
+    );
+    expect(html).toContain('Anonymous');
+    expect(html).not.toContain('njump.me');
+    expect(html).toContain('thanks');
+  });
 });

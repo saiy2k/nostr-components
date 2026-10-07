@@ -1,5 +1,22 @@
 // SPDX-License-Identifier: MIT
 
+import relayRoles from '../../backend/relay-roles.json';
+
+const roles = relayRoles as {
+  rendezvous: readonly string[];
+  indexers: readonly string[];
+  profileArchives: readonly string[];
+};
+
+/** Relays clients write likes and zap receipts to. */
+export const RENDEZVOUS_RELAYS: string[] = [...roles.rendezvous];
+
+/** Kind 10002 indexers, queried in parallel. */
+export const INDEXER_RELAYS: string[] = [...roles.indexers];
+
+/** Kind 0 archives used when a pubkey's own relays are not enough. */
+export const PROFILE_ARCHIVE_RELAYS: string[] = [...roles.profileArchives];
+
 export const DEFAULT_RELAYS = [
   'wss://relay.momostr.pink',
   'wss://relay.ditto.pub',

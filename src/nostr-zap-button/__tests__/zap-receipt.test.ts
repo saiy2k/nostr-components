@@ -456,4 +456,68 @@ describe('validateZapReceipt', () => {
       expect(['a-mismatch', 'duplicate-a']).toContain(result.reason);
     }
   });
+
+  it('accepts any older spelling of the same page', () => {
+    const result = validateZapReceipt(
+      makeValidReceipt(BOLT11_AMOUNT_MSATS, undefined, [['a', EXPECTED_A_TAG]]),
+      {
+        recipientPubkey: RECIPIENT_PK,
+        provider: PROVIDER,
+        expectedATag: [
+          `39735:${RECIPIENT_PK}:https://x.com/alice/status/99`,
+          EXPECTED_A_TAG,
+        ],
+      },
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it('has no sender when the zap request carries an anon tag', () => {
+    const result = validateZapReceipt(
+      makeValidReceipt(BOLT11_AMOUNT_MSATS, undefined, [['anon']]),
+      { recipientPubkey: RECIPIENT_PK, provider: PROVIDER },
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.senderPubkey).toBeNull();
+  });
+
+  it('does not reject a receipt whose description hash does not match', async () => {
+    const { createHash } = await import('node:crypto');
+    const { bech32 } = await import('@scure/base');
+    const zapRequest = makeZapRequest();
+    const description = JSON.stringify(zapRequest);
+    const hash = createHash('sha256').update('other description').digest();
+    const words: number[] = [];
+    const timestamp = 1_700_000_000;
+    for (let index = 6; index >= 0; index -= 1) {
+      words.push((timestamp >> (index * 5)) & 31);
+    }
+    const dataWords = bech32.toWords(hash);
+    const length = dataWords.length;
+    words.push(23, (length >> 5) & 31, length & 31, ...dataWords);
+    words.push(...bech32.toWords(new Uint8Array(65).fill(2)));
+    const bolt11 = bech32.encode('lnbc20u', words, 2000);
+    const receipt = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: 1_700_000_100,
+        content: '',
+        tags: [
+          ['p', RECIPIENT_PK],
+          ['bolt11', bolt11],
+          ['description', description],
+        ],
+      },
+      PROVIDER_SK,
+    );
+    const result = validateZapReceipt(receipt, {
+      recipientPubkey: RECIPIENT_PK,
+      provider: PROVIDER,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.descriptionHashMismatch).toBe(true);
+      expect(result.senderPubkey).toBe(getPublicKey(SENDER_SK));
+    }
+  });
 });

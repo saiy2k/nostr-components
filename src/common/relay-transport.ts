@@ -56,6 +56,35 @@ export interface NostrRelayTransport {
   }>;
   /** Host-proxied HTTPS GET for LNURL/invoice JSON when page CSP blocks fetch. */
   httpGet?(url: string): Promise<NostrRelayHttpGetResult>;
+  /** Signed kind 0 and kind 10002 events. Absent on transports that still query relays. */
+  getProfiles?(actionId: string, pubkeys: string[]): Promise<unknown[]>;
+  getZapRoute?(
+    actionId: string,
+  ): Promise<{
+    provider: NostrRelayZapProvider;
+    zapRelays: string[];
+  }>;
+  getZapSummary?(
+    actionId: string,
+  ): Promise<{
+    totalAmount: number;
+    zapDetails: Array<{
+      amount: number;
+      date: Date;
+      authorPubkey: string | null;
+      comment?: string;
+    }>;
+  }>;
+  listZaps?(
+    actionId: string,
+  ): Promise<
+    Array<{
+      amount: number;
+      date: Date;
+      authorPubkey: string | null;
+      comment?: string;
+    }>
+  >;
 }
 
 let installedRelayTransport: NostrRelayTransport | null = null;

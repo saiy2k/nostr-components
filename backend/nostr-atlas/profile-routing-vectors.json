@@ -1,0 +1,80 @@
+{
+  "nowSec": 1700000000,
+  "futureSkewSeconds": 900,
+  "replaceable": [
+    {
+      "name": "newer wins",
+      "current": { "id": "11", "created_at": 100 },
+      "event": { "id": "22", "created_at": 200 },
+      "winner": "event"
+    },
+    {
+      "name": "lower id wins a tie",
+      "current": { "id": "ff", "created_at": 200 },
+      "event": { "id": "00", "created_at": 200 },
+      "winner": "event"
+    },
+    {
+      "name": "higher id loses a tie",
+      "current": { "id": "00", "created_at": 200 },
+      "event": { "id": "ff", "created_at": 200 },
+      "winner": "current"
+    },
+    {
+      "name": "a far-future copy is ignored",
+      "current": { "id": "11", "created_at": 100 },
+      "event": { "id": "33", "created_at": 1700000905 },
+      "winner": "current"
+    },
+    {
+      "name": "a far-future copy does not become the first copy",
+      "current": null,
+      "event": { "id": "33", "created_at": 1700000905 },
+      "winner": null
+    }
+  ],
+  "relayList": {
+    "tags": [
+      ["r", "wss://read.example", "read"],
+      ["r", "wss://write-a.example", "write"],
+      ["r", "wss://write-b.example", "write"],
+      ["r", "wss://write-c.example", "write"],
+      ["r", "wss://write-d.example", "write"],
+      ["r", "wss://both.example"],
+      ["r", "https://nope.example", "write"]
+    ],
+    "readRelays": ["wss://read.example/", "wss://both.example/"],
+    "writeRelays": [
+      "wss://write-a.example/",
+      "wss://write-b.example/",
+      "wss://write-c.example/",
+      "wss://write-d.example/",
+      "wss://both.example/"
+    ]
+  },
+  "kind0Selection": {
+    "unhealthy": ["wss://write-a.example/"],
+    "hints": ["wss://hint.example"],
+    "archives": ["wss://archive.example"],
+    "writeRelays": [
+      "wss://write-b.example/",
+      "wss://write-c.example/",
+      "wss://write-d.example/"
+    ],
+    "includes": ["wss://archive.example/", "wss://hint.example/"],
+    "excludes": ["wss://read.example/", "wss://write-a.example/"]
+  },
+  "readFallback": {
+    "readRelays": [
+      "wss://r1.example",
+      "wss://r2.example",
+      "wss://r3.example",
+      "wss://r4.example"
+    ],
+    "expected": [
+      "wss://r1.example/",
+      "wss://r2.example/",
+      "wss://r3.example/"
+    ]
+  }
+}

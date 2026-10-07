@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { bytesToHex } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha256';
 import { bech32 } from '@scure/base';
 import { decode as decodeBolt11 } from 'light-bolt11-decoder';
 import type { Event } from 'nostr-tools';
@@ -18,6 +20,10 @@ export type ZapReceiptValidationResult =
       ok: true;
       amountMsats: number;
       zapRequest: Event;
+      /** Null when the zap request carries an `anon` tag, including one with no value. */
+      senderPubkey: string | null;
+      /** Set when the bolt11 description hash does not match the raw description. Never a rejection. */
+      descriptionHashMismatch?: boolean;
     }
   | {
       ok: false;
@@ -139,6 +145,25 @@ function normalizeLnurlTag(value: string): string | null {
   }
 }
 
+function descriptionHashMatches(bolt11: string, description: string): boolean {
+  try {
+    const decoded = decodeBolt11(bolt11);
+    const sections = decoded.sections as Array<{ name: string; value?: string }>;
+    const section = sections.find((item) => item.name === 'description_hash');
+    if (!section?.value || typeof section.value !== 'string') return false;
+    const hashed = bytesToHex(sha256(new TextEncoder().encode(description)));
+    return section.value.toLowerCase() === hashed;
+  } catch {
+    return false;
+  }
+}
+
+function senderPubkeyFor(zapRequest: Event): string | null {
+  return getTagEntries(zapRequest.tags, 'anon').length > 0
+    ? null
+    : zapRequest.pubkey;
+}
+
 export function getBolt11AmountMsats(bolt11: string): number | null {
   try {
     const decoded = decodeBolt11(bolt11);
@@ -161,7 +186,7 @@ export function validateZapReceipt(
   opts: {
     recipientPubkey: string;
     provider: ZapProviderInfo;
-    expectedATag?: string;
+    expectedATag?: string | string[];
     expectedBolt11?: string;
   },
 ): ZapReceiptValidationResult {
@@ -251,6 +276,7 @@ export function validateZapReceipt(
   if (invoiceAmountMsats == null) {
     return { ok: false, reason: 'invalid-bolt11-amount' };
   }
+  const descriptionHashMismatch = !descriptionHashMatches(bolt11, description);
 
   const amountTags = getTagEntries(zapRequest.tags, 'amount');
   if (amountTags.length > 1) {
@@ -290,9 +316,14 @@ export function validateZapReceipt(
   const receiptA = getUniqueTagValue(verifiedReceipt.tags, 'a');
   const requestA = getUniqueTagValue(zapRequest.tags, 'a');
   if (opts.expectedATag) {
+    const allowed = Array.isArray(opts.expectedATag)
+      ? opts.expectedATag
+      : [opts.expectedATag];
     if (
-      receiptA !== opts.expectedATag ||
-      requestA !== opts.expectedATag
+      !receiptA ||
+      !requestA ||
+      receiptA !== requestA ||
+      !allowed.includes(receiptA)
     ) {
       return { ok: false, reason: 'a-mismatch' };
     }
@@ -303,9 +334,14 @@ export function validateZapReceipt(
     return { ok: false, reason: 'a-mismatch' };
   }
 
-  return {
+  const result: ZapReceiptValidationResult = {
     ok: true,
     amountMsats: invoiceAmountMsats,
     zapRequest,
+    senderPubkey: senderPubkeyFor(zapRequest),
   };
+  if (result.ok && descriptionHashMismatch) {
+    result.descriptionHashMismatch = true;
+  }
+  return result;
 }

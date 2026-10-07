@@ -10,7 +10,7 @@
 ## Features
 
 - Display like button with thumbs-up icon and like count
-- Show net like count (likes minus unlikes) for current or specified URL
+- Show the like count for the current or specified URL. The count is each pubkey's newest reaction.
 - Click button to like and optionally unlike later
 - If already liked, show confirmation dialog to unlike
 - Unlike publishes kind 17 event with '-' content
@@ -48,7 +48,7 @@
 Hint: Nip-45
 
 **Impact:**
-- Total net like count (likes minus unlikes) may not reflect all reactions
+- The count is each pubkey's newest reaction and may not include every reaction
 - Likers/dislikers list may not show all contributors
 - Performance degrades with many reactions (fetching 1000+ profiles)
 
@@ -105,7 +105,7 @@ Liked:
 (button has blue background/text, text changes to "Liked")
 ```
 
-Note: Count shows net likes (likes - unlikes). Negative counts are possible.
+Note: The count is each pubkey's newest reaction. A newer unlike replaces that pubkey's like.
 
 Loading:
 ```text

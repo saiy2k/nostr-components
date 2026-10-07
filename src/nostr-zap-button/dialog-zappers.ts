@@ -67,7 +67,7 @@ function renderSkeletonZapEntry(
         <div class="skeleton-picture"></div>
         <div class="zap-author-details">
           <div class="zap-author-link skeleton-name">
-            ${escapeHtml(npub)}
+            ${escapeHtml(zap.authorPubkey ? npub : 'Anonymous')}
           </div>
           <div class="zap-amount-date">
             ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(Math.floor(zap.date.getTime() / 1000))}
@@ -158,7 +158,9 @@ async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
   }
 
   // Convert all pubkeys to npubs for immediate display
-  const npubs = zapDetails.map((zap) => hexToNpub(zap.authorPubkey));
+  const npubs = zapDetails.map((zap) =>
+    zap.authorPubkey ? hexToNpub(zap.authorPubkey) : '',
+  );
 
   const skeletonEntries = zapDetails
     .map((zap, index) => renderSkeletonZapEntry(zap, npubs[index], index))
@@ -187,7 +189,11 @@ async function enhanceZapDetailsProgressively(
 
   // Get unique author IDs
   const uniqueAuthorIds = [
-    ...new Set(zapDetails.map((zap) => zap.authorPubkey)),
+    ...new Set(
+      zapDetails
+        .map((zap) => zap.authorPubkey)
+        .filter((pubkey): pubkey is string => !!pubkey),
+    ),
   ];
   console.log(
     'Nostr-Components: Zappers dialog: Fetching profiles for',
@@ -218,6 +224,18 @@ async function enhanceZapDetailsProgressively(
     // Process each zap entry
     for (let index = 0; index < zapDetails.length; index++) {
       const zap = zapDetails[index];
+      if (!zap.authorPubkey) {
+        const skeletonEntry = zappersList.querySelector(
+          `[data-zap-index="${index}"]`,
+        );
+        if (skeletonEntry) {
+          setTrustedOuterHTML(
+            skeletonEntry,
+            renderZapEntry({ ...zap, authorName: 'Anonymous' }, index),
+          );
+        }
+        continue;
+      }
       const profile = profileMap.get(zap.authorPubkey);
       const npub = npubMap.get(zap.authorPubkey) || zap.authorPubkey;
 
@@ -292,8 +310,17 @@ async function enhanceZapDetailsIndividually(
 
   // Fetch all profile metadata in parallel
   const profilePromises = zapDetails.map(async (zap, index) => {
-    // Check if we already have this profile cached
-    if (profileCache.has(zap.authorPubkey)) {
+    if (!zap.authorPubkey) {
+      return {
+        index,
+        enhanced: {
+          ...zap,
+          authorName: 'Anonymous',
+        },
+      };
+    }
+    const authorPubkey = zap.authorPubkey;
+    if (profileCache.has(authorPubkey)) {
       const cachedProfile = profileCache.get(zap.authorPubkey)!;
       return {
         index,

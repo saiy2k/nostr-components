@@ -126,4 +126,4 @@ For support, please visit the [GitHub repository](https://github.com/saiy2k/nost
 
 == Privacy Policy ==
 
-This plugin does not collect, store, or transmit any personal data. All Nostr data is fetched directly from public relays and displayed locally on your site. If components fetch data client‑side, visitors' browsers may directly connect to configured relays (exposing their IP and user agent to those relays). Configure trusted relays accordingly.
+This plugin does not collect, store, or transmit any personal data. All Nostr data is fetched directly from public relays and displayed locally on your site. If components fetch data client‑side, visitors' browsers may directly connect to configured relays (exposing their IP and user agent to those relays). They may also reach indexer relays, the recipient's own relays, and, when zapping, the recipient's Lightning (LNURL) provider. Configure trusted relays accordingly.

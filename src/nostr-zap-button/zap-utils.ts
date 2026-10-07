@@ -8,10 +8,15 @@ import {
 } from 'nostr-tools';
 import type { Filter, Event } from 'nostr-tools';
 import { normalizeURL as normalizeRelayURL } from 'nostr-tools/utils';
-import { normalizeURL } from '../common/utils';
 import { ensureInitialized, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 import { DEFAULT_RELAYS } from '../common/constants';
+import {
+  fetchProfileOutbox,
+  queryRelays,
+  zapRelaysFor,
+} from '../common/relay-routing';
 import { getRelayTransport, httpGetJson } from '../common/relay-transport';
+import { zapFilterUrls, zapTagUrl } from '../common/url-tags';
 import { cloneVerifiedEvent } from '../common/nostr-event';
 import {
   getBolt11AmountMsats,
@@ -77,6 +82,12 @@ export const getProfileMetadata = async (
   if (cached) return cached;
 
   const transport = getRelayTransport();
+  if (actionId && transport?.getProfiles) {
+    const events = await transport.getProfiles(actionId, [authorId]);
+    const event = newestVerifiedProfile(events, authorId);
+    if (event) profileCache.set(cacheKey, event);
+    return event;
+  }
   if (transport) {
     const filter = {
       authors: [authorId],
@@ -86,32 +97,28 @@ export const getProfileMetadata = async (
     const events = actionId
       ? await transport.query(relayList, filter, actionId)
       : await transport.query(relayList, filter);
-    const event =
-      [...events]
-        .map(candidate => getVerifiedProfileEvent(candidate, authorId))
-        .filter((candidate): candidate is Event => candidate !== null)
-        .sort(
-          (left, right) =>
-            right.created_at - left.created_at ||
-            left.id.localeCompare(right.id),
-        )[0] || null;
+    const event = newestVerifiedProfile(events, authorId);
     if (event) profileCache.set(cacheKey, event);
     return event;
   }
 
-  const pool = new SimplePool();
-  try {
-    const event = await pool.get(relayList, {
-      authors: [authorId],
-      kinds: [0],
-    });
-    const verifiedEvent = getVerifiedProfileEvent(event, authorId);
-    if (verifiedEvent) profileCache.set(cacheKey, verifiedEvent);
-    return verifiedEvent;
-  } finally {
-    pool.close(relayList);
-  }
+  const event = await fetchProfileOutbox(authorId, relayList);
+  const verifiedEvent = getVerifiedProfileEvent(event, authorId);
+  if (verifiedEvent) profileCache.set(cacheKey, verifiedEvent);
+  return verifiedEvent;
 };
+
+function newestVerifiedProfile(events: unknown[], authorId: string): Event | null {
+  return (
+    [...events]
+      .map((candidate) => getVerifiedProfileEvent(candidate, authorId))
+      .filter((candidate): candidate is Event => candidate !== null)
+      .sort(
+        (left, right) =>
+          right.created_at - left.created_at || left.id.localeCompare(right.id),
+      )[0] || null
+  );
+}
 
 const PROFILE_QUERY_BATCH_SIZE = 50;
 
@@ -165,35 +172,41 @@ export const getBatchedProfileMetadata = async (
   }
 
   const transport = getRelayTransport();
-  const pool = transport ? null : new SimplePool();
   const requestedIds = new Set(uncachedIds);
-  try {
-    for (
-      let offset = 0;
-      offset < uncachedIds.length;
-      offset += PROFILE_QUERY_BATCH_SIZE
-    ) {
+  for (
+    let offset = 0;
+    offset < uncachedIds.length;
+    offset += PROFILE_QUERY_BATCH_SIZE
+  ) {
       const batch = uncachedIds.slice(offset, offset + PROFILE_QUERY_BATCH_SIZE);
       const filter = {
         authors: batch,
         kinds: [0],
         limit: batch.length,
       };
-        const events = transport
-          ? actionId
-            ? await transport.query(relayList, filter, actionId)
-            : await transport.query(relayList, filter)
-        : await pool!.querySync(relayList, filter);
-      cacheVerifiedProfiles(events, requestedIds, relayList);
+      if (actionId && transport?.getProfiles) {
+        cacheVerifiedProfiles(
+          await transport.getProfiles(actionId, batch),
+          requestedIds,
+          relayList,
+        );
+      } else if (transport) {
+        const events = actionId
+          ? await transport.query(relayList, filter, actionId)
+          : await transport.query(relayList, filter);
+        cacheVerifiedProfiles(events, requestedIds, relayList);
+      } else {
+        const events = await Promise.all(
+          batch.map((authorId) => fetchProfileOutbox(authorId, relayList)),
+        );
+        cacheVerifiedProfiles(events, requestedIds, relayList);
+      }
     }
 
     return authorIds.map(id => ({
       id,
       profile: profileCache.get(profileCacheKey(id, relayList)) || null,
     }));
-  } finally {
-    pool?.close(relayList);
-  }
 };
 
 export const extractProfileMetadataContent = (profileMetadata: any) => {
@@ -249,7 +262,28 @@ export const getZapProviderInfo = async (
  * the overlap is benign in practice.
  */
 export const buildUrlATag = (pubkey: string, url: string): string =>
-  `39735:${pubkey}:${normalizeURL(url)}`;
+  `39735:${pubkey}:${zapTagUrl(url)}`;
+
+export function zapATagValues(pubkey: string, url: string): string[] {
+  return zapFilterUrls(url).map((value) => `39735:${pubkey}:${value}`);
+}
+
+function relaysForSignedZap(relays: string[]): string[] {
+  if (getRelayTransport()) {
+    return Array.from(new Set(relays.filter(Boolean)));
+  }
+  const out: string[] = [];
+  for (const relay of relays) {
+    let normalized: string;
+    try {
+      normalized = normalizeRelayURL(relay);
+    } catch {
+      continue;
+    }
+    if (!out.includes(normalized)) out.push(normalized);
+  }
+  return out;
+}
 
 const signEvent = async (zapEvent: any, anon?: boolean) => {
   if (!anon) {
@@ -257,8 +291,11 @@ const signEvent = async (zapEvent: any, anon?: boolean) => {
       await ensureInitialized();
       return await signEventWithNostrLogin(zapEvent);
     } catch {
-      /* fall-through -> anonymous */
+      /* A signer that looked available can still fail. The receipt is anonymous. */
     }
+  }
+  if (!zapEvent.tags.some((tag: string[]) => tag[0] === 'anon')) {
+    zapEvent.tags.push(['anon']);
   }
   return finalizeEvent(zapEvent, generateRandomPrivKey());
 };
@@ -285,7 +322,10 @@ const makeZapEvent = async ({
     relays,
     comment: comment || '',
   };
-  const event = nip57.makeZapRequest(req);
+  const event = nip57.makeZapRequest({
+    ...req,
+    relays: relaysForSignedZap(relays),
+  });
 
   // Add URL-based zap a tag if URL is provided.
   // Uses a deterministic addressable event coordinate (kind 39735) so relays
@@ -334,6 +374,7 @@ export const fetchInvoiceForAction = async ({
 }): Promise<{
   invoice: string;
   provider: ZapProviderInfo;
+  anonymous: boolean;
 }> => {
   const transport = getRelayTransport();
   if (!transport?.fetchZapInvoice) {
@@ -347,15 +388,34 @@ export const fetchInvoiceForAction = async ({
     anon,
     url,
   });
-  return transport.fetchZapInvoice(actionId, {
+  const paid = await transport.fetchZapInvoice(actionId, {
     relays: normalizedRelays,
     amount,
     comment: comment ?? '',
     zapEvent,
   });
+  return {
+    ...paid,
+    anonymous: Array.isArray(zapEvent.tags)
+      && zapEvent.tags.some((tag: string[]) => tag[0] === 'anon'),
+  };
 };
 
-export const fetchInvoice = async ({
+export const fetchInvoice = async (
+  request: {
+    zapEndpoint: string;
+    amount: number;
+    comment?: string;
+    authorId: string;
+    normalizedRelays: string[];
+    anon?: boolean;
+    url?: string;
+  },
+): Promise<string> => {
+  return (await fetchInvoiceDetails(request)).invoice;
+};
+
+export async function fetchInvoiceDetails({
   zapEndpoint,
   amount,
   comment,
@@ -371,7 +431,7 @@ export const fetchInvoice = async ({
   normalizedRelays: string[];
   anon?: boolean;
   url?: string;
-}): Promise<string> => {
+}): Promise<{ invoice: string; anonymous: boolean }> {
   const zapEvent = await makeZapEvent({
     profile: authorId,
     amount,
@@ -380,7 +440,8 @@ export const fetchInvoice = async ({
     anon,
     url,
   });
-
+  const anonymous = Array.isArray(zapEvent.tags)
+    && zapEvent.tags.some((tag: string[]) => tag[0] === 'anon');
 
   let invoiceUrl = `${zapEndpoint}?amount=${amount}&nostr=${encodeURIComponent(
     JSON.stringify(zapEvent)
@@ -403,11 +464,32 @@ export const fetchInvoice = async ({
     if (invoiceAmount !== amount) {
       throw new Error('LNURL invoice amount does not match requested amount');
     }
-    return invoice;
+    return { invoice, anonymous };
   }
   if (lnurlStatus === 'ERROR') throw new Error(reason ?? 'Unable to fetch invoice');
   throw new Error('Unable to fetch invoice');
-};
+}
+
+export async function relaysForZapRequest({
+  actionId,
+  pubkey,
+  attributeRelays,
+  transportRelays,
+}: {
+  actionId?: string;
+  pubkey?: string;
+  attributeRelays: string[];
+  transportRelays: string[];
+}): Promise<string[]> {
+  const transport = getRelayTransport();
+  if (actionId && transport?.getZapRoute) {
+    const route = await transport.getZapRoute(actionId);
+    return route.zapRelays;
+  }
+  if (transport) return transportRelays;
+  if (!pubkey) return transportRelays;
+  return zapRelaysFor(pubkey, attributeRelays);
+}
 
 const generateRandomPrivKey = (): Uint8Array => {
   if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
@@ -466,7 +548,7 @@ declare module 'nostr-tools' {
 export interface ZapDetails {
   amount: number;
   date: Date;
-  authorPubkey: string;
+  authorPubkey: string | null;
   comment?: string;
 }
 
@@ -519,13 +601,84 @@ function readExtensionZapCache(events: unknown[]): ZapAmountResult | null {
     zapDetails.push({
       amount: candidate.amountSats,
       date: new Date((typeof candidate.createdAt === 'number' ? candidate.createdAt : 0) * 1000),
-      authorPubkey: typeof candidate.authorPubkey === 'string' ? candidate.authorPubkey : '',
+      authorPubkey: typeof candidate.authorPubkey === 'string' && candidate.authorPubkey
+        ? candidate.authorPubkey
+        : null,
       comment: typeof candidate.comment === 'string' ? candidate.comment : '',
     });
   }
   zapDetails.sort((left, right) => right.date.getTime() - left.date.getTime());
   return {
     totalAmount: totalSats,
+    zapDetails,
+  };
+}
+
+function zapRowsFromReceipts(
+  events: Array<{ created_at?: number }>,
+  pubkey: string,
+  provider: ZapProviderInfo,
+  expectedATag: string | string[] | undefined,
+): { totalMsats: number; zapDetails: ZapDetails[] } {
+  let totalMsats = 0;
+  const zapDetails: ZapDetails[] = [];
+  for (const event of events) {
+    const validated = validateZapReceipt(event as Event, {
+      recipientPubkey: pubkey,
+      provider,
+      expectedATag,
+    });
+    if (!validated.ok) continue;
+    totalMsats += validated.amountMsats;
+    zapDetails.push({
+      amount: validated.amountMsats / 1000,
+      date: new Date((event.created_at || 0) * 1000),
+      authorPubkey: validated.senderPubkey,
+      comment: validated.zapRequest.content,
+    });
+  }
+  zapDetails.sort((left, right) => right.date.getTime() - left.date.getTime());
+  return { totalMsats, zapDetails };
+}
+
+async function fetchLibraryZapAmount({
+  pubkey,
+  relays,
+  url,
+}: {
+  pubkey: string;
+  relays: string[];
+  url?: string;
+}): Promise<ZapAmountResult> {
+  const profileMetadata = await fetchProfileOutbox(pubkey, relays);
+  if (!profileMetadata) {
+    throw new Error('Zap recipient profile was not found');
+  }
+  const provider = await getZapProviderInfo(profileMetadata);
+  if (!provider) {
+    throw new Error('Zap recipient has no valid LNURL provider');
+  }
+  const filter: Filter = {
+    kinds: [9735],
+    '#p': [pubkey],
+    limit: 1000,
+  };
+  const expectedATag = url ? zapATagValues(pubkey, url) : undefined;
+  if (expectedATag && expectedATag.length > 0) {
+    filter['#a'] = expectedATag;
+  }
+  const { events, answered } = await queryRelays(relays, filter);
+  if (answered === 0) {
+    throw new Error('No relay answered the zap query');
+  }
+  const { totalMsats, zapDetails } = zapRowsFromReceipts(
+    events,
+    pubkey,
+    provider,
+    expectedATag,
+  );
+  return {
+    totalAmount: totalMsats / 1000,
     zapDetails,
   };
 }
@@ -542,6 +695,19 @@ export const fetchTotalZapAmount = async ({
   actionId?: string;
 }): Promise<ZapAmountResult> => {
   const transport = getRelayTransport();
+  if (actionId && transport?.getZapSummary) {
+    const summary = await transport.getZapSummary(actionId);
+    return {
+      totalAmount: summary.totalAmount,
+      zapDetails: [...summary.zapDetails].sort(
+        (left, right) => right.date.getTime() - left.date.getTime(),
+      ),
+    };
+  }
+  if (!transport) {
+    return fetchLibraryZapAmount({ pubkey, relays, url });
+  }
+
   const pool = transport ? null : new SimplePool();
   let totalAmount = 0;
   const zapDetails: ZapDetails[] = [];
@@ -610,7 +776,7 @@ export const fetchTotalZapAmount = async ({
       zapDetails.push({
         amount: validated.amountMsats / 1000, // convert from msats to sats
         date: new Date(event.created_at * 1000),
-        authorPubkey: validated.zapRequest.pubkey,
+        authorPubkey: validated.senderPubkey,
         comment: validated.zapRequest.content,
       });
     }

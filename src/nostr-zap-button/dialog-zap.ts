@@ -25,7 +25,7 @@ import {
 
 import { getBolt11AmountMsats } from './zap-receipt';
 import { 
-  fetchInvoice, 
+  fetchInvoiceDetails, 
   fetchInvoiceForAction,
   getProfileMetadata, 
   getZapProviderInfo, 
@@ -48,6 +48,7 @@ export interface ZapPaidNotice {
   invoice: string;
   amountSats: number;
   comment: string;
+  anonymous?: boolean;
 }
 
 export interface OpenZapModalParams {
@@ -129,6 +130,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   let customComment = '';
   let currentInvoice = '';
   let invoicedComment = '';
+  let currentAnonymous = false;
   let cleanupReceipt: (() => void) | null = null;
   const reportedInvoices = new Set<string>();
   let invoiceRequestSeq = 0;
@@ -158,6 +160,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       });
       provider = trusted.provider;
       invoice = trusted.invoice;
+      currentAnonymous = trusted.anonymous;
     } else {
       const meta = await getProfileMetadata(authorId, relaysArray);
 
@@ -170,7 +173,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
         throw new Error('Zap endpoint not found. The user may not have a Lightning address configured.');
       }
 
-      invoice = await fetchInvoice({
+      const paid = await fetchInvoiceDetails({
         zapEndpoint: provider.callback,
         amount: amountSats * 1000, // -> msats
         comment,
@@ -179,6 +182,8 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
         anon: params.anon ?? false,
         url: url,
       });
+      invoice = paid.invoice;
+      currentAnonymous = paid.anonymous;
     }
     if (requestSeq !== invoiceRequestSeq) return null;
     currentInvoice = invoice;
@@ -518,6 +523,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
         invoice,
         amountSats,
         comment,
+        anonymous: currentAnonymous,
       });
     }
   }
