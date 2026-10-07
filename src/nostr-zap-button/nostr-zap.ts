@@ -7,7 +7,7 @@ import { showHelpDialog } from './dialog-help';
 import { openZappersDialog } from './dialog-zappers';
 import { renderZapButton, RenderZapButtonOptions } from './render';
 import { getZapButtonStyles } from './style';
-import { fetchTotalZapAmount, ZapDetails } from './zap-utils';
+import { fetchTotalZapAmount, relaysForZapRequest, ZapDetails } from './zap-utils';
 import {
   applyRelayZapResult,
   creditPaidZap,
@@ -21,10 +21,8 @@ import {
 import { isValidUrl } from '../common/utils';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { ensureSignerForAction } from '../common/auth-onboarding';
-import {
-  getRelayTransport,
-  hasInstalledRelayTransport,
-} from '../common/relay-transport';
+import { getRelayTransport, hasInstalledRelayTransport } from '../common/relay-transport';
+import { explicitRelays, relaysForComponent } from '../common/relay-routing';
 import { setTrustedInnerHTML } from '../common/trusted-html';
 import { getTrustedActionContext } from '../common/trusted-action-context';
 import { isTrustedUserEvent } from '../common/trusted-user-activation';
@@ -46,6 +44,10 @@ import { isTrustedUserEvent } from '../common/trusted-user-activation';
 export default class NostrZap extends NostrUserComponent {
   protected zapActionStatus=   this.channel('zapAction');
   protected zapListStatus  =   this.channel('zapList');
+
+  protected getRelays() {
+    return relaysForComponent(this.getAttribute('relays'));
+  }
   
   #totalZapAmount: number | null = null;
   #cachedZapDetails: ZapDetails[] = [];
@@ -248,7 +250,12 @@ export default class NostrZap extends NostrUserComponent {
         return;
       }
 
-      const relays = this.getRelays().join(",");
+      const relays = (await relaysForZapRequest({
+        actionId: trustedContext?.actionId,
+        pubkey: this.user?.pubkey,
+        attributeRelays: explicitRelays(this.getAttribute('relays')),
+        transportRelays: this.getRelays(),
+      })).join(',');
 
       this.#cachedAmountDialog = await openZapModal({
         actionId: trustedContext?.actionId,
@@ -279,7 +286,7 @@ export default class NostrZap extends NostrUserComponent {
         url: trustedContext?.url || this.getAttribute("url") || undefined,
         anon: false,
         onZapPaid: (payment) => {
-          this.#recordPaidZap(payment, senderPubkey);
+          this.#recordPaidZap(payment, payment.anonymous ? null : senderPubkey);
         },
       });
       this.zapActionStatus.set(NCStatus.Ready);
@@ -306,11 +313,16 @@ export default class NostrZap extends NostrUserComponent {
     }
 
     try {
+      const transport = getRelayTransport();
+      const actionId = getTrustedActionContext(this)?.actionId;
+      const zapDetails = actionId && transport?.listZaps
+        ? await transport.listZaps(actionId)
+        : this.#cachedZapDetails;
       await openZappersDialog({
-        zapDetails: this.#cachedZapDetails,
+        zapDetails,
         theme: this.theme === 'dark' ? 'dark' : 'light',
         relays: this.getRelays(),
-        actionId: getTrustedActionContext(this)?.actionId,
+        actionId,
       });
     } catch (error) {
       console.error("Nostr-Components: Zap button: Error opening zappers dialog", error);
@@ -372,7 +384,7 @@ export default class NostrZap extends NostrUserComponent {
     this.#cachedZapDetails = displayedZapDetails(next);
   }
 
-  #recordPaidZap(payment: ZapPaidNotice, authorPubkey: string) {
+  #recordPaidZap(payment: ZapPaidNotice, authorPubkey: string | null) {
     const subjectKey = this.#zapSubjectKey();
     this.#forgetZapCountUnlessSubject(subjectKey);
     this.#applyZapDisplay(creditPaidZap(this.#zapDisplay, {
@@ -422,17 +434,13 @@ export default class NostrZap extends NostrUserComponent {
       if (seq !== this.#zapCountLoadSeq) return;
       console.error("Nostr-Components: Zap button: Failed to fetch zap count", e);
       const keepCreditedTotal = hasPendingZapCredit(this.#zapDisplay);
-      if (getRelayTransport()) {
-        if (this.#countedZapSubject !== subjectKey && !keepCreditedTotal) {
-          this.#applyZapDisplay(resetZapDisplay());
-        }
-        this.zapListStatus.set(NCStatus.Ready);
-      } else if (keepCreditedTotal) {
+      const countedThisSubject = this.#countedZapSubject === subjectKey;
+      if (countedThisSubject || keepCreditedTotal) {
         this.zapListStatus.set(NCStatus.Ready);
       } else {
         this.#applyZapDisplay(resetZapDisplay());
         this.#countedZapSubject = null;
-        this.zapListStatus.set(NCStatus.Error);
+        this.zapListStatus.set(NCStatus.Error, 'Failed to load zap total');
       }
     } finally {
       if (seq === this.#zapCountLoadSeq) {
@@ -445,7 +453,12 @@ export default class NostrZap extends NostrUserComponent {
     const isUserLoading = this.userStatus.get() == NCStatus.Loading;
     const isActionLoading = this.zapActionStatus.get() == NCStatus.Loading;
     const isAmountLoading = this.zapListStatus.get() == NCStatus.Loading;
-    const isError = this.computeOverall() === NCStatus.Error;
+    const zapCountFailed =
+      this.zapListStatus.get() === NCStatus.Error &&
+      this.userStatus.get() !== NCStatus.Error &&
+      this.conn.get() !== NCStatus.Error &&
+      this.zapActionStatus.get() !== NCStatus.Error;
+    const isError = this.computeOverall() === NCStatus.Error && !zapCountFailed;
     const errorMessage = this.errorMessage;
     const buttonText = this.getAttribute('text') || 'Zap';
 
@@ -456,9 +469,11 @@ export default class NostrZap extends NostrUserComponent {
       isSuccess: false, // TODO: Add success state handling
       errorMessage: errorMessage,
       buttonText: buttonText,
-      actionNotice: this.#zapActionNotice,
-      totalZapAmount: this.#totalZapAmount,
-      hasZaps: this.#cachedZapDetails.length > 0,
+      actionNotice: zapCountFailed
+        ? (this.errorMessage || 'Failed to load zap total')
+        : this.#zapActionNotice,
+      totalZapAmount: zapCountFailed ? null : this.#totalZapAmount,
+      hasZaps: !zapCountFailed && this.#cachedZapDetails.length > 0,
       compact: this.hasAttribute('compact'),
     };
 

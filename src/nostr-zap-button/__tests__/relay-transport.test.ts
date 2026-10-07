@@ -389,6 +389,7 @@ describe('Zap component relay transport', () => {
         ok: true,
         amountMsats: 1000,
         zapRequest: {} as any,
+        senderPubkey: 'ab'.repeat(32),
       });
     Object.assign(globalThis, {
       __nostrComponentsRelayTransport: { query, publish: vi.fn() },

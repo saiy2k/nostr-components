@@ -9,6 +9,7 @@ Read the surface README for runbooks. This file only routes work and names the t
 ### Component library
 
 - Source: `src/`. Package root is [package.json](package.json).
+- Likes and zaps on a page without a host transport use the rendezvous relays in [backend/relay-roles.json](backend/relay-roles.json). Profile lookups follow the pubkey's relay list. A host transport that does not implement the newer methods keeps the previous relay list and URL strings.
 - Check: `npm test`, `npm run storybook`, `npm run build`.
 - Ships as the `nostr-components` npm package, and as Firebase Hosting target `storybook` on site `nostr-component` ([.firebaserc](.firebaserc), [firebase.json](firebase.json)).
 - `src/nostr-comment`, `src/nostr-dm`, and `src/nostr-live-chat` remain in the tree. Their imports in `src/index.ts` and entries in `vite.config.esm.ts` are disabled, so they are not published.

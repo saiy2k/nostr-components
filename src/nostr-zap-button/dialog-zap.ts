@@ -25,7 +25,7 @@ import {
 
 import { getBolt11AmountMsats } from './zap-receipt';
 import { 
-  fetchInvoice, 
+  fetchInvoiceDetails, 
   fetchInvoiceForAction,
   getProfileMetadata, 
   getZapProviderInfo, 
@@ -48,6 +48,7 @@ export interface ZapPaidNotice {
   invoice: string;
   amountSats: number;
   comment: string;
+  anonymous?: boolean;
 }
 
 export interface OpenZapModalParams {
@@ -129,6 +130,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   let customComment = '';
   let currentInvoice = '';
   let invoicedComment = '';
+  let currentAnonymous = false;
   let cleanupReceipt: (() => void) | null = null;
   const reportedInvoices = new Set<string>();
   let invoiceRequestSeq = 0;
@@ -146,6 +148,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     const relaysArray = relays.split(',').map(r => r.trim()).filter(Boolean);
     let provider;
     let invoice;
+    let anonymous = false;
     if (params.actionId && url) {
       const trusted = await fetchInvoiceForAction({
         actionId: params.actionId,
@@ -158,6 +161,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       });
       provider = trusted.provider;
       invoice = trusted.invoice;
+      anonymous = trusted.anonymous;
     } else {
       const meta = await getProfileMetadata(authorId, relaysArray);
 
@@ -170,7 +174,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
         throw new Error('Zap endpoint not found. The user may not have a Lightning address configured.');
       }
 
-      invoice = await fetchInvoice({
+      const paid = await fetchInvoiceDetails({
         zapEndpoint: provider.callback,
         amount: amountSats * 1000, // -> msats
         comment,
@@ -179,23 +183,27 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
         anon: params.anon ?? false,
         url: url,
       });
+      invoice = paid.invoice;
+      anonymous = paid.anonymous;
     }
     if (requestSeq !== invoiceRequestSeq) return null;
     currentInvoice = invoice;
     invoicedComment = comment;
+    currentAnonymous = anonymous;
 
     // Zap receipt listener
     // Dispose previous listener before creating a new one
     if (cleanupReceipt) cleanupReceipt();
     const paidInvoice = invoice;
     const paidComment = comment;
+    const paidAnonymous = anonymous;
     cleanupReceipt = listenForZapReceipt({
       relays: relaysArray,
       receiversPubKey: npubHex,
       invoice,
       provider,
       url,
-      onSuccess: () => markSuccess(paidInvoice, paidComment),
+      onSuccess: () => markSuccess(paidInvoice, paidComment, paidAnonymous),
     });
     return invoice;
   }
@@ -471,12 +479,13 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       if (!currentInvoice) return;
       const paidInvoice = currentInvoice;
       const paidComment = invoicedComment;
+      const paidAnonymous = currentAnonymous;
       // try WebLN first
       if (window.webln) {
         try {
           await window.webln.enable();
           await window.webln.sendPayment(paidInvoice);
-          markSuccess(paidInvoice, paidComment);
+          markSuccess(paidInvoice, paidComment, paidAnonymous);
           return;
         } catch (e) {
           console.error('Nostr-Components: Zap button: webln payment failed', e);
@@ -493,7 +502,11 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     cleanupReceipt = null;
   }
 
-  function markSuccess(paidInvoice = currentInvoice, paidComment = invoicedComment) {
+  function markSuccess(
+    paidInvoice = currentInvoice,
+    paidComment = invoicedComment,
+    paidAnonymous = currentAnonymous,
+  ) {
     const invoice = paidInvoice;
     const comment = paidComment;
     const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
@@ -518,6 +531,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
         invoice,
         amountSats,
         comment,
+        anonymous: paidAnonymous,
       });
     }
   }

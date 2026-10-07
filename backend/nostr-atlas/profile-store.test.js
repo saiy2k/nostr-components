@@ -559,3 +559,45 @@ describe("profile refresh", () => {
     expect(db.docs.get("relayProjectionRuns/profile-refresh").afterId).toBe("");
   });
 });
+
+describe("shared profile routing vectors", () => {
+  it("matches the vectors the component library uses", async () => {
+    const vectors = (await import("./profile-routing-vectors.json")).default;
+    expect(FUTURE_SKEW_SECONDS).toBe(vectors.futureSkewSeconds);
+    for (const row of vectors.replaceable) {
+      const winner = preferNewerReplaceable(row.current, row.event, vectors.nowSec);
+      const expected =
+        row.winner === "event" ? row.event : row.winner === "current" ? row.current : null;
+      expect(winner, row.name).toEqual(expected);
+    }
+    const list = relayListFromEvent({ tags: vectors.relayList.tags });
+    expect(list.readRelays).toEqual(vectors.relayList.readRelays);
+    expect(list.writeRelays).toEqual(vectors.relayList.writeRelays);
+    const health = new Map(
+      vectors.kind0Selection.unhealthy.map((url) => [url, { consecutiveFailures: 3 }]),
+    );
+    const selected = selectKind0Relays({
+      ...list,
+      hints: vectors.kind0Selection.hints,
+      archives: vectors.kind0Selection.archives,
+      health,
+    });
+    expect(selected.filter((url) => url.includes("write-"))).toEqual(
+      vectors.kind0Selection.writeRelays,
+    );
+    for (const url of vectors.kind0Selection.includes) {
+      expect(selected).toContain(url);
+    }
+    for (const url of vectors.kind0Selection.excludes) {
+      expect(selected).not.toContain(url);
+    }
+    expect(
+      selectKind0Relays({
+        readRelays: vectors.readFallback.readRelays,
+        writeRelays: [],
+        archives: [],
+        hints: [],
+      }),
+    ).toEqual(vectors.readFallback.expected);
+  });
+});

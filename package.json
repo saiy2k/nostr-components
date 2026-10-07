@@ -49,31 +49,31 @@
     },
     "./components/nostr-like-button": {
       "import": "./dist/components/nostr-like-button.es.js",
-      "types": "./dist/components/nostr-like-button.d.ts"
+      "types": "./dist/nostr-like-button.d.ts"
     },
     "./components/nostr-zap-button": {
       "import": "./dist/components/nostr-zap-button.es.js",
-      "types": "./dist/components/nostr-zap-button.d.ts"
+      "types": "./dist/nostr-zap-button.d.ts"
     },
     "./components/nostr-profile": {
       "import": "./dist/components/nostr-profile.es.js",
-      "types": "./dist/components/nostr-profile.d.ts"
+      "types": "./dist/nostr-profile.d.ts"
     },
     "./components/nostr-profile-badge": {
       "import": "./dist/components/nostr-profile-badge.es.js",
-      "types": "./dist/components/nostr-profile-badge.d.ts"
+      "types": "./dist/nostr-profile-badge.d.ts"
     },
     "./components/nostr-post": {
       "import": "./dist/components/nostr-post.es.js",
-      "types": "./dist/components/nostr-post.d.ts"
+      "types": "./dist/nostr-post.d.ts"
     },
     "./components/nostr-follow-button": {
       "import": "./dist/components/nostr-follow-button.es.js",
-      "types": "./dist/components/nostr-follow-button.d.ts"
+      "types": "./dist/nostr-follow-button.d.ts"
     },
     "./components/nostr-livestream": {
       "import": "./dist/components/nostr-livestream.es.js",
-      "types": "./dist/components/nostr-livestream.d.ts"
+      "types": "./dist/nostr-livestream.d.ts"
     }
   },
   "files": [
@@ -91,7 +91,7 @@
     "build:themes": "node scripts/build-themes.js",
     "build:assets": "node scripts/copy-assets.js",
     "build:browser-extension": "esbuild browser-extension/src/url.js --bundle --format=iife --platform=browser --target=chrome109 --outfile=browser-extension/lib/url.js --banner:js=\"// SPDX-License-Identifier: MIT\" && esbuild browser-extension/src/relay-client.js --bundle --format=iife --platform=browser --target=chrome109 --outfile=browser-extension/lib/relay-client.js --banner:js=\"// SPDX-License-Identifier: MIT\" && esbuild browser-extension/src/components.ts --bundle --format=iife --platform=browser --target=chrome109 --alias:tseep=./browser-extension/src/csp-event-emitter.js --outfile=browser-extension/lib/nostr-extension-components.js --banner:js=\"// SPDX-License-Identifier: MIT\" && node scripts/strip-trailing-whitespace.js browser-extension/lib/nostr-extension-components.js",
-    "build": "npm run build:esm && npm run build:umd && npm run build:themes && npm run build:assets",
+    "build": "npm run build:esm && npm run build:umd && npm run build:themes && npm run build:assets && node scripts/check-published-types.mjs",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "cross-env STORYBOOK_ENV=production storybook build && npm run build:themes && node scripts/patch-storybook-base.js",
@@ -127,6 +127,7 @@
   },
   "dependencies": {
     "@glidejs/glide": "^3.7.1",
+    "@noble/hashes": "^1.7.1",
     "@nostr-dev-kit/ndk": "^2.10.0",
     "@scure/base": "^1.1.1",
     "@types/dompurify": "^3.0.5",

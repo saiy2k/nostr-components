@@ -6,7 +6,7 @@ export interface PendingZapCredit {
   invoice: string;
   amountSats: number;
   comment: string;
-  authorPubkey: string;
+  authorPubkey: string | null;
   paidAt: Date;
 }
 
@@ -164,7 +164,8 @@ function detailsAbsentFrom(previous: ZapDetails[], next: ZapDetails[]): ZapDetai
 }
 
 function receiptKey(detail: ZapDetails): string {
-  return `${detail.authorPubkey.toLowerCase()}|${detail.amount}|${detail.date.getTime()}`;
+  const author = detail.authorPubkey?.toLowerCase() ?? '';
+  return `${author}|${detail.amount}|${detail.date.getTime()}`;
 }
 
 function receiptMatchesCredit(detail: ZapDetails, credit: PendingZapCredit): boolean {
@@ -173,7 +174,8 @@ function receiptMatchesCredit(detail: ZapDetails, credit: PendingZapCredit): boo
   return detail.date.getTime() >= credit.paidAt.getTime() - RECEIPT_MATCH_SKEW_MS;
 }
 
-function sameAuthor(left: string, right: string): boolean {
+function sameAuthor(left: string | null, right: string | null): boolean {
+  if (left == null || right == null) return left == null && right == null;
   return left.length > 0 && left.toLowerCase() === right.toLowerCase();
 }
 

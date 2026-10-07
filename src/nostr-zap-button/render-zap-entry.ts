@@ -11,8 +11,11 @@ export interface EnhancedZapDetails extends ZapDetails {
 }
 
 export function renderZapEntry(zap: EnhancedZapDetails, index: number): string {
-  const authorNameSafe = escapeHtml(zap.authorName || 'Unknown zapper');
-  const npubSafe = validateNpub(zap.authorNpub || '') ? zap.authorNpub : '';
+  const anonymous = !zap.authorPubkey;
+  const authorNameSafe = escapeHtml(
+    zap.authorName || (anonymous ? 'Anonymous' : 'Unknown zapper'),
+  );
+  const npubSafe = !anonymous && validateNpub(zap.authorNpub || '') ? zap.authorNpub : '';
   const njumpUrl = npubSafe
     ? sanitizeHttpUrl(`https://njump.me/${npubSafe}`)
     : '';

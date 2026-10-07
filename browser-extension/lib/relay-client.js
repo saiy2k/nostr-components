@@ -319,7 +319,7 @@
           return Uint8Array.from(res);
         }
       };
-      var base58check = (sha2563) => chain2(checksum(4, (data) => sha2563(sha2563(data))), exports.base58);
+      var base58check = (sha2564) => chain2(checksum(4, (data) => sha2564(sha2564(data))), exports.base58);
       exports.base58check = base58check;
       var BECH_ALPHABET2 = chain2(alphabet2("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), join2(""));
       var POLYMOD_GENERATORS2 = [996825010, 642813549, 513874426, 1027748829, 705979059];
@@ -1796,7 +1796,7 @@
   function weierstrassPoints(opts) {
     const CURVE = validatePointOpts(opts);
     const { Fp: Fp2 } = CURVE;
-    const toBytes4 = CURVE.toBytes || ((_c, point, _isCompressed) => {
+    const toBytes5 = CURVE.toBytes || ((_c, point, _isCompressed) => {
       const a = point.toAffine();
       return concatBytes2(Uint8Array.from([4]), Fp2.toBytes(a.x), Fp2.toBytes(a.y));
     });
@@ -2164,7 +2164,7 @@
       }
       toRawBytes(isCompressed = true) {
         this.assertValidity();
-        return toBytes4(Point2, this, isCompressed);
+        return toBytes5(Point2, this, isCompressed);
       }
       toHex(isCompressed = true) {
         return bytesToHex(this.toRawBytes(isCompressed));
@@ -7486,6 +7486,328 @@
   // browser-extension/src/relay-client.js
   var import_light_bolt11_decoder2 = __toESM(require_bolt11(), 1);
 
+  // node_modules/@noble/hashes/esm/_assert.js
+  function isBytes2(a) {
+    return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
+  }
+  function abytes(b, ...lengths) {
+    if (!isBytes2(b))
+      throw new Error("Uint8Array expected");
+    if (lengths.length > 0 && !lengths.includes(b.length))
+      throw new Error("Uint8Array expected of length " + lengths + ", got length=" + b.length);
+  }
+  function aexists(instance, checkFinished = true) {
+    if (instance.destroyed)
+      throw new Error("Hash instance has been destroyed");
+    if (checkFinished && instance.finished)
+      throw new Error("Hash#digest() has already been called");
+  }
+  function aoutput(out, instance) {
+    abytes(out);
+    const min = instance.outputLen;
+    if (out.length < min) {
+      throw new Error("digestInto() expects output buffer of length at least " + min);
+    }
+  }
+
+  // node_modules/@noble/hashes/esm/utils.js
+  function createView4(arr) {
+    return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
+  }
+  function rotr3(word, shift) {
+    return word << 32 - shift | word >>> shift;
+  }
+  var hexes3 = /* @__PURE__ */ Array.from({ length: 256 }, (_, i2) => i2.toString(16).padStart(2, "0"));
+  function bytesToHex3(bytes4) {
+    abytes(bytes4);
+    let hex2 = "";
+    for (let i2 = 0; i2 < bytes4.length; i2++) {
+      hex2 += hexes3[bytes4[i2]];
+    }
+    return hex2;
+  }
+  function utf8ToBytes5(str) {
+    if (typeof str !== "string")
+      throw new Error("utf8ToBytes expected string, got " + typeof str);
+    return new Uint8Array(new TextEncoder().encode(str));
+  }
+  function toBytes4(data) {
+    if (typeof data === "string")
+      data = utf8ToBytes5(data);
+    abytes(data);
+    return data;
+  }
+  var Hash3 = class {
+    // Safe version that clones internal state
+    clone() {
+      return this._cloneInto();
+    }
+  };
+  function wrapConstructor3(hashCons) {
+    const hashC = (msg) => hashCons().update(toBytes4(msg)).digest();
+    const tmp = hashCons();
+    hashC.outputLen = tmp.outputLen;
+    hashC.blockLen = tmp.blockLen;
+    hashC.create = () => hashCons();
+    return hashC;
+  }
+
+  // node_modules/@noble/hashes/esm/_md.js
+  function setBigUint644(view, byteOffset, value, isLE4) {
+    if (typeof view.setBigUint64 === "function")
+      return view.setBigUint64(byteOffset, value, isLE4);
+    const _32n = BigInt(32);
+    const _u32_max = BigInt(4294967295);
+    const wh = Number(value >> _32n & _u32_max);
+    const wl = Number(value & _u32_max);
+    const h = isLE4 ? 4 : 0;
+    const l = isLE4 ? 0 : 4;
+    view.setUint32(byteOffset + h, wh, isLE4);
+    view.setUint32(byteOffset + l, wl, isLE4);
+  }
+  function Chi3(a, b, c) {
+    return a & b ^ ~a & c;
+  }
+  function Maj3(a, b, c) {
+    return a & b ^ a & c ^ b & c;
+  }
+  var HashMD = class extends Hash3 {
+    constructor(blockLen, outputLen, padOffset, isLE4) {
+      super();
+      this.blockLen = blockLen;
+      this.outputLen = outputLen;
+      this.padOffset = padOffset;
+      this.isLE = isLE4;
+      this.finished = false;
+      this.length = 0;
+      this.pos = 0;
+      this.destroyed = false;
+      this.buffer = new Uint8Array(blockLen);
+      this.view = createView4(this.buffer);
+    }
+    update(data) {
+      aexists(this);
+      const { view, buffer, blockLen } = this;
+      data = toBytes4(data);
+      const len = data.length;
+      for (let pos = 0; pos < len; ) {
+        const take = Math.min(blockLen - this.pos, len - pos);
+        if (take === blockLen) {
+          const dataView = createView4(data);
+          for (; blockLen <= len - pos; pos += blockLen)
+            this.process(dataView, pos);
+          continue;
+        }
+        buffer.set(data.subarray(pos, pos + take), this.pos);
+        this.pos += take;
+        pos += take;
+        if (this.pos === blockLen) {
+          this.process(view, 0);
+          this.pos = 0;
+        }
+      }
+      this.length += data.length;
+      this.roundClean();
+      return this;
+    }
+    digestInto(out) {
+      aexists(this);
+      aoutput(out, this);
+      this.finished = true;
+      const { buffer, view, blockLen, isLE: isLE4 } = this;
+      let { pos } = this;
+      buffer[pos++] = 128;
+      this.buffer.subarray(pos).fill(0);
+      if (this.padOffset > blockLen - pos) {
+        this.process(view, 0);
+        pos = 0;
+      }
+      for (let i2 = pos; i2 < blockLen; i2++)
+        buffer[i2] = 0;
+      setBigUint644(view, blockLen - 8, BigInt(this.length * 8), isLE4);
+      this.process(view, 0);
+      const oview = createView4(out);
+      const len = this.outputLen;
+      if (len % 4)
+        throw new Error("_sha2: outputLen should be aligned to 32bit");
+      const outLen = len / 4;
+      const state = this.get();
+      if (outLen > state.length)
+        throw new Error("_sha2: outputLen bigger than state");
+      for (let i2 = 0; i2 < outLen; i2++)
+        oview.setUint32(4 * i2, state[i2], isLE4);
+    }
+    digest() {
+      const { buffer, outputLen } = this;
+      this.digestInto(buffer);
+      const res = buffer.slice(0, outputLen);
+      this.destroy();
+      return res;
+    }
+    _cloneInto(to) {
+      to || (to = new this.constructor());
+      to.set(...this.get());
+      const { blockLen, buffer, length, finished, destroyed, pos } = this;
+      to.length = length;
+      to.pos = pos;
+      to.finished = finished;
+      to.destroyed = destroyed;
+      if (length % blockLen)
+        to.buffer.set(buffer);
+      return to;
+    }
+  };
+
+  // node_modules/@noble/hashes/esm/sha256.js
+  var SHA256_K3 = /* @__PURE__ */ new Uint32Array([
+    1116352408,
+    1899447441,
+    3049323471,
+    3921009573,
+    961987163,
+    1508970993,
+    2453635748,
+    2870763221,
+    3624381080,
+    310598401,
+    607225278,
+    1426881987,
+    1925078388,
+    2162078206,
+    2614888103,
+    3248222580,
+    3835390401,
+    4022224774,
+    264347078,
+    604807628,
+    770255983,
+    1249150122,
+    1555081692,
+    1996064986,
+    2554220882,
+    2821834349,
+    2952996808,
+    3210313671,
+    3336571891,
+    3584528711,
+    113926993,
+    338241895,
+    666307205,
+    773529912,
+    1294757372,
+    1396182291,
+    1695183700,
+    1986661051,
+    2177026350,
+    2456956037,
+    2730485921,
+    2820302411,
+    3259730800,
+    3345764771,
+    3516065817,
+    3600352804,
+    4094571909,
+    275423344,
+    430227734,
+    506948616,
+    659060556,
+    883997877,
+    958139571,
+    1322822218,
+    1537002063,
+    1747873779,
+    1955562222,
+    2024104815,
+    2227730452,
+    2361852424,
+    2428436474,
+    2756734187,
+    3204031479,
+    3329325298
+  ]);
+  var SHA256_IV = /* @__PURE__ */ new Uint32Array([
+    1779033703,
+    3144134277,
+    1013904242,
+    2773480762,
+    1359893119,
+    2600822924,
+    528734635,
+    1541459225
+  ]);
+  var SHA256_W3 = /* @__PURE__ */ new Uint32Array(64);
+  var SHA2563 = class extends HashMD {
+    constructor() {
+      super(64, 32, 8, false);
+      this.A = SHA256_IV[0] | 0;
+      this.B = SHA256_IV[1] | 0;
+      this.C = SHA256_IV[2] | 0;
+      this.D = SHA256_IV[3] | 0;
+      this.E = SHA256_IV[4] | 0;
+      this.F = SHA256_IV[5] | 0;
+      this.G = SHA256_IV[6] | 0;
+      this.H = SHA256_IV[7] | 0;
+    }
+    get() {
+      const { A, B, C, D, E, F, G, H } = this;
+      return [A, B, C, D, E, F, G, H];
+    }
+    // prettier-ignore
+    set(A, B, C, D, E, F, G, H) {
+      this.A = A | 0;
+      this.B = B | 0;
+      this.C = C | 0;
+      this.D = D | 0;
+      this.E = E | 0;
+      this.F = F | 0;
+      this.G = G | 0;
+      this.H = H | 0;
+    }
+    process(view, offset) {
+      for (let i2 = 0; i2 < 16; i2++, offset += 4)
+        SHA256_W3[i2] = view.getUint32(offset, false);
+      for (let i2 = 16; i2 < 64; i2++) {
+        const W15 = SHA256_W3[i2 - 15];
+        const W2 = SHA256_W3[i2 - 2];
+        const s0 = rotr3(W15, 7) ^ rotr3(W15, 18) ^ W15 >>> 3;
+        const s1 = rotr3(W2, 17) ^ rotr3(W2, 19) ^ W2 >>> 10;
+        SHA256_W3[i2] = s1 + SHA256_W3[i2 - 7] + s0 + SHA256_W3[i2 - 16] | 0;
+      }
+      let { A, B, C, D, E, F, G, H } = this;
+      for (let i2 = 0; i2 < 64; i2++) {
+        const sigma1 = rotr3(E, 6) ^ rotr3(E, 11) ^ rotr3(E, 25);
+        const T1 = H + sigma1 + Chi3(E, F, G) + SHA256_K3[i2] + SHA256_W3[i2] | 0;
+        const sigma0 = rotr3(A, 2) ^ rotr3(A, 13) ^ rotr3(A, 22);
+        const T2 = sigma0 + Maj3(A, B, C) | 0;
+        H = G;
+        G = F;
+        F = E;
+        E = D + T1 | 0;
+        D = C;
+        C = B;
+        B = A;
+        A = T1 + T2 | 0;
+      }
+      A = A + this.A | 0;
+      B = B + this.B | 0;
+      C = C + this.C | 0;
+      D = D + this.D | 0;
+      E = E + this.E | 0;
+      F = F + this.F | 0;
+      G = G + this.G | 0;
+      H = H + this.H | 0;
+      this.set(A, B, C, D, E, F, G, H);
+    }
+    roundClean() {
+      SHA256_W3.fill(0);
+    }
+    destroy() {
+      this.set(0, 0, 0, 0, 0, 0, 0, 0);
+      this.buffer.fill(0);
+    }
+  };
+  var sha2563 = /* @__PURE__ */ wrapConstructor3(() => new SHA2563());
+
   // src/nostr-zap-button/zap-receipt.ts
   var import_light_bolt11_decoder = __toESM(require_bolt11(), 1);
 
@@ -7536,6 +7858,21 @@
     } catch {
       return null;
     }
+  }
+  function descriptionHashMatches(bolt11, description) {
+    try {
+      const decoded = (0, import_light_bolt11_decoder.decode)(bolt11);
+      const sections = decoded.sections;
+      const section = sections.find((item) => item.name === "description_hash");
+      if (!section?.value || typeof section.value !== "string") return false;
+      const hashed = bytesToHex3(sha2563(new TextEncoder().encode(description)));
+      return section.value.toLowerCase() === hashed;
+    } catch {
+      return false;
+    }
+  }
+  function senderPubkeyFor(zapRequest) {
+    return getTagEntries(zapRequest.tags, "anon").length > 0 ? null : zapRequest.pubkey;
   }
   function getBolt11AmountMsats(bolt11) {
     try {
@@ -7623,6 +7960,7 @@
     if (invoiceAmountMsats == null) {
       return { ok: false, reason: "invalid-bolt11-amount" };
     }
+    const descriptionHashMismatch = !descriptionHashMatches(bolt11, description);
     const amountTags = getTagEntries(zapRequest.tags, "amount");
     if (amountTags.length > 1) {
       return { ok: false, reason: "duplicate-amount" };
@@ -7659,17 +7997,23 @@
     const receiptA = getUniqueTagValue(verifiedReceipt.tags, "a");
     const requestA = getUniqueTagValue(zapRequest.tags, "a");
     if (opts.expectedATag) {
-      if (receiptA !== opts.expectedATag || requestA !== opts.expectedATag) {
+      const allowed = Array.isArray(opts.expectedATag) ? opts.expectedATag : [opts.expectedATag];
+      if (!receiptA || !requestA || receiptA !== requestA || !allowed.includes(receiptA)) {
         return { ok: false, reason: "a-mismatch" };
       }
     } else if (receiptATags.length !== requestATags.length || receiptA !== requestA) {
       return { ok: false, reason: "a-mismatch" };
     }
-    return {
+    const result = {
       ok: true,
       amountMsats: invoiceAmountMsats,
-      zapRequest
+      zapRequest,
+      senderPubkey: senderPubkeyFor(zapRequest)
     };
+    if (result.ok && descriptionHashMismatch) {
+      result.descriptionHashMismatch = true;
+    }
+    return result;
   }
 
   // browser-extension/src/relay-client.js
@@ -7831,7 +8175,7 @@
       }
       return bytes4;
     }
-    function bytesToHex3(value) {
+    function bytesToHex4(value) {
       return Array.from(new Uint8Array(value), function(byte) {
         return byte.toString(16).padStart(2, "0");
       }).join("");
@@ -7865,7 +8209,7 @@
           key,
           encoder.encode(bridgeAuthPayload(type, message))
         );
-        return bytesToHex3(mac);
+        return bytesToHex4(mac);
       }
       async function verify(type, message) {
         if (!MESSAGE_MAC_PATTERN.test(String(message?.mac || ""))) return false;
@@ -9163,4 +9507,7 @@
 
 @noble/ciphers/esm/utils.js:
   (*! noble-ciphers - MIT License (c) 2023 Paul Miller (paulmillr.com) *)
+
+@noble/hashes/esm/utils.js:
+  (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 */

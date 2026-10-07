@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
 import { SimplePool } from 'nostr-tools';
-import { normalizeURL } from 'nostr-tools/utils';
 import { ensureInitialized, getPublicKey, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 import {
   getRelayTransport,
   hasInstalledRelayTransport,
 } from '../common/relay-transport';
+import { likePublishRelays, normalizeRelayUrl } from '../common/relay-routing';
+import { likeFilterUrls, likeTagUrl } from '../common/url-tags';
 import { netLikesByPubkey } from './like-netting';
 import type { LikeCountResult, LikeDetails } from './like-netting';
 
@@ -20,7 +21,7 @@ export async function fetchCachedLikeStateForUrl(
   const transport = getRelayTransport();
   if (!transport?.getCachedLikeState) return null;
 
-  const state = await transport.getCachedLikeState(relays, normalizeURL(url));
+  const state = await transport.getCachedLikeState(relays, likeTagUrl(url) || url);
   return state.found ? state.isLiked : null;
 }
 
@@ -36,8 +37,10 @@ export async function fetchLikesForUrl(
   url: string, 
   relays: string[]
 ): Promise<LikeCountResult> {
-  // Normalize URL at the beginning for consistent comparison with tags
-  const normalizedUrl = normalizeURL(url);
+  const filterUrls = likeFilterUrls(url);
+  if (filterUrls.length === 0) {
+    return netLikesByPubkey([]);
+  }
   
   const pool = new SimplePool();
   
@@ -46,12 +49,12 @@ export async function fetchLikesForUrl(
     const filter = {
       kinds: [17],
       '#k': ['web'],
-      '#i': [normalizedUrl],
+      '#i': filterUrls,
       limit: 1000
     };
     const transport = getRelayTransport();
     if (transport?.getLikeState) {
-      const state = await transport.getLikeState(relays, normalizedUrl);
+      const state = await transport.getLikeState(relays, filterUrls[0]);
       return {
         ...state,
         // The extension deliberately keeps liker pubkeys out of MAIN-world
@@ -114,7 +117,11 @@ export async function hasUserLiked(
   relays: string[]
 ): Promise<boolean> {
   const pool = new SimplePool();
-  const normalizedUrl = url;
+  const filterUrls = likeFilterUrls(url);
+  if (filterUrls.length === 0) {
+    pool.close(relays);
+    return false;
+  }
   
   try {
     // Get user's latest reaction for this URL
@@ -122,7 +129,7 @@ export async function hasUserLiked(
       kinds: [17],
       authors: [userPubkey],
       '#k': ['web'],
-      '#i': [normalizedUrl],
+      '#i': filterUrls,
       limit: 1
     };
     const transport = getRelayTransport();
@@ -163,6 +170,26 @@ export async function publishSignedReaction(
     return;
   }
   await publishWithNdk();
+}
+
+/** Best-effort copy of a like onto the signer's write relays. A refusal does not fail the like. */
+export async function publishToWriteRelays(
+  event: { pubkey?: string; id?: string },
+  baseRelays: string[],
+): Promise<void> {
+  if (getRelayTransport() || !event.pubkey) return;
+  const targets = await likePublishRelays(baseRelays, event.pubkey);
+  const base = new Set(
+    baseRelays.map((relay) => normalizeRelayUrl(relay)).filter((relay): relay is string => !!relay),
+  );
+  const extra = targets.filter((relay) => !base.has(relay));
+  if (extra.length === 0) return;
+  const pool = new SimplePool();
+  try {
+    await Promise.allSettled(pool.publish(extra, event as never));
+  } finally {
+    pool.close(extra);
+  }
 }
 
 /**

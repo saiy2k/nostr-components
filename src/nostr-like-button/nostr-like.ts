@@ -14,6 +14,7 @@ import {
   createUnlikeEvent,
   hasUserLiked, 
   publishSignedReaction,
+  publishToWriteRelays,
   signEvent, 
   LikeCountResult 
 } from './like-utils';
@@ -22,7 +23,8 @@ import {
   getRelayTransport,
   hasInstalledRelayTransport,
 } from '../common/relay-transport';
-import { normalizeURL } from 'nostr-tools/utils';
+import { relaysForComponent } from '../common/relay-routing';
+import { likeTagUrl } from '../common/url-tags';
 import { setTrustedInnerHTML } from '../common/trusted-html';
 import { getTrustedActionContext } from '../common/trusted-action-context';
 import { isTrustedUserEvent } from '../common/trusted-user-activation';
@@ -50,6 +52,10 @@ import {
 export default class NostrLike extends NostrBaseComponent {
   protected likeActionStatus  = this.channel('likeAction');
   protected likeListStatus    = this.channel('likeList');
+
+  protected getRelays() {
+    return relaysForComponent(this.getAttribute('relays'));
+  }
 
   private currentUrl: string  = '';
   private isLiked: boolean    = false;
@@ -200,7 +206,7 @@ export default class NostrLike extends NostrBaseComponent {
 
   private ensureCurrentUrl(): void {
     if (!this.currentUrl) {
-      this.currentUrl = normalizeURL(this.getActionUrl());
+      this.currentUrl = likeTagUrl(this.getActionUrl()) || '';
     }
   }
 
@@ -209,7 +215,8 @@ export default class NostrLike extends NostrBaseComponent {
     try {
       await this.ensureNostrConnected();
       if (seq !== this.loadSeq) return;
-      this.currentUrl = normalizeURL(this.getActionUrl());
+      const pageUrl = this.getActionUrl();
+      this.currentUrl = likeTagUrl(pageUrl) || '';
       this.likeListStatus.set(NCStatus.Loading);
       this.render();
 
@@ -229,7 +236,7 @@ export default class NostrLike extends NostrBaseComponent {
         console.warn('[NostrLike] Failed to restore cached like state:', cacheError);
       }
      
-      const result = await fetchLikesForUrl(this.currentUrl, this.getRelays());
+      const result = await fetchLikesForUrl(pageUrl, this.getRelays());
       if (seq !== this.loadSeq) return; // stale
       this.likeCount = clampLikeCount(result.totalCount);
       if (typeof result.isLiked === 'boolean') {
@@ -345,7 +352,7 @@ export default class NostrLike extends NostrBaseComponent {
 
       // Check user like status
       this.isLiked = await hasUserLiked(
-        targetUrl,
+        this.getActionUrl(),
         signerResult.publicKey,
         this.getRelays()
       );
@@ -416,6 +423,9 @@ export default class NostrLike extends NostrBaseComponent {
         const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
         await ndkEvent.publish();
       }, getTrustedActionContext(this)?.actionId);
+      void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
+        console.warn('[NostrLike] Failed to publish to write relays:', error);
+      });
 
       // Keep action locked until authoritative refresh finishes
       await this.updateLikeCount();
@@ -475,6 +485,9 @@ export default class NostrLike extends NostrBaseComponent {
         const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
         await ndkEvent.publish();
       }, getTrustedActionContext(this)?.actionId);
+      void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
+        console.warn('[NostrLike] Failed to publish to write relays:', error);
+      });
 
       // Keep action locked until authoritative refresh finishes
       await this.updateLikeCount();
