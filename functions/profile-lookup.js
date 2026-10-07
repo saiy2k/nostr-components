@@ -71,6 +71,7 @@ export function profileNeedsFetch(data, nowMs, fresh) {
   const ageMs = Number.isFinite(fetchedAt) ? nowMs - fetchedAt : Infinity;
   if (fresh) return ageMs > FRESH_MS;
   if (data?.kind0Json && zapCheckFinished(data.zap)) return false;
+  if (data?.kind0Json && ageMs <= FRESH_MS) return false;
   const missingUntil = Date.parse(data?.missingUntil || "");
   const rememberedMiss =
     !data?.kind0Json &&

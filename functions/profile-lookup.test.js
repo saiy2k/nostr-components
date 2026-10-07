@@ -191,6 +191,18 @@ test("a budget cutoff is not a remembered miss", () => {
       NOW,
       false,
     ),
+    false,
+  );
+  assert.equal(
+    profileNeedsFetch(
+      {
+        kind0Json: "{}",
+        fetchedAt: new Date(NOW - 11 * 60 * 1000).toISOString(),
+        zap: { zappable: null, transient: true },
+      },
+      NOW,
+      false,
+    ),
     true,
   );
 });
