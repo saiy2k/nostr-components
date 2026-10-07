@@ -2,7 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { nip19 } from 'nostr-tools';
+import { finalizeEvent, generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import {
   handleDocumentId,
   lookupAtlasHandle,
@@ -114,16 +114,27 @@ test('uses nostrProfiles.zap when a signed profile exists', async function () {
 });
 
 test('keeps an unfinished zap check null and returns the signed profile', async function () {
-  const pubkey = 'd'.repeat(64);
-  const profileEvent = { kind: 0, pubkey, content: '{"name":"Ada"}' };
-  const relayListEvent = { kind: 10002, pubkey, tags: [['r', 'wss://relay.ditto.pub']] };
+  const secret = generateSecretKey();
+  const pubkey = getPublicKey(secret);
+  const profileEvent = finalizeEvent({
+    kind: 0,
+    created_at: 1_700_000_000,
+    tags: [],
+    content: '{"name":"Ada"}'
+  }, secret);
+  const relayListEvent = finalizeEvent({
+    kind: 10002,
+    created_at: 1_700_000_000,
+    tags: [['r', 'wss://relay.ditto.pub']],
+    content: ''
+  }, secret);
   const writeRelays = [
     'wss://relay.ditto.pub',
     'wss://nostr.mom',
     'wss://relay.damus.io',
     'https://not-a-relay.example'
   ];
-  const db = docDb({
+  const docs = {
     'nostrDirectoryHandles/twitter:ada': {
       activeIdentity: {
         status: 'verified',
@@ -138,7 +149,8 @@ test('keeps an unfinished zap check null and returns the signed profile', async 
       writeRelays,
       zap: { zappable: null, transient: true }
     }
-  });
+  };
+  const db = docDb(docs);
 
   const result = await lookupAtlasHandle(db, 'ada');
   assert.equal(result.body.activeIdentity.zappable, null);
@@ -149,6 +161,15 @@ test('keeps an unfinished zap check null and returns the signed profile', async 
   assert.equal(decoded.type, 'nprofile');
   assert.equal(decoded.data.pubkey, pubkey);
   assert.deepEqual(decoded.data.relays, writeRelays.slice(0, 2));
+
+  docs[`nostrProfiles/${pubkey}`].kind0Json = JSON.stringify({
+    kind: 0,
+    pubkey,
+    content: '{"name":"Ada"}'
+  });
+  const unsigned = await lookupAtlasHandle(db, 'ada');
+  assert.equal(unsigned.body.activeIdentity.profileEvent, null);
+  assert.deepEqual(unsigned.body.activeIdentity.relayListEvent, relayListEvent);
 });
 
 test('leaves zap unknown when neither the profile nor the claim has a finished check', async function () {

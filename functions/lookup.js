@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { nip19 } from 'nostr-tools';
+import { nip19, verifyEvent } from 'nostr-tools';
 
 const RESERVED_X_HANDLES = new Set([
   'compose',
@@ -82,7 +82,7 @@ function zapFields(source) {
   return { zappable: null, lud16: null };
 }
 
-function storedEvent(value, kind) {
+function storedEvent(value, kind, pubkey) {
   if (!value) return null;
   let event = value;
   if (typeof value === 'string') {
@@ -94,6 +94,12 @@ function storedEvent(value, kind) {
   }
   if (!event || typeof event !== 'object' || Array.isArray(event)) return null;
   if (event.kind !== kind) return null;
+  if (String(event.pubkey || '').toLowerCase() !== pubkey) return null;
+  try {
+    if (!verifyEvent(event)) return null;
+  } catch {
+    return null;
+  }
   return event;
 }
 
@@ -119,8 +125,8 @@ function identityWithProfile(identity, profile) {
   return {
     ...identity,
     ...zap,
-    profileEvent: profile ? storedEvent(profile.kind0Json, 0) : null,
-    relayListEvent: profile ? storedEvent(profile.relayListJson, 10002) : null,
+    profileEvent: profile ? storedEvent(profile.kind0Json, 0, identity.pubkey) : null,
+    relayListEvent: profile ? storedEvent(profile.relayListJson, 10002, identity.pubkey) : null,
     nprofile: nprofileFor(identity.pubkey, profile)
   };
 }

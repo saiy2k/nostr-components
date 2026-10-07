@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { verifyEvent } from "nostr-tools";
+
 const HEX_64 = /^[0-9a-f]{64}$/;
 const PUBKEY_LIMIT = 50;
 const FETCH_LIMIT = 10;
@@ -37,12 +39,14 @@ export function parseProfilePubkeys(value) {
   return { pubkeys };
 }
 
-function storedEvent(value, kind) {
+function storedEvent(value, kind, pubkey) {
   if (!value || typeof value !== "string") return null;
   try {
     const event = JSON.parse(value);
     if (!event || typeof event !== "object" || Array.isArray(event)) return null;
     if (event.kind !== kind) return null;
+    if (String(event.pubkey || "").toLowerCase() !== pubkey) return null;
+    if (!verifyEvent(event)) return null;
     return event;
   } catch {
     return null;
@@ -56,8 +60,8 @@ export function profileLookupView(pubkey, data) {
   else if (zap?.zappable === false) zappable = false;
   return {
     pubkey,
-    profileEvent: storedEvent(data?.kind0Json, 0),
-    relayListEvent: storedEvent(data?.relayListJson, 10002),
+    profileEvent: storedEvent(data?.kind0Json, 0, pubkey),
+    relayListEvent: storedEvent(data?.relayListJson, 10002, pubkey),
     zappable,
   };
 }
@@ -133,6 +137,7 @@ export async function lookupNostrProfiles(db, parameters = {}, options = {}) {
       batch.map((pubkey) => ({ pubkey, role: "lookup" })),
       {
         timeoutMs: PROFILE_BUDGET_MS,
+        deadlineMs: nowMs + PROFILE_BUDGET_MS,
         nowMs,
         ...(options.refreshOptions || {}),
       },

@@ -463,6 +463,29 @@ describe("profile refresh", () => {
     expect(stored.zap).toMatchObject({ zappable: true, transient: true });
   });
 
+  it("does not query relays after the refresh deadline", async () => {
+    const queryRelay = vi.fn(async () => {
+      throw new Error("should not query");
+    });
+    const fetchImpl = vi.fn(async () => {
+      throw new Error("should not fetch");
+    });
+    const db = memoryDb();
+    await refreshProfiles(db, [{ pubkey, role: "lookup" }], {
+      nowMs: Date.now(),
+      deadlineMs: Date.now() - 1,
+      timeoutMs: 3000,
+      queryRelay,
+      fetchImpl,
+    });
+    expect(queryRelay).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    const stored = db.docs.get(`${PROFILE_COLLECTION}/${pubkey}`);
+    expect(stored.kind0Json).toBeUndefined();
+    expect(stored.missingUntil).toBeNull();
+    expect(stored.zap).toMatchObject({ zappable: null, transient: true });
+  });
+
   it("walks verified handles that have no profile before handles that are already fresh", async () => {
     const other = getPublicKey(generateSecretKey());
     const db = memoryDb({

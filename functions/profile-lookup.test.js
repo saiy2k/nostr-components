@@ -5,8 +5,10 @@ import test from "node:test";
 import {
   createProfileLookupHandler,
   lookupNostrProfiles,
+  profileLookupView,
   profileNeedsFetch,
 } from "./profile-lookup.js";
+import { finalizeEvent, generateSecretKey, getPublicKey } from "nostr-tools";
 
 const NOW = Date.parse("2026-10-07T00:00:00.000Z");
 const PUBKEY = "ab".repeat(32);
@@ -83,8 +85,9 @@ test("fetches at most ten missing profiles and leaves the rest unknown", async (
   assert.equal(refreshed[0].targets.length, 10);
   assert.equal(refreshed[0].targets[0].role, "lookup");
   assert.equal(refreshed[0].options.timeoutMs, 3000);
+  assert.equal(refreshed[0].options.deadlineMs, NOW + 3000);
   assert.equal(result.body.profiles[0].zappable, true);
-  assert.equal(result.body.profiles[0].profileEvent.kind, 0);
+  assert.equal(result.body.profiles[0].profileEvent, null);
   assert.equal(result.body.profiles[10].profileEvent, null);
   assert.equal(result.body.profiles[10].zappable, null);
   assert.equal(result.body.profiles[11].relayListEvent, null);
@@ -141,7 +144,7 @@ test("does not refetch a stored profile unless fresh=1 and the copy is older tha
   );
   assert.equal(calls, 0);
   assert.equal(stored.body.profiles[0].zappable, false);
-  assert.equal(stored.body.profiles[0].relayListEvent.kind, 10002);
+  assert.equal(stored.body.profiles[0].relayListEvent, null);
 
   const recent = await lookupNostrProfiles(
     db,
@@ -204,6 +207,33 @@ test("a budget cutoff is not a remembered miss", () => {
       false,
     ),
     true,
+  );
+});
+
+test("returns a signed event only when it belongs to the requested pubkey", () => {
+  const secret = generateSecretKey();
+  const pubkey = getPublicKey(secret);
+  const event = finalizeEvent(
+    { kind: 0, created_at: 1_700_000_000, tags: [], content: "{}" },
+    secret,
+  );
+  const other = finalizeEvent(
+    { kind: 0, created_at: 1_700_000_000, tags: [], content: "{}" },
+    generateSecretKey(),
+  );
+  assert.equal(
+    profileLookupView(pubkey, { kind0Json: JSON.stringify(event) }).profileEvent.id,
+    event.id,
+  );
+  assert.equal(
+    profileLookupView(pubkey, { kind0Json: JSON.stringify(other) }).profileEvent,
+    null,
+  );
+  assert.equal(
+    profileLookupView(pubkey, {
+      kind0Json: JSON.stringify({ kind: 0, pubkey, content: "{}" }),
+    }).profileEvent,
+    null,
   );
 });
 
