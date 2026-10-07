@@ -1212,6 +1212,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
         reactions: Array.isArray(result && result.reactions) ? result.reactions : []
       };
     }).catch(function () {
+      if (viewerReactions && viewerReactions.promise === promise) viewerReactions = null;
       return { ok: false, reactions: [] };
     });
     viewerReactions = { pubkey: normalized, promise: promise };
@@ -1540,6 +1541,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     }
     await extension.storage.setKnownPubkey(event.pubkey);
     await rememberRecentReaction(event);
+    viewerReactions = null;
     const writesPromise = ensureSignerRelays(event.pubkey);
     void settleWriteRelays(pool, event, writesPromise);
     void pushUrlEvent(event, acceptedRelay);

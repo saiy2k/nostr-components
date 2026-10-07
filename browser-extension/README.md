@@ -35,12 +35,15 @@ receipt watches, and LNURL/invoice GETs go through a narrow extension bridge.
 
 ## What leaves your browser
 
-X handles, URL keys (the hash of a canonical page URL, not the URL itself), the
-stored signer pubkey, and your own signed likes and zap receipts go to the
-Nostr Components directory API. Signed likes also go to the rendezvous relays
-and to up to three write relays from your own kind 10002 relay list. Zap
-requests go to the recipient's Lightning (LNURL) provider. Chrome Web Store
-privacy answers must match this section.
+X handles, Nostr pubkeys of the authors and Zap recipients shown on the page,
+URL keys (the hash of a canonical page URL, not the URL itself), the stored
+signer pubkey, your own signed likes, and zap receipts seen on the sweep relays
+go to the Nostr Components directory API. Signed likes also go to the
+rendezvous relays and to up to three write relays from your own kind 10002
+relay list. Receipt watches connect to the rendezvous relays and up to three
+read relays from the recipient's kind 10002 list. Zap requests go to the
+recipient's Lightning (LNURL) provider. Chrome Web Store privacy answers must
+match this section.
 
 Counts are what those relays and the API have seen, not every like or zap on
 Nostr. A zap made in another client is counted only when one of the sweep

@@ -98,9 +98,70 @@ describe('extension profile and relay-list cache', function () {
     expect(stored['nostr-zap-receipts:v1']).toBeUndefined();
 
     const signer = lists[lists.length - 1];
-    extension.relayClient.seedIdentity(signer.pubkey, null, signer, true);
-    await extension.storage.deleteRelayList(signer.pubkey);
-    expect(await extension.storage.getRelayList(signer.pubkey)).toBeNull();
+    const originalGetKnownPubkey = extension.storage.getKnownPubkey;
+    extension.storage.getKnownPubkey = async function () {
+      return signer.pubkey;
+    };
+    globalThis.browser.runtime = {
+      async sendMessage(message) {
+        if (message.type === 'LOOKUP_NOSTR_PROFILES') {
+          return {
+            ok: true,
+            result: {
+              profiles: [{
+                pubkey: signer.pubkey,
+                profileEvent: null,
+                relayListEvent: signer,
+                zappable: null
+              }]
+            }
+          };
+        }
+        if (message.type === 'GET_URL_ACTIVITY') {
+          const urlKey = String(message.items).split(':')[0];
+          return {
+            ok: true,
+            result: {
+              items: [{
+                urlKey: urlKey,
+                recipient: null,
+                likes: 0,
+                dislikes: 0,
+                zapCount: null,
+                sats: null
+              }]
+            }
+          };
+        }
+        if (message.type === 'LIST_VIEWER_REACTIONS') {
+          return { ok: false, error: 'viewer list failed' };
+        }
+        return { ok: false, error: 'unexpected extension message' };
+      }
+    };
+    const session = openRelaySession();
+    const channel = 'ab'.repeat(32);
+    const actionId = 'cd'.repeat(32);
+    const pageUrl = 'https://x.com/ada/status/42';
+    const relaySession = extension.relayClient.configure(channel, {
+      pool: { destroy: vi.fn(), publish: vi.fn(function () { return [Promise.resolve('ok')]; }) },
+      window: session.pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: pageUrl,
+      recipientNpub: null
+    });
+    await sendRelay(session, channel, '11'.repeat(16), 'getLikeState', {
+      relays: ['wss://evil.example'],
+      url: pageUrl
+    });
+    await vi.waitFor(async function () {
+      expect(await extension.storage.getRelayList(signer.pubkey)).toBeNull();
+    });
+    relaySession.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+    extension.storage.getKnownPubkey = originalGetKnownPubkey;
   });
 
   it('reuses a fresh zap provider after the profile comes from the API', async function () {
