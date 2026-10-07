@@ -30220,6 +30220,7 @@ ${url}`;
     const Uint8ArrayConstructor = Uint8Array;
     const PromiseConstructor = Promise;
     const ErrorConstructor = Error;
+    const DateConstructor = Date;
     const pending = /* @__PURE__ */ new Map();
     const pendingHas = pending.has.bind(pending);
     const pendingGet = pending.get.bind(pending);
@@ -30389,6 +30390,33 @@ ${url}`;
         );
       }
     }
+    function bridgeTimeout(operation) {
+      if (operation === "fetchZapInvoice") return 25e3;
+      if (operation === "getZapRoute") return 2e4;
+      if (operation === "getZapProvider") return 15e3;
+      if (operation === "publish") return 12e3;
+      if (operation === "getProfiles") return 1e4;
+      if (operation === "getLikeState" || operation === "getZapSummary" || operation === "listZaps") {
+        return 7e3;
+      }
+      return 4e3;
+    }
+    function zapRows(rows) {
+      if (!arrayIsArray(rows)) return [];
+      const out = [];
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
+        if (!isRecord3(row)) continue;
+        const createdAt = typeof row.createdAt === "number" ? row.createdAt : 0;
+        pushArray(out, {
+          amount: row.amount,
+          date: new DateConstructor(createdAt * 1e3),
+          authorPubkey: typeof row.authorPubkey === "string" && row.authorPubkey ? row.authorPubkey : null,
+          comment: typeof row.comment === "string" ? row.comment : ""
+        });
+      }
+      return out;
+    }
     async function request(operation, payload) {
       const requestId = createRequestId();
       const message = {
@@ -30404,7 +30432,7 @@ ${url}`;
             pendingDelete(requestId);
             reject(new ErrorConstructor("Relay request timed out"));
           },
-          operation === "fetchZapInvoice" ? 25e3 : operation === "getZapProvider" ? 15e3 : operation === "publish" ? 12e3 : 4e3
+          bridgeTimeout(operation)
         );
         pendingSet(requestId, {
           operation,
@@ -30426,6 +30454,16 @@ ${url}`;
       getLikeState: (relays, url) => request("getLikeState", { relays, url }),
       publish: (relays, event, actionId) => request("publish", { relays, event, actionId }),
       getZapProvider: (actionId, relays) => request("getZapProvider", { actionId, relays }),
+      getProfiles: (actionId, pubkeys) => request("getProfiles", { actionId, pubkeys }),
+      getZapRoute: (actionId) => request("getZapRoute", { actionId }),
+      getZapSummary: async (actionId) => {
+        const summary = await request("getZapSummary", { actionId });
+        return {
+          totalAmount: summary?.totalAmount,
+          zapDetails: zapRows(summary?.zapDetails)
+        };
+      },
+      listZaps: async (actionId) => zapRows(await request("listZaps", { actionId })),
       fetchZapInvoice: (actionId, input) => request("fetchZapInvoice", {
         actionId,
         relays: input.relays,

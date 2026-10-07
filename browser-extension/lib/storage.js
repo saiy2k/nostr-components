@@ -9,12 +9,10 @@
   const MAX_RECENT_REACTION_TTL_MS = 5 * 60 * 1000;
   const ZAP_PROVIDER_STORAGE_KEY = 'nostr-zap-providers:v1';
   const ZAP_PROFILE_STORAGE_KEY = 'nostr-zap-profiles:v1';
-  const ZAP_RECEIPT_STORAGE_KEY = 'nostr-zap-receipts:v1';
+  const RELAY_LIST_STORAGE_KEY = 'nostr-relay-lists:v1';
   const ZAP_PROVIDER_LIMIT = 100;
   const ZAP_PROFILE_LIMIT = 100;
-  const ZAP_RECEIPT_LIMIT = 50;
-  const ZAP_RECEIPT_ROW_LIMIT = 50;
-  const ZAP_COMMENT_LIMIT = 280;
+  const RELAY_LIST_LIMIT = 100;
   const ZAP_PROFILE_CONTENT_LIMIT = 16384;
   const PUBLIC_KEY_PATTERN = /^[0-9a-f]{64}$/i;
   const EVENT_ID_PATTERN = /^[0-9a-f]{64}$/i;
@@ -371,65 +369,49 @@
     };
   }
 
-  function sanitizeReceiptRow(row) {
+  function sanitizeRelayListEvent(event) {
     if (
-      !row ||
-      typeof row !== 'object' ||
-      !EVENT_ID_PATTERN.test(String(row.id || '')) ||
-      !Number.isFinite(row.amountSats) ||
-      row.amountSats < 0 ||
-      !Number.isInteger(row.createdAt) ||
-      row.createdAt < 0 ||
-      (row.authorPubkey !== '' && !isHex64(row.authorPubkey)) ||
-      typeof row.comment !== 'string' ||
-      row.comment.length > ZAP_COMMENT_LIMIT
+      !event ||
+      typeof event !== 'object' ||
+      event.kind !== 10002 ||
+      !EVENT_ID_PATTERN.test(String(event.id || '')) ||
+      !isHex64(event.pubkey) ||
+      !EVENT_SIG_PATTERN.test(String(event.sig || '')) ||
+      !Number.isInteger(event.created_at) ||
+      typeof event.content !== 'string' ||
+      event.content.length > 1024 ||
+      !Array.isArray(event.tags) ||
+      event.tags.length > 50
     ) {
       return null;
     }
+    const tags = [];
+    for (const tag of event.tags) {
+      if (!Array.isArray(tag) || tag.length > 10) return null;
+      const copy = [];
+      for (const item of tag) {
+        if (typeof item !== 'string' || item.length > 500) return null;
+        copy.push(item);
+      }
+      tags.push(copy);
+    }
     return {
-      id: String(row.id).toLowerCase(),
-      amountSats: Number(row.amountSats),
-      createdAt: row.createdAt,
-      authorPubkey: row.authorPubkey ? row.authorPubkey.toLowerCase() : '',
-      comment: row.comment
+      id: String(event.id).toLowerCase(),
+      pubkey: event.pubkey.toLowerCase(),
+      created_at: event.created_at,
+      kind: 10002,
+      tags: tags,
+      content: event.content,
+      sig: String(event.sig).toLowerCase()
     };
   }
 
-  function sanitizeReceiptEntry(entry) {
-    if (
-      !entry ||
-      !isHex64(entry.pubkey) ||
-      typeof entry.aTag !== 'string' ||
-      entry.aTag.length > 2048 ||
-      !Number.isFinite(entry.totalSats) ||
-      entry.totalSats < 0 ||
-      !Number.isInteger(entry.eventCount) ||
-      entry.eventCount < 1 ||
-      !Array.isArray(entry.rows) ||
-      entry.rows.length > ZAP_RECEIPT_ROW_LIMIT ||
-      !Number.isFinite(entry.expiresAt)
-    ) {
+  function sanitizeRelayListEntry(entry) {
+    const event = sanitizeRelayListEvent(entry && entry.event);
+    if (!entry || !isHex64(entry.pubkey) || !event || event.pubkey !== entry.pubkey.toLowerCase()) {
       return null;
     }
-    const pubkey = entry.pubkey.toLowerCase();
-    if (entry.aTag !== '' && !entry.aTag.startsWith('39735:' + pubkey + ':')) {
-      return null;
-    }
-    const rows = [];
-    for (const row of entry.rows) {
-      const sanitized = sanitizeReceiptRow(row);
-      if (!sanitized) return null;
-      rows.push(sanitized);
-    }
-    return {
-      pubkey: pubkey,
-      aTag: entry.aTag,
-      totalSats: Number(entry.totalSats),
-      eventCount: entry.eventCount,
-      rows: rows,
-      fetchedAt: Number(entry.fetchedAt) || 0,
-      expiresAt: entry.expiresAt
-    };
+    return { pubkey: entry.pubkey.toLowerCase(), event: event };
   }
 
   async function getZapProvider(pubkey) {
@@ -537,53 +519,71 @@
     );
   }
 
-  async function getZapReceipt(pubkey, aTag) {
-    if (!isHex64(pubkey) || typeof aTag !== 'string') return null;
+  async function readRelayLists() {
+    return withZapLock(RELAY_LIST_STORAGE_KEY, async function () {
+      const values = await getValues(RELAY_LIST_STORAGE_KEY).catch(function () {
+        return {};
+      });
+      const stored = values[RELAY_LIST_STORAGE_KEY];
+      if (!Array.isArray(stored)) return [];
+      return stored.map(sanitizeRelayListEntry).filter(Boolean);
+    });
+  }
+
+  async function getRelayList(pubkey) {
+    if (!isHex64(pubkey)) return null;
     const normalized = pubkey.toLowerCase();
-    const entries = await readZapEntries(ZAP_RECEIPT_STORAGE_KEY);
+    const entries = await readRelayLists();
     for (const entry of entries) {
-      const sanitized = sanitizeReceiptEntry(entry);
-      if (sanitized && sanitized.pubkey === normalized && sanitized.aTag === aTag) {
-        return sanitized;
-      }
+      if (entry.pubkey === normalized) return entry.event;
     }
     return null;
   }
 
-  async function setZapReceipt(pubkey, aTag, summary, staleMs) {
+  async function setRelayList(pubkey, event) {
     const normalized = isHex64(pubkey) ? pubkey.toLowerCase() : null;
-    if (
-      !normalized ||
-      typeof aTag !== 'string' ||
-      !summary ||
-      !Number.isFinite(staleMs) ||
-      staleMs <= 0
-    ) {
-      return;
-    }
-    const now = Date.now();
-    const sanitized = sanitizeReceiptEntry({
-      pubkey: normalized,
-      aTag: aTag,
-      totalSats: summary.totalSats,
-      eventCount: summary.eventCount,
-      rows: summary.rows,
-      fetchedAt: now,
-      expiresAt: now + staleMs
-    });
-    if (!sanitized) return;
-    await writeZapEntry(
-      ZAP_RECEIPT_STORAGE_KEY,
-      ZAP_RECEIPT_LIMIT,
-      sanitized,
-      function (entry) {
-        return Boolean(
-          entry &&
-          String(entry.pubkey || '').toLowerCase() === normalized &&
-          entry.aTag === aTag
-        );
+    const sanitized = sanitizeRelayListEvent(event);
+    if (!normalized || !sanitized || sanitized.pubkey !== normalized) return;
+    return withZapLock(RELAY_LIST_STORAGE_KEY, async function () {
+      let values;
+      try {
+        values = await getValues(RELAY_LIST_STORAGE_KEY);
+      } catch (_error) {
+        return;
       }
-    );
+      const active = (Array.isArray(values[RELAY_LIST_STORAGE_KEY])
+        ? values[RELAY_LIST_STORAGE_KEY]
+        : []
+      ).map(sanitizeRelayListEntry).filter(function (entry) {
+        return entry && entry.pubkey !== normalized;
+      });
+      active.unshift({ pubkey: normalized, event: sanitized });
+      await setValues({
+        [RELAY_LIST_STORAGE_KEY]: active.slice(0, RELAY_LIST_LIMIT)
+      }).catch(function () {});
+    });
+  }
+
+  async function deleteRelayList(pubkey) {
+    if (!isHex64(pubkey)) return;
+    const normalized = pubkey.toLowerCase();
+    return withZapLock(RELAY_LIST_STORAGE_KEY, async function () {
+      let values;
+      try {
+        values = await getValues(RELAY_LIST_STORAGE_KEY);
+      } catch (_error) {
+        return;
+      }
+      const active = (Array.isArray(values[RELAY_LIST_STORAGE_KEY])
+        ? values[RELAY_LIST_STORAGE_KEY]
+        : []
+      ).map(sanitizeRelayListEntry).filter(function (entry) {
+        return entry && entry.pubkey !== normalized;
+      });
+      await setValues({
+        [RELAY_LIST_STORAGE_KEY]: active
+      }).catch(function () {});
+    });
   }
 
   extension.storage = {
@@ -598,10 +598,11 @@
     deleteZapProvider: deleteZapProvider,
     getZapProfile: getZapProfile,
     setZapProfile: setZapProfile,
-    getZapReceipt: getZapReceipt,
-    setZapReceipt: setZapReceipt,
+    getRelayList: getRelayList,
+    setRelayList: setRelayList,
+    deleteRelayList: deleteRelayList,
     ZAP_PROVIDER_LIMIT: ZAP_PROVIDER_LIMIT,
     ZAP_PROFILE_LIMIT: ZAP_PROFILE_LIMIT,
-    ZAP_RECEIPT_LIMIT: ZAP_RECEIPT_LIMIT
+    RELAY_LIST_LIMIT: RELAY_LIST_LIMIT
   };
 })();

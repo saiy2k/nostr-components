@@ -18,11 +18,74 @@
     return p.toString();
   }
 
+  // backend/nostr-pulse/url-canonical.js
+  var STATUS_HOSTS = /* @__PURE__ */ new Set([
+    "x.com",
+    "www.x.com",
+    "m.x.com",
+    "mobile.x.com",
+    "twitter.com",
+    "www.twitter.com",
+    "m.twitter.com",
+    "mobile.twitter.com"
+  ]);
+  var STATUS_PATH = /^\/([^/]+)\/status\/(\d+)\/?$/;
+  var YOUTUBE_HOSTS = /* @__PURE__ */ new Set(["www.youtube.com", "youtube.com", "m.youtube.com"]);
+  var YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+  function stripMobileHost(hostname) {
+    let host = hostname;
+    let previous;
+    do {
+      previous = host;
+      host = host.replace(/^(?:m|mobile)\./, "");
+    } while (host !== previous);
+    return host;
+  }
+  function canonicalStatus(url) {
+    if (!STATUS_HOSTS.has(url.hostname)) return null;
+    const match = url.pathname.match(STATUS_PATH);
+    if (!match) return null;
+    return `https://x.com/${match[1].toLowerCase()}/status/${match[2]}`;
+  }
+  function canonicalVideo(url) {
+    let videoId = null;
+    if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname === "/watch") {
+      videoId = url.searchParams.get("v");
+    } else if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname.startsWith("/shorts/")) {
+      videoId = url.pathname.split("/")[2] || null;
+    } else if (url.hostname === "youtu.be") {
+      videoId = url.pathname.split("/")[1] || null;
+    }
+    if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
+  function canonicalGeneric(url) {
+    const host = stripMobileHost(url.hostname);
+    if (!host) return null;
+    const port = url.port ? `:${url.port}` : "";
+    const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
+    const params = new URLSearchParams(url.search);
+    params.sort();
+    const query = params.toString();
+    return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;
+  }
+  function canonicalUrl(raw) {
+    if (typeof raw !== "string" || !raw) return null;
+    let url;
+    try {
+      url = new URL(raw);
+    } catch {
+      return null;
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return canonicalStatus(url) || canonicalVideo(url) || canonicalGeneric(url);
+  }
+
   // browser-extension/src/url.js
   (function() {
     const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
     const STATUS_PATH_PATTERN = /^\/([^/]+)\/status\/(\d+)\/?$/;
-    const STATUS_HOSTS = /* @__PURE__ */ new Set([
+    const STATUS_HOSTS2 = /* @__PURE__ */ new Set([
       "x.com",
       "www.x.com",
       "m.x.com",
@@ -45,7 +108,7 @@
       try {
         const baseOrigin = origin || (typeof window !== "undefined" ? window.location.origin : void 0);
         const url = new URL(href, baseOrigin);
-        if (!STATUS_HOSTS.has(url.hostname)) {
+        if (!STATUS_HOSTS2.has(url.hostname)) {
           return null;
         }
         const match = url.pathname.match(STATUS_PATH_PATTERN);
@@ -56,11 +119,13 @@
         url.hostname = "x.com";
         url.search = "";
         url.hash = "";
+        const canonicalUrl2 = canonicalUrl(url.toString());
+        if (!canonicalUrl2) return null;
         return {
           pathname: url.pathname.replace(/\/$/, ""),
           username: match[1].toLowerCase(),
           statusId: match[2],
-          canonicalUrl: normalizeURL(url.toString())
+          canonicalUrl: canonicalUrl2
         };
       } catch (_error) {
         return null;
@@ -81,9 +146,11 @@
         if (!videoId || !YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) {
           return null;
         }
+        const canonicalUrl2 = canonicalUrl(url.toString());
+        if (!canonicalUrl2) return null;
         return {
           videoId,
-          canonicalUrl: "https://www.youtube.com/watch?v=" + videoId
+          canonicalUrl: canonicalUrl2
         };
       } catch (_error) {
         return null;
@@ -112,8 +179,21 @@
       }
       return checksum === 1;
     }
+    async function urlKey(value) {
+      const canonical = canonicalUrl(value);
+      if (!canonical || !globalThis.crypto?.subtle) return null;
+      const digest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(canonical)
+      );
+      return Array.from(new Uint8Array(digest), function(byte) {
+        return byte.toString(16).padStart(2, "0");
+      }).join("");
+    }
     extension.url = {
       normalizeURL,
+      canonicalUrl,
+      urlKey,
       parseTweetUrl,
       parseYouTubeUrl,
       isValidNpub

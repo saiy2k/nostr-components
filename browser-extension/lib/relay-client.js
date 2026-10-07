@@ -319,7 +319,7 @@
           return Uint8Array.from(res);
         }
       };
-      var base58check = (sha2564) => chain2(checksum(4, (data) => sha2564(sha2564(data))), exports.base58);
+      var base58check = (sha2563) => chain2(checksum(4, (data) => sha2563(sha2563(data))), exports.base58);
       exports.base58check = base58check;
       var BECH_ALPHABET2 = chain2(alphabet2("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), join2(""));
       var POLYMOD_GENERATORS2 = [996825010, 642813549, 513874426, 1027748829, 705979059];
@@ -804,7 +804,7 @@
   }
 
   // node_modules/nostr-tools/node_modules/@noble/curves/node_modules/@noble/hashes/esm/crypto.js
-  var crypto = typeof globalThis === "object" && "crypto" in globalThis ? globalThis.crypto : void 0;
+  var crypto2 = typeof globalThis === "object" && "crypto" in globalThis ? globalThis.crypto : void 0;
 
   // node_modules/nostr-tools/node_modules/@noble/curves/node_modules/@noble/hashes/esm/utils.js
   var u8a = (a) => a instanceof Uint8Array;
@@ -852,8 +852,8 @@
     return hashC;
   }
   function randomBytes(bytesLength = 32) {
-    if (crypto && typeof crypto.getRandomValues === "function") {
-      return crypto.getRandomValues(new Uint8Array(bytesLength));
+    if (crypto2 && typeof crypto2.getRandomValues === "function") {
+      return crypto2.getRandomValues(new Uint8Array(bytesLength));
     }
     throw new Error("crypto.getRandomValues must be defined");
   }
@@ -1796,7 +1796,7 @@
   function weierstrassPoints(opts) {
     const CURVE = validatePointOpts(opts);
     const { Fp: Fp2 } = CURVE;
-    const toBytes5 = CURVE.toBytes || ((_c, point, _isCompressed) => {
+    const toBytes4 = CURVE.toBytes || ((_c, point, _isCompressed) => {
       const a = point.toAffine();
       return concatBytes2(Uint8Array.from([4]), Fp2.toBytes(a.x), Fp2.toBytes(a.y));
     });
@@ -2164,7 +2164,7 @@
       }
       toRawBytes(isCompressed = true) {
         this.assertValidity();
-        return toBytes5(Point2, this, isCompressed);
+        return toBytes4(Point2, this, isCompressed);
       }
       toHex(isCompressed = true) {
         return bytesToHex(this.toRawBytes(isCompressed));
@@ -2748,7 +2748,7 @@
   }))();
 
   // node_modules/nostr-tools/node_modules/@noble/hashes/esm/crypto.js
-  var crypto2 = typeof globalThis === "object" && "crypto" in globalThis ? globalThis.crypto : void 0;
+  var crypto3 = typeof globalThis === "object" && "crypto" in globalThis ? globalThis.crypto : void 0;
 
   // node_modules/nostr-tools/node_modules/@noble/hashes/esm/utils.js
   var u8a3 = (a) => a instanceof Uint8Array;
@@ -2822,8 +2822,8 @@
     return hashC;
   }
   function randomBytes2(bytesLength = 32) {
-    if (crypto2 && typeof crypto2.getRandomValues === "function") {
-      return crypto2.getRandomValues(new Uint8Array(bytesLength));
+    if (crypto3 && typeof crypto3.getRandomValues === "function") {
+      return crypto3.getRandomValues(new Uint8Array(bytesLength));
     }
     throw new Error("crypto.getRandomValues must be defined");
   }
@@ -7466,554 +7466,78 @@
     return true;
   }
 
-  // node_modules/nostr-tools/lib/esm/utils.js
-  var utf8Decoder2 = new TextDecoder("utf-8");
-  var utf8Encoder2 = new TextEncoder();
-  function normalizeURL2(url) {
-    if (url.indexOf("://") === -1)
-      url = "wss://" + url;
-    let p = new URL(url);
-    p.pathname = p.pathname.replace(/\/+/g, "/");
-    if (p.pathname.endsWith("/"))
-      p.pathname = p.pathname.slice(0, -1);
-    if (p.port === "80" && p.protocol === "ws:" || p.port === "443" && p.protocol === "wss:")
-      p.port = "";
-    p.searchParams.sort();
-    p.hash = "";
-    return p.toString();
-  }
-
   // browser-extension/src/relay-client.js
-  var import_light_bolt11_decoder2 = __toESM(require_bolt11(), 1);
-
-  // node_modules/@noble/hashes/esm/_assert.js
-  function isBytes2(a) {
-    return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
-  }
-  function abytes(b, ...lengths) {
-    if (!isBytes2(b))
-      throw new Error("Uint8Array expected");
-    if (lengths.length > 0 && !lengths.includes(b.length))
-      throw new Error("Uint8Array expected of length " + lengths + ", got length=" + b.length);
-  }
-  function aexists(instance, checkFinished = true) {
-    if (instance.destroyed)
-      throw new Error("Hash instance has been destroyed");
-    if (checkFinished && instance.finished)
-      throw new Error("Hash#digest() has already been called");
-  }
-  function aoutput(out, instance) {
-    abytes(out);
-    const min = instance.outputLen;
-    if (out.length < min) {
-      throw new Error("digestInto() expects output buffer of length at least " + min);
-    }
-  }
-
-  // node_modules/@noble/hashes/esm/utils.js
-  function createView4(arr) {
-    return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-  }
-  function rotr3(word, shift) {
-    return word << 32 - shift | word >>> shift;
-  }
-  var hexes3 = /* @__PURE__ */ Array.from({ length: 256 }, (_, i2) => i2.toString(16).padStart(2, "0"));
-  function bytesToHex3(bytes4) {
-    abytes(bytes4);
-    let hex2 = "";
-    for (let i2 = 0; i2 < bytes4.length; i2++) {
-      hex2 += hexes3[bytes4[i2]];
-    }
-    return hex2;
-  }
-  function utf8ToBytes5(str) {
-    if (typeof str !== "string")
-      throw new Error("utf8ToBytes expected string, got " + typeof str);
-    return new Uint8Array(new TextEncoder().encode(str));
-  }
-  function toBytes4(data) {
-    if (typeof data === "string")
-      data = utf8ToBytes5(data);
-    abytes(data);
-    return data;
-  }
-  var Hash3 = class {
-    // Safe version that clones internal state
-    clone() {
-      return this._cloneInto();
-    }
-  };
-  function wrapConstructor3(hashCons) {
-    const hashC = (msg) => hashCons().update(toBytes4(msg)).digest();
-    const tmp = hashCons();
-    hashC.outputLen = tmp.outputLen;
-    hashC.blockLen = tmp.blockLen;
-    hashC.create = () => hashCons();
-    return hashC;
-  }
-
-  // node_modules/@noble/hashes/esm/_md.js
-  function setBigUint644(view, byteOffset, value, isLE4) {
-    if (typeof view.setBigUint64 === "function")
-      return view.setBigUint64(byteOffset, value, isLE4);
-    const _32n = BigInt(32);
-    const _u32_max = BigInt(4294967295);
-    const wh = Number(value >> _32n & _u32_max);
-    const wl = Number(value & _u32_max);
-    const h = isLE4 ? 4 : 0;
-    const l = isLE4 ? 0 : 4;
-    view.setUint32(byteOffset + h, wh, isLE4);
-    view.setUint32(byteOffset + l, wl, isLE4);
-  }
-  function Chi3(a, b, c) {
-    return a & b ^ ~a & c;
-  }
-  function Maj3(a, b, c) {
-    return a & b ^ a & c ^ b & c;
-  }
-  var HashMD = class extends Hash3 {
-    constructor(blockLen, outputLen, padOffset, isLE4) {
-      super();
-      this.blockLen = blockLen;
-      this.outputLen = outputLen;
-      this.padOffset = padOffset;
-      this.isLE = isLE4;
-      this.finished = false;
-      this.length = 0;
-      this.pos = 0;
-      this.destroyed = false;
-      this.buffer = new Uint8Array(blockLen);
-      this.view = createView4(this.buffer);
-    }
-    update(data) {
-      aexists(this);
-      const { view, buffer, blockLen } = this;
-      data = toBytes4(data);
-      const len = data.length;
-      for (let pos = 0; pos < len; ) {
-        const take = Math.min(blockLen - this.pos, len - pos);
-        if (take === blockLen) {
-          const dataView = createView4(data);
-          for (; blockLen <= len - pos; pos += blockLen)
-            this.process(dataView, pos);
-          continue;
-        }
-        buffer.set(data.subarray(pos, pos + take), this.pos);
-        this.pos += take;
-        pos += take;
-        if (this.pos === blockLen) {
-          this.process(view, 0);
-          this.pos = 0;
-        }
-      }
-      this.length += data.length;
-      this.roundClean();
-      return this;
-    }
-    digestInto(out) {
-      aexists(this);
-      aoutput(out, this);
-      this.finished = true;
-      const { buffer, view, blockLen, isLE: isLE4 } = this;
-      let { pos } = this;
-      buffer[pos++] = 128;
-      this.buffer.subarray(pos).fill(0);
-      if (this.padOffset > blockLen - pos) {
-        this.process(view, 0);
-        pos = 0;
-      }
-      for (let i2 = pos; i2 < blockLen; i2++)
-        buffer[i2] = 0;
-      setBigUint644(view, blockLen - 8, BigInt(this.length * 8), isLE4);
-      this.process(view, 0);
-      const oview = createView4(out);
-      const len = this.outputLen;
-      if (len % 4)
-        throw new Error("_sha2: outputLen should be aligned to 32bit");
-      const outLen = len / 4;
-      const state = this.get();
-      if (outLen > state.length)
-        throw new Error("_sha2: outputLen bigger than state");
-      for (let i2 = 0; i2 < outLen; i2++)
-        oview.setUint32(4 * i2, state[i2], isLE4);
-    }
-    digest() {
-      const { buffer, outputLen } = this;
-      this.digestInto(buffer);
-      const res = buffer.slice(0, outputLen);
-      this.destroy();
-      return res;
-    }
-    _cloneInto(to) {
-      to || (to = new this.constructor());
-      to.set(...this.get());
-      const { blockLen, buffer, length, finished, destroyed, pos } = this;
-      to.length = length;
-      to.pos = pos;
-      to.finished = finished;
-      to.destroyed = destroyed;
-      if (length % blockLen)
-        to.buffer.set(buffer);
-      return to;
-    }
-  };
-
-  // node_modules/@noble/hashes/esm/sha256.js
-  var SHA256_K3 = /* @__PURE__ */ new Uint32Array([
-    1116352408,
-    1899447441,
-    3049323471,
-    3921009573,
-    961987163,
-    1508970993,
-    2453635748,
-    2870763221,
-    3624381080,
-    310598401,
-    607225278,
-    1426881987,
-    1925078388,
-    2162078206,
-    2614888103,
-    3248222580,
-    3835390401,
-    4022224774,
-    264347078,
-    604807628,
-    770255983,
-    1249150122,
-    1555081692,
-    1996064986,
-    2554220882,
-    2821834349,
-    2952996808,
-    3210313671,
-    3336571891,
-    3584528711,
-    113926993,
-    338241895,
-    666307205,
-    773529912,
-    1294757372,
-    1396182291,
-    1695183700,
-    1986661051,
-    2177026350,
-    2456956037,
-    2730485921,
-    2820302411,
-    3259730800,
-    3345764771,
-    3516065817,
-    3600352804,
-    4094571909,
-    275423344,
-    430227734,
-    506948616,
-    659060556,
-    883997877,
-    958139571,
-    1322822218,
-    1537002063,
-    1747873779,
-    1955562222,
-    2024104815,
-    2227730452,
-    2361852424,
-    2428436474,
-    2756734187,
-    3204031479,
-    3329325298
-  ]);
-  var SHA256_IV = /* @__PURE__ */ new Uint32Array([
-    1779033703,
-    3144134277,
-    1013904242,
-    2773480762,
-    1359893119,
-    2600822924,
-    528734635,
-    1541459225
-  ]);
-  var SHA256_W3 = /* @__PURE__ */ new Uint32Array(64);
-  var SHA2563 = class extends HashMD {
-    constructor() {
-      super(64, 32, 8, false);
-      this.A = SHA256_IV[0] | 0;
-      this.B = SHA256_IV[1] | 0;
-      this.C = SHA256_IV[2] | 0;
-      this.D = SHA256_IV[3] | 0;
-      this.E = SHA256_IV[4] | 0;
-      this.F = SHA256_IV[5] | 0;
-      this.G = SHA256_IV[6] | 0;
-      this.H = SHA256_IV[7] | 0;
-    }
-    get() {
-      const { A, B, C, D, E, F, G, H } = this;
-      return [A, B, C, D, E, F, G, H];
-    }
-    // prettier-ignore
-    set(A, B, C, D, E, F, G, H) {
-      this.A = A | 0;
-      this.B = B | 0;
-      this.C = C | 0;
-      this.D = D | 0;
-      this.E = E | 0;
-      this.F = F | 0;
-      this.G = G | 0;
-      this.H = H | 0;
-    }
-    process(view, offset) {
-      for (let i2 = 0; i2 < 16; i2++, offset += 4)
-        SHA256_W3[i2] = view.getUint32(offset, false);
-      for (let i2 = 16; i2 < 64; i2++) {
-        const W15 = SHA256_W3[i2 - 15];
-        const W2 = SHA256_W3[i2 - 2];
-        const s0 = rotr3(W15, 7) ^ rotr3(W15, 18) ^ W15 >>> 3;
-        const s1 = rotr3(W2, 17) ^ rotr3(W2, 19) ^ W2 >>> 10;
-        SHA256_W3[i2] = s1 + SHA256_W3[i2 - 7] + s0 + SHA256_W3[i2 - 16] | 0;
-      }
-      let { A, B, C, D, E, F, G, H } = this;
-      for (let i2 = 0; i2 < 64; i2++) {
-        const sigma1 = rotr3(E, 6) ^ rotr3(E, 11) ^ rotr3(E, 25);
-        const T1 = H + sigma1 + Chi3(E, F, G) + SHA256_K3[i2] + SHA256_W3[i2] | 0;
-        const sigma0 = rotr3(A, 2) ^ rotr3(A, 13) ^ rotr3(A, 22);
-        const T2 = sigma0 + Maj3(A, B, C) | 0;
-        H = G;
-        G = F;
-        F = E;
-        E = D + T1 | 0;
-        D = C;
-        C = B;
-        B = A;
-        A = T1 + T2 | 0;
-      }
-      A = A + this.A | 0;
-      B = B + this.B | 0;
-      C = C + this.C | 0;
-      D = D + this.D | 0;
-      E = E + this.E | 0;
-      F = F + this.F | 0;
-      G = G + this.G | 0;
-      H = H + this.H | 0;
-      this.set(A, B, C, D, E, F, G, H);
-    }
-    roundClean() {
-      SHA256_W3.fill(0);
-    }
-    destroy() {
-      this.set(0, 0, 0, 0, 0, 0, 0, 0);
-      this.buffer.fill(0);
-    }
-  };
-  var sha2563 = /* @__PURE__ */ wrapConstructor3(() => new SHA2563());
-
-  // src/nostr-zap-button/zap-receipt.ts
   var import_light_bolt11_decoder = __toESM(require_bolt11(), 1);
 
-  // src/common/nostr-event.ts
-  function cloneVerifiedEvent(value) {
-    if (!value || typeof value !== "object") return null;
-    const event = value;
-    if (typeof event.id !== "string" || typeof event.pubkey !== "string" || typeof event.created_at !== "number" || !Number.isInteger(event.created_at) || typeof event.kind !== "number" || !Number.isInteger(event.kind) || typeof event.content !== "string" || typeof event.sig !== "string" || !Array.isArray(event.tags) || event.tags.some(
-      (tag) => !Array.isArray(tag) || tag.some((value2) => typeof value2 !== "string")
-    )) {
-      return null;
-    }
-    const candidate = {
-      // Shadow any inherited nostr-tools cache value while still retaining
-      // Object.prototype: nostr-tools' validator requires `instanceof Object`.
-      [verifiedSymbol]: void 0,
-      id: event.id,
-      pubkey: event.pubkey,
-      created_at: event.created_at,
-      kind: event.kind,
-      tags: event.tags.map((tag) => [...tag]),
-      content: event.content,
-      sig: event.sig
-    };
-    try {
-      return verifyEvent(candidate) ? candidate : null;
-    } catch {
-      return null;
-    }
-  }
+  // backend/relay-roles.json
+  var relay_roles_default = {
+    rendezvous: ["wss://relay.ditto.pub", "wss://nostr.mom", "wss://relay.damus.io", "wss://nostr.oxtr.dev", "wss://relay.nostr.wirednet.jp"],
+    sweepExtra: ["wss://nos.lol", "wss://relay.primal.net", "wss://nostr.wine", "wss://yabu.me", "wss://nostr-pub.wellorder.net", "wss://relay.fountain.fm", "wss://offchain.pub", "wss://relay.momostr.pink"],
+    indexers: ["wss://purplepag.es", "wss://indexer.coracle.social", "wss://user.kindpag.es", "wss://directory.yabu.me"],
+    profileArchives: ["wss://relay.ditto.pub", "wss://directory.yabu.me", "wss://nostr.oxtr.dev", "wss://relay.nostr.wirednet.jp"]
+  };
 
-  // src/nostr-zap-button/zap-receipt.ts
-  function getTagEntries(tags, name) {
-    return Array.isArray(tags) ? tags.filter((tag) => Array.isArray(tag) && tag[0] === name) : [];
+  // backend/nostr-pulse/url-canonical.js
+  var STATUS_HOSTS = /* @__PURE__ */ new Set([
+    "x.com",
+    "www.x.com",
+    "m.x.com",
+    "mobile.x.com",
+    "twitter.com",
+    "www.twitter.com",
+    "m.twitter.com",
+    "mobile.twitter.com"
+  ]);
+  var STATUS_PATH = /^\/([^/]+)\/status\/(\d+)\/?$/;
+  var YOUTUBE_HOSTS = /* @__PURE__ */ new Set(["www.youtube.com", "youtube.com", "m.youtube.com"]);
+  var YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+  function stripMobileHost(hostname) {
+    let host = hostname;
+    let previous;
+    do {
+      previous = host;
+      host = host.replace(/^(?:m|mobile)\./, "");
+    } while (host !== previous);
+    return host;
   }
-  function getUniqueTagValue(tags, name) {
-    const matches = getTagEntries(tags, name);
-    return matches.length === 1 && typeof matches[0][1] === "string" && matches[0][1].length > 0 ? matches[0][1] : null;
+  function canonicalStatus(url) {
+    if (!STATUS_HOSTS.has(url.hostname)) return null;
+    const match = url.pathname.match(STATUS_PATH);
+    if (!match) return null;
+    return `https://x.com/${match[1].toLowerCase()}/status/${match[2]}`;
   }
-  function normalizeLnurlTag(value) {
+  function canonicalVideo(url) {
+    let videoId = null;
+    if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname === "/watch") {
+      videoId = url.searchParams.get("v");
+    } else if (YOUTUBE_HOSTS.has(url.hostname) && url.pathname.startsWith("/shorts/")) {
+      videoId = url.pathname.split("/")[2] || null;
+    } else if (url.hostname === "youtu.be") {
+      videoId = url.pathname.split("/")[1] || null;
+    }
+    if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
+  function canonicalGeneric(url) {
+    const host = stripMobileHost(url.hostname);
+    if (!host) return null;
+    const port = url.port ? `:${url.port}` : "";
+    const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
+    const params = new URLSearchParams(url.search);
+    params.sort();
+    const query = params.toString();
+    return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;
+  }
+  function canonicalUrl(raw) {
+    if (typeof raw !== "string" || !raw) return null;
+    let url;
     try {
-      let urlString = value;
-      if (/^lnurl1/i.test(value)) {
-        const { words } = bech32.decode(value.toLowerCase(), 1e3);
-        urlString = new TextDecoder().decode(Uint8Array.from(bech32.fromWords(words)));
-      }
-      return new URL(urlString).toString();
+      url = new URL(raw);
     } catch {
       return null;
     }
-  }
-  function descriptionHashMatches(bolt11, description) {
-    try {
-      const decoded = (0, import_light_bolt11_decoder.decode)(bolt11);
-      const sections = decoded.sections;
-      const section = sections.find((item) => item.name === "description_hash");
-      if (!section?.value || typeof section.value !== "string") return false;
-      const hashed = bytesToHex3(sha2563(new TextEncoder().encode(description)));
-      return section.value.toLowerCase() === hashed;
-    } catch {
-      return false;
-    }
-  }
-  function senderPubkeyFor(zapRequest) {
-    return getTagEntries(zapRequest.tags, "anon").length > 0 ? null : zapRequest.pubkey;
-  }
-  function getBolt11AmountMsats(bolt11) {
-    try {
-      const decoded = (0, import_light_bolt11_decoder.decode)(bolt11);
-      const amountSection = decoded.sections.find(
-        (section) => section.name === "amount"
-      );
-      if (!amountSection?.value) return null;
-      const amount = Number(amountSection.value);
-      return Number.isFinite(amount) && amount > 0 ? amount : null;
-    } catch {
-      return null;
-    }
-  }
-  function validateZapReceipt(receipt, opts) {
-    if (receipt.kind !== 9735) {
-      return { ok: false, reason: "not-kind-9735" };
-    }
-    const verifiedReceipt = cloneVerifiedEvent(receipt);
-    if (!verifiedReceipt) {
-      return { ok: false, reason: "receipt-sig" };
-    }
-    if (verifiedReceipt.pubkey.toLowerCase() !== opts.provider.nostrPubkey.toLowerCase()) {
-      return { ok: false, reason: "receipt-pubkey-mismatch" };
-    }
-    const receiptPTags = getTagEntries(verifiedReceipt.tags, "p");
-    const receiptP = getUniqueTagValue(verifiedReceipt.tags, "p");
-    if (receiptPTags.length > 1) {
-      return { ok: false, reason: "duplicate-receipt-p" };
-    }
-    if (!receiptP || receiptP.toLowerCase() !== opts.recipientPubkey.toLowerCase()) {
-      return { ok: false, reason: "receipt-p-mismatch" };
-    }
-    const descriptionTags = getTagEntries(
-      verifiedReceipt.tags,
-      "description"
-    );
-    const description = getUniqueTagValue(
-      verifiedReceipt.tags,
-      "description"
-    );
-    if (descriptionTags.length > 1) {
-      return { ok: false, reason: "duplicate-description" };
-    }
-    if (!description) {
-      return { ok: false, reason: "missing-description" };
-    }
-    const zapRequestError = nip57_exports.validateZapRequest(description);
-    if (zapRequestError) {
-      return { ok: false, reason: `invalid-zap-request:${zapRequestError}` };
-    }
-    let parsedZapRequest;
-    try {
-      parsedZapRequest = JSON.parse(description);
-    } catch {
-      return { ok: false, reason: "description-json" };
-    }
-    if (parsedZapRequest.kind !== 9734) {
-      return { ok: false, reason: "zap-request-kind" };
-    }
-    const zapRequest = cloneVerifiedEvent(parsedZapRequest);
-    if (!zapRequest) {
-      return { ok: false, reason: "zap-request-sig" };
-    }
-    const requestPTags = getTagEntries(zapRequest.tags, "p");
-    const requestP = getUniqueTagValue(zapRequest.tags, "p");
-    if (requestPTags.length > 1) {
-      return { ok: false, reason: "duplicate-zap-request-p" };
-    }
-    if (!requestP || requestP.toLowerCase() !== opts.recipientPubkey.toLowerCase()) {
-      return { ok: false, reason: "zap-request-p-mismatch" };
-    }
-    const bolt11Tags = getTagEntries(verifiedReceipt.tags, "bolt11");
-    const bolt11 = getUniqueTagValue(verifiedReceipt.tags, "bolt11");
-    if (bolt11Tags.length > 1) {
-      return { ok: false, reason: "duplicate-bolt11" };
-    }
-    if (!bolt11) {
-      return { ok: false, reason: "missing-bolt11" };
-    }
-    if (opts.expectedBolt11 && bolt11 !== opts.expectedBolt11) {
-      return { ok: false, reason: "bolt11-mismatch" };
-    }
-    const invoiceAmountMsats = getBolt11AmountMsats(bolt11);
-    if (invoiceAmountMsats == null) {
-      return { ok: false, reason: "invalid-bolt11-amount" };
-    }
-    const descriptionHashMismatch = !descriptionHashMatches(bolt11, description);
-    const amountTags = getTagEntries(zapRequest.tags, "amount");
-    if (amountTags.length > 1) {
-      return { ok: false, reason: "duplicate-amount" };
-    }
-    const amountTag = getUniqueTagValue(zapRequest.tags, "amount");
-    if (amountTags.length === 1 && !amountTag) {
-      return { ok: false, reason: "invalid-amount" };
-    }
-    if (amountTag) {
-      const requestAmount = Number(amountTag);
-      if (!Number.isFinite(requestAmount) || requestAmount !== invoiceAmountMsats) {
-        return { ok: false, reason: "amount-mismatch" };
-      }
-    }
-    const lnurlTags = getTagEntries(zapRequest.tags, "lnurl");
-    if (lnurlTags.length > 1) {
-      return { ok: false, reason: "duplicate-lnurl" };
-    }
-    const requestLnurl = getUniqueTagValue(zapRequest.tags, "lnurl");
-    if (lnurlTags.length === 1 && !requestLnurl) {
-      return { ok: false, reason: "lnurl-mismatch" };
-    }
-    if (requestLnurl) {
-      const normalized = normalizeLnurlTag(requestLnurl);
-      if (!normalized || normalized !== opts.provider.lnurl) {
-        return { ok: false, reason: "lnurl-mismatch" };
-      }
-    }
-    const receiptATags = getTagEntries(verifiedReceipt.tags, "a");
-    const requestATags = getTagEntries(zapRequest.tags, "a");
-    if (receiptATags.length > 1 || requestATags.length > 1) {
-      return { ok: false, reason: "duplicate-a" };
-    }
-    const receiptA = getUniqueTagValue(verifiedReceipt.tags, "a");
-    const requestA = getUniqueTagValue(zapRequest.tags, "a");
-    if (opts.expectedATag) {
-      const allowed = Array.isArray(opts.expectedATag) ? opts.expectedATag : [opts.expectedATag];
-      if (!receiptA || !requestA || receiptA !== requestA || !allowed.includes(receiptA)) {
-        return { ok: false, reason: "a-mismatch" };
-      }
-    } else if (receiptATags.length !== requestATags.length || receiptA !== requestA) {
-      return { ok: false, reason: "a-mismatch" };
-    }
-    const result = {
-      ok: true,
-      amountMsats: invoiceAmountMsats,
-      zapRequest,
-      senderPubkey: senderPubkeyFor(zapRequest)
-    };
-    if (result.ok && descriptionHashMismatch) {
-      result.descriptionHashMismatch = true;
-    }
-    return result;
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return canonicalStatus(url) || canonicalVideo(url) || canonicalGeneric(url);
   }
 
   // browser-extension/src/relay-client.js
@@ -8035,10 +7559,7 @@
     const PROFILE_FRESH_MS = 60 * 60 * 1e3;
     const ZAP_CACHE_STALE_MS = 24 * 60 * 60 * 1e3;
     const NEGATIVE_CACHE_MS = 30 * 1e3;
-    const RECEIPT_ROW_LIMIT = 50;
     const MEMORY_PROVIDER_LIMIT = 100;
-    const MEMORY_PROFILE_LIMIT = 100;
-    const MEMORY_RECEIPT_LIMIT = 50;
     const RELAY_HEALTH_TTL_MS = 5 * 60 * 1e3;
     const RECENT_REACTION_TTL_MS = 2 * 60 * 1e3;
     const INITIAL_RELAY_ORDER = [
@@ -8051,61 +7572,41 @@
       "wss://nostr-pub.wellorder.net/",
       "wss://relay.nostr.band/"
     ];
-    const ALLOWED_RELAY_URLS = new Set(
-      [
-        "wss://relay.momostr.pink",
-        "wss://relay.ditto.pub",
-        "wss://relay.primal.net",
-        "wss://relay.damus.io",
-        "wss://nos.lol",
-        "wss://nostr.mom",
-        "wss://nostr.twinkle.lol",
-        "wss://nostr.wine",
-        "wss://nostr.bitcoiner.social",
-        "wss://relay.nostr.band",
-        "wss://relay.snort.social",
-        "wss://nostr.data.haus",
-        "wss://purplepag.es",
-        "wss://nostr.oxtr.dev",
-        "wss://relay.0xchat.com",
-        "wss://nostr.land",
-        "wss://relay.us.whitenoise.chat",
-        "wss://relay.eu.whitenoise.chat",
-        "wss://relay.divine.video",
-        "wss://offchain.pub",
-        "wss://nostrelites.org",
-        "wss://relay.nostr.wirednet.jp",
-        "wss://relayable.org",
-        "wss://shu01.shugur.net",
-        "wss://www.nostr.ltd",
-        "wss://nostr.rocks",
-        "wss://relay.nostr.pub",
-        "wss://cache1.primal.net",
-        "wss://nostr-01.yakihonne.com",
-        "wss://wot.nostr.net",
-        "wss://relay.nyves.nl",
-        "wss://relay.fountain.fm",
-        "wss://relay.mostr.pub",
-        "wss://nostr.lol",
-        "wss://eden.nostr.land",
-        "wss://wot.utxo.one",
-        "wss://relay.current.fyi",
-        "wss://relay.nmail.li",
-        "wss://fanfares.nostr1.com",
-        "wss://pyramid.fiatjaf.com",
-        "wss://wot.nostr.party",
-        "wss://relay.mostro.network",
-        "wss://yabu.me",
-        "wss://nostr-02.yakihonne.com",
-        "wss://nostr-pub.wellorder.net",
-        "wss://relay.nostr.net",
-        "wss://nostr.einundzwanzig.space",
-        "wss://relay.f7z.io",
-        "wss://relay.wisp.talk",
-        "wss://relay.wavlake.com",
-        "wss://relay.getalby.com"
-      ].map(normalizeURL2)
-    );
+    const WRITE_RELAY_LIMIT = 3;
+    const ZAP_RELAY_LIMIT = 8;
+    const ACTIVITY_CACHE_MS = 60 * 1e3;
+    const ACTIVITY_BATCH_MS = 50;
+    const PROFILE_PUBKEY_LIMIT = 50;
+    function normalizeRelayUrl(value) {
+      let url;
+      try {
+        url = new URL(String(value ?? "").trim());
+      } catch (_error) {
+        return null;
+      }
+      if (url.protocol !== "wss:" || url.username || url.password) return null;
+      url.hash = "";
+      url.hostname = url.hostname.toLowerCase();
+      if (url.port === "443") url.port = "";
+      if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+        url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+      }
+      return url.toString();
+    }
+    function uniqueRelays(values) {
+      const out = [];
+      for (const value of values) {
+        const normalized = normalizeRelayUrl(value);
+        if (normalized && !out.includes(normalized)) out.push(normalized);
+      }
+      return out;
+    }
+    const RENDEZVOUS_RELAYS = uniqueRelays(relay_roles_default.rendezvous || []);
+    const RENDEZVOUS_SET = new Set(RENDEZVOUS_RELAYS);
+    const SWEEP_RELAYS = new Set(uniqueRelays([
+      ...relay_roles_default.rendezvous || [],
+      ...relay_roles_default.sweepExtra || []
+    ]));
     let activeSession = null;
     const relayHealth = /* @__PURE__ */ new Map();
     const recentReactionsByUrl = /* @__PURE__ */ new Map();
@@ -8113,11 +7614,6 @@
     const providerMemory = /* @__PURE__ */ new Map();
     const providerNegative = /* @__PURE__ */ new Map();
     const providerInflight = /* @__PURE__ */ new Map();
-    const profileMemory = /* @__PURE__ */ new Map();
-    const profileNegative = /* @__PURE__ */ new Map();
-    const profileInflight = /* @__PURE__ */ new Map();
-    const receiptMemory = /* @__PURE__ */ new Map();
-    const receiptInflight = /* @__PURE__ */ new Map();
     function canonicalJson(value) {
       if (value === null) return "null";
       if (typeof value === "string" || typeof value === "number") {
@@ -8175,7 +7671,7 @@
       }
       return bytes4;
     }
-    function bytesToHex4(value) {
+    function bytesToHex3(value) {
       return Array.from(new Uint8Array(value), function(byte) {
         return byte.toString(16).padStart(2, "0");
       }).join("");
@@ -8209,7 +7705,7 @@
           key,
           encoder.encode(bridgeAuthPayload(type, message))
         );
-        return bytesToHex4(mac);
+        return bytesToHex3(mac);
       }
       async function verify(type, message) {
         if (!MESSAGE_MAC_PATTERN.test(String(message?.mac || ""))) return false;
@@ -8443,26 +7939,6 @@
       }
     }
     const isAllowedStatusUrl = isAllowedContentUrl;
-    function validateRelays(value) {
-      if (!Array.isArray(value) || value.length === 0 || value.length > 50) {
-        return null;
-      }
-      const normalized = [];
-      for (const relay of value) {
-        if (typeof relay !== "string") return null;
-        let relayUrl;
-        try {
-          relayUrl = normalizeURL2(relay);
-        } catch (_error) {
-          return null;
-        }
-        if (!ALLOWED_RELAY_URLS.has(relayUrl) || normalized.includes(relayUrl)) {
-          return null;
-        }
-        normalized.push(relayUrl);
-      }
-      return normalized;
-    }
     function validateFilter(value) {
       if (!value || typeof value !== "object" || Array.isArray(value)) {
         return null;
@@ -8584,17 +8060,17 @@
         return false;
       }
     }
-    function sendHttpsJsonRequest(url) {
-      const message = { type: "FETCH_HTTPS_JSON", url };
-      if (typeof browser !== "undefined" && browser.runtime) {
-        return browser.runtime.sendMessage(message).then(function(response) {
-          if (!response || response.ok !== true) {
-            throw new Error(response && response.error || "HTTPS fetch failed");
-          }
-          return response.result;
-        });
+    function sendExtensionMessage(message) {
+      function unwrap(response) {
+        if (!response || response.ok !== true) {
+          throw new Error(response && response.error || "Extension request failed");
+        }
+        return response.result;
       }
-      if (typeof chrome !== "undefined" && chrome.runtime) {
+      if (typeof browser !== "undefined" && browser.runtime && browser.runtime.sendMessage) {
+        return browser.runtime.sendMessage(message).then(unwrap);
+      }
+      if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
         return new Promise(function(resolve, reject) {
           chrome.runtime.sendMessage(message, function(value) {
             const error = chrome.runtime && chrome.runtime.lastError;
@@ -8602,15 +8078,18 @@
               reject(new Error(error.message));
               return;
             }
-            if (!value || value.ok !== true) {
-              reject(new Error(value && value.error || "HTTPS fetch failed"));
-              return;
+            try {
+              resolve(unwrap(value));
+            } catch (unwrapError) {
+              reject(unwrapError);
             }
-            resolve(value.result);
           });
         });
       }
       return Promise.reject(new Error("Browser runtime API is not available"));
+    }
+    function sendHttpsJsonRequest(url) {
+      return sendExtensionMessage({ type: "FETCH_HTTPS_JSON", url });
     }
     function getActionContext(actionId, requireRecipient) {
       const normalizedId = String(actionId || "");
@@ -8742,99 +8221,14 @@
         await extension.storage.deleteZapProvider(pubkey);
       }
     }
-    function pickVerifiedProfile(events, pubkey) {
-      const matches = events.filter(function(event) {
-        return event && event.kind === 0 && String(event.pubkey || "").toLowerCase() === pubkey && eventVerified(event);
-      });
-      matches.sort(function(left, right) {
-        if (left.created_at !== right.created_at) return right.created_at - left.created_at;
-        if (left.id < right.id) return -1;
-        if (left.id > right.id) return 1;
-        return 0;
-      });
-      return matches[0] || null;
-    }
-    async function readProfile(pubkey) {
-      const memory = unexpiredEntry(profileMemory.get(pubkey));
-      if (!memory) profileMemory.delete(pubkey);
-      if (memory && eventVerified(memory.event)) return memory;
-      if (memory) profileMemory.delete(pubkey);
-      if (typeof extension.storage.getZapProfile !== "function") return null;
-      const stored = await extension.storage.getZapProfile(pubkey);
-      if (!stored || !eventVerified(stored.event)) return null;
-      const entry = {
-        event: stored.event,
-        fetchedAt: stored.fetchedAt,
-        freshUntil: stored.freshUntil,
-        expiresAt: stored.expiresAt
-      };
-      if (!unexpiredEntry(entry)) return null;
-      rememberBounded(profileMemory, pubkey, entry, MEMORY_PROFILE_LIMIT);
-      return entry;
-    }
-    async function rememberProfile(pubkey, event) {
-      const now2 = Date.now();
-      const entry = {
-        event,
-        fetchedAt: now2,
-        freshUntil: now2 + PROFILE_FRESH_MS,
-        expiresAt: now2 + ZAP_CACHE_STALE_MS
-      };
-      rememberBounded(profileMemory, pubkey, entry, MEMORY_PROFILE_LIMIT);
-      profileNegative.delete(pubkey);
-      if (typeof extension.storage.setZapProfile === "function") {
-        await extension.storage.setZapProfile(
-          pubkey,
-          event,
-          PROFILE_FRESH_MS,
-          ZAP_CACHE_STALE_MS
-        );
+    async function fetchProviderLiveUncached(pubkey) {
+      let record = profileRecords.get(pubkey);
+      if (!record?.event || Date.now() - record.fetchedAt > PROFILE_FRESH_MS) {
+        const views = await lookupProfiles([pubkey], false);
+        for (const view of views) applyProfileView(view);
+        record = profileRecords.get(pubkey);
       }
-    }
-    async function loadVerifiedProfileUncached(pool, relays, pubkey) {
-      const events = await queryWithFastQuorum(
-        pool,
-        relays,
-        {
-          kinds: [0],
-          authors: [pubkey],
-          limit: 1
-        },
-        {
-          keepNewestProfile: true,
-          selectedRelays: relays
-        }
-      );
-      const live = pickVerifiedProfile(events, pubkey);
-      const stored = await readProfile(pubkey);
-      if (live && (!stored || preferProfile(live, stored.event) || live.id === stored.event.id)) {
-        await rememberProfile(pubkey, live);
-        return live;
-      }
-      if (stored) return stored.event;
-      profileNegative.set(pubkey, Date.now() + NEGATIVE_CACHE_MS);
-      return null;
-    }
-    function loadVerifiedProfile(pool, relays, pubkey) {
-      const negativeUntil = profileNegative.get(pubkey);
-      if (Number.isFinite(negativeUntil) && negativeUntil > Date.now()) {
-        return readProfile(pubkey).then(function(stored) {
-          return stored ? stored.event : null;
-        });
-      }
-      const pending = profileInflight.get(pubkey);
-      if (pending) return pending;
-      const next = readProfile(pubkey).then(function(stored) {
-        if (freshEntry(stored)) return stored.event;
-        return loadVerifiedProfileUncached(pool, relays, pubkey);
-      }).finally(function() {
-        if (profileInflight.get(pubkey) === next) profileInflight.delete(pubkey);
-      });
-      profileInflight.set(pubkey, next);
-      return next;
-    }
-    async function fetchProviderLiveUncached(pool, relays, pubkey) {
-      const profile = await loadVerifiedProfile(pool, relays, pubkey);
+      const profile = record && record.event;
       const lnurl = profile ? profileLnurl(profile.content) : null;
       if (!lnurl) {
         throw new Error("Zap recipient has no valid LNURL provider");
@@ -8858,16 +8252,16 @@
       await rememberProvider(pubkey, provider);
       return provider;
     }
-    function fetchProviderLive(pool, relays, pubkey) {
+    function fetchProviderLive(pubkey) {
       const pending = providerInflight.get(pubkey);
       if (pending) return pending;
-      const next = fetchProviderLiveUncached(pool, relays, pubkey).finally(function() {
+      const next = fetchProviderLiveUncached(pubkey).finally(function() {
         if (providerInflight.get(pubkey) === next) providerInflight.delete(pubkey);
       });
       providerInflight.set(pubkey, next);
       return next;
     }
-    async function resolveZapProvider(pool, relays, actionId, context, options) {
+    async function resolveZapProvider(actionId, context, options) {
       const allowStale = !options || options.allowStale !== false;
       const bypassCache = Boolean(options && options.bypassCache);
       const pubkey = context.recipientPubkey;
@@ -8882,7 +8276,7 @@
         }
       }
       try {
-        const provider = await fetchProviderLive(pool, relays, pubkey);
+        const provider = await fetchProviderLive(pubkey);
         requireCurrentActionContext(actionId, context);
         return provider;
       } catch (error) {
@@ -8900,229 +8294,544 @@
         throw error;
       }
     }
-    function receiptTag(event, name) {
-      if (!event || !Array.isArray(event.tags)) return null;
-      const matches = event.tags.filter(function(tag) {
-        return Array.isArray(tag) && tag.length >= 2 && tag[0] === name && typeof tag[1] === "string";
-      });
-      return matches.length === 1 ? matches[0][1] : null;
+    const profileRecords = /* @__PURE__ */ new Map();
+    const relayListMemory = /* @__PURE__ */ new Map();
+    const zapRelaysByPubkey = /* @__PURE__ */ new Map();
+    const signerLists = /* @__PURE__ */ new Map();
+    let signerPubkeyMemory = null;
+    const activityCache = /* @__PURE__ */ new Map();
+    let activityWaiters = [];
+    let activityTimer = null;
+    let viewerReactions = null;
+    function payloadAllows(payload, allowed) {
+      return Boolean(
+        payload && typeof payload === "object" && Object.keys(payload).every(function(key) {
+          return allowed.indexOf(key) !== -1;
+        })
+      );
     }
-    function validatedZapReceipts(events, filter, provider) {
-      if (!provider || !Array.isArray(events)) return [];
-      const expectedATag = filter["#a"] ? filter["#a"][0] : void 0;
-      const accepted = [];
-      for (const event of events) {
-        const result = validateZapReceipt(event, {
-          recipientPubkey: filter["#p"][0],
-          provider: {
-            lnurl: provider.lnurl,
-            callback: provider.callback,
-            nostrPubkey: provider.nostrPubkey
-          },
-          expectedATag
-        });
-        if (result && result.ok) accepted.push(event);
+    function countOf(value) {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed < 0) return 0;
+      return parsed;
+    }
+    function relaysFromList(event, marker) {
+      const urls = [];
+      for (const tag of event && event.tags || []) {
+        if (!Array.isArray(tag) || tag[0] !== "r") continue;
+        const url = normalizeRelayUrl(tag[1]);
+        if (!url) continue;
+        const role = tag[2];
+        const unmarked = role == null || role === "";
+        if (marker === "read" && (role === "read" || unmarked)) urls.push(url);
+        if (marker === "write" && (role === "write" || unmarked)) urls.push(url);
       }
-      return accepted;
+      return uniqueRelays(urls);
     }
-    function receiptCacheMarker(summary) {
-      return [{
-        extensionZapCache: true,
-        cachedZapSummary: {
-          totalSats: summary.totalSats,
-          rows: summary.rows
-        }
-      }];
+    function newerEvent(current, candidate) {
+      if (!candidate) return current || null;
+      if (!current) return candidate;
+      if (candidate.created_at > current.created_at) return candidate;
+      if (candidate.created_at < current.created_at) return current;
+      return String(candidate.id) < String(current.id) ? candidate : current;
     }
-    function summarizeReceipts(events) {
-      let totalMsats = 0;
-      const rows = [];
-      const ordered = events.slice().sort(function(left, right) {
-        return (right.created_at || 0) - (left.created_at || 0);
+    function acceptedEvent(pubkey, event, kind) {
+      if (!event || event.kind !== kind) return null;
+      if (String(event.pubkey || "").toLowerCase() !== pubkey) return null;
+      if (!eventVerified(event)) return null;
+      return event;
+    }
+    function applyProfileView(view, options) {
+      const pubkey = String(view && view.pubkey || "").toLowerCase();
+      if (!HEX_64_PATTERN.test(pubkey)) {
+        return { profile: null, relayList: null };
+      }
+      const signer = options && options.signer;
+      const profile = acceptedEvent(pubkey, view.profileEvent, 0);
+      const relayList = acceptedEvent(pubkey, view.relayListEvent, 10002);
+      const current = profileRecords.get(pubkey);
+      const event = profile ? newerEvent(current && current.event, profile) : current && current.event || null;
+      let zappable = current ? current.zappable : null;
+      if (view.zappable === true || view.zappable === false || view.zappable === null) {
+        zappable = view.zappable;
+      }
+      profileRecords.set(pubkey, {
+        event,
+        zappable,
+        fetchedAt: Date.now()
       });
-      for (const event of ordered) {
-        const amountMsats = getInvoiceAmountMsats(receiptTag(event, "bolt11") || "");
-        if (amountMsats) totalMsats += amountMsats;
-        if (rows.length >= RECEIPT_ROW_LIMIT) continue;
-        let authorPubkey = "";
-        let comment = "";
-        const description = receiptTag(event, "description");
-        if (description) {
-          try {
-            const parsed = JSON.parse(description);
-            if (parsed && HEX_64_PATTERN.test(String(parsed.pubkey || ""))) {
-              authorPubkey = String(parsed.pubkey).toLowerCase();
-            }
-            if (parsed && typeof parsed.content === "string") {
-              comment = parsed.content.slice(0, 280);
-            }
-          } catch (_error) {
-            comment = "";
-          }
+      let keptList = relayListMemory.get(pubkey) || null;
+      if (relayList) keptList = newerEvent(keptList, relayList);
+      if (keptList) relayListMemory.set(pubkey, keptList);
+      const isSigner = signer === pubkey || signerPubkeyMemory === pubkey;
+      if (isSigner) {
+        if (typeof extension.storage.deleteRelayList === "function") {
+          void extension.storage.deleteRelayList(pubkey);
         }
-        rows.push({
-          id: String(event.id || "").toLowerCase(),
-          amountSats: amountMsats ? amountMsats / 1e3 : 0,
-          createdAt: Number.isInteger(event.created_at) ? event.created_at : 0,
-          authorPubkey,
-          comment
-        });
+      } else if (keptList && relayList && typeof extension.storage.setRelayList === "function") {
+        void extension.storage.setRelayList(pubkey, keptList);
       }
       return {
-        totalSats: totalMsats / 1e3,
-        eventCount: events.length,
-        rows
+        profile: event,
+        relayList: keptList
       };
     }
-    function mergeStoredSummary(summary, novelEvents) {
-      const known = new Set(summary.rows.map(function(row) {
-        return row.id;
-      }));
-      const rows = summary.rows.slice();
-      let totalSats = summary.totalSats;
-      let eventCount = summary.eventCount;
-      const capped = summary.rows.length < summary.eventCount;
-      const oldest = summary.rows.reduce(function(min, row) {
-        return Math.min(min, row.createdAt);
-      }, Infinity);
-      for (const event of novelEvents) {
-        const id = String(event.id || "").toLowerCase();
-        if (!id || known.has(id)) continue;
-        const amountMsats = getInvoiceAmountMsats(receiptTag(event, "bolt11") || "");
-        if (!amountMsats) continue;
-        if (capped && (!Number.isInteger(event.created_at) || event.created_at <= oldest)) {
-          continue;
-        }
-        known.add(id);
-        totalSats += amountMsats / 1e3;
-        eventCount += 1;
-        let authorPubkey = "";
-        let comment = "";
-        const description = receiptTag(event, "description");
-        if (description) {
-          try {
-            const parsed = JSON.parse(description);
-            if (parsed && HEX_64_PATTERN.test(String(parsed.pubkey || ""))) {
-              authorPubkey = String(parsed.pubkey).toLowerCase();
-            }
-            if (parsed && typeof parsed.content === "string") {
-              comment = parsed.content.slice(0, 280);
-            }
-          } catch (_error) {
-            comment = "";
-          }
-        }
-        rows.push({
-          id,
-          amountSats: amountMsats / 1e3,
-          createdAt: Number.isInteger(event.created_at) ? event.created_at : 0,
-          authorPubkey,
-          comment
+    function seedIdentity(pubkey, profileEvent, relayListEvent, zappable) {
+      applyProfileView({
+        pubkey,
+        profileEvent,
+        relayListEvent,
+        zappable
+      });
+    }
+    async function lookupProfiles(pubkeys, fresh) {
+      const result = await sendExtensionMessage({
+        type: "LOOKUP_NOSTR_PROFILES",
+        pubkeys: pubkeys.join(","),
+        ...fresh ? { fresh: "1" } : {}
+      });
+      if (!result || !Array.isArray(result.profiles)) {
+        throw new Error("Profile lookup failed");
+      }
+      return result.profiles;
+    }
+    function ensureSignerRelays(pubkey) {
+      const normalized = String(pubkey || "").toLowerCase();
+      if (!HEX_64_PATTERN.test(normalized)) return Promise.resolve([]);
+      const existing = signerLists.get(normalized);
+      if (existing) return existing;
+      signerPubkeyMemory = normalized;
+      const pending = lookupProfiles([normalized], false).then(function(profiles) {
+        for (const view of profiles) applyProfileView(view, { signer: normalized });
+        return relaysFromList(relayListMemory.get(normalized), "write").slice(0, WRITE_RELAY_LIMIT);
+      }).catch(function(error) {
+        signerLists.delete(normalized);
+        throw error;
+      });
+      signerLists.set(normalized, pending);
+      return pending;
+    }
+    async function pageUrlKey(raw) {
+      const canonical = canonicalUrl(raw);
+      if (!canonical || !globalThis.crypto?.subtle) return null;
+      const digest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(canonical)
+      );
+      return bytesToHex3(digest);
+    }
+    function activityCacheKey(item) {
+      return item.recipient ? item.urlKey + ":" + item.recipient : item.urlKey;
+    }
+    function rememberActivityRow(row) {
+      const key = activityCacheKey(row);
+      activityCache.set(key, {
+        row,
+        expiresAt: Date.now() + ACTIVITY_CACHE_MS
+      });
+    }
+    function rememberActivityFromIngest(activity) {
+      if (!activity || !HEX_64_PATTERN.test(String(activity.urlKey || ""))) return;
+      const urlKey = String(activity.urlKey).toLowerCase();
+      let found = false;
+      for (const [key, entry] of activityCache) {
+        if (key !== urlKey && !key.startsWith(urlKey + ":")) continue;
+        found = true;
+        entry.row = Object.assign({}, entry.row, {
+          likes: countOf(activity.likeCount),
+          dislikes: countOf(activity.dislikeCount)
+        });
+        entry.expiresAt = Date.now() + ACTIVITY_CACHE_MS;
+      }
+      if (!found) {
+        rememberActivityRow({
+          urlKey,
+          recipient: null,
+          likes: countOf(activity.likeCount),
+          dislikes: countOf(activity.dislikeCount),
+          zapCount: null,
+          sats: null
         });
       }
-      rows.sort(function(left, right) {
-        return right.createdAt - left.createdAt;
+    }
+    async function fetchActivityRows(items) {
+      const result = await sendExtensionMessage({
+        type: "GET_URL_ACTIVITY",
+        items: items.map(function(item) {
+          return item.recipient ? item.urlKey + ":" + item.recipient : item.urlKey;
+        }).join(",")
       });
+      if (!result || !Array.isArray(result.items)) {
+        throw new Error("Like count is unavailable");
+      }
+      return result.items;
+    }
+    function requestActivity(item) {
+      const key = activityCacheKey(item);
+      const cached = activityCache.get(key);
+      if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.row);
+      return new Promise(function(resolve, reject) {
+        activityWaiters.push({ item, key, resolve, reject });
+        if (!activityTimer) {
+          activityTimer = setTimeout(flushActivity, ACTIVITY_BATCH_MS);
+        }
+      });
+    }
+    async function flushActivity() {
+      activityTimer = null;
+      const waiting = activityWaiters;
+      activityWaiters = [];
+      if (waiting.length === 0) return;
+      const groups = /* @__PURE__ */ new Map();
+      for (const waiter of waiting) {
+        if (!groups.has(waiter.key)) groups.set(waiter.key, []);
+        groups.get(waiter.key).push(waiter);
+      }
+      const entries = Array.from(groups.entries());
+      for (let offset = 0; offset < entries.length; offset += 20) {
+        const slice = entries.slice(offset, offset + 20);
+        try {
+          const rows = await fetchActivityRows(slice.map(function(entry) {
+            return entry[1][0].item;
+          }));
+          const returned = /* @__PURE__ */ new Map();
+          for (const row of rows) {
+            if (!row || !row.urlKey) continue;
+            returned.set(activityCacheKey(row), row);
+          }
+          for (const [key, group] of slice) {
+            const row = returned.get(key);
+            if (!row) {
+              for (const waiter of group) {
+                waiter.reject(new Error("Like count is unavailable"));
+              }
+              continue;
+            }
+            rememberActivityRow(row);
+            for (const waiter of group) waiter.resolve(row);
+          }
+        } catch (error) {
+          const failure = error instanceof Error ? error : new Error("Like count is unavailable");
+          for (const [, group] of slice) {
+            for (const waiter of group) waiter.reject(failure);
+          }
+        }
+      }
+    }
+    function viewerReactionsOnce(pubkey) {
+      const normalized = String(pubkey || "").toLowerCase();
+      if (viewerReactions && viewerReactions.pubkey === normalized) {
+        return viewerReactions.promise;
+      }
+      const promise = sendExtensionMessage({
+        type: "LIST_VIEWER_REACTIONS",
+        pubkey: normalized
+      }).then(function(result) {
+        return {
+          ok: true,
+          reactions: Array.isArray(result && result.reactions) ? result.reactions : []
+        };
+      }).catch(function() {
+        return { ok: false, reactions: [] };
+      });
+      viewerReactions = { pubkey: normalized, promise };
+      return promise;
+    }
+    function newestViewerReaction(reactions, urlKey) {
+      let chosen = null;
+      for (const row of reactions || []) {
+        if (!row || row.urlKey !== urlKey) continue;
+        if (!chosen || Number(row.createdAt) >= Number(chosen.createdAt)) chosen = row;
+      }
+      return chosen;
+    }
+    function reactionIsLike(content, reaction) {
+      if (content === "+" || content === "") return true;
+      return reaction === "like" && content !== "-";
+    }
+    function likedNow(localEvent, remote, viewerOk) {
+      if (localEvent && (!viewerOk || !remote || localEvent.created_at >= Number(remote.createdAt))) {
+        return localEvent.content === "+" || localEvent.content === "";
+      }
+      if (viewerOk && remote) return reactionIsLike(remote.content, remote.reaction);
+      return false;
+    }
+    async function pushUrlEvent(event, relay) {
+      try {
+        const result = await sendExtensionMessage({
+          type: "INGEST_URL_EVENT",
+          event,
+          relay
+        });
+        if (result && result.activity) rememberActivityFromIngest(result.activity);
+      } catch (_error) {
+      }
+    }
+    function publishOne(pool, relay, event) {
+      let pending;
+      try {
+        pending = pool.publish([relay], event);
+      } catch (error) {
+        return Promise.reject(error);
+      }
+      const first = Array.isArray(pending) ? pending[0] : pending;
+      if (!first || typeof first.then !== "function") {
+        return Promise.reject(new Error("No relay accepted the reaction event"));
+      }
+      return Promise.resolve(first).then(function() {
+        return relay;
+      });
+    }
+    async function settleWriteRelays(pool, event, writesPromise) {
+      let writes = [];
+      try {
+        writes = await writesPromise;
+      } catch (_error) {
+        writes = [];
+      }
+      for (const relay of writes) {
+        if (RENDEZVOUS_SET.has(relay)) continue;
+        try {
+          await publishOne(pool, relay, event);
+        } catch (_error) {
+        }
+      }
+    }
+    function assertZapRequestRelays(event) {
+      const relaysTags = event.tags.filter(function(tag) {
+        return Array.isArray(tag) && tag[0] === "relays";
+      });
+      if (relaysTags.length !== 1) {
+        throw new Error("Zap request relays do not include the rendezvous relays");
+      }
+      const urls = [];
+      for (const value of relaysTags[0].slice(1)) {
+        const normalized = normalizeRelayUrl(value);
+        if (normalized) urls.push(normalized);
+      }
+      if (urls.length > ZAP_RELAY_LIMIT) {
+        throw new Error("Zap request relays do not include the rendezvous relays");
+      }
+      for (const required of RENDEZVOUS_RELAYS) {
+        if (urls.indexOf(required) === -1) {
+          throw new Error("Zap request relays do not include the rendezvous relays");
+        }
+      }
+    }
+    async function storedRelayList(pubkey) {
+      if (relayListMemory.has(pubkey)) return relayListMemory.get(pubkey);
+      if (pubkey === signerPubkeyMemory) return null;
+      if (typeof extension.storage.getRelayList !== "function") return null;
+      const event = await extension.storage.getRelayList(pubkey);
+      if (!acceptedEvent(pubkey, event, 10002)) return null;
+      relayListMemory.set(pubkey, event);
+      return event;
+    }
+    async function zapRelaysForRecipient(pubkey) {
+      const record = profileRecords.get(pubkey);
+      const age = record ? Date.now() - record.fetchedAt : Infinity;
+      if (!record || !record.event || age > PROFILE_FRESH_MS || record.zappable == null) {
+        const views = await lookupProfiles([pubkey], true);
+        for (const view of views) applyProfileView(view);
+      }
+      if (!relayListMemory.has(pubkey)) await storedRelayList(pubkey);
+      const reads = relaysFromList(relayListMemory.get(pubkey), "read").filter(function(url) {
+        return !RENDEZVOUS_SET.has(url);
+      }).slice(0, WRITE_RELAY_LIMIT);
+      const zapRelays = RENDEZVOUS_RELAYS.concat(reads).slice(0, ZAP_RELAY_LIMIT);
+      zapRelaysByPubkey.set(pubkey, zapRelays);
+      return zapRelays;
+    }
+    function watchOneRelay(pool, relay, filter, onEvent) {
+      return new Promise(function(resolve) {
+        let closer = null;
+        let finished = false;
+        function finish() {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timer);
+          if (closer && typeof closer.close === "function") void closer.close();
+          resolve();
+        }
+        const timer = setTimeout(finish, QUERY_DEADLINE_MS);
+        try {
+          closer = pool.subscribe([relay], filter, {
+            onevent: function(event) {
+              onEvent(event, relay);
+            },
+            oneose: finish,
+            onclose: finish,
+            maxWait: QUERY_DEADLINE_MS
+          });
+        } catch (_error) {
+          finish();
+        }
+      });
+    }
+    async function handleLikeRead(operation, payload) {
+      if (!payloadAllows(payload, ["relays", "url"]) || !isAllowedContentUrl(payload.url) || !Array.from(actionContexts.values()).some(function(context) {
+        return context.url === payload.url;
+      })) {
+        throw new Error("Known-reaction request contains unexpected data");
+      }
+      const publicKey = await extension.storage.getKnownPubkey();
+      if (operation === "getCachedLikeState") {
+        const cachedEvents = await getRecentReactions(payload.url);
+        const latest = findLatestReaction(cachedEvents, publicKey);
+        return {
+          found: Boolean(latest),
+          isLiked: latest?.content === "+" || latest?.content === ""
+        };
+      }
+      const urlKey = await pageUrlKey(payload.url);
+      if (!urlKey) throw new Error("Like count is unavailable");
+      const activityPromise = requestActivity({ urlKey, recipient: null });
+      let viewerPromise = Promise.resolve({ ok: false, reactions: [] });
+      if (publicKey) {
+        void ensureSignerRelays(publicKey).catch(function() {
+        });
+        viewerPromise = viewerReactionsOnce(publicKey);
+      }
+      const row = await activityPromise;
+      const viewer = await viewerPromise;
+      const local = findLatestReaction(await getRecentReactions(payload.url), publicKey);
+      const remote = newestViewerReaction(viewer.reactions, urlKey);
       return {
-        totalSats,
-        eventCount,
-        rows: rows.slice(0, RECEIPT_ROW_LIMIT)
+        totalCount: countOf(row.likes),
+        likedCount: countOf(row.likes),
+        dislikedCount: countOf(row.dislikes),
+        isLiked: likedNow(local, remote, viewer.ok)
       };
     }
-    async function readReceipt(pubkey, aTag) {
-      const key = pubkey + "\n" + aTag;
-      const memory = unexpiredEntry(receiptMemory.get(key));
-      if (!memory) receiptMemory.delete(key);
-      if (memory) return memory;
-      if (typeof extension.storage.getZapReceipt !== "function") return null;
-      const stored = await extension.storage.getZapReceipt(pubkey, aTag);
-      if (!stored) return null;
-      const entry = {
-        summary: {
-          totalSats: stored.totalSats,
-          eventCount: stored.eventCount,
-          rows: stored.rows
+    async function handleGetProfiles(payload) {
+      if (!payloadAllows(payload, ["actionId", "pubkeys"]) || !Array.isArray(payload.pubkeys)) {
+        throw new Error("Profile request contains unexpected data");
+      }
+      getActionContext(payload.actionId, false);
+      if (payload.pubkeys.length < 1 || payload.pubkeys.length > PROFILE_PUBKEY_LIMIT) {
+        throw new Error("Profile request contains unexpected data");
+      }
+      const pubkeys = [];
+      for (const value of payload.pubkeys) {
+        const pubkey = String(value || "").toLowerCase();
+        if (!HEX_64_PATTERN.test(pubkey) || pubkeys.indexOf(pubkey) !== -1) {
+          throw new Error("Profile request contains unexpected data");
+        }
+        pubkeys.push(pubkey);
+      }
+      const views = await lookupProfiles(pubkeys, false);
+      const events = [];
+      const requested = new Set(pubkeys);
+      for (const view of views) {
+        if (!requested.has(String(view && view.pubkey || "").toLowerCase())) continue;
+        const kept = applyProfileView(view);
+        if (kept.profile) events.push(kept.profile);
+        if (kept.relayList) events.push(kept.relayList);
+      }
+      return events;
+    }
+    async function handleGetZapRoute(payload) {
+      if (!payloadAllows(payload, ["actionId"])) {
+        throw new Error("Zap route request contains unexpected data");
+      }
+      const context = getActionContext(payload.actionId, true);
+      const zapRelays = await zapRelaysForRecipient(context.recipientPubkey);
+      const provider = await resolveZapProvider(payload.actionId, context);
+      return {
+        provider: {
+          lnurl: provider.lnurl,
+          callback: provider.callback,
+          nostrPubkey: provider.nostrPubkey
         },
-        events: null,
-        expiresAt: stored.expiresAt
+        zapRelays
       };
-      rememberBounded(receiptMemory, key, entry, MEMORY_RECEIPT_LIMIT);
-      return entry;
     }
-    async function rememberSummary(pubkey, aTag, summary, events) {
-      if (!summary || summary.eventCount < 1) return;
-      const key = pubkey + "\n" + aTag;
-      const now2 = Date.now();
-      const keepEvents = Array.isArray(events) && events.length === summary.eventCount && events.length <= RECEIPT_ROW_LIMIT;
-      rememberBounded(receiptMemory, key, {
-        summary,
-        events: keepEvents ? events : null,
-        expiresAt: now2 + ZAP_CACHE_STALE_MS
-      }, MEMORY_RECEIPT_LIMIT);
-      if (typeof extension.storage.setZapReceipt === "function") {
-        await extension.storage.setZapReceipt(pubkey, aTag, summary, ZAP_CACHE_STALE_MS);
+    async function handleGetZapSummary(payload) {
+      if (!payloadAllows(payload, ["actionId"])) {
+        throw new Error("Zap summary request contains unexpected data");
       }
+      const context = getActionContext(payload.actionId, true);
+      const urlKey = await pageUrlKey(context.url);
+      if (!urlKey) throw new Error("Zap total is unavailable");
+      const row = await requestActivity({
+        urlKey,
+        recipient: context.recipientPubkey
+      });
+      return {
+        totalAmount: countOf(row.sats),
+        zapDetails: []
+      };
     }
-    async function rememberReceipts(pubkey, aTag, events) {
-      const summary = summarizeReceipts(events);
-      await rememberSummary(pubkey, aTag, summary, events);
+    async function handleListZaps(payload) {
+      if (!payloadAllows(payload, ["actionId"])) {
+        throw new Error("Zap list request contains unexpected data");
+      }
+      const context = getActionContext(payload.actionId, true);
+      const urlKey = await pageUrlKey(context.url);
+      if (!urlKey) throw new Error("Zap total is unavailable");
+      const result = await sendExtensionMessage({
+        type: "LIST_URL_EVENTS",
+        key: urlKey,
+        recipient: context.recipientPubkey,
+        limit: "50"
+      });
+      if (!result || !Array.isArray(result.zaps)) {
+        throw new Error("Zap total is unavailable");
+      }
+      return result.zaps.map(function(row) {
+        const author = typeof row.senderPubkey === "string" ? row.senderPubkey.toLowerCase() : "";
+        return {
+          amount: countOf(row.sats),
+          createdAt: Number.isFinite(Number(row.createdAt)) ? Number(row.createdAt) : 0,
+          authorPubkey: HEX_64_PATTERN.test(author) ? author : null,
+          comment: typeof row.comment === "string" ? row.comment : ""
+        };
+      });
     }
-    async function queryZapReceiptsUncached(pool, relays, filter) {
-      const pubkey = filter["#p"][0];
-      const aTag = filter["#a"] ? filter["#a"][0] : "";
-      const live = await queryWithFastQuorum(
-        pool,
-        relays,
-        filter,
-        { requireEvent: true }
-      );
-      const stored = await readReceipt(pubkey, aTag);
-      const providerEntry = await readProvider(pubkey);
-      const provider = providerEntry && providerEntry.value;
-      const validated = validatedZapReceipts(live, filter, provider);
-      if (validated.length === 0) {
-        if (stored) return receiptCacheMarker(stored.summary);
-        return live;
+    async function handleReceiptWatch(pool, payload) {
+      if (!payloadAllows(payload, ["relays", "filter", "actionId"])) {
+        throw new Error("Relay request contains an unsupported filter");
       }
-      if (!stored) {
-        await rememberReceipts(pubkey, aTag, validated);
-        return validated;
+      const filter = validateFilter(payload.filter);
+      if (!filter || filter.kinds[0] !== 9735 || filter.since === void 0 || !isFilterBoundToAction(filter, payload.actionId)) {
+        throw new Error("Relay request contains an unsupported filter");
       }
-      const haveEvents = Boolean(
-        stored.events && stored.events.length > 0 && stored.events.length === stored.summary.eventCount
-      );
-      if (haveEvents) {
-        const byId = /* @__PURE__ */ new Map();
-        for (const event of validatedZapReceipts(stored.events, filter, provider)) {
-          byId.set(String(event.id).toLowerCase(), event);
-        }
-        for (const event of validated) {
-          byId.set(String(event.id).toLowerCase(), event);
-        }
-        const union = Array.from(byId.values());
-        await rememberReceipts(pubkey, aTag, union);
-        return union;
-      }
-      const known = new Set(stored.summary.rows.map(function(row) {
-        return row.id;
+      const recipient = filter["#p"][0];
+      const relays = zapRelaysByPubkey.get(recipient) || RENDEZVOUS_RELAYS.slice();
+      const events = [];
+      const seen = /* @__PURE__ */ new Set();
+      await Promise.all(relays.map(function(relay) {
+        return watchOneRelay(pool, relay, filter, function(event, source) {
+          if (!event || !event.id || seen.has(event.id)) return;
+          seen.add(event.id);
+          events.push(event);
+          if (SWEEP_RELAYS.has(source)) void pushUrlEvent(event, source);
+        });
       }));
-      const novel = validated.filter(function(event) {
-        return !known.has(String(event.id || "").toLowerCase());
-      });
-      if (novel.length === 0) return receiptCacheMarker(stored.summary);
-      const summary = mergeStoredSummary(stored.summary, novel);
-      await rememberSummary(pubkey, aTag, summary, null);
-      return receiptCacheMarker(summary);
+      return events;
     }
-    function queryZapReceipts(pool, relays, filter) {
-      const key = filter["#p"][0] + "\n" + (filter["#a"] ? filter["#a"][0] : "");
-      const pending = receiptInflight.get(key);
-      if (pending) return pending;
-      const next = queryZapReceiptsUncached(pool, relays, filter).finally(function() {
-        if (receiptInflight.get(key) === next) receiptInflight.delete(key);
-      });
-      receiptInflight.set(key, next);
-      return next;
+    async function handlePublish(pool, payload) {
+      const actionId = String(payload && payload.actionId || "");
+      const actionContext = ACTION_ID_PATTERN.test(actionId) ? actionContexts.get(actionId) : null;
+      if (!payloadAllows(payload, ["relays", "event", "actionId"]) || !actionContext) {
+        throw new Error("Relay publish is not bound to an action");
+      }
+      const event = validateReactionEvent(payload.event, actionContext.url);
+      if (!event) throw new Error("Relay request contains an invalid reaction event");
+      let acceptedRelay;
+      try {
+        acceptedRelay = await Promise.any(RENDEZVOUS_RELAYS.map(function(relay) {
+          return publishOne(pool, relay, event);
+        }));
+      } catch (_error) {
+        throw new Error("No relay acknowledged the reaction event");
+      }
+      await extension.storage.setKnownPubkey(event.pubkey);
+      await rememberRecentReaction(event);
+      const writesPromise = ensureSignerRelays(event.pubkey);
+      void settleWriteRelays(pool, event, writesPromise);
+      void pushUrlEvent(event, acceptedRelay);
+      return null;
     }
     function getExactTag(event, name) {
       const matches = event.tags.filter(function(tag) {
@@ -9138,15 +8847,16 @@
       }) || !verifyEvent(event)) {
         return null;
       }
-      const expectedATag = "39735:" + context.recipientPubkey + ":" + normalizeURL2(context.url);
-      if (String(getExactTag(event, "p") || "").toLowerCase() !== context.recipientPubkey || getExactTag(event, "amount") !== String(amount) || getExactTag(event, "a") !== expectedATag) {
+      const pageUrl = canonicalUrl(context.url);
+      const expectedATag = pageUrl ? "39735:" + context.recipientPubkey + ":" + pageUrl : null;
+      if (!pageUrl || String(getExactTag(event, "p") || "").toLowerCase() !== context.recipientPubkey || getExactTag(event, "amount") !== String(amount) || getExactTag(event, "a") !== expectedATag) {
         return null;
       }
       return event;
     }
     function getInvoiceAmountMsats(invoice) {
       try {
-        const decoded = (0, import_light_bolt11_decoder2.decode)(invoice);
+        const decoded = (0, import_light_bolt11_decoder.decode)(invoice);
         const amount = decoded.sections.find(function(section) {
           return section.name === "amount";
         });
@@ -9157,7 +8867,7 @@
         return null;
       }
     }
-    async function fetchZapInvoice(pool, relays, payload) {
+    async function fetchZapInvoice(payload) {
       const context = getActionContext(payload?.actionId, true);
       const amount = payload?.amount;
       const comment = typeof payload?.comment === "string" ? payload.comment : "";
@@ -9175,12 +8885,11 @@
       if (!zapEvent) {
         throw new Error("Zap request is not bound to the active recipient");
       }
+      assertZapRequestRelays(zapEvent);
       let lastError = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
           const provider = await resolveZapProvider(
-            pool,
-            relays,
             payload.actionId,
             context,
             {
@@ -9243,135 +8952,41 @@
     }
     async function handleRequest(pool, message) {
       const payload = message.payload;
-      const relays = validateRelays(payload && payload.relays);
-      if (!relays) {
-        throw new Error("Relay request contains an unsupported relay list");
-      }
       if (message.operation === "getCachedLikeState" || message.operation === "getLikeState") {
-        if (!payload || Object.keys(payload).some((key) => key !== "relays" && key !== "url") || !isAllowedContentUrl(payload.url) || !Array.from(actionContexts.values()).some(
-          (context) => context.url === payload.url
-        )) {
-          throw new Error("Known-reaction request contains unexpected data");
-        }
-        const publicKey = await extension.storage.getKnownPubkey();
-        if (message.operation === "getCachedLikeState") {
-          const cachedEvents = await getRecentReactions(payload.url);
-          const latest2 = findLatestReaction(cachedEvents, publicKey);
-          return {
-            found: Boolean(latest2),
-            isLiked: latest2?.content === "+" || latest2?.content === ""
-          };
-        }
-        const countFilter = {
-          kinds: [17],
-          "#k": ["web"],
-          "#i": [payload.url],
-          limit: 1e3
-        };
-        const filters = [countFilter];
-        if (publicKey) {
-          filters.push({
-            kinds: [17],
-            authors: [publicKey],
-            "#k": ["web"],
-            "#i": [payload.url],
-            limit: 1
-          });
-        }
-        const queriedEvents = await queryWithFastQuorum(pool, relays, filters);
-        const recentEvents = await getRecentReactions(payload.url);
-        const eventsById = new Map(
-          [...queriedEvents, ...recentEvents].map((event) => [event.id, event])
-        );
-        const events = Array.from(eventsById.values());
-        const latest = findLatestReaction(events, publicKey);
-        return {
-          ...summarizeReactionEvents(events),
-          isLiked: latest?.content === "+" || latest?.content === ""
-        };
+        return handleLikeRead(message.operation, payload);
+      }
+      if (message.operation === "getProfiles") {
+        return handleGetProfiles(payload);
+      }
+      if (message.operation === "getZapRoute") {
+        return handleGetZapRoute(payload);
+      }
+      if (message.operation === "getZapSummary") {
+        return handleGetZapSummary(payload);
+      }
+      if (message.operation === "listZaps") {
+        return handleListZaps(payload);
       }
       if (message.operation === "query") {
-        const filter = validateFilter(payload.filter);
-        if (Object.keys(payload).some(
-          (key) => key !== "relays" && key !== "filter" && key !== "actionId"
-        ) || !filter || !isFilterBoundToAction(filter, payload.actionId)) {
-          throw new Error("Relay request contains an unsupported filter");
-        }
-        const profileQuery = filter.kinds[0] === 0;
-        const singleProfileLookup = profileQuery && filter.authors.length === 1;
-        const zapQuery = filter.kinds[0] === 9735;
-        if (singleProfileLookup) {
-          const profile = await loadVerifiedProfile(
-            pool,
-            relays,
-            filter.authors[0]
-          );
-          return profile ? [profile] : [];
-        }
-        if (zapQuery && filter.since === void 0) {
-          return queryZapReceipts(pool, relays, filter);
-        }
-        const events = await queryWithFastQuorum(
-          pool,
-          relays,
-          filter,
-          zapQuery ? { requireEvent: true } : void 0
-        );
-        if (!profileQuery) return events;
-        const authors = new Set(filter.authors);
-        return events.filter(function(event) {
-          return event?.kind === 0 && authors.has(String(event.pubkey || "").toLowerCase()) && verifyEvent(event);
-        });
+        return handleReceiptWatch(pool, payload);
       }
       if (message.operation === "publish") {
-        const actionId = String(payload?.actionId || "");
-        const actionContext = ACTION_ID_PATTERN.test(actionId) ? actionContexts.get(actionId) : null;
-        if (!payload || Object.keys(payload).some(
-          (key) => key !== "relays" && key !== "event" && key !== "actionId"
-        ) || !actionContext) {
-          throw new Error("Relay publish is not bound to an action");
-        }
-        const event = validateReactionEvent(
-          payload.event,
-          actionContext.url
-        );
-        if (!event) {
-          throw new Error("Relay request contains an invalid reaction event");
-        }
-        const publishes = pool.publish(relays, event);
-        if (!Array.isArray(publishes) || publishes.length === 0) {
-          throw new Error("No relay accepted the reaction event");
-        }
-        try {
-          await Promise.any(publishes);
-        } catch (_error) {
-          throw new Error("No relay acknowledged the reaction event");
-        }
-        await extension.storage.setKnownPubkey(event.pubkey);
-        await rememberRecentReaction(event);
-        return null;
+        return handlePublish(pool, payload);
       }
       if (message.operation === "getZapProvider" || message.operation === "fetchZapInvoice") {
         const context = getActionContext(payload?.actionId, true);
         if (message.operation === "getZapProvider") {
-          if (Object.keys(payload).some(
-            (key) => key !== "actionId" && key !== "relays"
-          )) {
+          if (!payloadAllows(payload, ["actionId", "relays"])) {
             throw new Error("Zap provider request contains unexpected data");
           }
-          const provider = await resolveZapProvider(
-            pool,
-            relays,
-            payload.actionId,
-            context
-          );
+          const provider = await resolveZapProvider(payload.actionId, context);
           return {
             lnurl: provider.lnurl,
             callback: provider.callback,
             nostrPubkey: provider.nostrPubkey
           };
         }
-        return fetchZapInvoice(pool, relays, payload);
+        return fetchZapInvoice(payload);
       }
       throw new Error("Unsupported relay operation");
     }
@@ -9466,7 +9081,7 @@
       validateReactionEvent,
       registerActionContext,
       revokeActionContext,
-      validateRelays,
+      seedIdentity,
       isAllowedZapHttpUrl: function(value) {
         return Boolean(extension.zapHttp && extension.zapHttp.isAllowedZapHttpUrl(value));
       }
@@ -9507,7 +9122,4 @@
 
 @noble/ciphers/esm/utils.js:
   (*! noble-ciphers - MIT License (c) 2023 Paul Miller (paulmillr.com) *)
-
-@noble/hashes/esm/utils.js:
-  (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 */

@@ -10,6 +10,7 @@ import {
   installComponentHydrator
 } from '../src/component-hydrator.js';
 import { createMainRelayTransport } from '../src/main-relay-transport';
+import { fetchInvoiceForAction } from '../../src/nostr-zap-button/zap-utils';
 import { getTrustedActionContext } from '../../src/common/trusted-action-context';
 import {
   BOLT11_20U,
@@ -59,7 +60,7 @@ afterEach(function () {
 });
 
 describe('URL normalization', function () {
-  it('uses the repository normalizer for X status identifiers', function () {
+  it('uses the repository normalizer for X status identifiers', async function () {
     const parsed = extension.url.parseTweetUrl(
       '/Jack/status/1234567890/?s=20#fragment',
       'https://x.com'
@@ -69,8 +70,11 @@ describe('URL normalization', function () {
       pathname: '/Jack/status/1234567890',
       username: 'jack',
       statusId: '1234567890',
-      canonicalUrl: 'https://x.com/Jack/status/1234567890'
+      canonicalUrl: 'https://x.com/jack/status/1234567890'
     });
+    expect(await extension.url.urlKey('https://twitter.com/Jack/status/123?s=1')).toBe(
+      'ef553a8af8cf4ce81ec85ef59d668f1840cd5ac188a51562b154b779974c0723'
+    );
   });
 
   it('rejects status-shaped URLs from unsupported hosts', function () {
@@ -1241,6 +1245,51 @@ describe('Firestore directory cache', function () {
     await extension.directory.lookup('NonZappableUser');
     expect(requested).toHaveLength(2);
   });
+
+  it('does not cache a lookup whose zap check is still unfinished', async function () {
+    const stored = {};
+    const requested = [];
+    globalThis.browser = {
+      runtime: {
+        async sendMessage(message) {
+          requested.push(message);
+          return {
+            ok: true,
+            result: {
+              found: true,
+              verified: true,
+              handle: message.handle,
+              activeIdentity: {
+                pubkey: 'ab'.repeat(32),
+                npub: 'npub1pending',
+                zappable: null,
+                profileEvent: { kind: 0 },
+                relayListEvent: { kind: 10002 }
+              }
+            }
+          };
+        }
+      },
+      storage: {
+        local: {
+          async get(key) {
+            return { [key]: stored[key] };
+          },
+          async set(next) {
+            Object.assign(stored, next);
+          }
+        }
+      }
+    };
+
+    const first = await extension.directory.lookup('PendingZap');
+    const second = await extension.directory.lookup('PendingZap');
+    expect(requested).toHaveLength(2);
+    expect(first.activeIdentity.zappable).toBeNull();
+    expect(second.activeIdentity.profileEvent).toBeUndefined();
+    expect(second.activeIdentity.relayListEvent).toBeUndefined();
+    expect(Object.keys(stored)).toHaveLength(0);
+  });
 });
 
 describe('X action placement', function () {
@@ -1446,7 +1495,7 @@ describe('X action placement', function () {
     expect(tweetInfo).toMatchObject({
       username: 'rene',
       statusId: '1833951862879334400',
-      canonicalUrl: 'https://x.com/Rene/status/1833951862879334400'
+      canonicalUrl: 'https://x.com/rene/status/1833951862879334400'
     });
   });
 
@@ -1629,18 +1678,17 @@ describe('CSP-safe component and relay integration', function () {
     expect(manifest.content_scripts[0].matches).toEqual(
       expect.arrayContaining(['https://www.youtube.com/*', 'https://m.youtube.com/*'])
     );
+    expect(manifest.host_permissions.filter(function (permission) {
+      return permission.startsWith('wss://');
+    })).toEqual([
+      'wss://relay.ditto.pub/*',
+      'wss://nostr.mom/*',
+      'wss://relay.damus.io/*',
+      'wss://nostr.oxtr.dev/*',
+      'wss://relay.nostr.wirednet.jp/*'
+    ]);
     expect(manifest.host_permissions).toEqual(
-      expect.arrayContaining([
-        'wss://relay.damus.io/*',
-        'wss://nostr.wine/*',
-        'wss://relay.nostr.net/*',
-        'wss://relay.nostr.band/*',
-        'wss://nos.lol/*',
-        'wss://nostr-pub.wellorder.net/*',
-        'wss://relay.getalby.com/*',
-        'wss://relay.primal.net/*',
-        'https://*/*'
-      ])
+      expect.arrayContaining(['https://*/*'])
     );
 
     const componentBundle = readFileSync(
@@ -1830,7 +1878,34 @@ describe('CSP-safe component and relay integration', function () {
     });
     await posted;
 
-    expect(scheduledDelays).toEqual([15_000, 25_000]);
+    const more = [
+      () => transport.getLikeState(['wss://relay.damus.io'], 'https://x.com/a/status/1'),
+      () => transport.getZapSummary('a'.repeat(64)),
+      () => transport.listZaps('a'.repeat(64)),
+      () => transport.getProfiles('a'.repeat(64), ['b'.repeat(64)]),
+      () => transport.getZapRoute('a'.repeat(64)),
+      () => transport.publish(['wss://relay.damus.io'], { kind: 17 }, 'a'.repeat(64)),
+      () => transport.query(['wss://relay.damus.io'], { kinds: [9735] })
+    ];
+    for (const call of more) {
+      posted = new Promise(function (resolve) {
+        resolvePosted = resolve;
+      });
+      void call();
+      await posted;
+    }
+
+    expect(scheduledDelays).toEqual([
+      15_000,
+      25_000,
+      7_000,
+      7_000,
+      7_000,
+      10_000,
+      20_000,
+      12_000,
+      4_000
+    ]);
   });
 
   it('accepts the document-start bootstrap once without exposing channels', async function () {
@@ -2020,27 +2095,87 @@ describe('CSP-safe component and relay integration', function () {
         responses.push({ message: message, targetOrigin: targetOrigin });
       }
     };
-    const existingLike = {
-      id: 'f'.repeat(64),
-      pubkey: 'a'.repeat(64),
-      created_at: 20,
-      kind: 17,
-      content: '+',
-      tags: [],
-      sig: 'e'.repeat(128)
-    };
+    const pageUrl = 'https://x.com/alokdangre/status/42';
+    const pageKey = await extension.url.urlKey(pageUrl);
+    const signerSecret = new Uint8Array(32).fill(7);
+    const signerRelayList = finalizeEvent(
+      {
+        kind: 10002,
+        created_at: 30,
+        content: '',
+        tags: [['r', 'wss://nos.lol', 'write']]
+      },
+      signerSecret
+    );
+    let releaseWrite;
+    let writeFinished = false;
+    const writeGate = new Promise(function (resolve) {
+      releaseWrite = function () {
+        writeFinished = true;
+        resolve('saved');
+      };
+    });
     const pool = {
-      subscribeMany: vi.fn(function (_relays, _filters, options) {
-        queueMicrotask(function () {
-          options.onevent(existingLike);
-          options.oneose();
-        });
-        return { close: vi.fn(async function () {}) };
-      }),
-      publish: vi.fn(function () {
-        return [Promise.resolve('saved')];
+      subscribe: vi.fn(),
+      subscribeMany: vi.fn(),
+      publish: vi.fn(function (relays) {
+        if (relays[0] === 'wss://nos.lol/') return [writeGate];
+        if (relays[0] === 'wss://relay.ditto.pub/') return [Promise.resolve('saved')];
+        return [new Promise(function () {})];
       }),
       destroy: vi.fn()
+    };
+    globalThis.chrome = {
+      runtime: {
+        sendMessage(message, callback) {
+          if (message.type === 'GET_URL_ACTIVITY') {
+            const urlKey = String(message.items).split(':')[0];
+            callback({
+              ok: true,
+              result: {
+                items: [{
+                  urlKey: urlKey,
+                  recipient: null,
+                  likes: 1,
+                  dislikes: 0,
+                  zapCount: null,
+                  sats: null
+                }]
+              }
+            });
+            return;
+          }
+          if (message.type === 'LIST_VIEWER_REACTIONS') {
+            callback({ ok: false, error: 'viewer list failed' });
+            return;
+          }
+          if (message.type === 'LOOKUP_NOSTR_PROFILES') {
+            callback({
+              ok: true,
+              result: {
+                profiles: [{
+                  pubkey: message.pubkeys,
+                  profileEvent: null,
+                  relayListEvent: signerRelayList,
+                  zappable: null
+                }]
+              }
+            });
+            return;
+          }
+          if (message.type === 'INGEST_URL_EVENT') {
+            callback({
+              ok: true,
+              result: {
+                ok: true,
+                activity: { urlKey: pageKey, likeCount: 2, dislikeCount: 0 }
+              }
+            });
+            return;
+          }
+          callback({ ok: false, error: 'unexpected extension message' });
+        }
+      }
     };
     const originalGetKnownPubkey = extension.storage.getKnownPubkey;
     const originalSetKnownPubkey = extension.storage.setKnownPubkey;
@@ -2108,7 +2243,7 @@ describe('CSP-safe component and relay integration', function () {
         ],
         created_at: 1234567890
       },
-      new Uint8Array(32).fill(7)
+      signerSecret
     );
     const substitutedEvent = finalizeEvent(
       {
@@ -2168,29 +2303,23 @@ describe('CSP-safe component and relay integration', function () {
       )
     });
 
-    const normalizedRelays = ['wss://relay.damus.io/'];
-    expect(pool.subscribeMany).toHaveBeenCalledWith(
-      normalizedRelays,
-      [
-        filter,
-        {
-          ...filter,
-          authors: ['a'.repeat(64)],
-          limit: 1
-        }
-      ],
-      expect.objectContaining({ maxWait: 2500 })
+    expect(pool.subscribeMany).not.toHaveBeenCalled();
+    expect(pool.publish).toHaveBeenCalledWith(
+      ['wss://relay.ditto.pub/'],
+      expect.objectContaining({ id: signedEvent.id })
     );
     expect(pool.publish).toHaveBeenCalledWith(
-      normalizedRelays,
-      expect.objectContaining({
-        id: signedEvent.id,
-        pubkey: signedEvent.pubkey,
-        sig: signedEvent.sig,
-        content: signedEvent.content,
-        tags: signedEvent.tags
-      })
+      ['wss://relay.damus.io/'],
+      expect.objectContaining({ id: signedEvent.id })
     );
+    await vi.waitFor(function () {
+      expect(pool.publish).toHaveBeenCalledWith(
+        ['wss://nos.lol/'],
+        expect.objectContaining({ id: signedEvent.id })
+      );
+    });
+    expect(writeFinished).toBe(false);
+    releaseWrite();
     expect(responses.map((entry) => entry.message.ok)).toEqual([
       true,
       false,
@@ -2203,11 +2332,11 @@ describe('CSP-safe component and relay integration', function () {
       totalCount: 1,
       likedCount: 1,
       dislikedCount: 0,
-      isLiked: true
+      isLiked: false
     });
     expect(JSON.stringify(responses[0].message)).not.toContain('a'.repeat(64));
+    expect(responses[3].message.ok).toBe(true);
     expect(responses[4].message.result).toMatchObject({
-      totalCount: 2,
       isLiked: true
     });
     expect(
@@ -2315,19 +2444,31 @@ describe('CSP-safe component and relay integration', function () {
       url: 'https://x.com/alice/status/42',
       recipientNpub: null
     });
+    globalThis.chrome = {
+      runtime: {
+        sendMessage(message, callback) {
+          callback({
+            ok: true,
+            result: {
+              profiles: [{
+                pubkey: profile.pubkey,
+                profileEvent: profile,
+                relayListEvent: null,
+                zappable: true
+              }]
+            }
+          });
+        }
+      }
+    };
     const request = (requestId) =>
       createAuthenticatedRelayRequest(
         channel,
         requestId,
-        'query',
+        'getProfiles',
         {
-          relays: ['wss://relay.damus.io'],
-          filter: {
-            kinds: [0],
-            authors: [profile.pubkey],
-            limit: 1
-          },
-          actionId
+          actionId,
+          pubkeys: [profile.pubkey]
         }
       );
 
@@ -2405,7 +2546,13 @@ describe('CSP-safe component and relay integration', function () {
           ['p', profile.pubkey],
           ['amount', String(amount)],
           ['a', '39735:' + profile.pubkey + ':' + contentUrl],
-          ['relays', 'wss://relay.damus.io/']
+          ['relays',
+            'wss://relay.ditto.pub/',
+            'wss://nostr.mom/',
+            'wss://relay.damus.io/',
+            'wss://nostr.oxtr.dev/',
+            'wss://relay.nostr.wirednet.jp/'
+          ]
         ]
       },
       new Uint8Array(32).fill(13)
@@ -2417,6 +2564,20 @@ describe('CSP-safe component and relay integration', function () {
       runtime: {
         sendMessage(message, callback) {
           backgroundRequests.push(message);
+          if (message.type === 'LOOKUP_NOSTR_PROFILES') {
+            callback({
+              ok: true,
+              result: {
+                profiles: [{
+                  pubkey: profile.pubkey,
+                  profileEvent: profile,
+                  relayListEvent: null,
+                  zappable: true
+                }]
+              }
+            });
+            return;
+          }
           if (message.url.includes('/.well-known/lnurlp/')) {
             callback({
               ok: true,
@@ -2535,10 +2696,11 @@ describe('CSP-safe component and relay integration', function () {
     expect(responses[1].ok).toBe(false);
     expect(responses[1].error).toContain('no longer active');
     expect(responses[2].ok).toBe(false);
-    expect(backgroundRequests).toHaveLength(3);
-    expect(backgroundRequests[0].url).toBe(canonicalLnurl);
-    expect(backgroundRequests[1].url).toContain('amount=' + amount);
-    expect(backgroundRequests[1].url).toContain(
+    expect(backgroundRequests).toHaveLength(4);
+    expect(backgroundRequests[0].type).toBe('LOOKUP_NOSTR_PROFILES');
+    expect(backgroundRequests[1].url).toBe(canonicalLnurl);
+    expect(backgroundRequests[2].url).toContain('amount=' + amount);
+    expect(backgroundRequests[2].url).toContain(
       'nostr=' + encodeURIComponent(JSON.stringify(zapEvent))
     );
     expect(extension.zapHttp.isAllowedZapHttpUrl('https://ln.example/.well-known/lnurlp/alice')).toBe(true);
@@ -2815,8 +2977,10 @@ describe('CSP-safe component and relay integration', function () {
         pubkey: 'e'.repeat(64)
       };
       let subscriptionIndex = 0;
+      const watchedRelays = [];
       const pool = {
-        subscribe(_relays, _filter, options) {
+        subscribe(relays, _filter, options) {
+          watchedRelays.push(relays[0]);
           const index = subscriptionIndex++;
           if (index < 3) {
             queueMicrotask(function () {
@@ -2863,6 +3027,7 @@ describe('CSP-safe component and relay integration', function () {
               kinds: [9735],
               '#p': [pubkey],
               '#a': ['39735:' + pubkey + ':' + statusUrl],
+              since: 1,
               limit: 1000
             }
           }
@@ -2874,6 +3039,9 @@ describe('CSP-safe component and relay integration', function () {
         receipt.id,
         laterReceipt.id
       ]);
+      expect(watchedRelays).toContain('wss://relay.ditto.pub/');
+      expect(watchedRelays).not.toContain('wss://relay.getalby.com/');
+      expect(watchedRelays).not.toContain('wss://relay.primal.net/');
       session.dispose();
     } finally {
       extension.relayClient = originalRelayClient;
@@ -2886,7 +3054,6 @@ describe('CSP-safe component and relay integration', function () {
     try {
       const listeners = new Map();
       const responses = [];
-      const subscribedRelays = [];
       const pageWindow = {
         location: { origin: 'https://x.com' },
         addEventListener(type, listener) {
@@ -2925,56 +3092,47 @@ describe('CSP-safe component and relay integration', function () {
         },
         profileKey
       );
-      const wrongAuthor = finalizeEvent(
+      const ownList = finalizeEvent(
         {
-          kind: 0,
-          created_at: 99,
-          tags: [],
-          content: JSON.stringify({ name: 'Someone Else', lud16: 'other@example.com' })
+          kind: 10002,
+          created_at: 5,
+          content: '',
+          tags: [['r', 'wss://nos.lol', 'write']]
+        },
+        profileKey
+      );
+      const otherList = finalizeEvent(
+        {
+          kind: 10002,
+          created_at: 90,
+          content: '',
+          tags: [['r', 'wss://evil.example', 'write']]
         },
         new Uint8Array(32).fill(24)
       );
-      const requestedRelays = [
-        'wss://relay.damus.io',
-        'wss://relay.primal.net',
-        'wss://nostr.wine',
-        'wss://relay.nostr.net',
-        'wss://nos.lol',
-        'wss://purplepag.es'
-      ];
-      const pool = {
-        subscribe(relays, _filter, options) {
-          const relay = relays[0];
-          const close = vi.fn(async function () {});
-          subscribedRelays.push(relay);
-          if (relay.includes('relay.damus.io')) {
-            queueMicrotask(function () {
-              options.onevent(wrongAuthor);
-              options.onevent(olderProfile);
-              options.oneose();
+      const badList = JSON.parse(JSON.stringify(ownList));
+      badList.sig = 'ab'.repeat(64);
+      let phase = 'older';
+      globalThis.chrome = {
+        runtime: {
+          sendMessage(_message, callback) {
+            const profileEvent = phase === 'newer' ? profile : olderProfile;
+            const relayListEvent = phase === 'bad' ? badList : phase === 'other' ? otherList : ownList;
+            callback({
+              ok: true,
+              result: {
+                profiles: [{
+                  pubkey: profile.pubkey,
+                  profileEvent: profileEvent,
+                  relayListEvent: relayListEvent,
+                  zappable: true
+                }]
+              }
             });
-            return { close: close };
           }
-          if (relay.includes('purplepag.es')) {
-            setTimeout(function () {
-              options.onevent(profile);
-              options.oneose();
-            }, 20);
-            return { close: close };
-          }
-          if (relay.includes('nostr.wine')) {
-            setTimeout(function () {
-              options.onevent(olderProfile);
-              options.oneose();
-            }, 40);
-            return { close: close };
-          }
-          queueMicrotask(function () {
-            options.oneose();
-          });
-          return { close: close };
         }
       };
+      const pool = { subscribe: vi.fn(), destroy: vi.fn() };
       const channel = 'd'.repeat(64);
       const actionId = 'e'.repeat(64);
       const session = extension.relayClient.configure(channel, {
@@ -2987,29 +3145,39 @@ describe('CSP-safe component and relay integration', function () {
         recipientNpub: nip19.npubEncode(profile.pubkey)
       });
 
-      await listeners.get('message')({
-        source: pageWindow,
-        origin: 'https://x.com',
-        data: await createAuthenticatedRelayRequest(
-          channel,
-          'f'.repeat(32),
-          'query',
-          {
-            actionId: actionId,
-            relays: requestedRelays,
-            filter: {
-              kinds: [0],
-              authors: [profile.pubkey],
-              limit: 1
+      async function askProfiles(requestId) {
+        await listeners.get('message')({
+          source: pageWindow,
+          origin: 'https://x.com',
+          data: await createAuthenticatedRelayRequest(
+            channel,
+            requestId,
+            'getProfiles',
+            {
+              actionId: actionId,
+              pubkeys: [profile.pubkey]
             }
-          }
-        )
-      });
+          )
+        });
+      }
 
-      expect(subscribedRelays).toHaveLength(requestedRelays.length);
-      expect(subscribedRelays.some((relay) => relay.includes('purplepag.es'))).toBe(true);
+      phase = 'bad';
+      await askProfiles('1'.repeat(32));
+      phase = 'other';
+      await askProfiles('2'.repeat(32));
+      phase = 'newer';
+      await askProfiles('3'.repeat(32));
+      phase = 'older';
+      await askProfiles('4'.repeat(32));
+
+      expect(pool.subscribe).not.toHaveBeenCalled();
       expect(responses[0].ok).toBe(true);
-      expect(responses[0].result.map((event) => event.id)).toEqual([profile.id]);
+      expect(responses[0].result.map((event) => event.id)).toEqual([olderProfile.id]);
+      expect(responses[1].result.map((event) => event.id)).toEqual([olderProfile.id]);
+      expect(responses[2].result.map((event) => event.kind === 0 ? event.id : null).filter(Boolean)).toEqual([profile.id]);
+      expect(responses[2].result.some((event) => event.pubkey === otherList.pubkey)).toBe(false);
+      expect(responses[3].result.some((event) => event.id === profile.id)).toBe(true);
+      expect(responses[3].result.some((event) => event.id === olderProfile.id)).toBe(false);
       expect(profile.pubkey).toBe(olderProfile.pubkey);
       expect(profile.id).not.toBe(olderProfile.id);
       session.dispose();
@@ -3046,8 +3214,22 @@ describe('CSP-safe component and relay integration', function () {
     const backgroundRequests = [];
     globalThis.chrome = {
       runtime: {
-        sendMessage(_message, callback) {
-          backgroundRequests.push(_message);
+        sendMessage(message, callback) {
+          backgroundRequests.push(message);
+          if (message.type === 'LOOKUP_NOSTR_PROFILES') {
+            callback({
+              ok: true,
+              result: {
+                profiles: [{
+                  pubkey: profile.pubkey,
+                  profileEvent: profile,
+                  relayListEvent: null,
+                  zappable: true
+                }]
+              }
+            });
+            return;
+          }
           callback({
             ok: true,
             result: {
@@ -3120,11 +3302,148 @@ describe('CSP-safe component and relay integration', function () {
       nostrPubkey: servicePubkey
     });
     expect(profile.pubkey).not.toBe(servicePubkey);
-    expect(backgroundRequests[0].url).toBe(
+    expect(backgroundRequests.find((message) => message.type === 'FETCH_HTTPS_JSON').url).toBe(
       'https://getalby.com/.well-known/lnurlp/btcsessions'
     );
     session.dispose();
   });
+});
+
+it('signs a zap request with the route relays and accepts it on the bridge', async function () {
+  const listeners = [];
+  const pageWindow = {
+    location: { origin: 'https://x.com' },
+    addEventListener(_type, listener) {
+      listeners.push(listener);
+    },
+    removeEventListener() {},
+    postMessage(message) {
+      for (const listener of listeners.slice()) {
+        listener({
+          source: pageWindow,
+          origin: 'https://x.com',
+          data: message
+        });
+      }
+    }
+  };
+  const recipientSecret = new Uint8Array(32).fill(19);
+  const profile = finalizeEvent(
+    {
+      kind: 0,
+      created_at: 10,
+      tags: [],
+      content: JSON.stringify({ lud16: 'alice@ln.example' })
+    },
+    recipientSecret
+  );
+  const readRelay = finalizeEvent(
+    {
+      kind: 10002,
+      created_at: 11,
+      content: '',
+      tags: [['r', 'wss://nos.lol', 'read']]
+    },
+    recipientSecret
+  );
+  const watched = [];
+  const pool = {
+    subscribe(relays, _filter, options) {
+      watched.push(relays[0]);
+      queueMicrotask(function () {
+        options.oneose();
+      });
+      return { close: vi.fn(async function () {}) };
+    },
+    destroy: vi.fn()
+  };
+  globalThis.chrome = {
+    runtime: {
+      sendMessage(message, callback) {
+        if (message.type === 'LOOKUP_NOSTR_PROFILES') {
+          callback({
+            ok: true,
+            result: {
+              profiles: [{
+                pubkey: profile.pubkey,
+                profileEvent: profile,
+                relayListEvent: readRelay,
+                zappable: true
+              }]
+            }
+          });
+          return;
+        }
+        if (String(message.url || '').includes('/.well-known/lnurlp/')) {
+          callback({
+            ok: true,
+            result: {
+              status: 200,
+              json: {
+                allowsNostr: true,
+                callback: 'https://ln.example/callback',
+                nostrPubkey: 'f'.repeat(64),
+                minSendable: 1000,
+                maxSendable: 210000000,
+                commentAllowed: 0
+              }
+            }
+          });
+          return;
+        }
+        callback({
+          ok: true,
+          result: { status: 200, json: { pr: BOLT11_20U } }
+        });
+      }
+    }
+  };
+  const channel = 'c'.repeat(64);
+  const actionId = 'd'.repeat(64);
+  const pageUrl = 'https://x.com/alice/status/42';
+  const session = extension.relayClient.configure(channel, {
+    pool: pool,
+    window: pageWindow
+  });
+  extension.relayClient.registerActionContext(actionId, {
+    kind: 'x',
+    url: pageUrl,
+    recipientNpub: nip19.npubEncode(profile.pubkey)
+  });
+  const transport = createMainRelayTransport(channel, {
+    crypto: globalThis.crypto,
+    pageWindow: pageWindow,
+    structuredClone: globalThis.structuredClone
+  });
+  globalThis.__nostrComponentsRelayTransport = transport;
+  try {
+    const route = await transport.getZapRoute(actionId);
+    expect(route.zapRelays).toContain('wss://relay.ditto.pub/');
+    expect(route.zapRelays).toContain('wss://nos.lol/');
+    expect(route.zapRelays).not.toContain('wss://evil.example/');
+    const paid = await fetchInvoiceForAction({
+      actionId: actionId,
+      amount: BOLT11_20U_AMOUNT_MSATS,
+      comment: '',
+      authorId: profile.pubkey,
+      normalizedRelays: route.zapRelays,
+      url: pageUrl
+    });
+    expect(paid.invoice).toBe(BOLT11_20U);
+    await transport.query(['wss://evil.example/', 'wss://relay.damus.io/'], {
+      kinds: [9735],
+      '#p': [profile.pubkey],
+      since: 1,
+      limit: 10
+    });
+    expect(watched).toContain('wss://nos.lol/');
+    expect(watched).toContain('wss://relay.ditto.pub/');
+    expect(watched).not.toContain('wss://evil.example/');
+  } finally {
+    delete globalThis.__nostrComponentsRelayTransport;
+    session.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+  }
 });
 
 describe('timeline component integration', function () {

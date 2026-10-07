@@ -95,6 +95,7 @@ export function createMainRelayTransport(
   const Uint8ArrayConstructor = Uint8Array;
   const PromiseConstructor = Promise;
   const ErrorConstructor = Error;
+  const DateConstructor = Date;
   const pending = new Map<string, PendingRequest>();
   const pendingHas = pending.has.bind(pending);
   const pendingGet = pending.get.bind(pending);
@@ -306,6 +307,42 @@ export function createMainRelayTransport(
     }
   }
 
+  function bridgeTimeout(operation: string): number {
+    if (operation === 'fetchZapInvoice') return 25_000;
+    if (operation === 'getZapRoute') return 20_000;
+    if (operation === 'getZapProvider') return 15_000;
+    if (operation === 'publish') return 12_000;
+    if (operation === 'getProfiles') return 10_000;
+    if (
+      operation === 'getLikeState' ||
+      operation === 'getZapSummary' ||
+      operation === 'listZaps'
+    ) {
+      return 7_000;
+    }
+    return 4_000;
+  }
+
+  function zapRows(rows: any): any[] {
+    if (!arrayIsArray(rows)) return [];
+    const out: any[] = [];
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      if (!isRecord(row)) continue;
+      const createdAt = typeof row.createdAt === 'number' ? row.createdAt : 0;
+      pushArray(out, {
+        amount: row.amount,
+        date: new DateConstructor(createdAt * 1000),
+        authorPubkey:
+          typeof row.authorPubkey === 'string' && row.authorPubkey
+            ? row.authorPubkey
+            : null,
+        comment: typeof row.comment === 'string' ? row.comment : '',
+      });
+    }
+    return out;
+  }
+
   async function request(operation: string, payload: any): Promise<any> {
     const requestId = createRequestId();
     const message: any = {
@@ -322,13 +359,7 @@ export function createMainRelayTransport(
           pendingDelete(requestId);
           reject(new ErrorConstructor('Relay request timed out'));
         },
-        operation === 'fetchZapInvoice'
-          ? 25_000
-          : operation === 'getZapProvider'
-            ? 15_000
-            : operation === 'publish'
-              ? 12_000
-              : 4_000,
+        bridgeTimeout(operation),
       );
       pendingSet(requestId, {
         operation,
@@ -362,6 +393,19 @@ export function createMainRelayTransport(
       request('publish', { relays, event, actionId }),
     getZapProvider: (actionId: string, relays: string[]) =>
       request('getZapProvider', { actionId, relays }),
+    getProfiles: (actionId: string, pubkeys: string[]) =>
+      request('getProfiles', { actionId, pubkeys }),
+    getZapRoute: (actionId: string) =>
+      request('getZapRoute', { actionId }),
+    getZapSummary: async (actionId: string) => {
+      const summary = await request('getZapSummary', { actionId });
+      return {
+        totalAmount: summary?.totalAmount,
+        zapDetails: zapRows(summary?.zapDetails),
+      };
+    },
+    listZaps: async (actionId: string) =>
+      zapRows(await request('listZaps', { actionId })),
     fetchZapInvoice: (
       actionId: string,
       input: {

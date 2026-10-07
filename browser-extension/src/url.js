@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { normalizeURL } from 'nostr-tools/utils';
+import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-canonical.js';
 
 (function () {
   const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
@@ -46,11 +47,14 @@ import { normalizeURL } from 'nostr-tools/utils';
       url.search = '';
       url.hash = '';
 
+      const canonicalUrl = canonicalPageUrl(url.toString());
+      if (!canonicalUrl) return null;
+
       return {
         pathname: url.pathname.replace(/\/$/, ''),
         username: match[1].toLowerCase(),
         statusId: match[2],
-        canonicalUrl: normalizeURL(url.toString())
+        canonicalUrl
       };
     } catch (_error) {
       return null;
@@ -85,9 +89,11 @@ import { normalizeURL } from 'nostr-tools/utils';
       if (!videoId || !YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) {
         return null;
       }
+      const canonicalUrl = canonicalPageUrl(url.toString());
+      if (!canonicalUrl) return null;
       return {
         videoId: videoId,
-        canonicalUrl: 'https://www.youtube.com/watch?v=' + videoId
+        canonicalUrl
       };
     } catch (_error) {
       return null;
@@ -119,8 +125,22 @@ import { normalizeURL } from 'nostr-tools/utils';
     return checksum === 1;
   }
 
+  async function urlKey(value) {
+    const canonical = canonicalPageUrl(value);
+    if (!canonical || !globalThis.crypto?.subtle) return null;
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(canonical)
+    );
+    return Array.from(new Uint8Array(digest), function (byte) {
+      return byte.toString(16).padStart(2, '0');
+    }).join('');
+  }
+
   extension.url = {
     normalizeURL,
+    canonicalUrl: canonicalPageUrl,
+    urlKey,
     parseTweetUrl,
     parseYouTubeUrl,
     isValidNpub
