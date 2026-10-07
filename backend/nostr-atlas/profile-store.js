@@ -342,12 +342,17 @@ export async function fetchReplaceableGrouped(groups, kind, options = {}) {
     let relaySettled = authors.length > 0;
     const relayFound = new Map();
     for (const chunk of chunkPubkeys(authors, 40)) {
+      const chunkTimeout = boundedTimeout(timeoutMs, options.deadlineMs);
+      if (chunkTimeout === 0 && Number.isFinite(options.deadlineMs)) {
+        relaySettled = false;
+        continue;
+      }
       let result;
       try {
         result = await query(
           relay,
           { kinds: [kind], authors: chunk },
-          { timeoutMs, max: REPLACEABLE_EVENT_CAP },
+          { timeoutMs: chunkTimeout, max: REPLACEABLE_EVENT_CAP },
         );
       } catch {
         result = { events: [], reason: "error" };
@@ -422,7 +427,8 @@ export async function refreshProfiles(db, targets, options = {}) {
       ? { byPubkey: new Map(), settled: new Set(), health }
       : await fetchReplaceableGrouped(indexerGroups, 10002, {
           queryRelay: options.queryRelay,
-          timeoutMs: listTimeout,
+          timeoutMs,
+          deadlineMs: options.deadlineMs,
           nowSec,
           health,
         });
@@ -456,7 +462,8 @@ export async function refreshProfiles(db, targets, options = {}) {
       ? { byPubkey: new Map(), settled: new Set(), health }
       : await fetchReplaceableGrouped(liveKind0, 0, {
           queryRelay: options.queryRelay,
-          timeoutMs: kind0Timeout,
+          timeoutMs,
+          deadlineMs: options.deadlineMs,
           nowSec,
           health,
         });

@@ -198,6 +198,32 @@ describe("replaceable events", () => {
     expect(result.settled.has(pubkey)).toBe(false);
   });
 
+  it("does not start a queued relay query after the deadline", async () => {
+    const calls = [];
+    const deadlineMs = Date.now() + 80;
+    const queryRelay = vi.fn(async (_url, _filter, opts) => {
+      calls.push({ at: Date.now(), timeoutMs: opts.timeoutMs });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return { events: [], reason: "timeout" };
+    });
+    const groups = new Map();
+    for (let index = 0; index < 9; index += 1) {
+      groups.set(`wss://relay-${index}.example/`, [pubkey]);
+    }
+    await fetchReplaceableGrouped(groups, 0, {
+      queryRelay,
+      timeoutMs: 3000,
+      deadlineMs,
+      nowSec: NOW_SEC,
+    });
+    expect(calls.length).toBe(8);
+    for (const call of calls) {
+      expect(call.at).toBeLessThanOrEqual(deadlineMs + 25);
+      expect(call.timeoutMs).toBeLessThanOrEqual(deadlineMs - call.at + 25);
+      expect(call.timeoutMs).toBeGreaterThan(0);
+    }
+  });
+
   it("keeps the newest signed copy when the relay reaches EOSE", async () => {
     const stale = kind0({ name: "Stale" }, 100);
     const fresh = kind0({ name: "Fresh" }, 300);
