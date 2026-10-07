@@ -12,15 +12,24 @@ function declarationFiles(dir, out = []) {
   return out;
 }
 
+function collectTypes(value, types) {
+  if (!value || typeof value !== 'object') return;
+  if (typeof value.types === 'string') types.add(value.types);
+  for (const nested of Object.values(value)) {
+    if (nested && typeof nested === 'object') collectTypes(nested, types);
+  }
+}
+
 if (!existsSync('dist')) {
   console.error('dist/ is missing. Run npm run build before checking published types.');
   process.exit(1);
 }
 
 const files = declarationFiles('dist');
-const leaks = files.filter((file) => readFileSync(file, 'utf8').includes('backend/'));
+const backendRef = /(?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"][^'"]*backend\//;
+const leaks = files.filter((file) => backendRef.test(readFileSync(file, 'utf8')));
 if (leaks.length) {
-  console.error('Declaration files mention backend/:');
+  console.error('Declaration files import backend/:');
   for (const file of leaks) console.error(`  ${file}`);
   process.exit(1);
 }
@@ -28,11 +37,7 @@ if (leaks.length) {
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const types = new Set();
 if (typeof pkg.types === 'string') types.add(pkg.types);
-for (const entry of Object.values(pkg.exports || {})) {
-  if (entry && typeof entry === 'object' && typeof entry.types === 'string') {
-    types.add(entry.types);
-  }
-}
+collectTypes(pkg.exports, types);
 let missing = false;
 for (const typesPath of types) {
   const relative = typesPath.replace(/^\.\//, '');

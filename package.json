@@ -127,6 +127,7 @@
   },
   "dependencies": {
     "@glidejs/glide": "^3.7.1",
+    "@noble/hashes": "^1.7.1",
     "@nostr-dev-kit/ndk": "^2.10.0",
     "@scure/base": "^1.1.1",
     "@types/dompurify": "^3.0.5",
