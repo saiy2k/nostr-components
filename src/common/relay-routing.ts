@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { SimplePool, type Event, type Filter } from 'nostr-tools';
+import { type Event, type Filter } from 'nostr-tools';
+import { Relay } from 'nostr-tools/relay';
 import {
   DEFAULT_RELAYS,
   INDEXER_RELAYS,
@@ -156,13 +157,57 @@ export function selectKind0Relays({
   ]);
 }
 
+/** Count relays that sent EOSE. A local timeout is not an answer. */
 export function countAnsweredRelays(reasons: string[]): number {
-  return reasons.filter((reason) => reason === 'closed by caller').length;
+  return reasons.filter((reason) => reason === 'eose').length;
 }
 
 const emptyResult = (): RelayQueryResult => ({ events: [], answered: 0 });
 
-/** Query relays and report how many reached EOSE, not merely how many events came back. */
+async function queryOneRelay(
+  url: string,
+  filter: Filter,
+): Promise<{ events: ReplaceableEvent[]; reason: 'eose' | 'timeout' }> {
+  const relay = new Relay(url);
+  relay.connectionTimeout = RELAY_QUERY_TIMEOUT_MS;
+  try {
+    await relay.connect();
+  } catch {
+    relay.close();
+    return { events: [], reason: 'timeout' };
+  }
+
+  return await new Promise((resolve) => {
+    const events: ReplaceableEvent[] = [];
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = (reason: 'eose' | 'timeout') => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        relay.close();
+      } catch {
+        // The socket may already be gone.
+      }
+      resolve({ events, reason });
+    };
+    // The library timer also calls oneose. Keep it behind our deadline so a
+    // timeout is not recorded as a remote EOSE.
+    relay.subscribe([filter], {
+      onevent(event) {
+        events.push(event as ReplaceableEvent);
+      },
+      oneose() {
+        finish('eose');
+      },
+      eoseTimeout: RELAY_QUERY_TIMEOUT_MS + 1000,
+    });
+    timer = setTimeout(() => finish('timeout'), RELAY_QUERY_TIMEOUT_MS);
+  });
+}
+
+/** Query relays and report how many sent EOSE, not merely how many events came back. */
 export async function queryRelays(
   relays: string[],
   filter: Filter,
@@ -170,26 +215,11 @@ export async function queryRelays(
   const urls = normalizeList(relays);
   if (urls.length === 0) return emptyResult();
 
-  const pool = new SimplePool();
-  try {
-    return await new Promise((resolve) => {
-      const events: ReplaceableEvent[] = [];
-      pool.subscribeEose(urls, filter, {
-        maxWait: RELAY_QUERY_TIMEOUT_MS,
-        onevent(event) {
-          events.push(event as ReplaceableEvent);
-        },
-        onclose(reasons) {
-          resolve({
-            events,
-            answered: countAnsweredRelays(reasons),
-          });
-        },
-      });
-    });
-  } finally {
-    pool.close(urls);
-  }
+  const results = await Promise.all(urls.map((url) => queryOneRelay(url, filter)));
+  return {
+    events: results.flatMap((result) => result.events),
+    answered: countAnsweredRelays(results.map((result) => result.reason)),
+  };
 }
 
 function newestOfKind(

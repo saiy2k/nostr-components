@@ -208,12 +208,13 @@ describe('zapRelaysFor', () => {
 });
 
 describe('countAnsweredRelays', () => {
-  it('counts relays that reached EOSE and ignores connection errors', () => {
+  it('counts a remote EOSE and ignores a local timeout', () => {
     expect(
       countAnsweredRelays([
+        'eose',
+        'timeout',
         'closed by caller',
-        'failed to connect',
-        'closed by caller',
+        'eose',
       ]),
     ).toBe(2);
   });
