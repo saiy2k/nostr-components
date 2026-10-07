@@ -194,20 +194,30 @@ function newestOfKind(
   return chosen;
 }
 
+const relayListCache = new Map<string, ReplaceableEvent | null>();
+
 export async function fetchRelayList(
   pubkey: string,
   query: RelayQuery = queryRelays,
 ): Promise<ReplaceableEvent | null> {
+  const useCache = query === queryRelays;
+  const cacheKey = pubkey.toLowerCase();
+  if (useCache && relayListCache.has(cacheKey)) {
+    return relayListCache.get(cacheKey) ?? null;
+  }
   const relays = normalizeList(INDEXER_RELAYS);
   if (relays.length === 0) return null;
   const result = await query(relays, { authors: [pubkey], kinds: [10002] });
-  return newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1000));
+  const list = newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1000));
+  if (useCache) relayListCache.set(cacheKey, list);
+  return list;
 }
 
 const outboxCache = new Map<string, Event>();
 
 export function clearOutboxCache(): void {
   outboxCache.clear();
+  relayListCache.clear();
 }
 
 /**

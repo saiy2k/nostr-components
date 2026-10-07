@@ -423,7 +423,9 @@ export default class NostrLike extends NostrBaseComponent {
         const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
         await ndkEvent.publish();
       }, getTrustedActionContext(this)?.actionId);
-      await publishToWriteRelays(signedEvent, this.getRelays());
+      void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
+        console.warn('[NostrLike] Failed to publish to write relays:', error);
+      });
 
       // Keep action locked until authoritative refresh finishes
       await this.updateLikeCount();
@@ -483,7 +485,9 @@ export default class NostrLike extends NostrBaseComponent {
         const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
         await ndkEvent.publish();
       }, getTrustedActionContext(this)?.actionId);
-      await publishToWriteRelays(signedEvent, this.getRelays());
+      void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
+        console.warn('[NostrLike] Failed to publish to write relays:', error);
+      });
 
       // Keep action locked until authoritative refresh finishes
       await this.updateLikeCount();

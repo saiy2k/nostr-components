@@ -19669,10 +19669,17 @@
     return chosen;
   }
   async function fetchRelayList(pubkey, query = queryRelays) {
+    const useCache = query === queryRelays;
+    const cacheKey = pubkey.toLowerCase();
+    if (useCache && relayListCache.has(cacheKey)) {
+      return relayListCache.get(cacheKey) ?? null;
+    }
     const relays = normalizeList(INDEXER_RELAYS);
     if (relays.length === 0) return null;
     const result = await query(relays, { authors: [pubkey], kinds: [10002] });
-    return newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1e3));
+    const list = newestOfKind(result.events, pubkey, 10002, Math.floor(Date.now() / 1e3));
+    if (useCache) relayListCache.set(cacheKey, list);
+    return list;
   }
   async function fetchProfileOutbox(pubkey, relays = [], query = queryRelays) {
     const hints = normalizeList(relays);
@@ -19750,7 +19757,7 @@
     if (!relaysAttr) return [];
     return relaysAttr.split(",").map((relay) => relay.trim()).filter((relay) => relay && isValidRelayUrl(relay));
   }
-  var FUTURE_SKEW_SECONDS, WRITE_RELAY_LIMIT, ZAP_RELAY_LIMIT, RELAY_QUERY_TIMEOUT_MS, emptyResult, outboxCache;
+  var FUTURE_SKEW_SECONDS, WRITE_RELAY_LIMIT, ZAP_RELAY_LIMIT, RELAY_QUERY_TIMEOUT_MS, emptyResult, relayListCache, outboxCache;
   var init_relay_routing = __esm({
     "src/common/relay-routing.ts"() {
       "use strict";
@@ -19763,6 +19770,7 @@
       ZAP_RELAY_LIMIT = 8;
       RELAY_QUERY_TIMEOUT_MS = 8e3;
       emptyResult = () => ({ events: [], answered: 0 });
+      relayListCache = /* @__PURE__ */ new Map();
       outboxCache = /* @__PURE__ */ new Map();
     }
   });
@@ -20192,6 +20200,19 @@
       (left, right) => right.created_at - left.created_at || left.id.localeCompare(right.id)
     )[0] || null;
   }
+  async function lookupProfilesOutbox(authorIds, relays) {
+    const events = [];
+    for (let index = 0; index < authorIds.length; index += PROFILE_LOOKUP_CONCURRENCY) {
+      const slice = authorIds.slice(index, index + PROFILE_LOOKUP_CONCURRENCY);
+      const settled = await Promise.allSettled(
+        slice.map((authorId) => fetchProfileOutbox(authorId, relays))
+      );
+      for (const result of settled) {
+        if (result.status === "fulfilled" && result.value) events.push(result.value);
+      }
+    }
+    return events;
+  }
   function cacheVerifiedProfiles(events, requestedIds, relayList) {
     for (const event of events) {
       const candidate = event;
@@ -20382,7 +20403,7 @@
       zapDetails
     };
   }
-  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, profileCacheKey, getVerifiedProfileEvent, getProfileMetadata, PROFILE_QUERY_BATCH_SIZE, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoiceForAction, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
+  var profileCache, ZAP_PROVIDER_CACHE_TTL_MS, ZAP_PROVIDER_NEGATIVE_TTL_MS, ZAP_RECEIPT_POLL_TIMEOUT_MS, zapProviderCache, profileCacheKey, getVerifiedProfileEvent, getProfileMetadata, PROFILE_QUERY_BATCH_SIZE, PROFILE_LOOKUP_CONCURRENCY, getBatchedProfileMetadata, extractProfileMetadataContent, getZapEndpoint2, getZapProviderInfo, buildUrlATag, signEvent2, makeZapEvent, fetchInvoiceForAction, fetchInvoice, generateRandomPrivKey, isNip07ExtAvailable, fetchTotalZapAmount, listenForZapReceipt;
   var init_zap_utils = __esm({
     "src/nostr-zap-button/zap-utils.ts"() {
       "use strict";
@@ -20451,6 +20472,7 @@
         return verifiedEvent;
       };
       PROFILE_QUERY_BATCH_SIZE = 50;
+      PROFILE_LOOKUP_CONCURRENCY = 5;
       getBatchedProfileMetadata = async (authorIds, relays, actionId) => {
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
         const uncachedIds = Array.from(
@@ -20485,9 +20507,7 @@
             const events = actionId ? await transport.query(relayList, filter, actionId) : await transport.query(relayList, filter);
             cacheVerifiedProfiles(events, requestedIds, relayList);
           } else {
-            const events = await Promise.all(
-              batch.map((authorId) => fetchProfileOutbox(authorId, relayList))
-            );
+            const events = await lookupProfilesOutbox(batch, relayList);
             cacheVerifiedProfiles(events, requestedIds, relayList);
           }
         }
@@ -26919,7 +26939,9 @@ ${url}`;
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         }, getTrustedActionContext(this)?.actionId);
-        await publishToWriteRelays(signedEvent, this.getRelays());
+        void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
+          console.warn("[NostrLike] Failed to publish to write relays:", error);
+        });
         await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {
@@ -26964,7 +26986,9 @@ ${url}`;
           const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
           await ndkEvent.publish();
         }, getTrustedActionContext(this)?.actionId);
-        await publishToWriteRelays(signedEvent, this.getRelays());
+        void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
+          console.warn("[NostrLike] Failed to publish to write relays:", error);
+        });
         await this.updateLikeCount();
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {
@@ -29313,7 +29337,7 @@ ${url}`;
         } else {
           this.#applyZapDisplay(resetZapDisplay());
           this.#countedZapSubject = null;
-          this.zapListStatus.set(3 /* Error */);
+          this.zapListStatus.set(3 /* Error */, "Failed to load zap total");
         }
       } finally {
         if (seq === this.#zapCountLoadSeq) {
@@ -29325,7 +29349,8 @@ ${url}`;
       const isUserLoading = this.userStatus.get() == 1 /* Loading */;
       const isActionLoading = this.zapActionStatus.get() == 1 /* Loading */;
       const isAmountLoading = this.zapListStatus.get() == 1 /* Loading */;
-      const isError = this.computeOverall() === 3 /* Error */;
+      const zapCountFailed = this.zapListStatus.get() === 3 /* Error */ && this.userStatus.get() !== 3 /* Error */ && this.conn.get() !== 3 /* Error */ && this.zapActionStatus.get() !== 3 /* Error */;
+      const isError = this.computeOverall() === 3 /* Error */ && !zapCountFailed;
       const errorMessage = this.errorMessage;
       const buttonText = this.getAttribute("text") || "Zap";
       const renderOptions = {
@@ -29336,9 +29361,9 @@ ${url}`;
         // TODO: Add success state handling
         errorMessage,
         buttonText,
-        actionNotice: this.#zapActionNotice,
-        totalZapAmount: this.#totalZapAmount,
-        hasZaps: this.#cachedZapDetails.length > 0,
+        actionNotice: zapCountFailed ? this.errorMessage || "Failed to load zap total" : this.#zapActionNotice,
+        totalZapAmount: zapCountFailed ? null : this.#totalZapAmount,
+        hasZaps: !zapCountFailed && this.#cachedZapDetails.length > 0,
         compact: this.hasAttribute("compact")
       };
       setTrustedInnerHTML(this.shadowRoot, `

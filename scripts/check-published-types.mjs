@@ -12,6 +12,11 @@ function declarationFiles(dir, out = []) {
   return out;
 }
 
+if (!existsSync('dist')) {
+  console.error('dist/ is missing. Run npm run build before checking published types.');
+  process.exit(1);
+}
+
 const files = declarationFiles('dist');
 const leaks = files.filter((file) => readFileSync(file, 'utf8').includes('backend/'));
 if (leaks.length) {

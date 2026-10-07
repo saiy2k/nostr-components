@@ -440,7 +440,7 @@ export default class NostrZap extends NostrUserComponent {
       } else {
         this.#applyZapDisplay(resetZapDisplay());
         this.#countedZapSubject = null;
-        this.zapListStatus.set(NCStatus.Error);
+        this.zapListStatus.set(NCStatus.Error, 'Failed to load zap total');
       }
     } finally {
       if (seq === this.#zapCountLoadSeq) {
@@ -453,7 +453,12 @@ export default class NostrZap extends NostrUserComponent {
     const isUserLoading = this.userStatus.get() == NCStatus.Loading;
     const isActionLoading = this.zapActionStatus.get() == NCStatus.Loading;
     const isAmountLoading = this.zapListStatus.get() == NCStatus.Loading;
-    const isError = this.computeOverall() === NCStatus.Error;
+    const zapCountFailed =
+      this.zapListStatus.get() === NCStatus.Error &&
+      this.userStatus.get() !== NCStatus.Error &&
+      this.conn.get() !== NCStatus.Error &&
+      this.zapActionStatus.get() !== NCStatus.Error;
+    const isError = this.computeOverall() === NCStatus.Error && !zapCountFailed;
     const errorMessage = this.errorMessage;
     const buttonText = this.getAttribute('text') || 'Zap';
 
@@ -464,9 +469,11 @@ export default class NostrZap extends NostrUserComponent {
       isSuccess: false, // TODO: Add success state handling
       errorMessage: errorMessage,
       buttonText: buttonText,
-      actionNotice: this.#zapActionNotice,
-      totalZapAmount: this.#totalZapAmount,
-      hasZaps: this.#cachedZapDetails.length > 0,
+      actionNotice: zapCountFailed
+        ? (this.errorMessage || 'Failed to load zap total')
+        : this.#zapActionNotice,
+      totalZapAmount: zapCountFailed ? null : this.#totalZapAmount,
+      hasZaps: !zapCountFailed && this.#cachedZapDetails.length > 0,
       compact: this.hasAttribute('compact'),
     };
 

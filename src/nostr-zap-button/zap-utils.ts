@@ -121,6 +121,21 @@ function newestVerifiedProfile(events: unknown[], authorId: string): Event | nul
 }
 
 const PROFILE_QUERY_BATCH_SIZE = 50;
+const PROFILE_LOOKUP_CONCURRENCY = 5;
+
+async function lookupProfilesOutbox(authorIds: string[], relays: string[]) {
+  const events: Event[] = [];
+  for (let index = 0; index < authorIds.length; index += PROFILE_LOOKUP_CONCURRENCY) {
+    const slice = authorIds.slice(index, index + PROFILE_LOOKUP_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      slice.map((authorId) => fetchProfileOutbox(authorId, relays)),
+    );
+    for (const result of settled) {
+      if (result.status === 'fulfilled' && result.value) events.push(result.value);
+    }
+  }
+  return events;
+}
 
 function cacheVerifiedProfiles(
   events: unknown[],
@@ -196,9 +211,7 @@ export const getBatchedProfileMetadata = async (
           : await transport.query(relayList, filter);
         cacheVerifiedProfiles(events, requestedIds, relayList);
       } else {
-        const events = await Promise.all(
-          batch.map((authorId) => fetchProfileOutbox(authorId, relayList)),
-        );
+        const events = await lookupProfilesOutbox(batch, relayList);
         cacheVerifiedProfiles(events, requestedIds, relayList);
       }
     }
