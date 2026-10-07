@@ -11,6 +11,7 @@ node_modules
 functions/relays.json
 functions/relay-roles.json
 functions/nostr-atlas
+functions/nostr-pulse
 lib
 !browser-extension/lib/
 !browser-extension/lib/**

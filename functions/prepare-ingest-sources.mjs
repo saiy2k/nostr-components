@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const copyRoot = join(root, "functions/nostr-atlas");
+const pulseRoot = join(root, "functions/nostr-pulse");
 
 await cp(join(root, "backend/relays.json"), join(root, "functions/relays.json"));
 await cp(
@@ -25,3 +26,8 @@ export {
 } from "../featured-handles.js";
 `,
 );
+await rm(pulseRoot, { recursive: true, force: true });
+await cp(join(root, "backend/nostr-pulse"), pulseRoot, {
+  recursive: true,
+  filter: (source) => !source.endsWith(".test.js"),
+});

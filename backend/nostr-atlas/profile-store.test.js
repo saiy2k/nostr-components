@@ -198,6 +198,32 @@ describe("replaceable events", () => {
     expect(result.settled.has(pubkey)).toBe(false);
   });
 
+  it("does not start a queued relay query after the deadline", async () => {
+    const calls = [];
+    const deadlineMs = Date.now() + 80;
+    const queryRelay = vi.fn(async (_url, _filter, opts) => {
+      calls.push({ at: Date.now(), timeoutMs: opts.timeoutMs });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return { events: [], reason: "timeout" };
+    });
+    const groups = new Map();
+    for (let index = 0; index < 9; index += 1) {
+      groups.set(`wss://relay-${index}.example/`, [pubkey]);
+    }
+    await fetchReplaceableGrouped(groups, 0, {
+      queryRelay,
+      timeoutMs: 3000,
+      deadlineMs,
+      nowSec: NOW_SEC,
+    });
+    expect(calls.length).toBe(8);
+    for (const call of calls) {
+      expect(call.at).toBeLessThanOrEqual(deadlineMs + 25);
+      expect(call.timeoutMs).toBeLessThanOrEqual(deadlineMs - call.at + 25);
+      expect(call.timeoutMs).toBeGreaterThan(0);
+    }
+  });
+
   it("keeps the newest signed copy when the relay reaches EOSE", async () => {
     const stale = kind0({ name: "Stale" }, 100);
     const fresh = kind0({ name: "Fresh" }, 300);
@@ -461,6 +487,29 @@ describe("profile refresh", () => {
     const stored = db.docs.get(`${PROFILE_COLLECTION}/${pubkey}`);
     expect(Date.parse(stored.nextRefreshAt) - NOW_MS).toBe(UNSETTLED_RETRY_MS);
     expect(stored.zap).toMatchObject({ zappable: true, transient: true });
+  });
+
+  it("does not query relays after the refresh deadline", async () => {
+    const queryRelay = vi.fn(async () => {
+      throw new Error("should not query");
+    });
+    const fetchImpl = vi.fn(async () => {
+      throw new Error("should not fetch");
+    });
+    const db = memoryDb();
+    await refreshProfiles(db, [{ pubkey, role: "lookup" }], {
+      nowMs: Date.now(),
+      deadlineMs: Date.now() - 1,
+      timeoutMs: 3000,
+      queryRelay,
+      fetchImpl,
+    });
+    expect(queryRelay).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    const stored = db.docs.get(`${PROFILE_COLLECTION}/${pubkey}`);
+    expect(stored.kind0Json).toBeUndefined();
+    expect(stored.missingUntil).toBeNull();
+    expect(stored.zap).toMatchObject({ zappable: null, transient: true });
   });
 
   it("walks verified handles that have no profile before handles that are already fresh", async () => {

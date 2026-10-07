@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+import { nip19, verifyEvent } from 'nostr-tools';
+
 const RESERVED_X_HANDLES = new Set([
   'compose',
   'explore',
@@ -68,19 +70,64 @@ export function publicDirectoryResponse(handle, data) {
 }
 
 function zapFields(source) {
-  const zappable = source?.zappable === true;
-  return {
-    zappable,
-    lud16: zappable ? boundedString(source.lud16, 320) : null
-  };
+  if (source?.zappable === true) {
+    return {
+      zappable: true,
+      lud16: boundedString(source.lud16, 320)
+    };
+  }
+  if (source?.zappable === false) {
+    return { zappable: false, lud16: null };
+  }
+  return { zappable: null, lud16: null };
 }
 
-function withProfileZap(identity, profile) {
-  const zap = profile && profile.zap;
-  if (!zap || typeof zap !== 'object' || Array.isArray(zap)) return identity;
+function storedEvent(value, kind, pubkey) {
+  if (!value) return null;
+  let event = value;
+  if (typeof value === 'string') {
+    try {
+      event = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (!event || typeof event !== 'object' || Array.isArray(event)) return null;
+  if (event.kind !== kind) return null;
+  if (String(event.pubkey || '').toLowerCase() !== pubkey) return null;
+  try {
+    if (!verifyEvent(event)) return null;
+  } catch {
+    return null;
+  }
+  return event;
+}
+
+function nprofileFor(pubkey, profile) {
+  const relays = [];
+  const listed = Array.isArray(profile?.writeRelays) ? profile.writeRelays : [];
+  for (const value of listed) {
+    if (relays.length >= 2) break;
+    if (typeof value === 'string' && value.startsWith('wss://')) relays.push(value);
+  }
+  try {
+    return nip19.nprofileEncode({ pubkey, relays });
+  } catch {
+    return null;
+  }
+}
+
+function identityWithProfile(identity, profile) {
+  const zap = profile ? zapFields(profile.zap) : {
+    zappable: identity.zappable,
+    lud16: identity.lud16
+  };
   return {
     ...identity,
-    ...zapFields(zap)
+    ...zap,
+    profileEvent: profile ? storedEvent(profile.kind0Json, 0, identity.pubkey) : null,
+    relayListEvent: profile ? storedEvent(profile.relayListJson, 10002, identity.pubkey) : null,
+    nprofile: nprofileFor(identity.pubkey, profile)
   };
 }
 
@@ -110,9 +157,8 @@ export async function lookupAtlasHandle(db, value, options = {}) {
   if (body.activeIdentity?.pubkey) {
     const profiles = options.profilesCollection || 'nostrProfiles';
     const profileSnap = await db.collection(profiles).doc(body.activeIdentity.pubkey).get();
-    if (profileSnap.exists) {
-      body.activeIdentity = withProfileZap(body.activeIdentity, profileSnap.data() || {});
-    }
+    const profile = profileSnap.exists ? profileSnap.data() || {} : null;
+    body.activeIdentity = identityWithProfile(body.activeIdentity, profile);
   }
 
   return {

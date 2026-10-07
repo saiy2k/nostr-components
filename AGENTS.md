@@ -24,8 +24,8 @@ Read the surface README for runbooks. This file only routes work and names the t
 
 - Source: `functions/`. Local notes: [functions/AGENTS.md](functions/AGENTS.md).
 - Runtime: Node 22. Check: `npm run test:functions`.
-- Deploy named functions only, to project `nostr-components`: `listAtlasProfiles`, `lookupAtlasHandle`, `checkClaimProof`, `ingestClaim`.
-- `listAtlasProfiles` omits claims, evidence, `lud16`, and retry state. `lookupAtlasHandle` may return `activeIdentity.lud16` when that identity is zappable.
+- Deploy named functions only, to project `nostr-components`: `listAtlasProfiles`, `lookupAtlasHandle`, `checkClaimProof`, `ingestClaim`, `lookupNostrProfiles`, `getUrlActivity`, `listUrlEvents`, `listViewerReactions`, `ingestUrlEvent`.
+- `listAtlasProfiles` omits claims, evidence, `lud16`, and retry state. `lookupAtlasHandle` returns `activeIdentity.lud16` when `zappable` is true, plus the signed profile and an `nprofile` with up to two write relays. `zappable` stays null until a check finishes.
 
 ### Crawler jobs
 

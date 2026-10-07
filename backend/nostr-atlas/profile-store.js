@@ -342,12 +342,17 @@ export async function fetchReplaceableGrouped(groups, kind, options = {}) {
     let relaySettled = authors.length > 0;
     const relayFound = new Map();
     for (const chunk of chunkPubkeys(authors, 40)) {
+      const chunkTimeout = boundedTimeout(timeoutMs, options.deadlineMs);
+      if (chunkTimeout === 0 && Number.isFinite(options.deadlineMs)) {
+        relaySettled = false;
+        continue;
+      }
       let result;
       try {
         result = await query(
           relay,
           { kinds: [kind], authors: chunk },
-          { timeoutMs, max: REPLACEABLE_EVENT_CAP },
+          { timeoutMs: chunkTimeout, max: REPLACEABLE_EVENT_CAP },
         );
       } catch {
         result = { events: [], reason: "error" };
@@ -416,12 +421,17 @@ export async function refreshProfiles(db, targets, options = {}) {
       normalized.map((target) => target.pubkey),
     );
   }
-  const lists = await fetchReplaceableGrouped(indexerGroups, 10002, {
-    queryRelay: options.queryRelay,
-    timeoutMs,
-    nowSec,
-    health,
-  });
+  const listTimeout = boundedTimeout(timeoutMs, options.deadlineMs);
+  const lists =
+    listTimeout === 0 && Number.isFinite(options.deadlineMs)
+      ? { byPubkey: new Map(), settled: new Set(), health }
+      : await fetchReplaceableGrouped(indexerGroups, 10002, {
+          queryRelay: options.queryRelay,
+          timeoutMs,
+          deadlineMs: options.deadlineMs,
+          nowSec,
+          health,
+        });
 
   const kind0Groups = new Map();
   const kind0RelaysByPubkey = new Map();
@@ -446,12 +456,17 @@ export async function refreshProfiles(db, targets, options = {}) {
   const liveKind0 = new Map(
     [...kind0Groups.entries()].filter(([url]) => relayIsHealthy(health, url)),
   );
-  const profiles = await fetchReplaceableGrouped(liveKind0, 0, {
-    queryRelay: options.queryRelay,
-    timeoutMs,
-    nowSec,
-    health,
-  });
+  const kind0Timeout = boundedTimeout(timeoutMs, options.deadlineMs);
+  const profiles =
+    kind0Timeout === 0 && Number.isFinite(options.deadlineMs)
+      ? { byPubkey: new Map(), settled: new Set(), health }
+      : await fetchReplaceableGrouped(liveKind0, 0, {
+          queryRelay: options.queryRelay,
+          timeoutMs,
+          deadlineMs: options.deadlineMs,
+          nowSec,
+          health,
+        });
 
   const { checkZapSupport } = await import("./projection.js");
   const existing = new Map();
@@ -463,6 +478,15 @@ export async function refreshProfiles(db, targets, options = {}) {
   const zapByPubkey = new Map();
   await mapPool(normalized, 4, async (target) => {
     const prior = existing.get(target.pubkey);
+    const zapTimeout = boundedTimeout(timeoutMs, options.deadlineMs);
+    if (zapTimeout === 0 && Number.isFinite(options.deadlineMs)) {
+      zapByPubkey.set(target.pubkey, {
+        ...(prior?.zap || {}),
+        zappable: prior?.zap?.zappable ?? null,
+        zapCheckTransient: true,
+      });
+      return;
+    }
     const fetched = profiles.byPubkey.get(target.pubkey) || null;
     const event = preferNewerReplaceable(
       parseStoredEvent(prior?.kind0Json),
@@ -491,7 +515,7 @@ export async function refreshProfiles(db, targets, options = {}) {
     try {
       zapByPubkey.set(
         target.pubkey,
-        await checkZapSupport({ pubkey: target.pubkey }, content, timeoutMs, fetchImpl),
+        await checkZapSupport({ pubkey: target.pubkey }, content, zapTimeout, fetchImpl),
       );
     } catch (error) {
       zapByPubkey.set(target.pubkey, {
@@ -506,12 +530,16 @@ export async function refreshProfiles(db, targets, options = {}) {
     }
   });
 
-  const avatars = await fetchMissingAvatars(normalized, {
-    existing,
-    profiles: profiles.byPubkey,
-    fetchImpl,
-    timeoutMs,
-  });
+  const avatarTimeout = boundedTimeout(timeoutMs, options.deadlineMs);
+  const avatars =
+    avatarTimeout === 0 && Number.isFinite(options.deadlineMs)
+      ? new Map()
+      : await fetchMissingAvatars(normalized, {
+          existing,
+          profiles: profiles.byPubkey,
+          fetchImpl,
+          timeoutMs: avatarTimeout,
+        });
 
   const profileWrites = [];
   const handlePlans = [];
@@ -842,6 +870,11 @@ function chunkPubkeys(pubkeys, size) {
     chunks.push(pubkeys.slice(index, index + size));
   }
   return chunks;
+}
+
+function boundedTimeout(timeoutMs, deadlineMs, now = Date.now()) {
+  if (!Number.isFinite(deadlineMs)) return timeoutMs;
+  return Math.min(timeoutMs, Math.max(0, deadlineMs - now));
 }
 
 async function mapPool(items, concurrency, fn) {
