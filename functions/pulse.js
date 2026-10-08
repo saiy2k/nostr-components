@@ -4,7 +4,7 @@ const DAY_SECONDS = 24 * 60 * 60;
 const TABLE_LIMIT = 50;
 const TABLE_READ = 200;
 const ACTIVITY_LIMIT = 30;
-const ACTIVITY_READ = 120;
+const SCAN_PAGES = 20;
 const HIDDEN_CACHE_MS = 5 * 60 * 1000;
 const DOMAIN_PATTERN = /^[a-z0-9.-]+$/;
 
@@ -121,6 +121,32 @@ function rowsOf(snap) {
   return (snap.docs || []).map((doc) => ({ id: doc.id, ...(doc.data() || {}) }));
 }
 
+/**
+ * Ordered reads include hidden rows. Keep scanning until the visible page is
+ * full. The cap bounds a public request when hidden rows run on.
+ */
+async function readVisibleRows(loadPage, keep, limit) {
+  const visible = [];
+  let cursor = null;
+  const scanCap = limit * SCAN_PAGES;
+  let scanned = 0;
+  while (visible.length < limit && scanned < scanCap) {
+    const pageSize = Math.min(limit, scanCap - scanned);
+    const snap = await loadPage(cursor, pageSize);
+    const docs = snap.docs || [];
+    if (!docs.length) break;
+    scanned += docs.length;
+    for (const doc of docs) {
+      const row = { id: doc.id, ...(doc.data() || {}) };
+      if (keep(row)) visible.push(row);
+      if (visible.length >= limit) return visible;
+    }
+    if (docs.length < pageSize) break;
+    cursor = docs[docs.length - 1];
+  }
+  return visible;
+}
+
 function domainHidden(row, hidden) {
   return row.hidden === true || hidden.domains.has(row.domain || row.id);
 }
@@ -211,14 +237,15 @@ export async function getPulseOverview(db, parameters = {}, options = {}) {
       .sort(byFieldDesc(sort.field))
       .slice(0, TABLE_LIMIT);
   } else {
-    const snap = await db
-      .collection("nostrUrlDomains")
-      .orderBy(sort.field, "desc")
-      .limit(TABLE_READ)
-      .get();
-    domains = rowsOf(snap)
-      .filter((row) => !domainHidden(row, hidden))
-      .slice(0, TABLE_LIMIT);
+    domains = await readVisibleRows(
+      (cursor, pageSize) => {
+        let query = db.collection("nostrUrlDomains").orderBy(sort.field, "desc");
+        if (cursor) query = query.startAfter(cursor);
+        return query.limit(pageSize).get();
+      },
+      (row) => !domainHidden(row, hidden),
+      TABLE_LIMIT,
+    );
   }
   return { status: 200, body: { totals, domains: domains.map(domainRow) } };
 }
@@ -235,15 +262,18 @@ export async function getPulseDomain(db, parameters = {}, options = {}) {
     return { status: 404, body: { error: "not_found" } };
   }
   const data = snap.data() || {};
-  const urlsSnap = await db
-    .collection("nostrUrlActivity")
-    .where("domain", "==", domain.domain)
-    .orderBy(sort.field, "desc")
-    .limit(TABLE_READ)
-    .get();
-  const urls = rowsOf(urlsSnap)
-    .filter((row) => !urlHidden(row, hidden))
-    .slice(0, TABLE_LIMIT);
+  const urls = await readVisibleRows(
+    (cursor, pageSize) => {
+      let query = db
+        .collection("nostrUrlActivity")
+        .where("domain", "==", domain.domain)
+        .orderBy(sort.field, "desc");
+      if (cursor) query = query.startAfter(cursor);
+      return query.limit(pageSize).get();
+    },
+    (row) => !urlHidden(row, hidden),
+    TABLE_LIMIT,
+  );
   return {
     status: 200,
     body: {
@@ -258,10 +288,18 @@ export async function getPulseDomain(db, parameters = {}, options = {}) {
   };
 }
 
-async function activityQuery(collection, { domain, since }) {
-  let query = collection;
-  if (domain) query = query.where("domain", "==", domain);
-  return query.where("createdAt", ">=", since).orderBy("createdAt", "desc").limit(ACTIVITY_READ).get();
+function activityRows(collection, { domain, since }, keep) {
+  return readVisibleRows(
+    (cursor, pageSize) => {
+      let query = collection;
+      if (domain) query = query.where("domain", "==", domain);
+      query = query.where("createdAt", ">=", since).orderBy("createdAt", "desc");
+      if (cursor) query = query.startAfter(cursor);
+      return query.limit(pageSize).get();
+    },
+    keep,
+    ACTIVITY_LIMIT,
+  );
 }
 
 export async function listPulseActivity(db, parameters = {}, options = {}) {
@@ -275,24 +313,29 @@ export async function listPulseActivity(db, parameters = {}, options = {}) {
   if (domain.domain && hidden.domains.has(domain.domain)) {
     return { status: 200, body: { zaps: [], reactions: [] } };
   }
-  const [zapSnap, reactionSnap] = await Promise.all([
-    activityQuery(db.collection("nostrUrlZaps"), { domain: domain.domain, since }),
-    activityQuery(db.collectionGroup("reactions"), { domain: domain.domain, since }),
+  const keep = (row, kind) => {
+    if (row.createdAt == null || row.createdAt < since) return false;
+    if (hidden.domains.has(row.domain)) return false;
+    if (kind === "zap") return !hidden.urlKeys.has(row.urlKey);
+    return !hidden.urlKeys.has(row.urlKey) && row.hidden !== true;
+  };
+  const [zaps, reactions] = await Promise.all([
+    activityRows(
+      db.collection("nostrUrlZaps"),
+      { domain: domain.domain, since },
+      (row) => keep(row, "zap"),
+    ),
+    activityRows(
+      db.collectionGroup("reactions"),
+      { domain: domain.domain, since },
+      (row) => keep(row, "reaction"),
+    ),
   ]);
-  const visible = (rows, kind) =>
-    rows
-      .filter((row) => {
-        if (row.createdAt == null || row.createdAt < since) return false;
-        if (hidden.domains.has(row.domain)) return false;
-        if (kind === "zap") return !hidden.urlKeys.has(row.urlKey);
-        return !hidden.urlKeys.has(row.urlKey) && row.hidden !== true;
-      })
-      .slice(0, ACTIVITY_LIMIT);
   return {
     status: 200,
     body: {
-      zaps: visible(rowsOf(zapSnap), "zap").map(zapRow),
-      reactions: visible(rowsOf(reactionSnap), "reaction").map(reactionRow),
+      zaps: zaps.map(zapRow),
+      reactions: reactions.map(reactionRow),
     },
   };
 }

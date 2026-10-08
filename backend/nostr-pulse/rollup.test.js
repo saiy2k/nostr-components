@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { rebuildDomain } from "./hide.js";
 import {
   DOMAIN_COLLECTION,
   PULSE_LEASE_DOC_ID,
@@ -86,9 +87,24 @@ function memoryDb(initial = {}) {
   return {
     docs,
     collection(name) {
+      const prefix = `${name}/`;
       return {
         doc: (id) => ref(`${name}/${id}`),
         orderBy: (field, direction) => query(name).orderBy(field, direction),
+        where(field, op, value) {
+          return {
+            async get() {
+              const docsOut = [...docs.entries()]
+                .filter(([path]) => path.startsWith(prefix) && !path.slice(prefix.length).includes("/"))
+                .filter(([, data]) => op === "==" && data[field] === value)
+                .map(([path, data]) => ({
+                  id: path.slice(prefix.length),
+                  data: () => ({ ...data }),
+                }));
+              return { docs: docsOut };
+            },
+          };
+        },
       };
     },
     async runTransaction(fn) {
@@ -148,6 +164,8 @@ describe("projectUrl", () => {
     expect(projected.site.likeCount).toBe(0);
     expect(projected.url).toEqual({
       inRollup: false,
+      markerEpoch: 0,
+      stagedEpoch: 0,
       rolledUp: {
         likeCount: 0,
         dislikeCount: 0,
@@ -334,5 +352,95 @@ describe("runRollup", () => {
       likeCount: 0,
       domainCount: 0,
     });
+  });
+
+  it("does not apply a rebuilt URL twice while its live marker is still old", async () => {
+    const db = memoryDb({
+      [`${URL_ACTIVITY_COLLECTION}/a`]: {
+        domain: "x.com",
+        updatedAt: 1,
+        likeCount: 5,
+        reactionCount: 5,
+        lastActivityAt: 4,
+      },
+      [`${DOMAIN_COLLECTION}/x.com`]: {
+        domain: "x.com",
+        urlCount: 1,
+        likeCount: 1,
+        reactionCount: 1,
+        hidden: false,
+        inSiteTotals: true,
+      },
+      [`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`]: {
+        domainCount: 1,
+        likeCount: 1,
+        reactionCount: 1,
+      },
+    });
+    await rebuildDomain(db, "x.com");
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/x.com`)).toMatchObject({
+      likeCount: 5,
+      markerEpoch: 1,
+    });
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).rolledUp).toBeUndefined();
+    await runRollup(db, { paceMs: 0 });
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/x.com`).likeCount).toBe(5);
+    expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`).likeCount).toBe(5);
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`)).toMatchObject({
+      inRollup: true,
+      markerEpoch: 1,
+      stagedEpoch: 0,
+    });
+  });
+
+  it("keeps the sweep on the live marker when rebuild totals do not commit", async () => {
+    const rolled = {
+      likeCount: 1,
+      dislikeCount: 0,
+      emojiCount: 0,
+      reactionCount: 1,
+      zapCount: 0,
+      zapMsats: 0,
+    };
+    const db = memoryDb({
+      [`${URL_ACTIVITY_COLLECTION}/a`]: {
+        domain: "x.com",
+        updatedAt: 1,
+        likeCount: 5,
+        reactionCount: 5,
+        inRollup: true,
+        rolledUp: rolled,
+      },
+      [`${DOMAIN_COLLECTION}/x.com`]: {
+        domain: "x.com",
+        urlCount: 1,
+        likeCount: 1,
+        reactionCount: 1,
+        hidden: false,
+        inSiteTotals: true,
+      },
+      [`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`]: {
+        domainCount: 1,
+        likeCount: 1,
+        reactionCount: 1,
+      },
+    });
+    const original = db.runTransaction.bind(db);
+    db.runTransaction = async (fn) => original(async (tx) => {
+      const set = tx.set.bind(tx);
+      tx.set = (target, data, options) => {
+        if (data?.markerEpoch > 0 && data?.domain === "x.com") throw new Error("totals-failed");
+        return set(target, data, options);
+      };
+      return fn(tx);
+    });
+    await expect(rebuildDomain(db, "x.com", { attempts: 1 })).rejects.toThrow("totals-failed");
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/x.com`)).toMatchObject({ likeCount: 1 });
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/x.com`).markerEpoch).toBeUndefined();
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).rolledUp).toEqual(rolled);
+    db.runTransaction = original;
+    await runRollup(db, { paceMs: 0 });
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/x.com`).likeCount).toBe(5);
+    expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`).likeCount).toBe(5);
   });
 });

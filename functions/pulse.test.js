@@ -25,7 +25,7 @@ function pulseDb(records) {
       .map(([path, data]) => ({ id: path.split("/").pop(), ...data }));
   }
   function query(collection, group = false) {
-    const state = { filters: [], orders: [], max: Infinity };
+    const state = { filters: [], orders: [], max: Infinity, cursorId: null };
     const api = {
       where(field, op, value) {
         state.filters.push([field, op, value]);
@@ -37,6 +37,10 @@ function pulseDb(records) {
       },
       limit(max) {
         state.max = max;
+        return api;
+      },
+      startAfter(cursor) {
+        state.cursorId = cursor?.id || null;
         return api;
       },
       async get() {
@@ -60,8 +64,13 @@ function pulseDb(records) {
           const [field, direction] = state.orders[0];
           rows = [...rows].sort((left, right) => {
             const delta = left[field] > right[field] ? 1 : left[field] < right[field] ? -1 : 0;
-            return direction === "desc" ? -delta : delta;
+            if (delta) return direction === "desc" ? -delta : delta;
+            return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
           });
+        }
+        if (state.cursorId) {
+          const index = rows.findIndex((row) => row.id === state.cursorId);
+          rows = index >= 0 ? rows.slice(index + 1) : [];
         }
         return {
           docs: rows.slice(0, state.max).map((row) => ({
@@ -334,6 +343,99 @@ test("rejects an unknown sort and a missing day window", async () => {
   );
   assert.equal(days.status, 400);
   assert.equal(days.body.error, "invalid_days");
+});
+
+test("overview keeps a visible domain that follows a page of hidden domains", async () => {
+  const hiddenRecords = {};
+  for (let index = 0; index < 50; index += 1) {
+    const name = `h${String(index).padStart(2, "0")}.example`;
+    hiddenRecords[`nostrUrlDomains/${name}`] = {
+      domain: name,
+      hidden: true,
+      reactionCount: 100,
+    };
+  }
+  hiddenRecords["nostrUrlDomains/visible.example"] = {
+    domain: "visible.example",
+    reactionCount: 1,
+    urlCount: 1,
+  };
+  const result = await getPulseOverview(pulseDb(hiddenRecords), {}, {
+    nowMs: NOW,
+    hiddenCache: createHiddenCache(),
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.domains.map((row) => row.domain),
+    ["visible.example"],
+  );
+});
+
+test("domain view keeps a visible URL that follows a page of hidden URLs", async () => {
+  const hiddenRecords = {
+    "nostrUrlDomains/example.com": {
+      domain: "example.com",
+      urlCount: 1,
+      zapMsats: 1,
+    },
+  };
+  for (let index = 0; index < 50; index += 1) {
+    hiddenRecords[`nostrUrlActivity/h${String(index).padStart(2, "0")}`] = {
+      domain: "example.com",
+      hidden: true,
+      zapMsats: 100,
+      url: "https://example.com/hidden",
+    };
+  }
+  hiddenRecords["nostrUrlActivity/visible"] = {
+    domain: "example.com",
+    zapMsats: 1,
+    url: "https://example.com/visible",
+  };
+  const result = await getPulseDomain(pulseDb(hiddenRecords), { domain: "example.com" }, {
+    nowMs: NOW,
+    hiddenCache: createHiddenCache(),
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.urls.map((row) => row.urlKey),
+    ["visible"],
+  );
+});
+
+test("activity keeps a visible zap that follows a page of hidden URLs", async () => {
+  const hiddenRecords = {
+    "nostrUrlActivity/hidden-url": { domain: "example.com", hidden: true },
+    "nostrUrlActivity/visible-url": { domain: "example.com" },
+  };
+  for (let index = 0; index < 30; index += 1) {
+    hiddenRecords[`nostrUrlZaps/h${String(index).padStart(2, "0")}`] = {
+      urlKey: "hidden-url",
+      domain: "example.com",
+      amountMsats: 1000,
+      createdAt: SINCE + 100 + index,
+      comment: "",
+      url: "https://example.com/hidden",
+    };
+  }
+  hiddenRecords["nostrUrlZaps/visible"] = {
+    urlKey: "visible-url",
+    domain: "example.com",
+    amountMsats: 2000,
+    createdAt: SINCE + 1,
+    comment: "shown",
+    url: "https://example.com/visible",
+  };
+  const result = await listPulseActivity(
+    pulseDb(hiddenRecords),
+    { days: "1", domain: "example.com" },
+    { nowMs: NOW, hiddenCache: createHiddenCache() },
+  );
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.zaps.map((row) => row.id),
+    ["visible"],
+  );
 });
 
 test("overview is cached for a minute and only answers GET", async () => {

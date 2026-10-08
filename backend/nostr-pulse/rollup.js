@@ -79,6 +79,7 @@ export function blankDomain(domain) {
     lastActivityAt: null,
     hidden: false,
     inSiteTotals: false,
+    markerEpoch: 0,
   };
 }
 
@@ -94,7 +95,27 @@ function domainFromDoc(id, data) {
     lastActivityAt: activityAt(data?.lastActivityAt),
     hidden: data?.hidden === true,
     inSiteTotals: data?.inSiteTotals === true,
+    markerEpoch: count(data?.markerEpoch),
   };
+}
+
+/**
+ * The marker the domain totals already include. A rebuild stages the next
+ * epoch's marker and only publishes that epoch in the same transaction as the
+ * new totals. Until then the sweep keeps using the live marker.
+ */
+export function appliedMarker(url, domain) {
+  const epoch = count(domain?.markerEpoch);
+  if (count(url?.markerEpoch) === epoch) {
+    return { rolledUp: totalsOf(url?.rolledUp), inRollup: url?.inRollup === true };
+  }
+  if (epoch !== 0 && count(url?.stagedEpoch) === epoch) {
+    return {
+      rolledUp: totalsOf(url?.stagedRolledUp),
+      inRollup: url?.stagedInRollup === true,
+    };
+  }
+  return { rolledUp: emptyTotals(), inRollup: false };
 }
 
 function siteFromDoc(data) {
@@ -114,8 +135,9 @@ function siteFromDoc(data) {
 export function projectUrl(domain, site, url) {
   const visible = url?.hidden !== true;
   const current = totalsOf(url);
-  const previous = totalsOf(url?.rolledUp);
-  const wasCounted = url?.inRollup === true;
+  const marker = appliedMarker(url, domain);
+  const previous = marker.rolledUp;
+  const wasCounted = marker.inRollup;
   const rolledUp = visible ? current : emptyTotals();
   const counted = visible;
   const nextTotals = addTotals(totalsOf(domain), diffTotals(rolledUp, previous));
@@ -131,7 +153,12 @@ export function projectUrl(domain, site, url) {
   const nextSite = addTotals(totalsOf(site), diffTotals(afterSite, beforeSite));
 
   return {
-    url: { rolledUp, inRollup: counted },
+    url: {
+      rolledUp,
+      inRollup: counted,
+      markerEpoch: count(domain?.markerEpoch),
+      stagedEpoch: 0,
+    },
     domain: {
       domain: domain?.domain,
       urlCount,
@@ -139,6 +166,7 @@ export function projectUrl(domain, site, url) {
       lastActivityAt,
       hidden: domainHidden,
       inSiteTotals: contributingAfter,
+      markerEpoch: count(domain?.markerEpoch),
     },
     site: {
       ...nextSite,
@@ -322,7 +350,12 @@ async function commitBatch(db, page, cursor, lease) {
     for (const write of urlWrites) {
       tx.set(
         urlCollection.doc(write.id),
-        { rolledUp: write.rolledUp, inRollup: write.inRollup },
+        {
+          rolledUp: write.rolledUp,
+          inRollup: write.inRollup,
+          markerEpoch: write.markerEpoch,
+          stagedEpoch: write.stagedEpoch,
+        },
         { merge: true },
       );
     }

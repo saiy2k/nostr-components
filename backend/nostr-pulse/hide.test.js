@@ -255,8 +255,54 @@ describe("rebuildDomain", () => {
       likeCount: 2,
       lastActivityAt: 8,
     });
-    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/${KEY}`).inRollup).toBe(true);
-    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/${other}`).inRollup).toBe(false);
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/example.com`).markerEpoch).toBe(1);
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/${KEY}`)).toMatchObject({
+      stagedInRollup: true,
+      stagedEpoch: 1,
+    });
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/${other}`)).toMatchObject({
+      stagedInRollup: false,
+      stagedEpoch: 1,
+    });
     expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`).cursorId).toBe("keep");
+  });
+
+  it("hides a URL after a rebuild without putting the staged total back", async () => {
+    const db = memoryDb({
+      [`${URL_ACTIVITY_COLLECTION}/${KEY}`]: {
+        domain: "example.com",
+        hidden: false,
+        likeCount: 2,
+        reactionCount: 2,
+        lastActivityAt: 8,
+      },
+      [`${DOMAIN_COLLECTION}/example.com`]: {
+        domain: "example.com",
+        urlCount: 0,
+        likeCount: 9,
+        reactionCount: 9,
+        hidden: false,
+        inSiteTotals: true,
+      },
+      [`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`]: {
+        domainCount: 1,
+        likeCount: 9,
+        reactionCount: 9,
+      },
+    });
+    await rebuildDomain(db, "example.com");
+    const hidden = await setTargetHidden(db, PAGE, true);
+    expect(hidden).toMatchObject({ ok: true, likeCount: 0, domainCount: 0 });
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/${KEY}`)).toMatchObject({
+      hidden: true,
+      inRollup: false,
+      markerEpoch: 1,
+      stagedEpoch: 0,
+    });
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/example.com`)).toMatchObject({
+      likeCount: 0,
+      urlCount: 0,
+      markerEpoch: 1,
+    });
   });
 });

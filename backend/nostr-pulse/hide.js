@@ -88,6 +88,7 @@ function domainFields(id, data) {
     lastActivityAt: Number.isFinite(Number(data.lastActivityAt)) ? Number(data.lastActivityAt) : null,
     hidden: data.hidden === true,
     inSiteTotals: data.inSiteTotals === true,
+    markerEpoch: count(data.markerEpoch),
   };
 }
 
@@ -170,7 +171,13 @@ async function setUrlHidden(db, target, hidden) {
     }
     tx.set(
       urlRef,
-      { hidden: hidden === true, rolledUp: projected.url.rolledUp, inRollup: projected.url.inRollup },
+      {
+        hidden: hidden === true,
+        rolledUp: projected.url.rolledUp,
+        inRollup: projected.url.inRollup,
+        markerEpoch: projected.url.markerEpoch,
+        stagedEpoch: projected.url.stagedEpoch,
+      },
       { merge: true },
     );
     tx.set(domainRef, projected.domain, { merge: true });
@@ -206,8 +213,9 @@ async function urlsForDomain(db, domain) {
 
 /**
  * Recompute one domain from its visible URLs and correct the site-wide totals
- * by the difference. Holds the pulse lease so a sweep rollup cannot commit
- * between the read and the rollup-marker writes.
+ * by the difference. Markers for the next epoch are staged first. The sweep
+ * ignores them until the totals transaction publishes that epoch, so a failed
+ * write cannot leave new totals paired with old markers, or the reverse.
  */
 async function rebuildUnlocked(db, name, lease) {
   let lastError;
@@ -222,22 +230,13 @@ async function rebuildUnlocked(db, name, lease) {
   throw lastError;
 }
 
-async function rebuildPass(db, name, lease) {
-  const urls = await urlsForDomain(db, name);
-  const visible = urls.filter((url) => url.hidden !== true);
-  const summed = visible.reduce((totals, url) => addTotals(totals, totalsOf(url)), emptyTotals());
-  let lastActivityAt = null;
-  for (const url of visible) {
-    const at = Number(url.lastActivityAt);
-    if (!Number.isFinite(at)) continue;
-    lastActivityAt = lastActivityAt == null ? at : Math.max(lastActivityAt, at);
-  }
-  const domainRef = db.collection(DOMAIN_COLLECTION).doc(name);
+async function stageRebuildMarkers(db, urls, nextEpoch, lease) {
   const held = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
+  const staged = [];
   const chunk = 100;
   for (let index = 0; index < urls.length; index += chunk) {
     const slice = urls.slice(index, index + chunk);
-    await db.runTransaction(async (tx) => {
+    const rows = await db.runTransaction(async (tx) => {
       const heldSnap = await tx.get(held);
       const fresh = [];
       for (const url of slice) {
@@ -245,49 +244,94 @@ async function rebuildPass(db, name, lease) {
         fresh.push({ url, ref, snap: await tx.get(ref) });
       }
       const renewed = renewedLease(heldSnap.exists ? heldSnap.data() : {}, lease, lease.now());
-      tx.set(held, renewed, { merge: true });
+      const prepared = [];
       for (const row of fresh) {
-        if (!row.snap.exists) continue;
-        const marker = rollupMarkerForRebuild(row.url, row.snap.data() || {});
-        if (!marker) continue;
-        tx.set(row.ref, marker, { merge: true });
+        if (!row.snap.exists) {
+          prepared.push(null);
+          continue;
+        }
+        const current = row.snap.data() || {};
+        const marker = rollupMarkerForRebuild(row.url, current);
+        if (!marker) throw new Error("rebuild-visibility-changed");
+        prepared.push({ ref: row.ref, marker, lastActivityAt: current.lastActivityAt });
       }
+      tx.set(held, renewed, { merge: true });
+      for (const row of prepared) {
+        if (!row) continue;
+        tx.set(
+          row.ref,
+          {
+            stagedRolledUp: row.marker.rolledUp,
+            stagedInRollup: row.marker.inRollup,
+            stagedEpoch: nextEpoch,
+          },
+          { merge: true },
+        );
+      }
+      return prepared;
     });
+    for (const row of rows) {
+      if (row) staged.push(row);
+    }
   }
-  const result = await db.runTransaction(async (tx) => {
+  return staged;
+}
+
+function totalsFromStaged(staged) {
+  let summed = emptyTotals();
+  let visibleCount = 0;
+  let lastActivityAt = null;
+  for (const row of staged) {
+    if (row.marker.inRollup !== true) continue;
+    summed = addTotals(summed, row.marker.rolledUp);
+    visibleCount += 1;
+    const at = Number(row.lastActivityAt);
+    if (!Number.isFinite(at)) continue;
+    lastActivityAt = lastActivityAt == null ? at : Math.max(lastActivityAt, at);
+  }
+  return { summed, visibleCount, lastActivityAt };
+}
+
+async function rebuildPass(db, name, lease) {
+  const urls = await urlsForDomain(db, name);
+  const domainRef = db.collection(DOMAIN_COLLECTION).doc(name);
+  const existing = await domainRef.get();
+  const starting = existing.exists ? domainFields(name, existing.data() || {}) : blankDomain(name);
+  const nextEpoch = count(starting.markerEpoch) + 1;
+  const staged = await stageRebuildMarkers(db, urls, nextEpoch, lease);
+  const { summed, visibleCount, lastActivityAt } = totalsFromStaged(staged);
+  const held = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
+  return db.runTransaction(async (tx) => {
     const heldSnap = await tx.get(held);
     const domainSnap = await tx.get(domainRef);
     const site = await readSite(tx, db);
     const current = domainSnap.exists ? domainFields(name, domainSnap.data() || {}) : blankDomain(name);
+    if (count(current.markerEpoch) !== nextEpoch - 1) throw new Error("rebuild-epoch-changed");
     const contributingBefore = current.inSiteTotals === true;
-    const contributingAfter = current.hidden !== true && visible.length > 0;
+    const contributingAfter = current.hidden !== true && visibleCount > 0;
     const beforeSite = contributingBefore ? totalsOf(current) : emptyTotals();
     const afterSite = contributingAfter ? summed : emptyTotals();
     const nextSite = addTotals(totalsOf(site.data), diffTotals(afterSite, beforeSite));
     const nextDomain = {
       domain: name,
-      urlCount: visible.length,
+      urlCount: visibleCount,
       ...summed,
       lastActivityAt,
       hidden: current.hidden === true,
       inSiteTotals: contributingAfter,
+      markerEpoch: nextEpoch,
     };
     const storedSite = {
       ...nextSite,
       domainCount:
         count(site.data.domainCount) + (contributingAfter ? 1 : 0) - (contributingBefore ? 1 : 0),
     };
-    const renewed = renewedLease(
-      heldSnap.exists ? heldSnap.data() : {},
-      lease,
-      lease.now(),
-    );
+    const renewed = renewedLease(heldSnap.exists ? heldSnap.data() : {}, lease, lease.now());
     tx.set(held, renewed, { merge: true });
     tx.set(domainRef, nextDomain, { merge: true });
     writeSite(tx, site.ref, site.data, storedSite);
     return { ok: true, domain: name, urls: urls.length, ...storedSite };
   });
-  return result;
 }
 
 export async function rebuildDomain(db, domain, options = {}) {
