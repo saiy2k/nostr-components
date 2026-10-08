@@ -1,0 +1,23 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci --legacy-peer-deps
+      - name: Build the browser extension
+        run: npm run build:browser-extension
+      - name: Fail if generated extension bundles drifted
+        run: git diff --exit-code -- browser-extension/lib
+      - name: Run Vitest
+        run: npx vitest run

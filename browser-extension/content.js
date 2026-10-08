@@ -26,48 +26,10 @@
     console.warn('[Nostr Like] ' + context, error);
   }
 
-  function hasDarkThemeMarker() {
-    const root = document.documentElement;
-    const body = document.body;
-    if (
-      root?.hasAttribute?.('dark') ||
-      body?.hasAttribute?.('dark') ||
-      root?.classList?.contains?.('dark') ||
-      body?.classList?.contains?.('dark')
-    ) {
-      return true;
-    }
-    return Boolean(document.querySelector?.('ytd-app[dark], ytm-app[dark]'));
-  }
-
-  function isDarkBackground(color) {
-    const match = String(color || '').match(
-      /^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*,\s*(\d+(?:\.\d+)?))?\s*\)$/i
-    );
-    if (!match || (match[4] !== undefined && Number(match[4]) === 0)) return false;
-    const red = Number(match[1]);
-    const green = Number(match[2]);
-    const blue = Number(match[3]);
-    return red * 0.2126 + green * 0.7152 + blue * 0.0722 < 128;
-  }
-
+  // Theme detection is extension.dom.getPageTheme so fixture tests can call the
+  // same heuristic. The checks themselves are unchanged.
   function getPageTheme() {
-    try {
-      if (hasDarkThemeMarker()) return 'dark';
-      const scheme = window.getComputedStyle(document.documentElement).colorScheme;
-      if (String(scheme).includes('dark')) return 'dark';
-
-      // YouTube can report `color-scheme: light` while rendering its dark
-      // application surface. Use the actual app/body background as a fallback.
-      if (/(^|\.)youtube\.com$/.test(window.location.hostname)) {
-        const surface = document.querySelector?.('ytd-app, ytm-app') || document.body;
-        const background = window.getComputedStyle(surface).backgroundColor;
-        if (isDarkBackground(background)) return 'dark';
-      }
-      return 'light';
-    } catch (_error) {
-      return 'light';
-    }
+    return extension.dom.getPageTheme();
   }
 
   async function loadDirectoryIdentity(slot, handle) {

@@ -6,4 +6,4 @@ Unpacked Chromium extension. It injects the same Like and Zap components as the 
 - Like counts, zap totals, and profiles come from the directory API. Relay sockets publish likes to the rendezvous relays and up to three of the signer's write relays, and watch the zap request's relays for a receipt. Host page CSP blocks those sockets and Lightning HTTPS, so they go through the extension bridge.
 - Signer public keys stay in memory for the current tab. Do not write them to `sessionStorage`.
 - X Zaps require a verified, zappable directory identity. YouTube Zaps require a checksum-valid lowercase `npub` in the creator-owned channel identity area. Ignore titles, descriptions, metadata, and channel-URL mappings as payment recipients.
-- Load this folder unpacked via `chrome://extensions`. Behavior notes: [README.md](README.md).
+- Load this folder unpacked via `chrome://extensions`. Behavior notes: [README.md](README.md). x.com test layers: [TESTING.md](TESTING.md).

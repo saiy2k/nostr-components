@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="utf-8"></head>
+<body>
+<!--
+  SYNTHETIC. Logged-out x.com SSR captured on 2026-10-08 had no data-testid and
+  no div[role=group]. This file reconstructs the logged-in action group the
+  extension still prefers: article[data-testid=tweet], [data-testid=like], and
+  div[role=group]. Labels are Japanese so the testid path is what finds Like.
+  The /i/status link and the named /jack/status link are siblings. Replace this
+  file with a sanitised logged-in capture when one is available.
+-->
+<article data-testid="tweet">
+  <div>
+    <div>
+      <a href="/jack" role="link"><span>jack</span></a>
+      <a href="/i/status/1833951636005552366" role="link"><time datetime="2024-09-11T17:00:00.000Z">9月11日</time></a>
+      <a href="/jack/status/1833951636005552366" role="link"><time datetime="2024-09-11T17:00:00.000Z">9月11日</time></a>
+    </div>
+    <div data-testid="tweetText" lang="ja">合成フィクスチャ</div>
+    <div>
+      <a href="/camworboys/status/2105334006451482804" role="link"><time datetime="2026-09-30T00:00:00.000Z">9月30日</time></a>
+    </div>
+    <div role="group" aria-label="投稿のアクション">
+      <div>
+        <button type="button" aria-label="返信" data-testid="reply">返信</button>
+      </div>
+      <div>
+        <button type="button" aria-label="リポスト" data-testid="retweet">リポスト</button>
+      </div>
+      <div>
+        <button type="button" aria-label="いいね" data-testid="like">いいね</button>
+      </div>
+      <div>
+        <a href="/jack/status/1833951636005552366/analytics" aria-label="表示回数">表示</a>
+      </div>
+    </div>
+  </div>
+</article>
+</body>
+</html>

@@ -63,3 +63,7 @@ changes:
 ```bash
 npm run build:browser-extension
 ```
+
+Unit tests, DOM fixtures, and the Playwright harness are described in
+[TESTING.md](TESTING.md). Live x.com checks stay out of CI. They skip unless a
+logged-in profile and the opt-in env vars are present.

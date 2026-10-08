@@ -54,3 +54,11 @@ dist
 .cursor
 .firebase
 .gstack/
+
+# Logged-in Chromium profile and Playwright output for browser-extension/e2e.
+# Never commit the profile: it holds the X session.
+browser-extension/e2e/.pw-x-profile/
+browser-extension/e2e/test-results/
+browser-extension/e2e/playwright-report/
+browser-extension/e2e/blob-report/
+/test-results/
