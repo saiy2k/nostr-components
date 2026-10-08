@@ -107,6 +107,12 @@ describe("hide targets", () => {
       target: "example.com",
     });
     expect(parseHideArgs(["--rebuild", "--show", "example.com"]).error).toBe("rebuild-or-show");
+    expect(parseHideArgs(["--shwo", "example.com"]).error).toBe("unknown-flag:--shwo");
+    expect(parseHideArgs(["--", "example.com"])).toMatchObject({
+      show: false,
+      rebuild: false,
+      target: "example.com",
+    });
   });
 });
 

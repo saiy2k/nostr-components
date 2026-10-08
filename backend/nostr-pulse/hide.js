@@ -28,6 +28,10 @@ function count(value) {
 }
 
 export function parseHideArgs(argv) {
+  const unknown = argv.find(
+    (arg) => arg.startsWith("--") && arg !== "--" && arg !== "--show" && arg !== "--rebuild",
+  );
+  if (unknown) return { error: `unknown-flag:${unknown}` };
   const show = argv.includes("--show");
   const rebuild = argv.includes("--rebuild");
   const rest = argv.filter((arg) => arg !== "--" && !arg.startsWith("--"));
