@@ -252,6 +252,7 @@ describe("runRollup", () => {
     const db = memoryDb({
       [`${SWEEP_STATE_COLLECTION}/${PULSE_LEASE_DOC_ID}`]: {
         owner: "rebuild",
+        token: "rebuild:held",
         until: new Date(nowMs + 60_000).toISOString(),
       },
       [`${URL_ACTIVITY_COLLECTION}/a`]: {
@@ -264,6 +265,47 @@ describe("runRollup", () => {
     const result = await runRollup(db, { paceMs: 0, nowMs, leaseAttempts: 1 });
     expect(result).toMatchObject({ skipped: true, urls: 0 });
     expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).inRollup).toBeUndefined();
+    expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${PULSE_LEASE_DOC_ID}`).token).toBe(
+      "rebuild:held",
+    );
+  });
+
+  it("stops after the lease token changes and leaves the new holder's lease in place", async () => {
+    const nowMs = Date.parse("2026-10-08T00:00:00.000Z");
+    const db = memoryDb({
+      [`${URL_ACTIVITY_COLLECTION}/a`]: {
+        domain: "x.com",
+        updatedAt: 1,
+        likeCount: 1,
+        reactionCount: 1,
+      },
+      [`${URL_ACTIVITY_COLLECTION}/b`]: {
+        domain: "x.com",
+        updatedAt: 2,
+        likeCount: 4,
+        reactionCount: 4,
+      },
+    });
+    const result = await runRollup(db, {
+      paceMs: 1,
+      pageSize: 10,
+      batchSize: 1,
+      nowMs,
+      leaseMs: 60_000,
+      sleep: async () => {
+        db.docs.set(`${SWEEP_STATE_COLLECTION}/${PULSE_LEASE_DOC_ID}`, {
+          owner: "rebuild",
+          token: "rebuild:other",
+          until: new Date(nowMs + 60_000).toISOString(),
+        });
+      },
+    });
+    expect(result).toMatchObject({ skipped: true, reason: "pulse-lease-lost" });
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).inRollup).toBe(true);
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/b`).inRollup).toBeUndefined();
+    expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${PULSE_LEASE_DOC_ID}`).token).toBe(
+      "rebuild:other",
+    );
   });
 
   it("leaves a hidden domain out of the site-wide totals", async () => {

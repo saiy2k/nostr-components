@@ -19,6 +19,8 @@ import {
   emptyTotals,
   projectDomainVisibility,
   projectUrl,
+  PULSE_LEASE_DOC_ID,
+  renewedLease,
   totalsOf,
   withPulseLease,
 } from "./rollup.js";
@@ -168,7 +170,7 @@ async function urlsForDomain(db, domain) {
  * by the difference. Holds the pulse lease so a sweep rollup cannot commit
  * between the read and the rollup-marker writes.
  */
-async function rebuildUnlocked(db, name) {
+async function rebuildUnlocked(db, name, lease) {
   const urls = await urlsForDomain(db, name);
   const visible = urls.filter((url) => url.hidden !== true);
   const summed = visible.reduce((totals, url) => addTotals(totals, totalsOf(url)), emptyTotals());
@@ -179,7 +181,9 @@ async function rebuildUnlocked(db, name) {
     lastActivityAt = lastActivityAt == null ? at : Math.max(lastActivityAt, at);
   }
   const domainRef = db.collection(DOMAIN_COLLECTION).doc(name);
+  const held = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
   const result = await db.runTransaction(async (tx) => {
+    const heldSnap = await tx.get(held);
     const domainSnap = await tx.get(domainRef);
     const site = await readSite(tx, db);
     const current = domainSnap.exists ? domainFields(name, domainSnap.data() || {}) : blankDomain(name);
@@ -201,19 +205,35 @@ async function rebuildUnlocked(db, name) {
       domainCount:
         count(site.data.domainCount) + (contributingAfter ? 1 : 0) - (contributingBefore ? 1 : 0),
     };
+    const renewed = renewedLease(
+      heldSnap.exists ? heldSnap.data() : {},
+      lease,
+      lease.now(),
+    );
+    tx.set(held, renewed, { merge: true });
     tx.set(domainRef, nextDomain, { merge: true });
     writeSite(tx, site.ref, site.data, storedSite);
     return { ok: true, domain: name, urls: urls.length, ...storedSite };
   });
-  for (const url of urls) {
-    const visibleUrl = url.hidden !== true;
-    await db.collection(URL_ACTIVITY_COLLECTION).doc(url.id).set(
-      {
-        rolledUp: visibleUrl ? totalsOf(url) : emptyTotals(),
-        inRollup: visibleUrl,
-      },
-      { merge: true },
-    );
+  const chunk = 100;
+  for (let index = 0; index < urls.length; index += chunk) {
+    const slice = urls.slice(index, index + chunk);
+    await db.runTransaction(async (tx) => {
+      const heldSnap = await tx.get(held);
+      const renewed = renewedLease(heldSnap.exists ? heldSnap.data() : {}, lease, lease.now());
+      tx.set(held, renewed, { merge: true });
+      for (const url of slice) {
+        const visibleUrl = url.hidden !== true;
+        tx.set(
+          db.collection(URL_ACTIVITY_COLLECTION).doc(url.id),
+          {
+            rolledUp: visibleUrl ? totalsOf(url) : emptyTotals(),
+            inRollup: visibleUrl,
+          },
+          { merge: true },
+        );
+      }
+    });
   }
   return result;
 }
@@ -222,7 +242,7 @@ export async function rebuildDomain(db, domain, options = {}) {
   const parsed = parseHideTarget(domain);
   const name = parsed.type === "domain" ? parsed.domain : null;
   if (!name) return { ok: false, reason: parsed.error || "rebuild-needs-domain" };
-  return withPulseLease(db, "rebuild", () => rebuildUnlocked(db, name), {
+  return withPulseLease(db, "rebuild", (lease) => rebuildUnlocked(db, name, lease), {
     attempts: options.attempts ?? 60,
     retryMs: options.retryMs ?? 1000,
     sleep: options.sleep,

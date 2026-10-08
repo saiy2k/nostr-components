@@ -165,6 +165,7 @@ describe("rebuildDomain", () => {
     const db = memoryDb({
       [`${SWEEP_STATE_COLLECTION}/${PULSE_LEASE_DOC_ID}`]: {
         owner: "rollup",
+        token: "rollup:held",
         until: new Date(nowMs + 60_000).toISOString(),
       },
     });

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import { randomUUID } from "node:crypto";
 import { FieldPath } from "@google-cloud/firestore";
 import { URL_ACTIVITY_COLLECTION } from "./ingest.js";
 
@@ -178,36 +179,64 @@ function sleep(ms) {
  * both apply URL snapshots, and a rebuild that commits between those steps can
  * count the same URL twice.
  */
+function leaseRef(db) {
+  return db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
+}
+
+function leaseIsCurrent(data, nowMs) {
+  const until = Date.parse(data?.until || "");
+  return Boolean(data?.token) && Number.isFinite(until) && until > nowMs;
+}
+
+/**
+ * Read the lease before any writes in the same transaction. A matching token
+ * is renewed. Any other live token aborts, including after this run's lease
+ * has expired and someone else has taken it.
+ */
+export function renewedLease(data, lease, nowMs) {
+  if (!lease?.token || data?.token !== lease.token) {
+    throw new Error("pulse-lease-lost");
+  }
+  return {
+    owner: lease.owner,
+    token: lease.token,
+    until: new Date(nowMs + lease.leaseMs).toISOString(),
+  };
+}
+
 export async function withPulseLease(db, owner, fn, options = {}) {
   const attempts = options.attempts ?? 1;
   const retryMs = options.retryMs ?? 1000;
   const leaseMs = options.leaseMs ?? PULSE_LEASE_MS;
   const wait = options.sleep || sleep;
-  const ref = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
+  const ref = leaseRef(db);
+  const lease = {
+    owner,
+    token: `${owner}:${randomUUID()}`,
+    leaseMs,
+    now: () => options.nowMs ?? Date.now(),
+  };
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const nowMs = options.nowMs ?? Date.now();
+    const nowMs = lease.now();
     const acquired = await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const data = snap.exists ? snap.data() || {} : {};
-      const until = Date.parse(data.until || "");
-      if (data.owner && data.owner !== owner && Number.isFinite(until) && until > nowMs) {
-        return false;
-      }
+      if (leaseIsCurrent(data, nowMs) && data.token !== lease.token) return false;
       tx.set(
         ref,
-        { owner, until: new Date(nowMs + leaseMs).toISOString() },
+        { owner, token: lease.token, until: new Date(nowMs + leaseMs).toISOString() },
         { merge: true },
       );
       return true;
     });
     if (acquired) {
       try {
-        return await fn();
+        return await fn(lease);
       } finally {
         await db.runTransaction(async (tx) => {
           const snap = await tx.get(ref);
-          if (snap.exists && snap.data()?.owner === owner) {
-            tx.set(ref, { owner: null, until: null }, { merge: true });
+          if (snap.exists && snap.data()?.token === lease.token) {
+            tx.set(ref, { owner: null, token: null, until: null }, { merge: true });
           }
         });
       }
@@ -248,11 +277,13 @@ async function readUrlPage(db, cursor, limit, options = {}) {
   }));
 }
 
-async function commitBatch(db, page, cursor) {
+async function commitBatch(db, page, cursor, lease) {
   const urlCollection = db.collection(URL_ACTIVITY_COLLECTION);
   const domainCollection = db.collection(DOMAIN_COLLECTION);
   const siteRef = db.collection(SWEEP_STATE_COLLECTION).doc(ROLLUP_DOC_ID);
+  const held = leaseRef(db);
   return db.runTransaction(async (tx) => {
+    const heldSnap = await tx.get(held);
     const urls = [];
     for (const row of page) {
       const snap = await tx.get(urlCollection.doc(row.id));
@@ -274,6 +305,11 @@ async function commitBatch(db, page, cursor) {
         const snap = domainSnaps.get(domain);
         return [domain, snap.exists ? domainFromDoc(domain, snap.data() || {}) : blankDomain(domain)];
       }),
+    );
+    const renewed = renewedLease(
+      heldSnap.exists ? heldSnap.data() : {},
+      lease,
+      lease.now(),
     );
     const urlWrites = [];
     for (const url of urls) {
@@ -299,6 +335,7 @@ async function commitBatch(db, page, cursor) {
       cursorUpdatedAt: cursor.cursorUpdatedAt ?? null,
       cursorId: cursor.cursorId || null,
     };
+    tx.set(held, renewed, { merge: true });
     tx.set(siteRef, stored, { merge: true });
     return stored;
   });
@@ -309,7 +346,7 @@ async function commitBatch(db, page, cursor) {
  * Ingest owns `updatedAt`, so this never writes it. One batch per second keeps
  * a busy domain under Firestore's single-document write rate.
  */
-async function rollupUnlocked(db, options) {
+async function rollupUnlocked(db, options, lease) {
   const pageSize = options.pageSize ?? ROLLUP_PAGE_SIZE;
   const batchSize = options.batchSize ?? ROLLUP_BATCH_SIZE;
   const paceMs = options.paceMs ?? ROLLUP_PACE_MS;
@@ -327,10 +364,15 @@ async function rollupUnlocked(db, options) {
       const batch = page.slice(index, index + batchSize);
       if (paced && paceMs > 0) await wait(paceMs);
       const last = batch[batch.length - 1];
-      cursor = await commitBatch(db, batch, {
-        cursorUpdatedAt: last.updatedAt,
-        cursorId: last.id,
-      });
+      cursor = await commitBatch(
+        db,
+        batch,
+        {
+          cursorUpdatedAt: last.updatedAt,
+          cursorId: last.id,
+        },
+        lease,
+      );
       batches += 1;
       urls += batch.length;
       paced = true;
@@ -342,7 +384,7 @@ async function rollupUnlocked(db, options) {
 
 export async function runRollup(db, options = {}) {
   try {
-    return await withPulseLease(db, "rollup", () => rollupUnlocked(db, options), {
+    return await withPulseLease(db, "rollup", (lease) => rollupUnlocked(db, options, lease), {
       nowMs: options.nowMs,
       leaseMs: options.leaseMs,
       attempts: options.leaseAttempts ?? 1,
@@ -350,12 +392,14 @@ export async function runRollup(db, options = {}) {
       sleep: options.sleep,
     });
   } catch (error) {
-    if (error?.message !== "pulse-lease-held") throw error;
+    if (error?.message !== "pulse-lease-held" && error?.message !== "pulse-lease-lost") {
+      throw error;
+    }
     console.log(JSON.stringify({
       severity: "WARNING",
       message: "rollup_skipped",
-      reason: "pulse-lease-held",
+      reason: error.message,
     }));
-    return { skipped: true, reason: "pulse-lease-held", urls: 0, batches: 0 };
+    return { skipped: true, reason: error.message, urls: 0, batches: 0 };
   }
 }

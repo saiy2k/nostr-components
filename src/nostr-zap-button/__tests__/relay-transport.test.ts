@@ -161,6 +161,22 @@ describe('Zap component relay transport', () => {
     expect(query).toHaveBeenCalledTimes(1);
   });
 
+  it('returns null from an action-scoped batch when the directory has no profile', async () => {
+    const relays = ['wss://profiles-batch-action.example'];
+    const relayProfile = makeProfileEvent(22, { name: 'Relay' }, 10);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await getProfileMetadata(relayProfile.pubkey, relays);
+    await expect(
+      getBatchedProfileMetadata([relayProfile.pubkey], relays, 'b'.repeat(64)),
+    ).resolves.toEqual([{ id: relayProfile.pubkey, profile: null }]);
+    expect(getProfiles).toHaveBeenCalledWith('b'.repeat(64), [relayProfile.pubkey]);
+  });
+
   it('batches zapper profiles into one bounded host query', async () => {
     const pubkeys = ['7'.repeat(64), '8'.repeat(64)];
     const query = vi.fn().mockResolvedValue([]);

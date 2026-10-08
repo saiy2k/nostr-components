@@ -20810,6 +20810,42 @@
       }
     }
   }
+  async function actionScopedProfiles(authorIds, relayList, actionId) {
+    const found = /* @__PURE__ */ new Map();
+    const requestedIds = new Set(authorIds.map((id) => id.toLowerCase()));
+    const transport = getRelayTransport();
+    const ids = [...requestedIds];
+    for (let offset = 0; offset < ids.length; offset += PROFILE_QUERY_BATCH_SIZE) {
+      const batch = ids.slice(offset, offset + PROFILE_QUERY_BATCH_SIZE);
+      let events = [];
+      if (transport?.getProfiles) {
+        events = await transport.getProfiles(actionId, batch);
+      } else if (transport) {
+        events = await transport.query(
+          relayList,
+          { authors: batch, kinds: [0], limit: batch.length },
+          actionId
+        );
+      } else {
+        events = await lookupProfilesOutbox(batch, relayList);
+      }
+      cacheVerifiedProfiles(events, requestedIds, relayList);
+      for (const event of events) {
+        const candidate = event;
+        const verified = getVerifiedProfileEvent(candidate, candidate?.pubkey || "");
+        if (!verified || !requestedIds.has(verified.pubkey.toLowerCase())) continue;
+        const id = verified.pubkey.toLowerCase();
+        const previous = found.get(id);
+        if (!previous || verified.created_at > previous.created_at || verified.created_at === previous.created_at && verified.id < previous.id) {
+          found.set(id, verified);
+        }
+      }
+    }
+    return authorIds.map((id) => ({
+      id,
+      profile: found.get(id.toLowerCase()) || null
+    }));
+  }
   function zapATagValues(pubkey, url) {
     return zapFilterUrls(url).map((value) => `39735:${pubkey}:${value}`);
   }
@@ -21058,10 +21094,11 @@
       PROFILE_LOOKUP_CONCURRENCY = 5;
       getBatchedProfileMetadata = async (authorIds, relays, actionId) => {
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+        if (actionId) return actionScopedProfiles(authorIds, relayList, actionId);
         const uncachedIds = Array.from(
           new Set(
             authorIds.map((id) => id.toLowerCase()).filter(
-              (id) => actionId || !profileCache.has(profileCacheKey(id, relayList))
+              (id) => !profileCache.has(profileCacheKey(id, relayList))
             )
           )
         );
@@ -21080,14 +21117,8 @@
             kinds: [0],
             limit: batch.length
           };
-          if (actionId && transport?.getProfiles) {
-            cacheVerifiedProfiles(
-              await transport.getProfiles(actionId, batch),
-              requestedIds,
-              relayList
-            );
-          } else if (transport) {
-            const events = actionId ? await transport.query(relayList, filter, actionId) : await transport.query(relayList, filter);
+          if (transport) {
+            const events = await transport.query(relayList, filter);
             cacheVerifiedProfiles(events, requestedIds, relayList);
           } else {
             const events = await lookupProfilesOutbox(batch, relayList);
