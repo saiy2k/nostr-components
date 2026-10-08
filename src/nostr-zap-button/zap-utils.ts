@@ -41,7 +41,11 @@ const zapProviderCache: Record<
   { value: ZapProviderInfo | null; expiresAt: number }
 > = {};
 
-const profileCacheKey = (authorId: string, relays: string[]) => {
+const profileCacheKey = (
+  authorId: string,
+  relays: string[],
+  source: 'relay' | 'directory' = 'relay',
+) => {
   const normalizedRelays = Array.from(
     new Set(
       relays.map(relay => {
@@ -53,7 +57,7 @@ const profileCacheKey = (authorId: string, relays: string[]) => {
       }),
     ),
   ).sort();
-  return `${authorId.toLowerCase()}|${normalizedRelays.join(',')}`;
+  return `${source}|${authorId.toLowerCase()}|${normalizedRelays.join(',')}`;
 };
 
 const getVerifiedProfileEvent = (
@@ -84,8 +88,12 @@ export const getProfileMetadata = async (
   kind?: ProfileActionKind,
 ) => {
   const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
-  const cacheKey = profileCacheKey(authorId, relayList);
   const directoryLookup = usesDirectoryProfiles(actionId, kind);
+  const cacheKey = profileCacheKey(
+    authorId,
+    relayList,
+    directoryLookup ? 'directory' : 'relay',
+  );
   // An X action id must reach the directory lookup. A profile cached from a
   // relay query has no action id and would skip that call. YouTube creators
   // are not directory identities, so their profiles stay on relays.
@@ -154,6 +162,7 @@ function cacheVerifiedProfiles(
   events: unknown[],
   requestedIds: Set<string>,
   relayList: string[],
+  source: 'relay' | 'directory' = 'relay',
 ) {
   for (const event of events) {
     const candidate = event as Partial<Event> | null;
@@ -164,7 +173,7 @@ function cacheVerifiedProfiles(
     if (!verifiedEvent) continue;
     if (!requestedIds.has(verifiedEvent.pubkey.toLowerCase())) continue;
 
-    const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList);
+    const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList, source);
     const cached = profileCache.get(cacheKey);
     if (
       !cached ||
@@ -201,7 +210,12 @@ async function actionScopedProfiles(
     } else {
       events = await lookupProfilesOutbox(batch, relayList);
     }
-    cacheVerifiedProfiles(events, requestedIds, relayList);
+    cacheVerifiedProfiles(
+      events,
+      requestedIds,
+      relayList,
+      kind === 'youtube' ? 'relay' : 'directory',
+    );
     for (const event of events) {
       const candidate = event as Partial<Event> | null;
       const verified = getVerifiedProfileEvent(candidate, candidate?.pubkey || '');

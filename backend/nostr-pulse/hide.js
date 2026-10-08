@@ -140,7 +140,19 @@ export function rollupMarkerForRebuild(snapshot, current) {
   };
 }
 
+function latestVisibleActivity(urls, exceptId) {
+  let latest = null;
+  for (const url of urls) {
+    if (url.id === exceptId || url.hidden === true) continue;
+    const at = Number(url.lastActivityAt);
+    if (!Number.isFinite(at)) continue;
+    latest = latest == null ? at : Math.max(latest, at);
+  }
+  return latest;
+}
+
 async function setUrlHidden(db, target, hidden) {
+  const siblings = hidden === true ? await urlsForDomain(db, target.domain) : [];
   const urlRef = db.collection(URL_ACTIVITY_COLLECTION).doc(target.urlKey);
   const domainRef = db.collection(DOMAIN_COLLECTION).doc(target.domain);
   return db.runTransaction(async (tx) => {
@@ -153,6 +165,9 @@ async function setUrlHidden(db, target, hidden) {
       ? domainFields(target.domain, domainSnap.data() || {})
       : blankDomain(target.domain);
     const projected = projectUrl(domain, site.data, url);
+    if (hidden === true) {
+      projected.domain.lastActivityAt = latestVisibleActivity(siblings, target.urlKey);
+    }
     tx.set(
       urlRef,
       { hidden: hidden === true, rolledUp: projected.url.rolledUp, inRollup: projected.url.inRollup },
@@ -195,6 +210,19 @@ async function urlsForDomain(db, domain) {
  * between the read and the rollup-marker writes.
  */
 async function rebuildUnlocked(db, name, lease) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await rebuildPass(db, name, lease);
+    } catch (error) {
+      lastError = error;
+      if (error?.message === "pulse-lease-lost") throw error;
+    }
+  }
+  throw lastError;
+}
+
+async function rebuildPass(db, name, lease) {
   const urls = await urlsForDomain(db, name);
   const visible = urls.filter((url) => url.hidden !== true);
   const summed = visible.reduce((totals, url) => addTotals(totals, totalsOf(url)), emptyTotals());
@@ -206,6 +234,26 @@ async function rebuildUnlocked(db, name, lease) {
   }
   const domainRef = db.collection(DOMAIN_COLLECTION).doc(name);
   const held = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
+  const chunk = 100;
+  for (let index = 0; index < urls.length; index += chunk) {
+    const slice = urls.slice(index, index + chunk);
+    await db.runTransaction(async (tx) => {
+      const heldSnap = await tx.get(held);
+      const fresh = [];
+      for (const url of slice) {
+        const ref = db.collection(URL_ACTIVITY_COLLECTION).doc(url.id);
+        fresh.push({ url, ref, snap: await tx.get(ref) });
+      }
+      const renewed = renewedLease(heldSnap.exists ? heldSnap.data() : {}, lease, lease.now());
+      tx.set(held, renewed, { merge: true });
+      for (const row of fresh) {
+        if (!row.snap.exists) continue;
+        const marker = rollupMarkerForRebuild(row.url, row.snap.data() || {});
+        if (!marker) continue;
+        tx.set(row.ref, marker, { merge: true });
+      }
+    });
+  }
   const result = await db.runTransaction(async (tx) => {
     const heldSnap = await tx.get(held);
     const domainSnap = await tx.get(domainRef);
@@ -239,26 +287,6 @@ async function rebuildUnlocked(db, name, lease) {
     writeSite(tx, site.ref, site.data, storedSite);
     return { ok: true, domain: name, urls: urls.length, ...storedSite };
   });
-  const chunk = 100;
-  for (let index = 0; index < urls.length; index += chunk) {
-    const slice = urls.slice(index, index + chunk);
-    await db.runTransaction(async (tx) => {
-      const heldSnap = await tx.get(held);
-      const fresh = [];
-      for (const url of slice) {
-        const ref = db.collection(URL_ACTIVITY_COLLECTION).doc(url.id);
-        fresh.push({ url, ref, snap: await tx.get(ref) });
-      }
-      const renewed = renewedLease(heldSnap.exists ? heldSnap.data() : {}, lease, lease.now());
-      tx.set(held, renewed, { merge: true });
-      for (const row of fresh) {
-        if (!row.snap.exists) continue;
-        const marker = rollupMarkerForRebuild(row.url, row.snap.data() || {});
-        if (!marker) continue;
-        tx.set(row.ref, marker, { merge: true });
-      }
-    });
-  }
   return result;
 }
 

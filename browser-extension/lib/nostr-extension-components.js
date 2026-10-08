@@ -20797,7 +20797,7 @@
     }
     return events;
   }
-  function cacheVerifiedProfiles(events, requestedIds, relayList) {
+  function cacheVerifiedProfiles(events, requestedIds, relayList, source = "relay") {
     for (const event of events) {
       const candidate = event;
       const verifiedEvent = getVerifiedProfileEvent(
@@ -20806,7 +20806,7 @@
       );
       if (!verifiedEvent) continue;
       if (!requestedIds.has(verifiedEvent.pubkey.toLowerCase())) continue;
-      const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList);
+      const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList, source);
       const cached = profileCache.get(cacheKey);
       if (!cached || verifiedEvent.created_at > cached.created_at || verifiedEvent.created_at === cached.created_at && verifiedEvent.id < cached.id) {
         profileCache.set(cacheKey, verifiedEvent);
@@ -20832,7 +20832,12 @@
       } else {
         events = await lookupProfilesOutbox(batch, relayList);
       }
-      cacheVerifiedProfiles(events, requestedIds, relayList);
+      cacheVerifiedProfiles(
+        events,
+        requestedIds,
+        relayList,
+        kind === "youtube" ? "relay" : "directory"
+      );
       for (const event of events) {
         const candidate = event;
         const verified = getVerifiedProfileEvent(candidate, candidate?.pubkey || "");
@@ -21041,7 +21046,7 @@
       ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1e3;
       ZAP_RECEIPT_POLL_TIMEOUT_MS = 10 * 60 * 1e3;
       zapProviderCache = {};
-      profileCacheKey = (authorId, relays) => {
+      profileCacheKey = (authorId, relays, source = "relay") => {
         const normalizedRelays = Array.from(
           new Set(
             relays.map((relay) => {
@@ -21053,7 +21058,7 @@
             })
           )
         ).sort();
-        return `${authorId.toLowerCase()}|${normalizedRelays.join(",")}`;
+        return `${source}|${authorId.toLowerCase()}|${normalizedRelays.join(",")}`;
       };
       getVerifiedProfileEvent = (event, expectedAuthorId) => {
         const profile = cloneVerifiedEvent(event);
@@ -21065,8 +21070,12 @@
       };
       getProfileMetadata = async (authorId, relays, actionId, kind) => {
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
-        const cacheKey = profileCacheKey(authorId, relayList);
         const directoryLookup = usesDirectoryProfiles(actionId, kind);
+        const cacheKey = profileCacheKey(
+          authorId,
+          relayList,
+          directoryLookup ? "directory" : "relay"
+        );
         if (!directoryLookup) {
           const cached = profileCache.get(cacheKey);
           if (cached) return cached;

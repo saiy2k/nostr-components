@@ -7889,10 +7889,10 @@
               if (finished) return;
               if (keepNewestProfile) {
                 if (!isRequestedProfile(event, filterList)) return;
-                const current = eventsById.values().next().value || null;
+                const pubkey = String(event.pubkey || "").toLowerCase();
+                const current = eventsById.get(pubkey) || null;
                 if (!current || preferProfile(event, current)) {
-                  eventsById.clear();
-                  eventsById.set(event.id, event);
+                  eventsById.set(pubkey, event);
                 }
                 relaysWithEvents.add(relay);
                 return;

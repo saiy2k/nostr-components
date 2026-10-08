@@ -122,6 +122,36 @@ describe("hide targets", () => {
   });
 });
 
+describe("setTargetHidden activity time", () => {
+  it("moves the domain activity time to the newest URL that stays visible", async () => {
+    const other = "cd".repeat(32);
+    const db = seeded();
+    db.docs.set(`${URL_ACTIVITY_COLLECTION}/${other}`, {
+      url: "https://example.com/b",
+      domain: "example.com",
+      likeCount: 1,
+      reactionCount: 1,
+      lastActivityAt: 8,
+      hidden: false,
+      inRollup: true,
+      rolledUp: { likeCount: 1, dislikeCount: 0, emojiCount: 0, reactionCount: 1, zapCount: 0, zapMsats: 0 },
+    });
+    db.docs.set(`${URL_ACTIVITY_COLLECTION}/${KEY}`, {
+      ...db.docs.get(`${URL_ACTIVITY_COLLECTION}/${KEY}`),
+      lastActivityAt: 50,
+    });
+    db.docs.set(`${DOMAIN_COLLECTION}/example.com`, {
+      ...db.docs.get(`${DOMAIN_COLLECTION}/example.com`),
+      lastActivityAt: 50,
+      likeCount: 5,
+      reactionCount: 5,
+      urlCount: 2,
+    });
+    await setTargetHidden(db, PAGE, true);
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/example.com`).lastActivityAt).toBe(8);
+  });
+});
+
 describe("rollup markers", () => {
   it("keeps a marker when visibility is unchanged and skips it when hide wins the race", () => {
     const snapshot = { hidden: false, likeCount: 4, reactionCount: 4 };

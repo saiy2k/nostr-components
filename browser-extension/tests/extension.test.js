@@ -3199,6 +3199,80 @@ describe('CSP-safe component and relay integration', function () {
     }
   });
 
+  it('keeps the newest YouTube profile for every requested author', async function () {
+    const originalRelayClient = extension.relayClient;
+    await import('../src/relay-client.js?youtube-profile-batch');
+    try {
+      const listeners = new Map();
+      const responses = [];
+      const pageWindow = {
+        location: { origin: 'https://www.youtube.com' },
+        addEventListener(type, listener) {
+          listeners.set(type, listener);
+        },
+        removeEventListener(type) {
+          listeners.delete(type);
+        },
+        postMessage(message) {
+          responses.push(message);
+        }
+      };
+      const first = finalizeEvent(
+        { kind: 0, created_at: 20, tags: [], content: JSON.stringify({ name: 'First' }) },
+        new Uint8Array(32).fill(31)
+      );
+      const firstOlder = finalizeEvent(
+        { kind: 0, created_at: 5, tags: [], content: JSON.stringify({ name: 'First old' }) },
+        new Uint8Array(32).fill(31)
+      );
+      const second = finalizeEvent(
+        { kind: 0, created_at: 15, tags: [], content: JSON.stringify({ name: 'Second' }) },
+        new Uint8Array(32).fill(32)
+      );
+      const pool = {
+        subscribe(_relays, _filter, options) {
+          options.onevent(firstOlder);
+          options.onevent(second);
+          options.onevent(first);
+          options.oneose();
+          return { close() {} };
+        },
+        destroy: vi.fn()
+      };
+      const channel = 'a'.repeat(64);
+      const actionId = 'b'.repeat(64);
+      const session = extension.relayClient.configure(channel, {
+        pool: pool,
+        window: pageWindow
+      });
+      extension.relayClient.registerActionContext(actionId, {
+        kind: 'youtube',
+        url: 'https://www.youtube.com/watch?v=dQw4w9wgxcQ',
+        recipientNpub: nip19.npubEncode(first.pubkey)
+      });
+      await listeners.get('message')({
+        source: pageWindow,
+        origin: 'https://www.youtube.com',
+        data: await createAuthenticatedRelayRequest(channel, 'c'.repeat(32), 'query', {
+          actionId: actionId,
+          relays: ['wss://relay.example'],
+          filter: {
+            kinds: [0],
+            authors: [first.pubkey, second.pubkey],
+            limit: 2
+          }
+        })
+      });
+      expect(responses[0].ok).toBe(true);
+      expect(responses[0].result.map((event) => event.id).sort()).toEqual(
+        [first.id, second.id].sort()
+      );
+      session.dispose();
+    } finally {
+      extension.relayClient = originalRelayClient;
+    }
+  });
+
   it('loads a Zap provider when only a slower relay has the profile', async function () {
     const listeners = new Map();
     const responses = [];

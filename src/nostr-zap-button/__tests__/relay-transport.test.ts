@@ -198,6 +198,23 @@ describe('Zap component relay transport', () => {
     expect(query).toHaveBeenCalled();
   });
 
+  it('does not reuse a directory profile for a YouTube relay lookup', async () => {
+    const relays = ['wss://profiles-youtube-cache.example'];
+    const directoryProfile = makeProfileEvent(24, { name: 'Directory' }, 10);
+    const relayProfile = makeProfileEvent(24, { name: 'Relay' }, 40);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([directoryProfile]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await getProfileMetadata(directoryProfile.pubkey, relays, 'd'.repeat(64));
+    await expect(
+      getProfileMetadata(directoryProfile.pubkey, relays, 'd'.repeat(64), 'youtube'),
+    ).resolves.toMatchObject({ id: relayProfile.id });
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it('batches zapper profiles into one bounded host query', async () => {
     const pubkeys = ['7'.repeat(64), '8'.repeat(64)];
     const query = vi.fn().mockResolvedValue([]);
