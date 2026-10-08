@@ -14,6 +14,25 @@ const MAX_NAME_LENGTH = 100;
 const MAX_NIP05_LENGTH = 255;
 const CURSOR_PATTERN = /^twitter:[a-z0-9_]{1,15}$/;
 
+export function directoryFunctionUrl(
+  directoryApiUrl: string,
+  functionName: string,
+): string {
+  const url = new URL(directoryApiUrl);
+  if (!url.pathname.endsWith("/listAtlasProfiles")) {
+    throw new Error(
+      "The directory API URL cannot be used to reach directory functions.",
+    );
+  }
+  url.pathname = url.pathname.replace(
+    /\/listAtlasProfiles$/,
+    `/${functionName}`,
+  );
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
 export interface DirectoryPage {
   readonly profiles: DirectoryProfile[];
   readonly total: number;

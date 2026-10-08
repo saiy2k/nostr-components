@@ -227,6 +227,10 @@ npm run build:atlas
 
 The deployable static site is written to `nostr-atlas/dist/`.
 
+## Shared chrome
+
+`partials/site-header.html` and `partials/site-footer.html` hold the header, the footer, and the like and zap component scripts. The Vite build injects them at `<!-- site-header -->` and `<!-- site-footer -->` on every page. `src/site.ts` points the header buttons at the current page on `VITE_SITE_ORIGIN`, and shares the toast and live document SEO updates. `directoryFunctionUrl` in `src/api.ts` builds other function URLs from `VITE_ATLAS_API_URL`.
+
 ## SEO
 
 The public origin is `https://nostr-atlas.web.app`. Set `VITE_SITE_ORIGIN` when the site is served from another origin. The homepage HTML already contains the title, description, canonical URL, and social tags. `build:atlas` also writes `robots.txt` and a sitemap for that one page. There are no per-account URLs. Search query strings such as `?q=` stay canonical to the homepage.

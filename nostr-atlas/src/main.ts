@@ -26,8 +26,13 @@ import {
   nip05ProfileUrl,
   siteOriginFrom,
   xProfileUrl,
-  type DocumentSeo,
 } from "./seo";
+import {
+  applyDocumentSeo,
+  configureSiteActions,
+  escapeHtml,
+  showToast,
+} from "./site";
 import {
   claimProofComposerUrl,
   connectClaimSigner,
@@ -60,19 +65,6 @@ const sort: DirectorySort = "followers";
 let currentPage = 1;
 let pageSize = DEFAULT_PAGE_SIZE;
 let searchTimer: number | null = null;
-
-const escapeHtml = (value: string): string =>
-  value.replace(
-    /[&<>'"]/g,
-    (character) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "'": "&#039;",
-        '"': "&quot;",
-      })[character] ?? character,
-  );
 
 function profileRow(profile: DirectoryProfile): string {
   const safeName = escapeHtml(profile.name);
@@ -400,45 +392,8 @@ function syncSearchUrl(value: string): void {
   if (next !== current) history.replaceState(null, "", next);
 }
 
-function applyDocumentSeo(seo: DocumentSeo): void {
-  document.title = seo.title;
-  setMeta("description", seo.description);
-  setMeta("robots", seo.robots);
-  setMeta("twitter:title", seo.title);
-  setMeta("twitter:description", seo.description);
-  setMeta("twitter:image", seo.image);
-  setProperty("og:title", seo.title);
-  setProperty("og:description", seo.description);
-  setProperty("og:url", seo.canonical);
-  setProperty("og:image", seo.image);
-  const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-  if (canonical) canonical.href = seo.canonical;
-  const jsonLd = document.querySelector<HTMLScriptElement>("#seo-jsonld");
-  if (jsonLd) {
-    jsonLd.textContent = JSON.stringify(seo.jsonLd).replace(/</g, "\\u003c");
-  }
-}
-
-function setMeta(name: string, content: string): void {
-  const element = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
-  if (element) element.content = content;
-}
-
-function setProperty(property: string, content: string): void {
-  const element = document.querySelector<HTMLMetaElement>(
-    `meta[property="${property}"]`,
-  );
-  if (element) element.content = content;
-}
-
-function configureSiteActions(): void {
-  const pageUrl = `${siteOrigin}/`;
-  document.querySelector("nostr-like-button")?.setAttribute("url", pageUrl);
-  document.querySelector("nostr-zap-button")?.setAttribute("url", pageUrl);
-}
-
 function boot(): void {
-  configureSiteActions();
+  configureSiteActions(siteOrigin);
   bindEvents();
   const initialQuery = readSearchQuery();
   const searchInput = document.querySelector<HTMLInputElement>("#directory-search");
@@ -817,14 +772,6 @@ function copyWithSelection(value: string): boolean {
   } finally {
     textarea.remove();
   }
-}
-
-function showToast(message: string): void {
-  const toast = document.querySelector<HTMLDivElement>("#toast");
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add("visible");
-  window.setTimeout(() => toast.classList.remove("visible"), 2600);
 }
 
 boot();
