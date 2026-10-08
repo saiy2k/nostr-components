@@ -14,6 +14,7 @@ import {
   PULSE_LEASE_DOC_ID,
   ROLLUP_DOC_ID,
   SWEEP_STATE_COLLECTION,
+  appliedMarker,
 } from "./rollup.js";
 
 const PAGE = parseHideTarget("https://example.com/a");
@@ -265,6 +266,53 @@ describe("rebuildDomain", () => {
       stagedEpoch: 1,
     });
     expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`).cursorId).toBe("keep");
+  });
+
+  it("keeps the published marker when a later rebuild fails before it publishes", async () => {
+    const db = memoryDb({
+      [`${URL_ACTIVITY_COLLECTION}/${KEY}`]: {
+        domain: "example.com",
+        hidden: false,
+        likeCount: 5,
+        reactionCount: 5,
+        lastActivityAt: 8,
+      },
+      [`${DOMAIN_COLLECTION}/example.com`]: {
+        domain: "example.com",
+        urlCount: 0,
+        hidden: false,
+        inSiteTotals: true,
+      },
+      [`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`]: {
+        domainCount: 1,
+      },
+    });
+    await rebuildDomain(db, "example.com");
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/example.com`).markerEpoch).toBe(1);
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/${KEY}`)).toMatchObject({
+      stagedEpoch: 1,
+    });
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/${KEY}`).markerEpoch).toBeUndefined();
+
+    await expect(
+      rebuildDomain(db, "example.com", { failPublish: true }),
+    ).rejects.toThrow("rebuild-publish-failed");
+
+    const url = db.docs.get(`${URL_ACTIVITY_COLLECTION}/${KEY}`);
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/example.com`)).toMatchObject({
+      markerEpoch: 1,
+      likeCount: 5,
+    });
+    expect(url).toMatchObject({
+      markerEpoch: 1,
+      inRollup: true,
+      stagedEpoch: 2,
+    });
+    expect(url.rolledUp.likeCount).toBe(5);
+    expect(appliedMarker(url, { markerEpoch: 1 })).toMatchObject({
+      inRollup: true,
+      rolledUp: { likeCount: 5 },
+    });
   });
 
   it("hides a URL after a rebuild without putting the staged total back", async () => {

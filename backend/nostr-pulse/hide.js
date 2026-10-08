@@ -217,11 +217,11 @@ async function urlsForDomain(db, domain) {
  * ignores them until the totals transaction publishes that epoch, so a failed
  * write cannot leave new totals paired with old markers, or the reverse.
  */
-async function rebuildUnlocked(db, name, lease) {
+async function rebuildUnlocked(db, name, lease, options = {}) {
   let lastError;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await rebuildPass(db, name, lease);
+      return await rebuildPass(db, name, lease, options);
     } catch (error) {
       lastError = error;
       if (error?.message === "pulse-lease-lost") throw error;
@@ -230,7 +230,7 @@ async function rebuildUnlocked(db, name, lease) {
   throw lastError;
 }
 
-async function stageRebuildMarkers(db, urls, nextEpoch, lease) {
+async function stageRebuildMarkers(db, urls, nextEpoch, publishedEpoch, lease) {
   const held = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
   const staged = [];
   const chunk = 100;
@@ -253,7 +253,21 @@ async function stageRebuildMarkers(db, urls, nextEpoch, lease) {
         const current = row.snap.data() || {};
         const marker = rollupMarkerForRebuild(row.url, current);
         if (!marker) throw new Error("rebuild-visibility-changed");
-        prepared.push({ ref: row.ref, marker, lastActivityAt: current.lastActivityAt });
+        const promote =
+          publishedEpoch !== 0 && count(current.stagedEpoch) === publishedEpoch;
+        prepared.push({
+          ref: row.ref,
+          marker,
+          lastActivityAt: current.lastActivityAt,
+          promote,
+          published: promote
+            ? {
+                rolledUp: current.stagedRolledUp,
+                inRollup: current.stagedInRollup === true,
+                markerEpoch: publishedEpoch,
+              }
+            : null,
+        });
       }
       tx.set(held, renewed, { merge: true });
       for (const row of prepared) {
@@ -261,6 +275,7 @@ async function stageRebuildMarkers(db, urls, nextEpoch, lease) {
         tx.set(
           row.ref,
           {
+            ...(row.published || {}),
             stagedRolledUp: row.marker.rolledUp,
             stagedInRollup: row.marker.inRollup,
             stagedEpoch: nextEpoch,
@@ -292,13 +307,14 @@ function totalsFromStaged(staged) {
   return { summed, visibleCount, lastActivityAt };
 }
 
-async function rebuildPass(db, name, lease) {
+async function rebuildPass(db, name, lease, options = {}) {
   const urls = await urlsForDomain(db, name);
   const domainRef = db.collection(DOMAIN_COLLECTION).doc(name);
   const existing = await domainRef.get();
   const starting = existing.exists ? domainFields(name, existing.data() || {}) : blankDomain(name);
   const nextEpoch = count(starting.markerEpoch) + 1;
-  const staged = await stageRebuildMarkers(db, urls, nextEpoch, lease);
+  const staged = await stageRebuildMarkers(db, urls, nextEpoch, nextEpoch - 1, lease);
+  if (options.failPublish) throw new Error("rebuild-publish-failed");
   const { summed, visibleCount, lastActivityAt } = totalsFromStaged(staged);
   const held = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
   return db.runTransaction(async (tx) => {
@@ -338,7 +354,7 @@ export async function rebuildDomain(db, domain, options = {}) {
   const parsed = parseHideTarget(domain);
   const name = parsed.type === "domain" ? parsed.domain : null;
   if (!name) return { ok: false, reason: parsed.error || "rebuild-needs-domain" };
-  return withPulseLease(db, "rebuild", (lease) => rebuildUnlocked(db, name, lease), {
+  return withPulseLease(db, "rebuild", (lease) => rebuildUnlocked(db, name, lease, options), {
     attempts: options.attempts ?? 60,
     retryMs: options.retryMs ?? 1000,
     sleep: options.sleep,
