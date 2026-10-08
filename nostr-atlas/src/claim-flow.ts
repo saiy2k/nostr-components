@@ -1,5 +1,5 @@
 import type { Event } from "nostr-tools";
-import { DEFAULT_ATLAS_API_URL } from "./api";
+import { DEFAULT_ATLAS_API_URL, directoryFunctionUrl } from "./api";
 import {
   claimHandleIssue,
   connectClaimSigner,
@@ -86,25 +86,6 @@ export type ClaimSubmitResult =
       message: string;
       clearIdentity: true;
     };
-
-function directoryFunctionUrl(
-  directoryApiUrl: string,
-  functionName: string,
-): string {
-  const url = new URL(directoryApiUrl);
-  if (!url.pathname.endsWith("/listAtlasProfiles")) {
-    throw new Error(
-      "The directory API URL cannot be used to reach directory functions.",
-    );
-  }
-  url.pathname = url.pathname.replace(
-    /\/listAtlasProfiles$/,
-    `/${functionName}`,
-  );
-  url.search = "";
-  url.hash = "";
-  return url.toString();
-}
 
 export function claimProofEndpoint(directoryApiUrl: string): string {
   return directoryFunctionUrl(directoryApiUrl, "checkClaimProof");

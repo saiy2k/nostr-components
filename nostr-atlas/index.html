@@ -25,20 +25,7 @@
   </head>
   <body>
     <a class="skip-link" href="#directory">Skip to creator claims</a>
-    <header class="site-header">
-      <div class="shell header-inner">
-        <a class="brand" href="/" aria-label="Nostr Atlas home">
-          <svg class="brand-mark" aria-hidden="true" viewBox="0 0 36 36" fill="none">
-            <path d="M18 2.5c.8 9.7 5.8 14.7 15.5 15.5C23.8 18.8 18.8 23.8 18 33.5 17.2 23.8 12.2 18.8 2.5 18 12.2 17.2 17.2 12.2 18 2.5Z" />
-          </svg>
-          <span>Nostr Atlas</span>
-        </a>
-        <div class="header-actions">
-          <nostr-like-button url="https://nostr-atlas.web.app/"></nostr-like-button>
-          <nostr-zap-button npub="npub1qsvv5ttv6mrlh38q8ydmw3gzwq360mdu8re2vr7rk68sqmhmsh4svhsft3" url="https://nostr-atlas.web.app/"></nostr-zap-button>
-        </div>
-      </div>
-    </header>
+    <!-- site-header -->
 
     <main id="top">
       <section class="hero shell" aria-labelledby="hero-heading">
@@ -122,24 +109,7 @@
       </section>
     </main>
 
-    <footer class="site-footer" id="about">
-      <div class="shell">
-        <div class="footer-inner">
-          <div class="footer-brand">
-            <svg class="brand-mark" aria-hidden="true" viewBox="0 0 36 36" fill="none">
-              <path d="M18 2.5c.8 9.7 5.8 14.7 15.5 15.5C23.8 18.8 18.8 23.8 18 33.5 17.2 23.8 12.2 18.8 2.5 18 12.2 17.2 17.2 12.2 18 2.5Z" />
-            </svg>
-            <strong>Nostr Atlas</strong><i aria-hidden="true"></i><span>Built to help creators receive zaps on X.com and YouTube.</span>
-          </div>
-          <nav aria-label="Footer navigation">
-            <a href="https://nostr.how/en/what-is-nostr" target="_blank" rel="noreferrer">What is Nostr?</a>
-            <a href="https://www.youtube.com/watch?v=0YDj1QdL2Zs" target="_blank" rel="noreferrer">Explainer video</a>
-            <a href="https://github.com/saiy2k/nostr-components" target="_blank" rel="noreferrer">GitHub</a>
-          </nav>
-        </div>
-        <p class="footer-credit">Inspired by <a href="https://nostr.directory/" target="_blank" rel="noreferrer">nostr.directory</a>, which also seeded this data.</p>
-      </div>
-    </footer>
+    <!-- site-footer -->
 
     <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
       <form method="dialog" class="dialog-card claim-dialog-card" id="claim-account-form">
@@ -196,8 +166,6 @@
     </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <noscript>Search works with JavaScript. Verified accounts linked from this page can still be opened.</noscript>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@0.7.0/dist/components/nostr-like-button.es.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/nostr-components@0.7.0/dist/components/nostr-zap-button.es.js"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

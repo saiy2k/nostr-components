@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { nip19 } from "nostr-tools";
 import {
+  directoryFunctionUrl,
   fetchDirectoryPageAtOffset,
   mapDirectoryProfile,
   parseDirectoryPage,
@@ -308,5 +309,24 @@ describe("directory API", () => {
     await expect(fetchPages({ offset: 10_100 })).rejects.toThrow(
       "cursor is missing",
     );
+  });
+});
+
+describe("directoryFunctionUrl", () => {
+  it("builds another function URL from the directory API URL", () => {
+    expect(
+      directoryFunctionUrl(
+        "https://us-central1-nostr-components.cloudfunctions.net/listAtlasProfiles?limit=50#page",
+        "getPulseOverview",
+      ),
+    ).toBe(
+      "https://us-central1-nostr-components.cloudfunctions.net/getPulseOverview",
+    );
+  });
+
+  it("rejects an API URL that is not the directory listing", () => {
+    expect(() =>
+      directoryFunctionUrl("https://example.com/lookupAtlasHandle", "ingestClaim"),
+    ).toThrow(/cannot be used/);
   });
 });
