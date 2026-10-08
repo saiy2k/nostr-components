@@ -2,6 +2,7 @@
 
 import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { NostrBaseComponent, NCStatus } from '../base-component/nostr-base-component';
+import { getTrustedActionContext } from '../../common/trusted-action-context';
 import { UserResolver } from '../resolvers/user-resolver';
 
 const EVT_USER = 'nc:user';
@@ -134,6 +135,7 @@ export class NostrUserComponent extends NostrBaseComponent {
         pubkey: this.getAttribute('pubkey'),
         nip05: this.getAttribute('nip05'),
         relays: this.getRelays(),
+        actionId: getTrustedActionContext(this)?.actionId,
       });
 
       // stale call check

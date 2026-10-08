@@ -25411,10 +25411,10 @@
       const user = await this.resolveNDKUser(identifier);
       return user ? this.fetchZaps(user) : 0;
     }
-    async getProfile(user, relays = this.getRelays()) {
+    async getProfile(user, relays = this.getRelays(), actionId) {
       if (!user) return null;
       const transport = getRelayTransport();
-      const event = transport ? await getProfileMetadata(user.pubkey, relays) : await fetchProfileOutbox(user.pubkey, relays);
+      const event = transport ? await getProfileMetadata(user.pubkey, relays, actionId) : await fetchProfileOutbox(user.pubkey, relays);
       if (!event) return null;
       try {
         const profile = profileFromEvent(new NDKEvent(this.ndk, event));
@@ -27685,11 +27685,12 @@ ${url}`;
       npub: npub2,
       pubkey,
       nip05,
-      relays
+      relays,
+      actionId
     }) {
       const user = await this.nostrService.resolveNDKUser({ npub: npub2, pubkey, nip05 });
       if (!user) throw new Error("Unable to resolve user from provided identifier");
-      const profile = await this.nostrService.getProfile(user, relays);
+      const profile = await this.nostrService.getProfile(user, relays, actionId);
       return { user, profile: profile ?? null };
     }
   };
@@ -27773,7 +27774,8 @@ ${url}`;
           npub: this.getAttribute("npub"),
           pubkey: this.getAttribute("pubkey"),
           nip05: this.getAttribute("nip05"),
-          relays: this.getRelays()
+          relays: this.getRelays(),
+          actionId: getTrustedActionContext(this)?.actionId
         });
         if (seq !== this.loadSeq) return;
         if (profile == null) {

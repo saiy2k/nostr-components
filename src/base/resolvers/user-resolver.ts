@@ -22,16 +22,18 @@ export class UserResolver {
     pubkey,
     nip05,
     relays,
+    actionId,
   }: {
     npub?: string | null;
     pubkey?: string | null;
     nip05?: string | null;
     relays?: string[];
+    actionId?: string;
   }): Promise<{ user: NDKUser, profile: NDKUserProfile | null }> {
     const user = await this.nostrService.resolveNDKUser({ npub, pubkey, nip05 });
     if (!user) throw new Error("Unable to resolve user from provided identifier");
 
-    const profile = await this.nostrService.getProfile(user, relays);
+    const profile = await this.nostrService.getProfile(user, relays, actionId);
 
     return { user, profile: profile ?? null };
   }
