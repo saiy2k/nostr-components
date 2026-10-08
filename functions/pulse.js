@@ -87,7 +87,7 @@ function parseDomain(value, { required = false } = {}) {
     domain.length > 253 ||
     !DOMAIN_PATTERN.test(domain) ||
     domain.startsWith(".") ||
-    domain.endsWith(".") ||
+    (required && domain.endsWith(".")) ||
     domain.includes("..")
   ) {
     return { error: required ? "invalid_domain" : "invalid_search" };

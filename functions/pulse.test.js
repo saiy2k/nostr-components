@@ -297,6 +297,27 @@ test("activity keeps the latest window and drops hidden URLs", async () => {
   assert.equal(result.body.reactions[0].url, "https://example.com/a");
 });
 
+test("a trailing dot is a search prefix and not a domain name", async () => {
+  const db = pulseDb(records);
+  const search = await getPulseOverview(
+    db,
+    { search: "example." },
+    { nowMs: NOW, hiddenCache: createHiddenCache() },
+  );
+  assert.equal(search.status, 200);
+  assert.deepEqual(
+    search.body.domains.map((row) => row.domain),
+    ["example.com"],
+  );
+  const domain = await getPulseDomain(
+    db,
+    { domain: "example." },
+    { nowMs: NOW, hiddenCache: createHiddenCache() },
+  );
+  assert.equal(domain.status, 400);
+  assert.equal(domain.body.error, "invalid_domain");
+});
+
 test("rejects an unknown sort and a missing day window", async () => {
   const db = pulseDb(records);
   const sort = await getPulseOverview(
