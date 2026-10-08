@@ -59,6 +59,7 @@ let tableStatus: TableStatus = "loading";
 let activityStatus: ActivityStatus = "loading";
 let tableToken = 0;
 let activityToken = 0;
+const expansionTokens = new Map<string, number>();
 let profileFlight: Promise<void> | null = null;
 
 function required<T extends Element>(selector: string): T {
@@ -196,11 +197,14 @@ async function reloadTable(): Promise<void> {
   paint();
   try {
     if (domain) {
-      domainPage = await fetchPulseDomain(directoryApiUrl, { domain, sort: urlSort });
+      const page = await fetchPulseDomain(directoryApiUrl, { domain, sort: urlSort });
+      if (token !== tableToken) return;
+      domainPage = page;
     } else {
-      overview = await fetchPulseOverview(directoryApiUrl, { sort: domainSort, search });
+      const next = await fetchPulseOverview(directoryApiUrl, { sort: domainSort, search });
+      if (token !== tableToken) return;
+      overview = next;
     }
-    if (token !== tableToken) return;
     tableStatus = "ready";
   } catch (error) {
     if (token !== tableToken) return;
@@ -214,8 +218,9 @@ async function reloadActivity(): Promise<void> {
   activityStatus = "loading";
   paint();
   try {
-    activity = await fetchPulseActivity(directoryApiUrl, { days, domain });
+    const next = await fetchPulseActivity(directoryApiUrl, { days, domain });
     if (token !== activityToken) return;
+    activity = next;
     activityStatus = "ready";
   } catch {
     if (token !== activityToken) return;
@@ -224,20 +229,30 @@ async function reloadActivity(): Promise<void> {
   paint();
 }
 
+function closeExpansions(): void {
+  for (const [key, token] of expansionTokens) {
+    expansionTokens.set(key, token + 1);
+  }
+  expansions.clear();
+}
+
 async function toggleUrl(urlKey: string): Promise<void> {
   if (expansions.has(urlKey)) {
     expansions.delete(urlKey);
+    expansionTokens.set(urlKey, (expansionTokens.get(urlKey) ?? 0) + 1);
     paint();
     return;
   }
+  const token = (expansionTokens.get(urlKey) ?? 0) + 1;
+  expansionTokens.set(urlKey, token);
   expansions.set(urlKey, { status: "loading", events: null });
   paint();
   try {
     const events = await fetchUrlEvents(directoryApiUrl, urlKey);
-    if (!expansions.has(urlKey)) return;
+    if (expansionTokens.get(urlKey) !== token) return;
     expansions.set(urlKey, { status: "ready", events });
   } catch {
-    if (!expansions.has(urlKey)) return;
+    if (expansionTokens.get(urlKey) !== token) return;
     expansions.set(urlKey, { status: "error", events: null });
   }
   paint();
@@ -296,7 +311,7 @@ function onClick(event: Event): void {
   if (sort) {
     if (domain && isUrlSort(sort) && sort !== urlSort) {
       urlSort = sort;
-      expansions.clear();
+      closeExpansions();
       void reloadTable();
     } else if (!domain && isOverviewSort(sort) && sort !== domainSort) {
       domainSort = sort;
