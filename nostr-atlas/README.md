@@ -229,11 +229,29 @@ The deployable static site is written to `nostr-atlas/dist/`.
 
 ## Shared chrome
 
-`partials/site-header.html` and `partials/site-footer.html` hold the header, the footer, and the like and zap component scripts. The Vite build injects them at `<!-- site-header -->` and `<!-- site-footer -->` on every page. `src/site.ts` points the header buttons at the current page on `VITE_SITE_ORIGIN`, and shares the toast and live document SEO updates. `directoryFunctionUrl` in `src/api.ts` builds other function URLs from `VITE_ATLAS_API_URL`.
+`partials/site-header.html` and `partials/site-footer.html` hold the header, the footer, and the like and zap component scripts. The Vite build injects them at `<!-- site-header -->` and `<!-- site-footer -->` on every page. The header nav links to Directory (`/`) and Web Pulse (`/pulse/`), and the current page's link is marked during that inject.
+
+Each page's header like and zap buttons target one fixed URL: `https://nostr-atlas.web.app/` on the directory and `https://nostr-atlas.web.app/pulse/` on Web Pulse. They do not follow the query string, so `?q=` and `?domain=` share the likes and zaps of that page. `src/site.ts` sets those URLs from `VITE_SITE_ORIGIN` and shares the toast and live document SEO updates. `directoryFunctionUrl` in `src/api.ts` builds other function URLs from `VITE_ATLAS_API_URL`.
+
+## Web Pulse
+
+`/pulse/` lists indexed sats, zaps, and reactions. The overview shows four all-time totals, latest activity, a domain search, and a domain table. `?domain=` opens that domain's totals, its URLs, and its latest activity, with no banner and no search. Activity starts on 7D. The 1D, 7D, and 30D tabs reload only that list. Sorting and search reload the table. Opening a URL row loads that URL's reactions and zaps.
+
+The page calls `getPulseOverview`, `getPulseDomain`, `listPulseActivity`, `listUrlEvents`, and `lookupNostrProfiles?view=display`, using the same directory API origin as the rest of the site. Names and pictures are cached in memory for the visit. A missing profile is shown as a short npub. A zap with no sender is anonymous. Loading, empty, and error states stay empty of sample rows.
+
+## Known limits
+
+- Totals count what the sweep relays and pushes see, not every like or zap on Nostr. A zap made in another client reaches the index only if its zap request lists one of the sweep relays, or ditto or yabu.me copies the receipt from a relay it does list.
+- The directory and Web Pulse header buttons count from relays: the rendezvous relays, or the relays configured on the button. The Web Pulse page counts from the index, which also reads the wider sweep set and takes pushes, so the same URL can show a higher total on the page than on the button.
+- Zap totals trust each recipient's Lightning provider. Someone running their own provider can mint unpaid receipts to themselves and move a URL up the sats table. Hiding that URL or domain is the control, and it also removes those sats from the domain and site-wide totals.
+- Deletions from other clients are not applied, so a deleted reaction can keep counting. An unlike published as a kind 17 `-` replaces that person's like.
+- A receipt with more than one address tag is left out. Other clients may tag a different spelling of the same URL. The index merges the spellings it knows how to fold.
+- A like from these header buttons reaches the signer's write relays only when a kind 10002 relay list can be found and those relays accept it.
+- Pictures that are not `https` are not shown.
 
 ## SEO
 
-The public origin is `https://nostr-atlas.web.app`. Set `VITE_SITE_ORIGIN` when the site is served from another origin. The homepage HTML already contains the title, description, canonical URL, and social tags. `build:atlas` also writes `robots.txt` and a sitemap for that one page. There are no per-account URLs. Search query strings such as `?q=` stay canonical to the homepage.
+The public origin is `https://nostr-atlas.web.app`. Set `VITE_SITE_ORIGIN` when the site is served from another origin. The homepage and `/pulse/` HTML already contain their title, description, canonical URL, and social tags. `build:atlas` rewrites both and writes `robots.txt` plus a sitemap for `/` and `/pulse/`. There are no per-account URLs. Search query strings such as `?q=` stay canonical to the homepage. A Web Pulse domain view sets its own title and canonical in the browser, including `?domain=`.
 
 Vite captures `VITE_ATLAS_API_URL` at build time. If `.env.local` points to the
 emulator, override it when building for deployment:

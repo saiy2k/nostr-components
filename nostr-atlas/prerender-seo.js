@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   applyDocumentSeo,
   homeDocumentSeo,
+  pulseDocumentSeo,
   robotsTxt,
   siteOriginFrom,
   sitemapXml,
@@ -19,6 +20,10 @@ const indexPath = join(dist, "index.html");
 const html = await readFile(indexPath, "utf8");
 await writeFile(indexPath, applyDocumentSeo(html, homeDocumentSeo(origin)));
 
+const pulsePath = join(dist, "pulse/index.html");
+const pulseHtml = await readFile(pulsePath, "utf8");
+await writeFile(pulsePath, applyDocumentSeo(pulseHtml, pulseDocumentSeo(origin)));
+
 await writeFile(join(dist, "robots.txt"), robotsTxt(origin));
-await writeFile(join(dist, "sitemap.xml"), sitemapXml(origin, ["/"]));
-console.log(`Wrote homepage SEO files for ${origin}.`);
+await writeFile(join(dist, "sitemap.xml"), sitemapXml(origin, ["/", "/pulse/"]));
+console.log(`Wrote homepage and Web Pulse SEO files for ${origin}.`);

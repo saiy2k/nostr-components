@@ -1,18 +1,22 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
-import { injectSiteChrome } from "./src/site-chrome";
+import { injectSiteChrome, sitePageFromPath } from "./src/site-chrome";
 
 function siteChrome(): Plugin {
   const partials = resolve(__dirname, "partials");
   return {
     name: "atlas-site-chrome",
-    transformIndexHtml(html) {
-      return injectSiteChrome(
-        html,
-        readFileSync(resolve(partials, "site-header.html"), "utf8"),
-        readFileSync(resolve(partials, "site-footer.html"), "utf8"),
-      );
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        return injectSiteChrome(
+          html,
+          readFileSync(resolve(partials, "site-header.html"), "utf8"),
+          readFileSync(resolve(partials, "site-footer.html"), "utf8"),
+          sitePageFromPath(`${ctx.filename} ${ctx.path}`),
+        );
+      },
     },
   };
 }
@@ -24,5 +28,11 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, "index.html"),
+        pulse: resolve(__dirname, "pulse/index.html"),
+      },
+    },
   },
 });

@@ -8,6 +8,10 @@ import {
   HOME_DESCRIPTION,
   HOME_TITLE,
   homeDocumentSeo,
+  PULSE_DESCRIPTION,
+  PULSE_TITLE,
+  pulseDocumentSeo,
+  pulseDomainDocumentSeo,
   robotsTxt,
   sitemapXml,
   xProfileUrl,
@@ -34,6 +38,38 @@ describe("Nostr Atlas homepage SEO", () => {
     expect(xml).not.toContain("/x/");
     expect(robotsTxt(DEFAULT_SITE_ORIGIN)).toContain(
       "Sitemap: https://nostr-atlas.web.app/sitemap.xml",
+    );
+  });
+
+  it("describes the Web Pulse page and a domain view", () => {
+    const seo = pulseDocumentSeo(DEFAULT_SITE_ORIGIN);
+    expect(seo.title).toBe(PULSE_TITLE);
+    expect(seo.description).toBe(PULSE_DESCRIPTION);
+    expect(seo.canonical).toBe("https://nostr-atlas.web.app/pulse/");
+    expect(seo.image).toBe("https://nostr-atlas.web.app/og.png");
+    expect(seo.jsonLd.url).toBe("https://nostr-atlas.web.app/pulse/");
+
+    const domain = pulseDomainDocumentSeo(DEFAULT_SITE_ORIGIN, "x.com");
+    expect(domain.title).toBe("x.com — Web Pulse — Nostr Atlas");
+    expect(domain.canonical).toBe("https://nostr-atlas.web.app/pulse/?domain=x.com");
+    expect(sitemapXml(DEFAULT_SITE_ORIGIN, ["/", "/pulse/"])).toContain(
+      "<loc>https://nostr-atlas.web.app/pulse/</loc>",
+    );
+  });
+
+  it("ships the crawlable Web Pulse shell", () => {
+    const html = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../pulse/index.html"),
+      "utf8",
+    );
+    expect(html).toContain(PULSE_TITLE);
+    expect(html).toContain(PULSE_DESCRIPTION);
+    expect(html).toContain("https://nostr-atlas.web.app/pulse/");
+    expect(html).toContain('id="pulse"');
+    expect(html).toContain("These counts cover the relays we index.");
+    const updated = applyDocumentSeo(html, pulseDocumentSeo("https://atlas.example"));
+    expect(updated).toContain(
+      '<link rel="canonical" href="https://atlas.example/pulse/"',
     );
   });
 

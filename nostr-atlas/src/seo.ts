@@ -5,6 +5,11 @@ export const HOME_TITLE = "Nostr Atlas — Receive zaps on X.com and YouTube";
 export const HOME_DESCRIPTION =
   "Nostr Atlas lists verified X accounts linked to Nostr public keys, so supporters can find a creator and send Lightning zaps on X and YouTube.";
 
+export const PULSE_TITLE = "Nostr Web Pulse — likes and zaps on the open web";
+
+export const PULSE_DESCRIPTION =
+  "Nostr Web Pulse shows the sats, zaps, and reactions Nostr Atlas has indexed across the open web.";
+
 const HANDLE_SLUG = /^[a-z0-9_]{1,15}$/;
 const SITEMAP_URL_LIMIT = 50_000;
 
@@ -60,6 +65,55 @@ export function homeDocumentSeo(origin: string): DocumentSeo {
           urlTemplate: `${site}/?q={search_term_string}`,
         },
         "query-input": "required name=search_term_string",
+      },
+    },
+  };
+}
+
+export function pulseDocumentSeo(origin: string): DocumentSeo {
+  const site = siteOriginFrom(origin);
+  return {
+    title: PULSE_TITLE,
+    description: PULSE_DESCRIPTION,
+    canonical: `${site}/pulse/`,
+    robots: "index, follow",
+    image: `${site}/og.png`,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "Nostr Web Pulse",
+      url: `${site}/pulse/`,
+      description: PULSE_DESCRIPTION,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "Nostr Atlas",
+        url: `${site}/`,
+      },
+    },
+  };
+}
+
+export function pulseDomainDocumentSeo(origin: string, domain: string): DocumentSeo {
+  const site = siteOriginFrom(origin);
+  const title = `${domain} — Web Pulse — Nostr Atlas`;
+  const description = `Sats, zaps, and reactions indexed for ${domain}.`;
+  const canonical = `${site}/pulse/?domain=${encodeURIComponent(domain)}`;
+  return {
+    title,
+    description,
+    canonical,
+    robots: "index, follow",
+    image: `${site}/og.png`,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: title,
+      url: canonical,
+      description,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "Nostr Atlas",
+        url: `${site}/`,
       },
     },
   };
