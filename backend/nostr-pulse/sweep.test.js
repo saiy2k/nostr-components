@@ -71,6 +71,9 @@ function memoryDb() {
             limit() {
               return api;
             },
+            startAt() {
+              return api;
+            },
             startAfter() {
               return api;
             },
@@ -289,6 +292,9 @@ describe("runSweep", () => {
                 return api;
               },
               limit() {
+                return api;
+              },
+              startAt() {
                 return api;
               },
               startAfter() {

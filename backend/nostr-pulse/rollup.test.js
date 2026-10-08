@@ -36,7 +36,7 @@ function memoryDb(initial = {}) {
       .map(([path, data]) => ({ id: path.slice(prefix.length), data }));
   }
   function query(collection) {
-    const state = { orders: [], max: Infinity, after: null };
+    const state = { orders: [], max: Infinity, after: null, at: null };
     const api = {
       orderBy(field, direction = "asc") {
         state.orders.push([field, direction]);
@@ -44,6 +44,10 @@ function memoryDb(initial = {}) {
       },
       limit(max) {
         state.max = max;
+        return api;
+      },
+      startAt(updatedAt) {
+        state.at = updatedAt;
         return api;
       },
       startAfter(updatedAt, id) {
@@ -57,6 +61,9 @@ function memoryDb(initial = {}) {
           if (delta) return delta;
           return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
         });
+        if (state.at != null) {
+          list = list.filter((row) => row.data.updatedAt >= state.at);
+        }
         if (state.after) {
           const [updatedAt, id] = state.after;
           list = list.filter(
@@ -153,7 +160,7 @@ describe("projectUrl", () => {
 });
 
 describe("runRollup", () => {
-  it("folds visible URLs into the domain and site, then skips them on the next run", async () => {
+  it("folds visible URLs into the domain and site, then leaves totals unchanged", async () => {
     const db = memoryDb(Object.fromEntries([
       url("a", { updatedAt: 1, likeCount: 2, reactionCount: 2, lastActivityAt: 10 }),
       url("b", { updatedAt: 2, likeCount: 9, reactionCount: 9, hidden: true, lastActivityAt: 50 }),
@@ -188,8 +195,55 @@ describe("runRollup", () => {
     expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).updatedAt).toBe(1);
 
     const second = await runRollup(db, { pageSize: 10, batchSize: 2, paceMs: 0 });
-    expect(second.urls).toBe(0);
+    expect(second).toMatchObject({ urls: 1, cursorId: "c", likeCount: 3 });
     expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`).likeCount).toBe(3);
+  });
+
+  it("includes a URL that shares the cursor timestamp and sorts before the cursor id", async () => {
+    const rolled = {
+      likeCount: 1,
+      dislikeCount: 0,
+      emojiCount: 0,
+      reactionCount: 1,
+      zapCount: 0,
+      zapMsats: 0,
+    };
+    const db = memoryDb({
+      [`${URL_ACTIVITY_COLLECTION}/m`]: {
+        domain: "x.com",
+        updatedAt: 5,
+        likeCount: 1,
+        reactionCount: 1,
+        inRollup: true,
+        rolledUp: rolled,
+      },
+      [`${URL_ACTIVITY_COLLECTION}/a`]: {
+        domain: "x.com",
+        updatedAt: 5,
+        likeCount: 4,
+        reactionCount: 4,
+      },
+      [`${DOMAIN_COLLECTION}/x.com`]: {
+        domain: "x.com",
+        urlCount: 1,
+        likeCount: 1,
+        reactionCount: 1,
+        hidden: false,
+        inSiteTotals: true,
+      },
+      [`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`]: {
+        domainCount: 1,
+        likeCount: 1,
+        reactionCount: 1,
+        cursorUpdatedAt: 5,
+        cursorId: "m",
+      },
+    });
+    const result = await runRollup(db, { paceMs: 0, pageSize: 1 });
+    expect(result).toMatchObject({ likeCount: 5, cursorId: "m" });
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).inRollup).toBe(true);
+    expect(db.docs.get(`${DOMAIN_COLLECTION}/x.com`).likeCount).toBe(5);
+    expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`).domainCount).toBe(1);
   });
 
   it("leaves a hidden domain out of the site-wide totals", async () => {

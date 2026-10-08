@@ -181,14 +181,19 @@ async function readCursor(db) {
   };
 }
 
-async function readUrlPage(db, cursor, limit) {
+async function readUrlPage(db, cursor, limit, options = {}) {
   let query = db
     .collection(URL_ACTIVITY_COLLECTION)
     .orderBy("updatedAt")
     .orderBy(FieldPath.documentId())
     .limit(limit);
   if (cursor?.cursorId) {
-    query = query.startAfter(cursor.cursorUpdatedAt, cursor.cursorId);
+    // Server timestamps are not a strict commit order. A later write can share
+    // the saved timestamp and sort before the saved id, so the first page of a
+    // resumed run includes that whole timestamp. Later pages stay exclusive.
+    query = options.includeCursorTimestamp
+      ? query.startAt(cursor.cursorUpdatedAt)
+      : query.startAfter(cursor.cursorUpdatedAt, cursor.cursorId);
   }
   const snap = await query.get();
   return (snap.docs || []).map((doc) => ({
@@ -267,8 +272,10 @@ export async function runRollup(db, options = {}) {
   let batches = 0;
   let urls = 0;
   let paced = false;
+  let includeCursorTimestamp = Boolean(cursor?.cursorId);
   while (true) {
-    const page = await readUrlPage(db, cursor, pageSize);
+    const page = await readUrlPage(db, cursor, pageSize, { includeCursorTimestamp });
+    includeCursorTimestamp = false;
     if (!page.length) break;
     for (let index = 0; index < page.length; index += batchSize) {
       const batch = page.slice(index, index + batchSize);
