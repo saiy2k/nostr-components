@@ -6,6 +6,7 @@ import {
   parseHideArgs,
   parseHideTarget,
   rebuildDomain,
+  rollupMarkerForRebuild,
   setTargetHidden,
 } from "./hide.js";
 import {
@@ -118,6 +119,17 @@ describe("hide targets", () => {
       rebuild: false,
       target: "example.com",
     });
+  });
+});
+
+describe("rollup markers", () => {
+  it("keeps a marker when visibility is unchanged and skips it when hide wins the race", () => {
+    const snapshot = { hidden: false, likeCount: 4, reactionCount: 4 };
+    expect(rollupMarkerForRebuild(snapshot, { hidden: false, likeCount: 9 })).toMatchObject({
+      inRollup: true,
+      rolledUp: { likeCount: 4, reactionCount: 4 },
+    });
+    expect(rollupMarkerForRebuild(snapshot, { hidden: true, likeCount: 4 })).toBeNull();
   });
 });
 

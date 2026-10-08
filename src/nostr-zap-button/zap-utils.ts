@@ -71,22 +71,31 @@ const getVerifiedProfileEvent = (
   return profile;
 };
 
+export type ProfileActionKind = 'x' | 'youtube';
+
+function usesDirectoryProfiles(actionId?: string, kind?: ProfileActionKind) {
+  return Boolean(actionId) && kind !== 'youtube';
+}
+
 export const getProfileMetadata = async (
   authorId: string,
   relays?: string[],
   actionId?: string,
+  kind?: ProfileActionKind,
 ) => {
   const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
   const cacheKey = profileCacheKey(authorId, relayList);
-  // An action id must reach the directory lookup. A profile cached from a
-  // relay query has no action id and would skip that call.
-  if (!actionId) {
+  const directoryLookup = usesDirectoryProfiles(actionId, kind);
+  // An X action id must reach the directory lookup. A profile cached from a
+  // relay query has no action id and would skip that call. YouTube creators
+  // are not directory identities, so their profiles stay on relays.
+  if (!directoryLookup) {
     const cached = profileCache.get(cacheKey);
     if (cached) return cached;
   }
 
   const transport = getRelayTransport();
-  if (actionId && transport?.getProfiles) {
+  if (directoryLookup && transport?.getProfiles) {
     const events = await transport.getProfiles(actionId, [authorId]);
     const event = newestVerifiedProfile(events, authorId);
     if (event) profileCache.set(cacheKey, event);
@@ -172,6 +181,7 @@ async function actionScopedProfiles(
   authorIds: string[],
   relayList: string[],
   actionId: string,
+  kind?: ProfileActionKind,
 ) {
   const found = new Map<string, Event>();
   const requestedIds = new Set(authorIds.map(id => id.toLowerCase()));
@@ -180,7 +190,7 @@ async function actionScopedProfiles(
   for (let offset = 0; offset < ids.length; offset += PROFILE_QUERY_BATCH_SIZE) {
     const batch = ids.slice(offset, offset + PROFILE_QUERY_BATCH_SIZE);
     let events: unknown[] = [];
-    if (transport?.getProfiles) {
+    if (kind !== 'youtube' && transport?.getProfiles) {
       events = await transport.getProfiles(actionId, batch);
     } else if (transport) {
       events = await transport.query(
@@ -217,9 +227,10 @@ export const getBatchedProfileMetadata = async (
   authorIds: string[],
   relays?: string[],
   actionId?: string,
+  kind?: ProfileActionKind,
 ) => {
   const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
-  if (actionId) return actionScopedProfiles(authorIds, relayList, actionId);
+  if (actionId) return actionScopedProfiles(authorIds, relayList, actionId, kind);
   const uncachedIds = Array.from(
     new Set(
       authorIds.map(id => id.toLowerCase()).filter(

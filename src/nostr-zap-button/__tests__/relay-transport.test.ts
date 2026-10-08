@@ -177,6 +177,27 @@ describe('Zap component relay transport', () => {
     expect(getProfiles).toHaveBeenCalledWith('b'.repeat(64), [relayProfile.pubkey]);
   });
 
+  it('loads a YouTube action profile from relays instead of the directory', async () => {
+    const relays = ['wss://profiles-youtube.example'];
+    const relayProfile = makeProfileEvent(23, { name: 'Channel' }, 30);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await expect(
+      getProfileMetadata(relayProfile.pubkey, relays, 'c'.repeat(64), 'youtube'),
+    ).resolves.toMatchObject({ id: relayProfile.id });
+    await expect(
+      getBatchedProfileMetadata([relayProfile.pubkey], relays, 'c'.repeat(64), 'youtube'),
+    ).resolves.toEqual([
+      { id: relayProfile.pubkey, profile: expect.objectContaining({ id: relayProfile.id }) },
+    ]);
+    expect(getProfiles).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalled();
+  });
+
   it('batches zapper profiles into one bounded host query', async () => {
     const pubkeys = ['7'.repeat(64), '8'.repeat(64)];
     const query = vi.fn().mockResolvedValue([]);

@@ -110,10 +110,34 @@ function writeSite(tx, ref, previous, site) {
   );
 }
 
-export async function setTargetHidden(db, target, hidden) {
+async function setTargetHiddenUnlocked(db, target, hidden) {
   if (target?.type === "domain") return setDomainHidden(db, target.domain, hidden);
   if (target?.type === "url") return setUrlHidden(db, target, hidden);
   return { ok: false, reason: "invalid-target" };
+}
+
+export async function setTargetHidden(db, target, hidden, options = {}) {
+  return withPulseLease(
+    db,
+    "hide",
+    () => setTargetHiddenUnlocked(db, target, hidden),
+    {
+      attempts: options.attempts ?? 60,
+      retryMs: options.retryMs ?? 1000,
+      sleep: options.sleep,
+      nowMs: options.nowMs,
+      leaseMs: options.leaseMs,
+    },
+  );
+}
+
+export function rollupMarkerForRebuild(snapshot, current) {
+  if ((snapshot?.hidden === true) !== (current?.hidden === true)) return null;
+  const visible = current?.hidden !== true;
+  return {
+    rolledUp: visible ? totalsOf(snapshot) : emptyTotals(),
+    inRollup: visible,
+  };
 }
 
 async function setUrlHidden(db, target, hidden) {
@@ -220,18 +244,18 @@ async function rebuildUnlocked(db, name, lease) {
     const slice = urls.slice(index, index + chunk);
     await db.runTransaction(async (tx) => {
       const heldSnap = await tx.get(held);
+      const fresh = [];
+      for (const url of slice) {
+        const ref = db.collection(URL_ACTIVITY_COLLECTION).doc(url.id);
+        fresh.push({ url, ref, snap: await tx.get(ref) });
+      }
       const renewed = renewedLease(heldSnap.exists ? heldSnap.data() : {}, lease, lease.now());
       tx.set(held, renewed, { merge: true });
-      for (const url of slice) {
-        const visibleUrl = url.hidden !== true;
-        tx.set(
-          db.collection(URL_ACTIVITY_COLLECTION).doc(url.id),
-          {
-            rolledUp: visibleUrl ? totalsOf(url) : emptyTotals(),
-            inRollup: visibleUrl,
-          },
-          { merge: true },
-        );
+      for (const row of fresh) {
+        if (!row.snap.exists) continue;
+        const marker = rollupMarkerForRebuild(row.url, row.snap.data() || {});
+        if (!marker) continue;
+        tx.set(row.ref, marker, { merge: true });
       }
     });
   }

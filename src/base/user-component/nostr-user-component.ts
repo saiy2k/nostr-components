@@ -130,12 +130,14 @@ export class NostrUserComponent extends NostrBaseComponent {
     this.userStatus.set(NCStatus.Loading);
 
     try {
+      const trusted = getTrustedActionContext(this);
       const { user, profile } = await this.resolver.resolveUser({
         npub: this.getAttribute('npub'),
         pubkey: this.getAttribute('pubkey'),
         nip05: this.getAttribute('nip05'),
         relays: this.getRelays(),
-        actionId: getTrustedActionContext(this)?.actionId,
+        actionId: trusted?.actionId,
+        kind: trusted?.kind,
       });
 
       // stale call check

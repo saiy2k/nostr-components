@@ -314,7 +314,8 @@ export default class NostrZap extends NostrUserComponent {
 
     try {
       const transport = getRelayTransport();
-      const actionId = getTrustedActionContext(this)?.actionId;
+      const trusted = getTrustedActionContext(this);
+      const actionId = trusted?.actionId;
       const zapDetails = actionId && transport?.listZaps
         ? await transport.listZaps(actionId)
         : this.#cachedZapDetails;
@@ -323,6 +324,7 @@ export default class NostrZap extends NostrUserComponent {
         theme: this.theme === 'dark' ? 'dark' : 'light',
         relays: this.getRelays(),
         actionId,
+        kind: trusted?.kind,
       });
     } catch (error) {
       console.error("Nostr-Components: Zap button: Error opening zappers dialog", error);
