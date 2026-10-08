@@ -408,10 +408,10 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
             if (finished) return;
             if (keepNewestProfile) {
               if (!isRequestedProfile(event, filterList)) return;
-              const current = eventsById.values().next().value || null;
+              const pubkey = String(event.pubkey || '').toLowerCase();
+              const current = eventsById.get(pubkey) || null;
               if (!current || preferProfile(event, current)) {
-                eventsById.clear();
-                eventsById.set(event.id, event);
+                eventsById.set(pubkey, event);
               }
               relaysWithEvents.add(relay);
               return;
@@ -1490,6 +1490,16 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     });
   }
 
+  async function handleYouTubeProfileQuery(pool, payload, filter) {
+    const context = getActionContext(payload && payload.actionId, false);
+    if (!context || context.kind !== 'youtube') {
+      throw new Error('Relay request contains an unsupported filter');
+    }
+    const relays = uniqueRelays(Array.isArray(payload.relays) ? payload.relays : []);
+    if (!relays.length) throw new Error('Relay request contains an unsupported filter');
+    return queryWithFastQuorum(pool, relays, filter, { keepNewestProfile: true });
+  }
+
   async function handleReceiptWatch(pool, payload) {
     if (!payloadAllows(payload, ['relays', 'filter', 'actionId'])) {
       throw new Error('Relay request contains an unsupported filter');
@@ -1766,6 +1776,10 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     }
 
     if (message.operation === 'query') {
+      const filter = validateFilter(payload && payload.filter);
+      if (filter && filter.kinds[0] === 0) {
+        return handleYouTubeProfileQuery(pool, payload, filter);
+      }
       return handleReceiptWatch(pool, payload);
     }
 

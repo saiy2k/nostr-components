@@ -165,6 +165,38 @@ describe('NostrService.connectToNostr concurrency', () => {
     });
   });
 
+  it('loads an extension profile through getProfiles instead of a relay query', async () => {
+    const { service } = await freshService();
+    const profile = finalizeEvent(
+      {
+        created_at: 10,
+        kind: 0,
+        tags: [],
+        content: JSON.stringify({ display_name: 'Jack' }),
+      },
+      new Uint8Array(32).fill(4),
+    );
+    const query = vi.fn();
+    const getProfiles = vi.fn().mockResolvedValue([profile]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query,
+        publish: vi.fn(),
+        getProfiles,
+      },
+    });
+
+    await expect(
+      service.getProfile(
+        { pubkey: profile.pubkey } as any,
+        ['wss://relay.example'],
+        'a'.repeat(64),
+      ),
+    ).resolves.toMatchObject({ displayName: 'Jack' });
+    expect(getProfiles).toHaveBeenCalledWith('a'.repeat(64), [profile.pubkey]);
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it('shares a single connection attempt across concurrent callers', async () => {
     const { service, ndk } = await freshService();
 

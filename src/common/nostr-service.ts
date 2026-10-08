@@ -197,12 +197,14 @@ export class NostrService {
   public async getProfile(
     user: NDKUser | null,
     relays: string[] = this.getRelays(),
+    actionId?: string,
+    kind?: 'x' | 'youtube',
   ): Promise<NDKUserProfile | null> {
     if (!user) return null;
 
     const transport = getRelayTransport();
     const event = transport
-      ? await getProfileMetadata(user.pubkey, relays)
+      ? await getProfileMetadata(user.pubkey, relays, actionId, kind)
       : await fetchProfileOutbox(user.pubkey, relays);
     if (!event) return null;
     try {

@@ -141,6 +141,80 @@ describe('Zap component relay transport', () => {
     expect(query).toHaveBeenCalledTimes(2);
   });
 
+  it('does not reuse a relay-cached profile when an action id is present', async () => {
+    const relays = ['wss://profiles-action.example'];
+    const relayProfile = makeProfileEvent(21, { name: 'Relay' }, 10);
+    const directoryProfile = makeProfileEvent(21, { name: 'Directory' }, 20);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([directoryProfile]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await expect(getProfileMetadata(relayProfile.pubkey, relays)).resolves.toMatchObject({
+      id: relayProfile.id,
+    });
+    await expect(
+      getProfileMetadata(relayProfile.pubkey, relays, 'a'.repeat(64)),
+    ).resolves.toMatchObject({ id: directoryProfile.id });
+    expect(getProfiles).toHaveBeenCalledWith('a'.repeat(64), [relayProfile.pubkey]);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns null from an action-scoped batch when the directory has no profile', async () => {
+    const relays = ['wss://profiles-batch-action.example'];
+    const relayProfile = makeProfileEvent(22, { name: 'Relay' }, 10);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await getProfileMetadata(relayProfile.pubkey, relays);
+    await expect(
+      getBatchedProfileMetadata([relayProfile.pubkey], relays, 'b'.repeat(64)),
+    ).resolves.toEqual([{ id: relayProfile.pubkey, profile: null }]);
+    expect(getProfiles).toHaveBeenCalledWith('b'.repeat(64), [relayProfile.pubkey]);
+  });
+
+  it('loads a YouTube action profile from relays instead of the directory', async () => {
+    const relays = ['wss://profiles-youtube.example'];
+    const relayProfile = makeProfileEvent(23, { name: 'Channel' }, 30);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await expect(
+      getProfileMetadata(relayProfile.pubkey, relays, 'c'.repeat(64), 'youtube'),
+    ).resolves.toMatchObject({ id: relayProfile.id });
+    await expect(
+      getBatchedProfileMetadata([relayProfile.pubkey], relays, 'c'.repeat(64), 'youtube'),
+    ).resolves.toEqual([
+      { id: relayProfile.pubkey, profile: expect.objectContaining({ id: relayProfile.id }) },
+    ]);
+    expect(getProfiles).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalled();
+  });
+
+  it('does not reuse a directory profile for a YouTube relay lookup', async () => {
+    const relays = ['wss://profiles-youtube-cache.example'];
+    const directoryProfile = makeProfileEvent(24, { name: 'Directory' }, 10);
+    const relayProfile = makeProfileEvent(24, { name: 'Relay' }, 40);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([directoryProfile]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await getProfileMetadata(directoryProfile.pubkey, relays, 'd'.repeat(64));
+    await expect(
+      getProfileMetadata(directoryProfile.pubkey, relays, 'd'.repeat(64), 'youtube'),
+    ).resolves.toMatchObject({ id: relayProfile.id });
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it('batches zapper profiles into one bounded host query', async () => {
     const pubkeys = ['7'.repeat(64), '8'.repeat(64)];
     const query = vi.fn().mockResolvedValue([]);

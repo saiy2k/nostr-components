@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createProfileLookupHandler,
+  displayProfileView,
   lookupNostrProfiles,
   profileLookupView,
   profileNeedsFetch,
@@ -235,6 +236,78 @@ test("returns a signed event only when it belongs to the requested pubkey", () =
     }).profileEvent,
     null,
   );
+});
+
+test("view=display prefers display_name and drops an http picture", () => {
+  const secret = generateSecretKey();
+  const pubkey = getPublicKey(secret);
+  const event = finalizeEvent(
+    {
+      kind: 0,
+      created_at: 1_700_000_000,
+      tags: [],
+      content: JSON.stringify({
+        display_name: "Ada",
+        name: "ada",
+        picture: "http://example.com/a.png",
+      }),
+    },
+    secret,
+  );
+  const httpsEvent = finalizeEvent(
+    {
+      kind: 0,
+      created_at: 1_700_000_000,
+      tags: [],
+      content: JSON.stringify({
+        name: "Bea",
+        picture: "https://example.com/b.png",
+      }),
+    },
+    secret,
+  );
+  assert.deepEqual(displayProfileView(pubkey, { kind0Json: JSON.stringify(event) }), {
+    pubkey,
+    name: "Ada",
+    picture: "",
+  });
+  assert.equal(
+    displayProfileView(pubkey, { kind0Json: JSON.stringify(httpsEvent) }).picture,
+    "https://example.com/b.png",
+  );
+  assert.deepEqual(displayProfileView(pubkey, { kind0Json: "{}" }), {
+    pubkey,
+    name: "",
+    picture: "",
+  });
+});
+
+test("view=display returns only the name and picture", async () => {
+  const secret = generateSecretKey();
+  const pubkey = getPublicKey(secret);
+  const event = finalizeEvent(
+    {
+      kind: 0,
+      created_at: 1_700_000_000,
+      tags: [],
+      content: JSON.stringify({ display_name: "Ada", name: "ada" }),
+    },
+    secret,
+  );
+  const db = profileDb({
+    [`nostrProfiles/${pubkey}`]: {
+      kind0Json: JSON.stringify(event),
+      fetchedAt: new Date(NOW).toISOString(),
+      zap: { zappable: true },
+    },
+  });
+  const result = await lookupNostrProfiles(
+    db,
+    { pubkeys: pubkey, view: "display" },
+    { nowMs: NOW, refreshProfiles: async () => {} },
+  );
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.profiles, [{ pubkey, name: "Ada", picture: "" }]);
 });
 
 test("profile lookup answers GET and does not cache", async () => {

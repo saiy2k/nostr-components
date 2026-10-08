@@ -41,7 +41,11 @@ const zapProviderCache: Record<
   { value: ZapProviderInfo | null; expiresAt: number }
 > = {};
 
-const profileCacheKey = (authorId: string, relays: string[]) => {
+const profileCacheKey = (
+  authorId: string,
+  relays: string[],
+  source: 'relay' | 'directory' = 'relay',
+) => {
   const normalizedRelays = Array.from(
     new Set(
       relays.map(relay => {
@@ -53,7 +57,7 @@ const profileCacheKey = (authorId: string, relays: string[]) => {
       }),
     ),
   ).sort();
-  return `${authorId.toLowerCase()}|${normalizedRelays.join(',')}`;
+  return `${source}|${authorId.toLowerCase()}|${normalizedRelays.join(',')}`;
 };
 
 const getVerifiedProfileEvent = (
@@ -71,18 +75,35 @@ const getVerifiedProfileEvent = (
   return profile;
 };
 
+export type ProfileActionKind = 'x' | 'youtube';
+
+function usesDirectoryProfiles(actionId?: string, kind?: ProfileActionKind) {
+  return Boolean(actionId) && kind !== 'youtube';
+}
+
 export const getProfileMetadata = async (
   authorId: string,
   relays?: string[],
   actionId?: string,
+  kind?: ProfileActionKind,
 ) => {
   const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
-  const cacheKey = profileCacheKey(authorId, relayList);
-  const cached = profileCache.get(cacheKey);
-  if (cached) return cached;
+  const directoryLookup = usesDirectoryProfiles(actionId, kind);
+  const cacheKey = profileCacheKey(
+    authorId,
+    relayList,
+    directoryLookup ? 'directory' : 'relay',
+  );
+  // An X action id must reach the directory lookup. A profile cached from a
+  // relay query has no action id and would skip that call. YouTube creators
+  // are not directory identities, so their profiles stay on relays.
+  if (!directoryLookup) {
+    const cached = profileCache.get(cacheKey);
+    if (cached) return cached;
+  }
 
   const transport = getRelayTransport();
-  if (actionId && transport?.getProfiles) {
+  if (directoryLookup && transport?.getProfiles) {
     const events = await transport.getProfiles(actionId, [authorId]);
     const event = newestVerifiedProfile(events, authorId);
     if (event) profileCache.set(cacheKey, event);
@@ -141,6 +162,7 @@ function cacheVerifiedProfiles(
   events: unknown[],
   requestedIds: Set<string>,
   relayList: string[],
+  source: 'relay' | 'directory' = 'relay',
 ) {
   for (const event of events) {
     const candidate = event as Partial<Event> | null;
@@ -151,7 +173,7 @@ function cacheVerifiedProfiles(
     if (!verifiedEvent) continue;
     if (!requestedIds.has(verifiedEvent.pubkey.toLowerCase())) continue;
 
-    const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList);
+    const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList, source);
     const cached = profileCache.get(cacheKey);
     if (
       !cached ||
@@ -164,12 +186,65 @@ function cacheVerifiedProfiles(
   }
 }
 
+async function actionScopedProfiles(
+  authorIds: string[],
+  relayList: string[],
+  actionId: string,
+  kind?: ProfileActionKind,
+) {
+  const found = new Map<string, Event>();
+  const requestedIds = new Set(authorIds.map(id => id.toLowerCase()));
+  const transport = getRelayTransport();
+  const ids = [...requestedIds];
+  for (let offset = 0; offset < ids.length; offset += PROFILE_QUERY_BATCH_SIZE) {
+    const batch = ids.slice(offset, offset + PROFILE_QUERY_BATCH_SIZE);
+    let events: unknown[] = [];
+    if (kind !== 'youtube' && transport?.getProfiles) {
+      events = await transport.getProfiles(actionId, batch);
+    } else if (transport) {
+      events = await transport.query(
+        relayList,
+        { authors: batch, kinds: [0], limit: batch.length },
+        actionId,
+      );
+    } else {
+      events = await lookupProfilesOutbox(batch, relayList);
+    }
+    cacheVerifiedProfiles(
+      events,
+      requestedIds,
+      relayList,
+      kind === 'youtube' ? 'relay' : 'directory',
+    );
+    for (const event of events) {
+      const candidate = event as Partial<Event> | null;
+      const verified = getVerifiedProfileEvent(candidate, candidate?.pubkey || '');
+      if (!verified || !requestedIds.has(verified.pubkey.toLowerCase())) continue;
+      const id = verified.pubkey.toLowerCase();
+      const previous = found.get(id);
+      if (
+        !previous ||
+        verified.created_at > previous.created_at ||
+        (verified.created_at === previous.created_at && verified.id < previous.id)
+      ) {
+        found.set(id, verified);
+      }
+    }
+  }
+  return authorIds.map(id => ({
+    id,
+    profile: found.get(id.toLowerCase()) || null,
+  }));
+}
+
 export const getBatchedProfileMetadata = async (
   authorIds: string[],
   relays?: string[],
   actionId?: string,
+  kind?: ProfileActionKind,
 ) => {
   const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+  if (actionId) return actionScopedProfiles(authorIds, relayList, actionId, kind);
   const uncachedIds = Array.from(
     new Set(
       authorIds.map(id => id.toLowerCase()).filter(
@@ -199,16 +274,8 @@ export const getBatchedProfileMetadata = async (
         kinds: [0],
         limit: batch.length,
       };
-      if (actionId && transport?.getProfiles) {
-        cacheVerifiedProfiles(
-          await transport.getProfiles(actionId, batch),
-          requestedIds,
-          relayList,
-        );
-      } else if (transport) {
-        const events = actionId
-          ? await transport.query(relayList, filter, actionId)
-          : await transport.query(relayList, filter);
+      if (transport) {
+        const events = await transport.query(relayList, filter);
         cacheVerifiedProfiles(events, requestedIds, relayList);
       } else {
         const events = await lookupProfilesOutbox(batch, relayList);

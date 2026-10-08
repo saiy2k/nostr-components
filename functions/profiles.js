@@ -21,7 +21,7 @@ function boundedString(value, length) {
   return typeof value === "string" ? value.trim().slice(0, length) : "";
 }
 
-function httpsPictureUrl(value) {
+export function httpsPictureUrl(value) {
   if (typeof value !== "string") return "";
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > PICTURE_MAX_LENGTH) return "";

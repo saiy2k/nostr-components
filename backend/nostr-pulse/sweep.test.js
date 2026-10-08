@@ -6,10 +6,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import roles from "../relay-roles.json";
 import {
+  ACTOR_FETCH_CAP,
   SWEEP_INITIAL_LOOKBACK_SECONDS,
   SWEEP_OVERLAP_SECONDS,
   loadSweepConfig,
   planSweepCursor,
+  rememberActor,
   resumeSweep,
   runSweep,
   sweepFilter,
@@ -59,6 +61,27 @@ function memoryDb() {
               docs.set(key, options?.merge ? { ...prev, ...data } : { ...data });
             },
           };
+        },
+        orderBy(field) {
+          if (field !== "updatedAt") throw new Error("repair-query-unavailable");
+          const api = {
+            orderBy() {
+              return api;
+            },
+            limit() {
+              return api;
+            },
+            startAt() {
+              return api;
+            },
+            startAfter() {
+              return api;
+            },
+            async get() {
+              return { docs: [] };
+            },
+          };
+          return api;
         },
       };
     },
@@ -262,7 +285,27 @@ describe("runSweep", () => {
       const col = collection(name);
       if (name !== "nostrUrlActivity") return col;
       return {
-        orderBy() {
+        orderBy(field) {
+          if (field === "updatedAt") {
+            const api = {
+              orderBy() {
+                return api;
+              },
+              limit() {
+                return api;
+              },
+              startAt() {
+                return api;
+              },
+              startAfter() {
+                return api;
+              },
+              async get() {
+                return { docs: [] };
+              },
+            };
+            return api;
+          }
           throw new Error("repair-down");
         },
       };
@@ -369,6 +412,33 @@ describe("runSweep", () => {
     expect(stateOf(db)).toMatchObject({ revision: 6, cursorUntil: 123 });
   });
 
+  it("fetches profiles for new reactors and named zappers, and skips anonymous senders", async () => {
+    const db = memoryDb();
+    const alice = "ab".repeat(32);
+    const refreshed = [];
+    await runSweep(config({ kinds: [17, 9735], maxPages: 1 }), {
+      db,
+      flushHealth: false,
+      queryRelay: async (_relay, filter) => ({
+        reason: "eose",
+        events: [
+          { id: `e-${filter.kinds[0]}`, kind: filter.kinds[0], created_at: NOW - 10 },
+          { id: `again-${filter.kinds[0]}`, kind: filter.kinds[0], created_at: NOW - 9 },
+        ],
+      }),
+      ingestUrlEvent: async (_db, event) => ({
+        ok: true,
+        stored: true,
+        retry: false,
+        actorPubkey: event.kind === 17 ? alice : null,
+      }),
+      refreshProfiles: async (_db, targets) => {
+        refreshed.push(targets);
+      },
+    });
+    expect(refreshed).toEqual([[{ pubkey: alice, role: "url-actor" }]]);
+  });
+
   it("does not query a relay that rejects the kind", async () => {
     const db = memoryDb();
     let calls = 0;
@@ -381,6 +451,22 @@ describe("runSweep", () => {
     await runSweep(cfg, { db, queryRelay, flushHealth: false });
     expect(calls).toBe(1);
     expect(stateOf(db).status).toBe("unsupported");
+  });
+});
+
+describe("actor profile cap", () => {
+  it("keeps the first 200 pubkeys and ignores anonymous or repeated ones", () => {
+    const actors = new Set();
+    expect(rememberActor(actors, null)).toBe(false);
+    expect(rememberActor(actors, "not-a-key")).toBe(false);
+    const first = "aa".repeat(32);
+    expect(rememberActor(actors, first.toUpperCase())).toBe(true);
+    expect(rememberActor(actors, first)).toBe(false);
+    for (let index = 1; index < ACTOR_FETCH_CAP + 2; index += 1) {
+      rememberActor(actors, index.toString(16).padStart(64, "0"));
+    }
+    expect(actors.size).toBe(ACTOR_FETCH_CAP);
+    expect(actors.has(first)).toBe(true);
   });
 });
 

@@ -32,6 +32,7 @@ export interface OpenZappersModalParams {
   theme?: 'light' | 'dark';
   relays?: string[];
   actionId?: string;
+  kind?: 'x' | 'youtube';
 }
 
 /**
@@ -84,7 +85,7 @@ function renderSkeletonZapEntry(
 export async function openZappersDialog(
   params: OpenZappersModalParams,
 ): Promise<DialogComponent> {
-  const { zapDetails, theme = 'light', relays, actionId } = params;
+  const { zapDetails, theme = 'light', relays, actionId, kind } = params;
 
   // Inject styles
   injectZappersDialogStyles(theme);
@@ -137,6 +138,7 @@ export async function openZappersDialog(
       zapDetails,
       relays,
       actionId,
+      kind,
     );
   }
 
@@ -183,6 +185,7 @@ async function enhanceZapDetailsProgressively(
   zapDetails: ZapDetails[],
   relays?: string[],
   actionId?: string,
+  kind?: 'x' | 'youtube',
 ): Promise<void> {
   const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
   if (!zappersList) return;
@@ -207,6 +210,7 @@ async function enhanceZapDetailsProgressively(
       uniqueAuthorIds,
       relays,
       actionId,
+      kind,
     );
 
     // Create a map for quick lookup
@@ -289,6 +293,7 @@ async function enhanceZapDetailsProgressively(
       zapDetails,
       relays,
       actionId,
+      kind,
     );
   }
 }
@@ -301,6 +306,7 @@ async function enhanceZapDetailsIndividually(
   zapDetails: ZapDetails[],
   relays?: string[],
   actionId?: string,
+  kind?: 'x' | 'youtube',
 ): Promise<void> {
   const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
   if (!zappersList) return;
@@ -339,6 +345,7 @@ async function enhanceZapDetailsIndividually(
         zap.authorPubkey,
         relays,
         actionId,
+        kind,
       );
       const profileContent = extractProfileMetadataContent(profileMetadata);
       const npub = hexToNpub(zap.authorPubkey);

@@ -14,6 +14,11 @@ import {
   createUrlEventsHandler,
   createViewerReactionsHandler,
 } from "./url-activity.js";
+import {
+  createPulseActivityHandler,
+  createPulseDomainHandler,
+  createPulseOverviewHandler,
+} from "./pulse.js";
 
 initializeApp();
 const db = getFirestore();
@@ -133,6 +138,21 @@ export const listUrlEvents = onRequest(
 export const listViewerReactions = onRequest(
   { ...readLimit },
   createViewerReactionsHandler(db),
+);
+
+export const getPulseOverview = onRequest(
+  { ...readLimit },
+  createPulseOverviewHandler(db),
+);
+
+export const getPulseDomain = onRequest(
+  { ...readLimit },
+  createPulseDomainHandler(db),
+);
+
+export const listPulseActivity = onRequest(
+  { ...readLimit },
+  createPulseActivityHandler(db),
 );
 
 export const ingestUrlEvent = onRequest(

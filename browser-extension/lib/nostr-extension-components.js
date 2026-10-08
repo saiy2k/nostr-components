@@ -20776,6 +20776,9 @@
     resolveNip05: () => resolveNip05,
     zapATagValues: () => zapATagValues
   });
+  function usesDirectoryProfiles(actionId, kind) {
+    return Boolean(actionId) && kind !== "youtube";
+  }
   function newestVerifiedProfile(events, authorId) {
     return [...events].map((candidate) => getVerifiedProfileEvent(candidate, authorId)).filter((candidate) => candidate !== null).sort(
       (left, right) => right.created_at - left.created_at || left.id.localeCompare(right.id)
@@ -20794,7 +20797,7 @@
     }
     return events;
   }
-  function cacheVerifiedProfiles(events, requestedIds, relayList) {
+  function cacheVerifiedProfiles(events, requestedIds, relayList, source = "relay") {
     for (const event of events) {
       const candidate = event;
       const verifiedEvent = getVerifiedProfileEvent(
@@ -20803,12 +20806,53 @@
       );
       if (!verifiedEvent) continue;
       if (!requestedIds.has(verifiedEvent.pubkey.toLowerCase())) continue;
-      const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList);
+      const cacheKey = profileCacheKey(verifiedEvent.pubkey, relayList, source);
       const cached = profileCache.get(cacheKey);
       if (!cached || verifiedEvent.created_at > cached.created_at || verifiedEvent.created_at === cached.created_at && verifiedEvent.id < cached.id) {
         profileCache.set(cacheKey, verifiedEvent);
       }
     }
+  }
+  async function actionScopedProfiles(authorIds, relayList, actionId, kind) {
+    const found = /* @__PURE__ */ new Map();
+    const requestedIds = new Set(authorIds.map((id) => id.toLowerCase()));
+    const transport = getRelayTransport();
+    const ids = [...requestedIds];
+    for (let offset = 0; offset < ids.length; offset += PROFILE_QUERY_BATCH_SIZE) {
+      const batch = ids.slice(offset, offset + PROFILE_QUERY_BATCH_SIZE);
+      let events = [];
+      if (kind !== "youtube" && transport?.getProfiles) {
+        events = await transport.getProfiles(actionId, batch);
+      } else if (transport) {
+        events = await transport.query(
+          relayList,
+          { authors: batch, kinds: [0], limit: batch.length },
+          actionId
+        );
+      } else {
+        events = await lookupProfilesOutbox(batch, relayList);
+      }
+      cacheVerifiedProfiles(
+        events,
+        requestedIds,
+        relayList,
+        kind === "youtube" ? "relay" : "directory"
+      );
+      for (const event of events) {
+        const candidate = event;
+        const verified = getVerifiedProfileEvent(candidate, candidate?.pubkey || "");
+        if (!verified || !requestedIds.has(verified.pubkey.toLowerCase())) continue;
+        const id = verified.pubkey.toLowerCase();
+        const previous = found.get(id);
+        if (!previous || verified.created_at > previous.created_at || verified.created_at === previous.created_at && verified.id < previous.id) {
+          found.set(id, verified);
+        }
+      }
+    }
+    return authorIds.map((id) => ({
+      id,
+      profile: found.get(id.toLowerCase()) || null
+    }));
   }
   function zapATagValues(pubkey, url) {
     return zapFilterUrls(url).map((value) => `39735:${pubkey}:${value}`);
@@ -21002,7 +21046,7 @@
       ZAP_PROVIDER_NEGATIVE_TTL_MS = 30 * 1e3;
       ZAP_RECEIPT_POLL_TIMEOUT_MS = 10 * 60 * 1e3;
       zapProviderCache = {};
-      profileCacheKey = (authorId, relays) => {
+      profileCacheKey = (authorId, relays, source = "relay") => {
         const normalizedRelays = Array.from(
           new Set(
             relays.map((relay) => {
@@ -21014,7 +21058,7 @@
             })
           )
         ).sort();
-        return `${authorId.toLowerCase()}|${normalizedRelays.join(",")}`;
+        return `${source}|${authorId.toLowerCase()}|${normalizedRelays.join(",")}`;
       };
       getVerifiedProfileEvent = (event, expectedAuthorId) => {
         const profile = cloneVerifiedEvent(event);
@@ -21024,13 +21068,20 @@
         }
         return profile;
       };
-      getProfileMetadata = async (authorId, relays, actionId) => {
+      getProfileMetadata = async (authorId, relays, actionId, kind) => {
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
-        const cacheKey = profileCacheKey(authorId, relayList);
-        const cached = profileCache.get(cacheKey);
-        if (cached) return cached;
+        const directoryLookup = usesDirectoryProfiles(actionId, kind);
+        const cacheKey = profileCacheKey(
+          authorId,
+          relayList,
+          directoryLookup ? "directory" : "relay"
+        );
+        if (!directoryLookup) {
+          const cached = profileCache.get(cacheKey);
+          if (cached) return cached;
+        }
         const transport = getRelayTransport();
-        if (actionId && transport?.getProfiles) {
+        if (directoryLookup && transport?.getProfiles) {
           const events = await transport.getProfiles(actionId, [authorId]);
           const event2 = newestVerifiedProfile(events, authorId);
           if (event2) profileCache.set(cacheKey, event2);
@@ -21054,8 +21105,9 @@
       };
       PROFILE_QUERY_BATCH_SIZE = 50;
       PROFILE_LOOKUP_CONCURRENCY = 5;
-      getBatchedProfileMetadata = async (authorIds, relays, actionId) => {
+      getBatchedProfileMetadata = async (authorIds, relays, actionId, kind) => {
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+        if (actionId) return actionScopedProfiles(authorIds, relayList, actionId, kind);
         const uncachedIds = Array.from(
           new Set(
             authorIds.map((id) => id.toLowerCase()).filter(
@@ -21078,14 +21130,8 @@
             kinds: [0],
             limit: batch.length
           };
-          if (actionId && transport?.getProfiles) {
-            cacheVerifiedProfiles(
-              await transport.getProfiles(actionId, batch),
-              requestedIds,
-              relayList
-            );
-          } else if (transport) {
-            const events = actionId ? await transport.query(relayList, filter, actionId) : await transport.query(relayList, filter);
+          if (transport) {
+            const events = await transport.query(relayList, filter);
             cacheVerifiedProfiles(events, requestedIds, relayList);
           } else {
             const events = await lookupProfilesOutbox(batch, relayList);
@@ -25411,10 +25457,10 @@
       const user = await this.resolveNDKUser(identifier);
       return user ? this.fetchZaps(user) : 0;
     }
-    async getProfile(user, relays = this.getRelays()) {
+    async getProfile(user, relays = this.getRelays(), actionId, kind) {
       if (!user) return null;
       const transport = getRelayTransport();
-      const event = transport ? await getProfileMetadata(user.pubkey, relays) : await fetchProfileOutbox(user.pubkey, relays);
+      const event = transport ? await getProfileMetadata(user.pubkey, relays, actionId, kind) : await fetchProfileOutbox(user.pubkey, relays);
       if (!event) return null;
       try {
         const profile = profileFromEvent(new NDKEvent(this.ndk, event));
@@ -27685,11 +27731,13 @@ ${url}`;
       npub: npub2,
       pubkey,
       nip05,
-      relays
+      relays,
+      actionId,
+      kind
     }) {
       const user = await this.nostrService.resolveNDKUser({ npub: npub2, pubkey, nip05 });
       if (!user) throw new Error("Unable to resolve user from provided identifier");
-      const profile = await this.nostrService.getProfile(user, relays);
+      const profile = await this.nostrService.getProfile(user, relays, actionId, kind);
       return { user, profile: profile ?? null };
     }
   };
@@ -27769,11 +27817,14 @@ ${url}`;
       }
       this.userStatus.set(1 /* Loading */);
       try {
+        const trusted = getTrustedActionContext(this);
         const { user, profile } = await this.resolver.resolveUser({
           npub: this.getAttribute("npub"),
           pubkey: this.getAttribute("pubkey"),
           nip05: this.getAttribute("nip05"),
-          relays: this.getRelays()
+          relays: this.getRelays(),
+          actionId: trusted?.actionId,
+          kind: trusted?.kind
         });
         if (seq !== this.loadSeq) return;
         if (profile == null) {
@@ -28748,7 +28799,7 @@ ${url}`;
   `;
   }
   async function openZappersDialog(params) {
-    const { zapDetails, theme = "light", relays, actionId } = params;
+    const { zapDetails, theme = "light", relays, actionId, kind } = params;
     injectZappersDialogStyles(theme);
     if (!customElements.get("dialog-component")) {
       await customElements.whenDefined("dialog-component");
@@ -28778,7 +28829,8 @@ ${url}`;
         dialog,
         zapDetails,
         relays,
-        actionId
+        actionId,
+        kind
       );
     }
     return dialogComponent;
@@ -28805,7 +28857,7 @@ ${url}`;
     </div>
   `;
   }
-  async function enhanceZapDetailsProgressively(dialog, zapDetails, relays, actionId) {
+  async function enhanceZapDetailsProgressively(dialog, zapDetails, relays, actionId, kind) {
     const zappersList = dialog.querySelector(".zappers-list");
     if (!zappersList) return;
     const uniqueAuthorIds = [
@@ -28822,7 +28874,8 @@ ${url}`;
       const profileResults = await getBatchedProfileMetadata(
         uniqueAuthorIds,
         relays,
-        actionId
+        actionId,
+        kind
       );
       const profileMap = /* @__PURE__ */ new Map();
       profileResults.forEach((result) => {
@@ -28889,11 +28942,12 @@ ${url}`;
         dialog,
         zapDetails,
         relays,
-        actionId
+        actionId,
+        kind
       );
     }
   }
-  async function enhanceZapDetailsIndividually(dialog, zapDetails, relays, actionId) {
+  async function enhanceZapDetailsIndividually(dialog, zapDetails, relays, actionId, kind) {
     const zappersList = dialog.querySelector(".zappers-list");
     if (!zappersList) return;
     const profileCache2 = /* @__PURE__ */ new Map();
@@ -28925,7 +28979,8 @@ ${url}`;
         const profileMetadata = await getProfileMetadata2(
           zap.authorPubkey,
           relays,
-          actionId
+          actionId,
+          kind
         );
         const profileContent = extractProfileMetadataContent(profileMetadata);
         const npub2 = hexToNpub(zap.authorPubkey);
@@ -29817,13 +29872,15 @@ ${url}`;
       }
       try {
         const transport = getRelayTransport();
-        const actionId = getTrustedActionContext(this)?.actionId;
+        const trusted = getTrustedActionContext(this);
+        const actionId = trusted?.actionId;
         const zapDetails = actionId && transport?.listZaps ? await transport.listZaps(actionId) : this.#cachedZapDetails;
         await openZappersDialog({
           zapDetails,
           theme: this.theme === "dark" ? "dark" : "light",
           relays: this.getRelays(),
-          actionId
+          actionId,
+          kind: trusted?.kind
         });
       } catch (error) {
         console.error("Nostr-Components: Zap button: Error opening zappers dialog", error);

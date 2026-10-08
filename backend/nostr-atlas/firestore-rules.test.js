@@ -26,6 +26,7 @@ const SERVER_ONLY_COLLECTIONS = [
   "recipients",
   "nostrUrlZaps",
   "nostrPulseSweepState",
+  "nostrUrlDomains",
 ];
 
 describe("directory Firestore rules", () => {
