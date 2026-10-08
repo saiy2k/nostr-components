@@ -2966,15 +2966,26 @@ describe('CSP-safe component and relay integration', function () {
       };
       const pubkey = 'c'.repeat(64);
       const statusUrl = 'https://x.com/jack/status/1833951636005552366';
-      const receipt = {
-        id: 'd'.repeat(64),
+      const providerSecret = new Uint8Array(32).fill(4);
+      function signedReceipt(createdAt, recipient) {
+        return finalizeEvent(
+          {
+            kind: 9735,
+            created_at: createdAt,
+            content: '',
+            tags: [['p', recipient]]
+          },
+          providerSecret
+        );
+      }
+      const receipt = signedReceipt(30, pubkey);
+      const laterReceipt = signedReceipt(31, pubkey);
+      const otherRecipient = signedReceipt(32, 'd'.repeat(64));
+      const unsigned = {
+        id: 'ab'.repeat(32),
         kind: 9735,
-        pubkey: 'e'.repeat(64)
-      };
-      const laterReceipt = {
-        id: 'f'.repeat(64),
-        kind: 9735,
-        pubkey: 'e'.repeat(64)
+        pubkey: 'e'.repeat(64),
+        tags: [['p', pubkey]]
       };
       let subscriptionIndex = 0;
       const watchedRelays = [];
@@ -2989,6 +3000,8 @@ describe('CSP-safe component and relay integration', function () {
             return { close: vi.fn(async function () {}) };
           }
           setTimeout(function () {
+            options.onevent(unsigned);
+            options.onevent(otherRecipient);
             options.onevent(receipt);
             options.onevent(laterReceipt);
             options.oneose();

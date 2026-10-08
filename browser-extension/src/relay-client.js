@@ -1510,6 +1510,13 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     await Promise.all(relays.map(function (relay) {
       return watchOneRelay(pool, relay, filter, function (event, source) {
         if (!event || !event.id || seen.has(event.id)) return;
+        if (event.kind !== 9735 || !eventVerified(event)) return;
+        const pTag = Array.isArray(event.tags)
+          ? event.tags.find(function (tag) {
+            return Array.isArray(tag) && tag[0] === 'p';
+          })
+          : null;
+        if (!pTag || String(pTag[1] || '').toLowerCase() !== recipient) return;
         seen.add(event.id);
         events.push(event);
         if (SWEEP_RELAYS.has(source)) void pushUrlEvent(event, source);
