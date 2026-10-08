@@ -98,6 +98,7 @@ describe('extension profile and relay-list cache', function () {
     expect(stored['nostr-zap-receipts:v1']).toBeUndefined();
 
     const signer = lists[lists.length - 1];
+    const profileLookups = [];
     const originalGetKnownPubkey = extension.storage.getKnownPubkey;
     extension.storage.getKnownPubkey = async function () {
       return signer.pubkey;
@@ -105,6 +106,7 @@ describe('extension profile and relay-list cache', function () {
     globalThis.browser.runtime = {
       async sendMessage(message) {
         if (message.type === 'LOOKUP_NOSTR_PROFILES') {
+          profileLookups.push(message);
           return {
             ok: true,
             result: {
@@ -155,6 +157,21 @@ describe('extension profile and relay-list cache', function () {
     await sendRelay(session, channel, '11'.repeat(16), 'getLikeState', {
       relays: ['wss://evil.example'],
       url: pageUrl
+    });
+    expect(session.responses[0].ok).toBe(true);
+    expect(session.responses[0].result).toEqual({
+      totalCount: 0,
+      likedCount: 0,
+      dislikedCount: 0,
+      isLiked: false
+    });
+    await vi.waitFor(function () {
+      expect(profileLookups).toEqual([
+        expect.objectContaining({
+          type: 'LOOKUP_NOSTR_PROFILES',
+          pubkeys: signer.pubkey
+        })
+      ]);
     });
     await vi.waitFor(async function () {
       expect(await extension.storage.getRelayList(signer.pubkey)).toBeNull();
