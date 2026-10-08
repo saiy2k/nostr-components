@@ -6,15 +6,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decideBackfillCursor, isPermanentRelayKindUnsupported } from "../nostr-atlas/backfill.js";
 import { queryRelay as defaultQueryRelay } from "../nostr-atlas/ingestion.js";
-import { flushRelayHealth } from "../nostr-atlas/profile-store.js";
+import { flushRelayHealth, refreshProfiles } from "../nostr-atlas/profile-store.js";
 import { normalizeRelayUrl } from "../nostr-atlas/relay-hints.js";
 import {
   createFirestore,
   runMain,
   terminateFirestore,
 } from "../nostr-atlas/runtime.js";
-import { backfillStateId, numberFromEnv } from "../nostr-atlas/utils.js";
+import { backfillStateId, isHexPubkey, numberFromEnv } from "../nostr-atlas/utils.js";
 import { URL_ACTIVITY_COLLECTION, backfillReactionPubkeys, ingestUrlEvent } from "./ingest.js";
+import { runRollup } from "./rollup.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -26,6 +27,14 @@ export const SWEEP_MAX_PAGES = 4;
 export const SWEEP_OVERLAP_SECONDS = 15 * 60;
 export const SWEEP_INITIAL_LOOKBACK_SECONDS = 7 * 24 * 60 * 60;
 export const SWEEP_TRANSIENT_RETRIES = 3;
+export const ACTOR_FETCH_CAP = 200;
+
+export function rememberActor(actors, pubkey, cap = ACTOR_FETCH_CAP) {
+  const normalized = String(pubkey || "").toLowerCase();
+  if (!isHexPubkey(normalized) || actors.size >= cap || actors.has(normalized)) return false;
+  actors.add(normalized);
+  return true;
+}
 
 function loadRelayRoles() {
   return JSON.parse(readFileSync(join(here, "../relay-roles.json"), "utf8"));
@@ -189,7 +198,8 @@ export function planSweepCursor({
 export async function runSweep(config, options = {}) {
   const db = options.db ?? (await createFirestore(config));
   const ownsDb = !options.db;
-  const health = options.health || new Map();
+    const health = options.health || new Map();
+  const actors = new Set();
   const summaries = [];
   try {
     logSweep("sweep_run_begin", {
@@ -210,7 +220,7 @@ export async function runSweep(config, options = {}) {
       for (const kind of config.kinds) {
         try {
           summaries.push(
-            await sweepRelayKind(db, relay, kind, config, { ...options, health }),
+            await sweepRelayKind(db, relay, kind, config, { ...options, health, actors }),
           );
         } catch (error) {
           const summary = {
@@ -224,7 +234,16 @@ export async function runSweep(config, options = {}) {
         }
       }
     }
+    await fetchNewActors(db, actors, config, { ...options, health });
     if (options.flushHealth !== false) await flushRelayHealth(db, health);
+    if (options.rollup !== false) {
+      await (options.runRollup || runRollup)(db, {
+        ...(options.rollupPaceMs == null ? {} : { paceMs: options.rollupPaceMs }),
+        sleep: options.sleep,
+        pageSize: options.rollupPageSize,
+        batchSize: options.rollupBatchSize,
+      });
+    }
   } finally {
     if (ownsDb) await terminateFirestore(db);
   }
@@ -478,9 +497,32 @@ async function ingestPage(db, events, { relay, windowStart, config, options, cur
     } catch (error) {
       return { failed: true, error: error?.message || String(error) };
     }
+    if (result?.stored && options.actors) rememberActor(options.actors, result.actorPubkey);
     if (result?.retry) return { retry: true };
   }
   return { retry: false };
+}
+
+async function fetchNewActors(db, actors, config, options) {
+  if (!actors?.size) return;
+  const refresh = options.refreshProfiles || refreshProfiles;
+  try {
+    await refresh(
+      db,
+      [...actors].map((pubkey) => ({ pubkey, role: "url-actor" })),
+      {
+        nowMs: config.nowMs,
+        timeoutMs: config.profileTimeoutMs,
+        health: options.health,
+      },
+    );
+  } catch (error) {
+    logSweep("sweep_actor_profiles_failed", {
+      severity: "ERROR",
+      actors: actors.size,
+      lastError: error?.message || String(error),
+    });
+  }
 }
 
 function stateFields({

@@ -180,6 +180,7 @@ async function ingestReaction(db, event, meta) {
       stored: true,
       reason: null,
       retry: false,
+      actorPubkey: pubkey,
       activity: activityView(parsed, written),
     };
   });
@@ -248,15 +249,16 @@ async function ingestReceipt(db, event, meta, options) {
       },
       { merge: true },
     );
+    const senderPubkey = validated.senderPubkey
+      ? validated.senderPubkey.toLowerCase()
+      : null;
     tx.set(zapRef, {
       urlKey: parsed.urlKey,
       url: parsed.url,
       domain: parsed.domain,
       aTag: parsed.aTag,
       recipientPubkey: parsed.recipientPubkey,
-      senderPubkey: validated.senderPubkey
-        ? validated.senderPubkey.toLowerCase()
-        : null,
+      senderPubkey,
       amountMsats: amount,
       comment: validated.zapRequest.content || "",
       createdAt: event.created_at,
@@ -271,6 +273,7 @@ async function ingestReceipt(db, event, meta, options) {
       reason: null,
       retry: false,
       descriptionHashMismatch: validated.descriptionHashMismatch === true,
+      actorPubkey: senderPubkey,
       activity: activityView(parsed, written),
     };
   });

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { verifyEvent } from "nostr-tools";
+import { httpsPictureUrl } from "./profiles.js";
 
 const HEX_64 = /^[0-9a-f]{64}$/;
 const PUBKEY_LIMIT = 50;
@@ -66,6 +67,37 @@ export function profileLookupView(pubkey, data) {
   };
 }
 
+function kind0Content(event) {
+  if (!event || typeof event.content !== "string") return {};
+  try {
+    const content = JSON.parse(event.content);
+    if (!content || typeof content !== "object" || Array.isArray(content)) return {};
+    return content;
+  } catch {
+    return {};
+  }
+}
+
+function displayText(value) {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, 100);
+}
+
+export function displayProfileView(pubkey, data) {
+  const event = storedEvent(data?.kind0Json, 0, pubkey);
+  const content = kind0Content(event);
+  return {
+    pubkey,
+    name: displayText(content.display_name) || displayText(content.name),
+    picture: httpsPictureUrl(content.picture),
+  };
+}
+
+function displayRequested(value) {
+  if (Array.isArray(value)) return value.some((item) => item === "display");
+  return value === "display";
+}
+
 function zapCheckFinished(zap) {
   return zap?.zappable === true || zap?.zappable === false;
 }
@@ -122,6 +154,7 @@ export async function lookupNostrProfiles(db, parameters = {}, options = {}) {
     return { status: 400, body: { error: "fresh_requires_one" } };
   }
 
+  const display = displayRequested(parameters.view);
   const collection = options.profilesCollection || "nostrProfiles";
   const nowMs = options.nowMs ?? Date.now();
   const stored = await readProfiles(db, parsed.pubkeys, collection);
@@ -150,7 +183,9 @@ export async function lookupNostrProfiles(db, parameters = {}, options = {}) {
     status: 200,
     body: {
       profiles: parsed.pubkeys.map((pubkey) =>
-        profileLookupView(pubkey, stored.get(pubkey)),
+        display
+          ? displayProfileView(pubkey, stored.get(pubkey))
+          : profileLookupView(pubkey, stored.get(pubkey)),
       ),
     },
   };

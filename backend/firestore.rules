@@ -58,6 +58,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /nostrUrlDomains/{domain} {
+      allow read, write: if false;
+    }
+
     // Anything else in this database is server-only too.
     match /{document=**} {
       allow read, write: if false;
