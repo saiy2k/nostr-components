@@ -141,6 +141,26 @@ describe('Zap component relay transport', () => {
     expect(query).toHaveBeenCalledTimes(2);
   });
 
+  it('does not reuse a relay-cached profile when an action id is present', async () => {
+    const relays = ['wss://profiles-action.example'];
+    const relayProfile = makeProfileEvent(21, { name: 'Relay' }, 10);
+    const directoryProfile = makeProfileEvent(21, { name: 'Directory' }, 20);
+    const query = vi.fn().mockResolvedValue([relayProfile]);
+    const getProfiles = vi.fn().mockResolvedValue([directoryProfile]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn(), getProfiles },
+    });
+
+    await expect(getProfileMetadata(relayProfile.pubkey, relays)).resolves.toMatchObject({
+      id: relayProfile.id,
+    });
+    await expect(
+      getProfileMetadata(relayProfile.pubkey, relays, 'a'.repeat(64)),
+    ).resolves.toMatchObject({ id: directoryProfile.id });
+    expect(getProfiles).toHaveBeenCalledWith('a'.repeat(64), [relayProfile.pubkey]);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it('batches zapper profiles into one bounded host query', async () => {
     const pubkeys = ['7'.repeat(64), '8'.repeat(64)];
     const query = vi.fn().mockResolvedValue([]);

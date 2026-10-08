@@ -21027,8 +21027,10 @@
       getProfileMetadata = async (authorId, relays, actionId) => {
         const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
         const cacheKey = profileCacheKey(authorId, relayList);
-        const cached = profileCache.get(cacheKey);
-        if (cached) return cached;
+        if (!actionId) {
+          const cached = profileCache.get(cacheKey);
+          if (cached) return cached;
+        }
         const transport = getRelayTransport();
         if (actionId && transport?.getProfiles) {
           const events = await transport.getProfiles(actionId, [authorId]);
@@ -21059,7 +21061,7 @@
         const uncachedIds = Array.from(
           new Set(
             authorIds.map((id) => id.toLowerCase()).filter(
-              (id) => !profileCache.has(profileCacheKey(id, relayList))
+              (id) => actionId || !profileCache.has(profileCacheKey(id, relayList))
             )
           )
         );

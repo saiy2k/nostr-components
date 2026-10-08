@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DOMAIN_COLLECTION,
+  PULSE_LEASE_DOC_ID,
   ROLLUP_DOC_ID,
   SWEEP_STATE_COLLECTION,
   projectUrl,
@@ -244,6 +245,25 @@ describe("runRollup", () => {
     expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).inRollup).toBe(true);
     expect(db.docs.get(`${DOMAIN_COLLECTION}/x.com`).likeCount).toBe(5);
     expect(db.docs.get(`${SWEEP_STATE_COLLECTION}/${ROLLUP_DOC_ID}`).domainCount).toBe(1);
+  });
+
+  it("skips the rollup while a rebuild holds the lease", async () => {
+    const nowMs = Date.parse("2026-10-08T00:00:00.000Z");
+    const db = memoryDb({
+      [`${SWEEP_STATE_COLLECTION}/${PULSE_LEASE_DOC_ID}`]: {
+        owner: "rebuild",
+        until: new Date(nowMs + 60_000).toISOString(),
+      },
+      [`${URL_ACTIVITY_COLLECTION}/a`]: {
+        domain: "x.com",
+        updatedAt: 1,
+        likeCount: 3,
+        reactionCount: 3,
+      },
+    });
+    const result = await runRollup(db, { paceMs: 0, nowMs, leaseAttempts: 1 });
+    expect(result).toMatchObject({ skipped: true, urls: 0 });
+    expect(db.docs.get(`${URL_ACTIVITY_COLLECTION}/a`).inRollup).toBeUndefined();
   });
 
   it("leaves a hidden domain out of the site-wide totals", async () => {

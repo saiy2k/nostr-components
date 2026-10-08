@@ -8,7 +8,12 @@ import {
   rebuildDomain,
   setTargetHidden,
 } from "./hide.js";
-import { DOMAIN_COLLECTION, ROLLUP_DOC_ID, SWEEP_STATE_COLLECTION } from "./rollup.js";
+import {
+  DOMAIN_COLLECTION,
+  PULSE_LEASE_DOC_ID,
+  ROLLUP_DOC_ID,
+  SWEEP_STATE_COLLECTION,
+} from "./rollup.js";
 
 const PAGE = parseHideTarget("https://example.com/a");
 const KEY = PAGE.urlKey;
@@ -155,6 +160,19 @@ describe("setTargetHidden", () => {
 });
 
 describe("rebuildDomain", () => {
+  it("refuses to rebuild while the sweep rollup holds the lease", async () => {
+    const nowMs = Date.parse("2026-10-08T00:00:00.000Z");
+    const db = memoryDb({
+      [`${SWEEP_STATE_COLLECTION}/${PULSE_LEASE_DOC_ID}`]: {
+        owner: "rollup",
+        until: new Date(nowMs + 60_000).toISOString(),
+      },
+    });
+    await expect(
+      rebuildDomain(db, "example.com", { attempts: 1, nowMs }),
+    ).rejects.toThrow("pulse-lease-held");
+  });
+
   it("rebuilds a domain from its visible URLs and corrects the site totals", async () => {
     const other = "cd".repeat(32);
     const db = memoryDb({

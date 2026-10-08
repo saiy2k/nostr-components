@@ -9,6 +9,8 @@ export const ROLLUP_DOC_ID = "rollup";
 export const ROLLUP_PAGE_SIZE = 500;
 export const ROLLUP_BATCH_SIZE = 100;
 export const ROLLUP_PACE_MS = 1000;
+export const PULSE_LEASE_DOC_ID = "lease";
+export const PULSE_LEASE_MS = 10 * 60 * 1000;
 
 export const TOTAL_FIELDS = Object.freeze([
   "likeCount",
@@ -171,6 +173,50 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * One writer at a time for domain totals. The sweep rollup and hide.js --rebuild
+ * both apply URL snapshots, and a rebuild that commits between those steps can
+ * count the same URL twice.
+ */
+export async function withPulseLease(db, owner, fn, options = {}) {
+  const attempts = options.attempts ?? 1;
+  const retryMs = options.retryMs ?? 1000;
+  const leaseMs = options.leaseMs ?? PULSE_LEASE_MS;
+  const wait = options.sleep || sleep;
+  const ref = db.collection(SWEEP_STATE_COLLECTION).doc(PULSE_LEASE_DOC_ID);
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const nowMs = options.nowMs ?? Date.now();
+    const acquired = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() || {} : {};
+      const until = Date.parse(data.until || "");
+      if (data.owner && data.owner !== owner && Number.isFinite(until) && until > nowMs) {
+        return false;
+      }
+      tx.set(
+        ref,
+        { owner, until: new Date(nowMs + leaseMs).toISOString() },
+        { merge: true },
+      );
+      return true;
+    });
+    if (acquired) {
+      try {
+        return await fn();
+      } finally {
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref);
+          if (snap.exists && snap.data()?.owner === owner) {
+            tx.set(ref, { owner: null, until: null }, { merge: true });
+          }
+        });
+      }
+    }
+    if (attempt + 1 < attempts) await wait(retryMs);
+  }
+  throw new Error("pulse-lease-held");
+}
+
 async function readCursor(db) {
   const snap = await db.collection(SWEEP_STATE_COLLECTION).doc(ROLLUP_DOC_ID).get();
   if (!snap.exists) return { cursorUpdatedAt: null, cursorId: null };
@@ -263,7 +309,7 @@ async function commitBatch(db, page, cursor) {
  * Ingest owns `updatedAt`, so this never writes it. One batch per second keeps
  * a busy domain under Firestore's single-document write rate.
  */
-export async function runRollup(db, options = {}) {
+async function rollupUnlocked(db, options) {
   const pageSize = options.pageSize ?? ROLLUP_PAGE_SIZE;
   const batchSize = options.batchSize ?? ROLLUP_BATCH_SIZE;
   const paceMs = options.paceMs ?? ROLLUP_PACE_MS;
@@ -292,4 +338,24 @@ export async function runRollup(db, options = {}) {
     if (page.length < pageSize) break;
   }
   return { ...cursor, batches, urls };
+}
+
+export async function runRollup(db, options = {}) {
+  try {
+    return await withPulseLease(db, "rollup", () => rollupUnlocked(db, options), {
+      nowMs: options.nowMs,
+      leaseMs: options.leaseMs,
+      attempts: options.leaseAttempts ?? 1,
+      retryMs: options.leaseRetryMs ?? 0,
+      sleep: options.sleep,
+    });
+  } catch (error) {
+    if (error?.message !== "pulse-lease-held") throw error;
+    console.log(JSON.stringify({
+      severity: "WARNING",
+      message: "rollup_skipped",
+      reason: "pulse-lease-held",
+    }));
+    return { skipped: true, reason: "pulse-lease-held", urls: 0, batches: 0 };
+  }
 }

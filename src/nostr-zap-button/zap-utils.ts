@@ -78,8 +78,12 @@ export const getProfileMetadata = async (
 ) => {
   const relayList = relays && relays.length > 0 ? relays : [...DEFAULT_RELAYS];
   const cacheKey = profileCacheKey(authorId, relayList);
-  const cached = profileCache.get(cacheKey);
-  if (cached) return cached;
+  // An action id must reach the directory lookup. A profile cached from a
+  // relay query has no action id and would skip that call.
+  if (!actionId) {
+    const cached = profileCache.get(cacheKey);
+    if (cached) return cached;
+  }
 
   const transport = getRelayTransport();
   if (actionId && transport?.getProfiles) {
@@ -173,7 +177,7 @@ export const getBatchedProfileMetadata = async (
   const uncachedIds = Array.from(
     new Set(
       authorIds.map(id => id.toLowerCase()).filter(
-        id => !profileCache.has(profileCacheKey(id, relayList)),
+        id => actionId || !profileCache.has(profileCacheKey(id, relayList)),
       ),
     ),
   );

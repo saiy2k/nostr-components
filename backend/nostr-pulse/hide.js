@@ -20,6 +20,7 @@ import {
   projectDomainVisibility,
   projectUrl,
   totalsOf,
+  withPulseLease,
 } from "./rollup.js";
 
 function count(value) {
@@ -164,12 +165,10 @@ async function urlsForDomain(db, domain) {
 
 /**
  * Recompute one domain from its visible URLs and correct the site-wide totals
- * by the difference. Run this with the sweep job paused.
+ * by the difference. Holds the pulse lease so a sweep rollup cannot commit
+ * between the read and the rollup-marker writes.
  */
-export async function rebuildDomain(db, domain) {
-  const parsed = parseHideTarget(domain);
-  const name = parsed.type === "domain" ? parsed.domain : null;
-  if (!name) return { ok: false, reason: parsed.error || "rebuild-needs-domain" };
+async function rebuildUnlocked(db, name) {
   const urls = await urlsForDomain(db, name);
   const visible = urls.filter((url) => url.hidden !== true);
   const summed = visible.reduce((totals, url) => addTotals(totals, totalsOf(url)), emptyTotals());
@@ -217,6 +216,19 @@ export async function rebuildDomain(db, domain) {
     );
   }
   return result;
+}
+
+export async function rebuildDomain(db, domain, options = {}) {
+  const parsed = parseHideTarget(domain);
+  const name = parsed.type === "domain" ? parsed.domain : null;
+  if (!name) return { ok: false, reason: parsed.error || "rebuild-needs-domain" };
+  return withPulseLease(db, "rebuild", () => rebuildUnlocked(db, name), {
+    attempts: options.attempts ?? 60,
+    retryMs: options.retryMs ?? 1000,
+    sleep: options.sleep,
+    nowMs: options.nowMs,
+    leaseMs: options.leaseMs,
+  });
 }
 
 function firestoreTarget() {
