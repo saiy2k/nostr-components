@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 import { SimplePool, nip19, verifyEvent } from 'nostr-tools';
-import { normalizeURL } from 'nostr-tools/utils';
 import { bech32 } from '@scure/base';
 import { decode as decodeBolt11 } from 'light-bolt11-decoder';
-import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
+import relayRoles from '../../backend/relay-roles.json';
+import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-canonical.js';
 
 (function () {
   const extension = globalThis.NostrLikeExtension = globalThis.NostrLikeExtension || {};
@@ -24,10 +24,7 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
   const PROFILE_FRESH_MS = 60 * 60 * 1000;
   const ZAP_CACHE_STALE_MS = 24 * 60 * 60 * 1000;
   const NEGATIVE_CACHE_MS = 30 * 1000;
-  const RECEIPT_ROW_LIMIT = 50;
   const MEMORY_PROVIDER_LIMIT = 100;
-  const MEMORY_PROFILE_LIMIT = 100;
-  const MEMORY_RECEIPT_LIMIT = 50;
   const RELAY_HEALTH_TTL_MS = 5 * 60 * 1000;
   const RECENT_REACTION_TTL_MS = 2 * 60 * 1000;
   const INITIAL_RELAY_ORDER = [
@@ -40,61 +37,44 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     'wss://nostr-pub.wellorder.net/',
     'wss://relay.nostr.band/'
   ];
-  const ALLOWED_RELAY_URLS = new Set(
-    [
-      'wss://relay.momostr.pink',
-      'wss://relay.ditto.pub',
-      'wss://relay.primal.net',
-      'wss://relay.damus.io',
-      'wss://nos.lol',
-      'wss://nostr.mom',
-      'wss://nostr.twinkle.lol',
-      'wss://nostr.wine',
-      'wss://nostr.bitcoiner.social',
-      'wss://relay.nostr.band',
-      'wss://relay.snort.social',
-      'wss://nostr.data.haus',
-      'wss://purplepag.es',
-      'wss://nostr.oxtr.dev',
-      'wss://relay.0xchat.com',
-      'wss://nostr.land',
-      'wss://relay.us.whitenoise.chat',
-      'wss://relay.eu.whitenoise.chat',
-      'wss://relay.divine.video',
-      'wss://offchain.pub',
-      'wss://nostrelites.org',
-      'wss://relay.nostr.wirednet.jp',
-      'wss://relayable.org',
-      'wss://shu01.shugur.net',
-      'wss://www.nostr.ltd',
-      'wss://nostr.rocks',
-      'wss://relay.nostr.pub',
-      'wss://cache1.primal.net',
-      'wss://nostr-01.yakihonne.com',
-      'wss://wot.nostr.net',
-      'wss://relay.nyves.nl',
-      'wss://relay.fountain.fm',
-      'wss://relay.mostr.pub',
-      'wss://nostr.lol',
-      'wss://eden.nostr.land',
-      'wss://wot.utxo.one',
-      'wss://relay.current.fyi',
-      'wss://relay.nmail.li',
-      'wss://fanfares.nostr1.com',
-      'wss://pyramid.fiatjaf.com',
-      'wss://wot.nostr.party',
-      'wss://relay.mostro.network',
-      'wss://yabu.me',
-      'wss://nostr-02.yakihonne.com',
-      'wss://nostr-pub.wellorder.net',
-      'wss://relay.nostr.net',
-      'wss://nostr.einundzwanzig.space',
-      'wss://relay.f7z.io',
-      'wss://relay.wisp.talk',
-      'wss://relay.wavlake.com',
-      'wss://relay.getalby.com'
-    ].map(normalizeURL)
-  );
+  const WRITE_RELAY_LIMIT = 3;
+  const ZAP_RELAY_LIMIT = 8;
+  const ACTIVITY_CACHE_MS = 60 * 1000;
+  const ACTIVITY_BATCH_MS = 50;
+  const PROFILE_PUBKEY_LIMIT = 50;
+
+  function normalizeRelayUrl(value) {
+    let url;
+    try {
+      url = new URL(String(value ?? '').trim());
+    } catch (_error) {
+      return null;
+    }
+    if (url.protocol !== 'wss:' || url.username || url.password) return null;
+    url.hash = '';
+    url.hostname = url.hostname.toLowerCase();
+    if (url.port === '443') url.port = '';
+    if (url.pathname !== '/' && url.pathname.endsWith('/')) {
+      url.pathname = url.pathname.replace(/\/+$/, '') || '/';
+    }
+    return url.toString();
+  }
+
+  function uniqueRelays(values) {
+    const out = [];
+    for (const value of values) {
+      const normalized = normalizeRelayUrl(value);
+      if (normalized && !out.includes(normalized)) out.push(normalized);
+    }
+    return out;
+  }
+
+  const RENDEZVOUS_RELAYS = uniqueRelays(relayRoles.rendezvous || []);
+  const RENDEZVOUS_SET = new Set(RENDEZVOUS_RELAYS);
+  const SWEEP_RELAYS = new Set(uniqueRelays([
+    ...(relayRoles.rendezvous || []),
+    ...(relayRoles.sweepExtra || [])
+  ]));
 
   let activeSession = null;
   const relayHealth = new Map();
@@ -103,11 +83,6 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
   const providerMemory = new Map();
   const providerNegative = new Map();
   const providerInflight = new Map();
-  const profileMemory = new Map();
-  const profileNegative = new Map();
-  const profileInflight = new Map();
-  const receiptMemory = new Map();
-  const receiptInflight = new Map();
 
   function canonicalJson(value) {
     if (value === null) return 'null';
@@ -499,28 +474,6 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
 
   const isAllowedStatusUrl = isAllowedContentUrl;
 
-  function validateRelays(value) {
-    if (!Array.isArray(value) || value.length === 0 || value.length > 50) {
-      return null;
-    }
-
-    const normalized = [];
-    for (const relay of value) {
-      if (typeof relay !== 'string') return null;
-      let relayUrl;
-      try {
-        relayUrl = normalizeURL(relay);
-      } catch (_error) {
-        return null;
-      }
-      if (!ALLOWED_RELAY_URLS.has(relayUrl) || normalized.includes(relayUrl)) {
-        return null;
-      }
-      normalized.push(relayUrl);
-    }
-    return normalized;
-  }
-
   function validateFilter(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return null;
@@ -730,17 +683,17 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     }
   }
 
-  function sendHttpsJsonRequest(url) {
-    const message = { type: 'FETCH_HTTPS_JSON', url: url };
-    if (typeof browser !== 'undefined' && browser.runtime) {
-      return browser.runtime.sendMessage(message).then(function (response) {
-        if (!response || response.ok !== true) {
-          throw new Error((response && response.error) || 'HTTPS fetch failed');
-        }
-        return response.result;
-      });
+  function sendExtensionMessage(message) {
+    function unwrap(response) {
+      if (!response || response.ok !== true) {
+        throw new Error((response && response.error) || 'Extension request failed');
+      }
+      return response.result;
     }
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
+    if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.sendMessage) {
+      return browser.runtime.sendMessage(message).then(unwrap);
+    }
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       return new Promise(function (resolve, reject) {
         chrome.runtime.sendMessage(message, function (value) {
           const error = chrome.runtime && chrome.runtime.lastError;
@@ -748,15 +701,19 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
             reject(new Error(error.message));
             return;
           }
-          if (!value || value.ok !== true) {
-            reject(new Error((value && value.error) || 'HTTPS fetch failed'));
-            return;
+          try {
+            resolve(unwrap(value));
+          } catch (unwrapError) {
+            reject(unwrapError);
           }
-          resolve(value.result);
         });
       });
     }
     return Promise.reject(new Error('Browser runtime API is not available'));
+  }
+
+  function sendHttpsJsonRequest(url) {
+    return sendExtensionMessage({ type: 'FETCH_HTTPS_JSON', url: url });
   }
 
   function getActionContext(actionId, requireRecipient) {
@@ -913,112 +870,14 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     }
   }
 
-  function pickVerifiedProfile(events, pubkey) {
-    const matches = events.filter(function (event) {
-      return (
-        event &&
-        event.kind === 0 &&
-        String(event.pubkey || '').toLowerCase() === pubkey &&
-        eventVerified(event)
-      );
-    });
-    matches.sort(function (left, right) {
-      if (left.created_at !== right.created_at) return right.created_at - left.created_at;
-      if (left.id < right.id) return -1;
-      if (left.id > right.id) return 1;
-      return 0;
-    });
-    return matches[0] || null;
-  }
-
-  async function readProfile(pubkey) {
-    const memory = unexpiredEntry(profileMemory.get(pubkey));
-    if (!memory) profileMemory.delete(pubkey);
-    if (memory && eventVerified(memory.event)) return memory;
-    if (memory) profileMemory.delete(pubkey);
-    if (typeof extension.storage.getZapProfile !== 'function') return null;
-    const stored = await extension.storage.getZapProfile(pubkey);
-    if (!stored || !eventVerified(stored.event)) return null;
-    const entry = {
-      event: stored.event,
-      fetchedAt: stored.fetchedAt,
-      freshUntil: stored.freshUntil,
-      expiresAt: stored.expiresAt
-    };
-    if (!unexpiredEntry(entry)) return null;
-    rememberBounded(profileMemory, pubkey, entry, MEMORY_PROFILE_LIMIT);
-    return entry;
-  }
-
-  async function rememberProfile(pubkey, event) {
-    const now = Date.now();
-    const entry = {
-      event: event,
-      fetchedAt: now,
-      freshUntil: now + PROFILE_FRESH_MS,
-      expiresAt: now + ZAP_CACHE_STALE_MS
-    };
-    rememberBounded(profileMemory, pubkey, entry, MEMORY_PROFILE_LIMIT);
-    profileNegative.delete(pubkey);
-    if (typeof extension.storage.setZapProfile === 'function') {
-      await extension.storage.setZapProfile(
-        pubkey,
-        event,
-        PROFILE_FRESH_MS,
-        ZAP_CACHE_STALE_MS
-      );
+  async function fetchProviderLiveUncached(pubkey) {
+    let record = profileRecords.get(pubkey);
+    if (!record?.event || Date.now() - record.fetchedAt > PROFILE_FRESH_MS) {
+      const views = await lookupProfiles([pubkey], false);
+      for (const view of views) applyProfileView(view);
+      record = profileRecords.get(pubkey);
     }
-  }
-
-  async function loadVerifiedProfileUncached(pool, relays, pubkey) {
-    const events = await queryWithFastQuorum(
-      pool,
-      relays,
-      {
-        kinds: [0],
-        authors: [pubkey],
-        limit: 1
-      },
-      {
-        keepNewestProfile: true,
-        selectedRelays: relays
-      }
-    );
-    const live = pickVerifiedProfile(events, pubkey);
-    const stored = await readProfile(pubkey);
-    if (
-      live &&
-      (!stored || preferProfile(live, stored.event) || live.id === stored.event.id)
-    ) {
-      await rememberProfile(pubkey, live);
-      return live;
-    }
-    if (stored) return stored.event;
-    profileNegative.set(pubkey, Date.now() + NEGATIVE_CACHE_MS);
-    return null;
-  }
-
-  function loadVerifiedProfile(pool, relays, pubkey) {
-    const negativeUntil = profileNegative.get(pubkey);
-    if (Number.isFinite(negativeUntil) && negativeUntil > Date.now()) {
-      return readProfile(pubkey).then(function (stored) {
-        return stored ? stored.event : null;
-      });
-    }
-    const pending = profileInflight.get(pubkey);
-    if (pending) return pending;
-    const next = readProfile(pubkey).then(function (stored) {
-      if (freshEntry(stored)) return stored.event;
-      return loadVerifiedProfileUncached(pool, relays, pubkey);
-    }).finally(function () {
-      if (profileInflight.get(pubkey) === next) profileInflight.delete(pubkey);
-    });
-    profileInflight.set(pubkey, next);
-    return next;
-  }
-
-  async function fetchProviderLiveUncached(pool, relays, pubkey) {
-    const profile = await loadVerifiedProfile(pool, relays, pubkey);
+    const profile = record && record.event;
     const lnurl = profile ? profileLnurl(profile.content) : null;
     if (!lnurl) {
       throw new Error('Zap recipient has no valid LNURL provider');
@@ -1050,17 +909,17 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     return provider;
   }
 
-  function fetchProviderLive(pool, relays, pubkey) {
+  function fetchProviderLive(pubkey) {
     const pending = providerInflight.get(pubkey);
     if (pending) return pending;
-    const next = fetchProviderLiveUncached(pool, relays, pubkey).finally(function () {
+    const next = fetchProviderLiveUncached(pubkey).finally(function () {
       if (providerInflight.get(pubkey) === next) providerInflight.delete(pubkey);
     });
     providerInflight.set(pubkey, next);
     return next;
   }
 
-  async function resolveZapProvider(pool, relays, actionId, context, options) {
+  async function resolveZapProvider(actionId, context, options) {
     const allowStale = !options || options.allowStale !== false;
     const bypassCache = Boolean(options && options.bypassCache);
     const pubkey = context.recipientPubkey;
@@ -1077,7 +936,7 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     }
 
     try {
-      const provider = await fetchProviderLive(pool, relays, pubkey);
+      const provider = await fetchProviderLive(pubkey);
       requireCurrentActionContext(actionId, context);
       return provider;
     } catch (error) {
@@ -1096,246 +955,604 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     }
   }
 
-  function receiptTag(event, name) {
-    if (!event || !Array.isArray(event.tags)) return null;
-    const matches = event.tags.filter(function (tag) {
-      return Array.isArray(tag) && tag.length >= 2 && tag[0] === name && typeof tag[1] === 'string';
-    });
-    return matches.length === 1 ? matches[0][1] : null;
+  const profileRecords = new Map();
+  const relayListMemory = new Map();
+  const zapRelaysByPubkey = new Map();
+  const signerLists = new Map();
+  let signerPubkeyMemory = null;
+  const activityCache = new Map();
+  let activityWaiters = [];
+  let activityTimer = null;
+  let viewerReactions = null;
+
+  function payloadAllows(payload, allowed) {
+    return Boolean(
+      payload &&
+      typeof payload === 'object' &&
+      Object.keys(payload).every(function (key) {
+        return allowed.indexOf(key) !== -1;
+      })
+    );
   }
 
-  function validatedZapReceipts(events, filter, provider) {
-    if (!provider || !Array.isArray(events)) return [];
-    const expectedATag = filter['#a'] ? filter['#a'][0] : undefined;
-    const accepted = [];
-    for (const event of events) {
-      const result = validateZapReceipt(event, {
-        recipientPubkey: filter['#p'][0],
-        provider: {
-          lnurl: provider.lnurl,
-          callback: provider.callback,
-          nostrPubkey: provider.nostrPubkey
-        },
-        expectedATag: expectedATag
-      });
-      if (result && result.ok) accepted.push(event);
+  function countOf(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    return parsed;
+  }
+
+  function relaysFromList(event, marker) {
+    const urls = [];
+    for (const tag of (event && event.tags) || []) {
+      if (!Array.isArray(tag) || tag[0] !== 'r') continue;
+      const url = normalizeRelayUrl(tag[1]);
+      if (!url) continue;
+      const role = tag[2];
+      const unmarked = role == null || role === '';
+      if (marker === 'read' && (role === 'read' || unmarked)) urls.push(url);
+      if (marker === 'write' && (role === 'write' || unmarked)) urls.push(url);
     }
-    return accepted;
+    return uniqueRelays(urls);
   }
 
-  function receiptCacheMarker(summary) {
-    return [{
-      extensionZapCache: true,
-      cachedZapSummary: {
-        totalSats: summary.totalSats,
-        rows: summary.rows
-      }
-    }];
+  function newerEvent(current, candidate) {
+    if (!candidate) return current || null;
+    if (!current) return candidate;
+    if (candidate.created_at > current.created_at) return candidate;
+    if (candidate.created_at < current.created_at) return current;
+    return String(candidate.id) < String(current.id) ? candidate : current;
   }
 
-  function summarizeReceipts(events) {
-    let totalMsats = 0;
-    const rows = [];
-    const ordered = events.slice().sort(function (left, right) {
-      return (right.created_at || 0) - (left.created_at || 0);
+  function acceptedEvent(pubkey, event, kind) {
+    if (!event || event.kind !== kind) return null;
+    if (String(event.pubkey || '').toLowerCase() !== pubkey) return null;
+    if (!eventVerified(event)) return null;
+    return event;
+  }
+
+  function applyProfileView(view, options) {
+    const pubkey = String(view && view.pubkey || '').toLowerCase();
+    if (!HEX_64_PATTERN.test(pubkey)) {
+      return { profile: null, relayList: null };
+    }
+    const signer = options && options.signer;
+    const profile = acceptedEvent(pubkey, view.profileEvent, 0);
+    const relayList = acceptedEvent(pubkey, view.relayListEvent, 10002);
+    const current = profileRecords.get(pubkey);
+    const event = profile ? newerEvent(current && current.event, profile) : (current && current.event) || null;
+    let zappable = current ? current.zappable : null;
+    if (view.zappable === true || view.zappable === false || view.zappable === null) {
+      zappable = view.zappable;
+    }
+    profileRecords.set(pubkey, {
+      event: event,
+      zappable: zappable,
+      fetchedAt: Date.now()
     });
-    for (const event of ordered) {
-      const amountMsats = getInvoiceAmountMsats(receiptTag(event, 'bolt11') || '');
-      if (amountMsats) totalMsats += amountMsats;
-      if (rows.length >= RECEIPT_ROW_LIMIT) continue;
-      let authorPubkey = '';
-      let comment = '';
-      const description = receiptTag(event, 'description');
-      if (description) {
-        try {
-          const parsed = JSON.parse(description);
-          if (parsed && HEX_64_PATTERN.test(String(parsed.pubkey || ''))) {
-            authorPubkey = String(parsed.pubkey).toLowerCase();
-          }
-          if (parsed && typeof parsed.content === 'string') {
-            comment = parsed.content.slice(0, 280);
-          }
-        } catch (_error) {
-          comment = '';
-        }
+    let keptList = relayListMemory.get(pubkey) || null;
+    if (relayList) keptList = newerEvent(keptList, relayList);
+    if (keptList) relayListMemory.set(pubkey, keptList);
+    const isSigner = signer === pubkey || signerPubkeyMemory === pubkey;
+    if (isSigner) {
+      if (typeof extension.storage.deleteRelayList === 'function') {
+        void extension.storage.deleteRelayList(pubkey);
       }
-      rows.push({
-        id: String(event.id || '').toLowerCase(),
-        amountSats: amountMsats ? amountMsats / 1000 : 0,
-        createdAt: Number.isInteger(event.created_at) ? event.created_at : 0,
-        authorPubkey: authorPubkey,
-        comment: comment
-      });
+    } else if (keptList && relayList && typeof extension.storage.setRelayList === 'function') {
+      void extension.storage.setRelayList(pubkey, keptList);
     }
     return {
-      totalSats: totalMsats / 1000,
-      eventCount: events.length,
-      rows: rows
+      profile: event,
+      relayList: keptList
     };
   }
 
-  function mergeStoredSummary(summary, novelEvents) {
-    const known = new Set(summary.rows.map(function (row) {
-      return row.id;
-    }));
-    const rows = summary.rows.slice();
-    let totalSats = summary.totalSats;
-    let eventCount = summary.eventCount;
-    const capped = summary.rows.length < summary.eventCount;
-    const oldest = summary.rows.reduce(function (min, row) {
-      return Math.min(min, row.createdAt);
-    }, Infinity);
-    for (const event of novelEvents) {
-      const id = String(event.id || '').toLowerCase();
-      if (!id || known.has(id)) continue;
-      const amountMsats = getInvoiceAmountMsats(receiptTag(event, 'bolt11') || '');
-      if (!amountMsats) continue;
-      if (capped && (!Number.isInteger(event.created_at) || event.created_at <= oldest)) {
-        continue;
-      }
-      known.add(id);
-      totalSats += amountMsats / 1000;
-      eventCount += 1;
-      let authorPubkey = '';
-      let comment = '';
-      const description = receiptTag(event, 'description');
-      if (description) {
-        try {
-          const parsed = JSON.parse(description);
-          if (parsed && HEX_64_PATTERN.test(String(parsed.pubkey || ''))) {
-            authorPubkey = String(parsed.pubkey).toLowerCase();
-          }
-          if (parsed && typeof parsed.content === 'string') {
-            comment = parsed.content.slice(0, 280);
-          }
-        } catch (_error) {
-          comment = '';
-        }
-      }
-      rows.push({
-        id: id,
-        amountSats: amountMsats / 1000,
-        createdAt: Number.isInteger(event.created_at) ? event.created_at : 0,
-        authorPubkey: authorPubkey,
-        comment: comment
+  function seedIdentity(pubkey, profileEvent, relayListEvent, zappable) {
+    applyProfileView({
+      pubkey: pubkey,
+      profileEvent: profileEvent,
+      relayListEvent: relayListEvent,
+      zappable: zappable
+    });
+  }
+
+  async function lookupProfiles(pubkeys, fresh) {
+    const result = await sendExtensionMessage({
+      type: 'LOOKUP_NOSTR_PROFILES',
+      pubkeys: pubkeys.join(','),
+      ...(fresh ? { fresh: '1' } : {})
+    });
+    if (!result || !Array.isArray(result.profiles)) {
+      throw new Error('Profile lookup failed');
+    }
+    return result.profiles;
+  }
+
+  function ensureSignerRelays(pubkey) {
+    const normalized = String(pubkey || '').toLowerCase();
+    if (!HEX_64_PATTERN.test(normalized)) return Promise.resolve([]);
+    const existing = signerLists.get(normalized);
+    if (existing) return existing;
+    signerPubkeyMemory = normalized;
+    const pending = lookupProfiles([normalized], false).then(function (profiles) {
+      for (const view of profiles) applyProfileView(view, { signer: normalized });
+      return relaysFromList(relayListMemory.get(normalized), 'write').slice(0, WRITE_RELAY_LIMIT);
+    }).catch(function (error) {
+      signerLists.delete(normalized);
+      throw error;
+    });
+    signerLists.set(normalized, pending);
+    return pending;
+  }
+
+  async function pageUrlKey(raw) {
+    const canonical = canonicalPageUrl(raw);
+    if (!canonical || !globalThis.crypto?.subtle) return null;
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(canonical)
+    );
+    return bytesToHex(digest);
+  }
+
+  function activityCacheKey(item) {
+    return item.recipient ? item.urlKey + ':' + item.recipient : item.urlKey;
+  }
+
+  function rememberActivityRow(row) {
+    const key = activityCacheKey(row);
+    activityCache.set(key, {
+      row: row,
+      expiresAt: Date.now() + ACTIVITY_CACHE_MS
+    });
+  }
+
+  function rememberActivityFromIngest(activity) {
+    if (!activity || !HEX_64_PATTERN.test(String(activity.urlKey || ''))) return;
+    const urlKey = String(activity.urlKey).toLowerCase();
+    let found = false;
+    for (const [key, entry] of activityCache) {
+      if (key !== urlKey && !key.startsWith(urlKey + ':')) continue;
+      found = true;
+      entry.row = Object.assign({}, entry.row, {
+        likes: countOf(activity.likeCount),
+        dislikes: countOf(activity.dislikeCount)
+      });
+      entry.expiresAt = Date.now() + ACTIVITY_CACHE_MS;
+    }
+    if (!found) {
+      rememberActivityRow({
+        urlKey: urlKey,
+        recipient: null,
+        likes: countOf(activity.likeCount),
+        dislikes: countOf(activity.dislikeCount),
+        zapCount: null,
+        sats: null
       });
     }
-    rows.sort(function (left, right) {
-      return right.createdAt - left.createdAt;
+  }
+
+  async function fetchActivityRows(items) {
+    const result = await sendExtensionMessage({
+      type: 'GET_URL_ACTIVITY',
+      items: items.map(function (item) {
+        return item.recipient ? item.urlKey + ':' + item.recipient : item.urlKey;
+      }).join(',')
     });
+    if (!result || !Array.isArray(result.items)) {
+      throw new Error('Like count is unavailable');
+    }
+    return result.items;
+  }
+
+  function requestActivity(item) {
+    const key = activityCacheKey(item);
+    const cached = activityCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.row);
+    return new Promise(function (resolve, reject) {
+      activityWaiters.push({ item: item, key: key, resolve: resolve, reject: reject });
+      if (!activityTimer) {
+        activityTimer = setTimeout(flushActivity, ACTIVITY_BATCH_MS);
+      }
+    });
+  }
+
+  async function flushActivity() {
+    activityTimer = null;
+    const waiting = activityWaiters;
+    activityWaiters = [];
+    if (waiting.length === 0) return;
+    const groups = new Map();
+    for (const waiter of waiting) {
+      if (!groups.has(waiter.key)) groups.set(waiter.key, []);
+      groups.get(waiter.key).push(waiter);
+    }
+    const entries = Array.from(groups.entries());
+    for (let offset = 0; offset < entries.length; offset += 20) {
+      const slice = entries.slice(offset, offset + 20);
+      try {
+        const rows = await fetchActivityRows(slice.map(function (entry) {
+          return entry[1][0].item;
+        }));
+        const returned = new Map();
+        for (const row of rows) {
+          if (!row || !row.urlKey) continue;
+          returned.set(activityCacheKey(row), row);
+        }
+        for (const [key, group] of slice) {
+          const row = returned.get(key);
+          if (!row) {
+            for (const waiter of group) {
+              waiter.reject(new Error('Like count is unavailable'));
+            }
+            continue;
+          }
+          rememberActivityRow(row);
+          for (const waiter of group) waiter.resolve(row);
+        }
+      } catch (error) {
+        const failure = error instanceof Error ? error : new Error('Like count is unavailable');
+        for (const [, group] of slice) {
+          for (const waiter of group) waiter.reject(failure);
+        }
+      }
+    }
+  }
+
+  function viewerReactionsOnce(pubkey) {
+    const normalized = String(pubkey || '').toLowerCase();
+    if (viewerReactions && viewerReactions.pubkey === normalized) {
+      return viewerReactions.promise;
+    }
+    const promise = sendExtensionMessage({
+      type: 'LIST_VIEWER_REACTIONS',
+      pubkey: normalized
+    }).then(function (result) {
+      return {
+        ok: true,
+        reactions: Array.isArray(result && result.reactions) ? result.reactions : []
+      };
+    }).catch(function () {
+      if (viewerReactions && viewerReactions.promise === promise) viewerReactions = null;
+      return { ok: false, reactions: [] };
+    });
+    viewerReactions = { pubkey: normalized, promise: promise };
+    return promise;
+  }
+
+  function newestViewerReaction(reactions, urlKey) {
+    let chosen = null;
+    for (const row of reactions || []) {
+      if (!row || row.urlKey !== urlKey) continue;
+      if (!chosen || Number(row.createdAt) >= Number(chosen.createdAt)) chosen = row;
+    }
+    return chosen;
+  }
+
+  function reactionIsLike(content, reaction) {
+    if (content === '+' || content === '') return true;
+    return reaction === 'like' && content !== '-';
+  }
+
+  function likedNow(localEvent, remote, viewerOk) {
+    if (localEvent && (!viewerOk || !remote || localEvent.created_at >= Number(remote.createdAt))) {
+      return localEvent.content === '+' || localEvent.content === '';
+    }
+    if (viewerOk && remote) return reactionIsLike(remote.content, remote.reaction);
+    return false;
+  }
+
+  async function pushUrlEvent(event, relay) {
+    try {
+      const result = await sendExtensionMessage({
+        type: 'INGEST_URL_EVENT',
+        event: event,
+        relay: relay
+      });
+      if (result && result.activity) rememberActivityFromIngest(result.activity);
+    } catch (_error) {
+      // A failed push leaves the local like in place until the sweep stores it.
+    }
+  }
+
+  function publishOne(pool, relay, event) {
+    let pending;
+    try {
+      pending = pool.publish([relay], event);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    const first = Array.isArray(pending) ? pending[0] : pending;
+    if (!first || typeof first.then !== 'function') {
+      return Promise.reject(new Error('No relay accepted the reaction event'));
+    }
+    return Promise.resolve(first).then(function () {
+      return relay;
+    });
+  }
+
+  async function settleWriteRelays(pool, event, writesPromise) {
+    let writes = [];
+    try {
+      writes = await writesPromise;
+    } catch (_error) {
+      writes = [];
+    }
+    for (const relay of writes) {
+      if (RENDEZVOUS_SET.has(relay)) continue;
+      try {
+        await publishOne(pool, relay, event);
+      } catch (_error) {
+        // A relay that refuses the event is skipped.
+      }
+    }
+  }
+
+  function assertZapRequestRelays(event) {
+    const relaysTags = event.tags.filter(function (tag) {
+      return Array.isArray(tag) && tag[0] === 'relays';
+    });
+    if (relaysTags.length !== 1) {
+      throw new Error('Zap request relays do not include the rendezvous relays');
+    }
+    const urls = [];
+    for (const value of relaysTags[0].slice(1)) {
+      const normalized = normalizeRelayUrl(value);
+      if (normalized) urls.push(normalized);
+    }
+    if (urls.length > ZAP_RELAY_LIMIT) {
+      throw new Error('Zap request relays do not include the rendezvous relays');
+    }
+    for (const required of RENDEZVOUS_RELAYS) {
+      if (urls.indexOf(required) === -1) {
+        throw new Error('Zap request relays do not include the rendezvous relays');
+      }
+    }
+  }
+
+  async function storedRelayList(pubkey) {
+    if (relayListMemory.has(pubkey)) return relayListMemory.get(pubkey);
+    if (pubkey === signerPubkeyMemory) return null;
+    if (typeof extension.storage.getRelayList !== 'function') return null;
+    const event = await extension.storage.getRelayList(pubkey);
+    if (!acceptedEvent(pubkey, event, 10002)) return null;
+    relayListMemory.set(pubkey, event);
+    return event;
+  }
+
+  async function zapRelaysForRecipient(pubkey) {
+    const record = profileRecords.get(pubkey);
+    const age = record ? Date.now() - record.fetchedAt : Infinity;
+    if (!record || !record.event || age > PROFILE_FRESH_MS || record.zappable == null) {
+      const views = await lookupProfiles([pubkey], true);
+      for (const view of views) applyProfileView(view);
+    }
+    if (!relayListMemory.has(pubkey)) await storedRelayList(pubkey);
+    const reads = relaysFromList(relayListMemory.get(pubkey), 'read')
+      .filter(function (url) { return !RENDEZVOUS_SET.has(url); })
+      .slice(0, WRITE_RELAY_LIMIT);
+    const zapRelays = RENDEZVOUS_RELAYS.concat(reads).slice(0, ZAP_RELAY_LIMIT);
+    zapRelaysByPubkey.set(pubkey, zapRelays);
+    return zapRelays;
+  }
+
+  function watchOneRelay(pool, relay, filter, onEvent) {
+    return new Promise(function (resolve) {
+      let closer = null;
+      let finished = false;
+      function finish() {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        if (closer && typeof closer.close === 'function') void closer.close();
+        resolve();
+      }
+      const timer = setTimeout(finish, QUERY_DEADLINE_MS);
+      try {
+        closer = pool.subscribe([relay], filter, {
+          onevent: function (event) {
+            onEvent(event, relay);
+          },
+          oneose: finish,
+          onclose: finish,
+          maxWait: QUERY_DEADLINE_MS
+        });
+      } catch (_error) {
+        finish();
+      }
+    });
+  }
+
+  async function handleLikeRead(operation, payload) {
+    if (
+      !payloadAllows(payload, ['relays', 'url']) ||
+      !isAllowedContentUrl(payload.url) ||
+      !Array.from(actionContexts.values()).some(function (context) {
+        return context.url === payload.url;
+      })
+    ) {
+      throw new Error('Known-reaction request contains unexpected data');
+    }
+    const publicKey = await extension.storage.getKnownPubkey();
+    if (operation === 'getCachedLikeState') {
+      const cachedEvents = await getRecentReactions(payload.url);
+      const latest = findLatestReaction(cachedEvents, publicKey);
+      return {
+        found: Boolean(latest),
+        isLiked: latest?.content === '+' || latest?.content === ''
+      };
+    }
+    const urlKey = await pageUrlKey(payload.url);
+    if (!urlKey) throw new Error('Like count is unavailable');
+    const activityPromise = requestActivity({ urlKey: urlKey, recipient: null });
+    let viewerPromise = Promise.resolve({ ok: false, reactions: [] });
+    if (publicKey) {
+      void ensureSignerRelays(publicKey).catch(function () {});
+      viewerPromise = viewerReactionsOnce(publicKey);
+    }
+    const row = await activityPromise;
+    const viewer = await viewerPromise;
+    const local = findLatestReaction(await getRecentReactions(payload.url), publicKey);
+    const remote = newestViewerReaction(viewer.reactions, urlKey);
     return {
-      totalSats: totalSats,
-      eventCount: eventCount,
-      rows: rows.slice(0, RECEIPT_ROW_LIMIT)
+      totalCount: countOf(row.likes),
+      likedCount: countOf(row.likes),
+      dislikedCount: countOf(row.dislikes),
+      isLiked: likedNow(local, remote, viewer.ok)
     };
   }
 
-  async function readReceipt(pubkey, aTag) {
-    const key = pubkey + '\n' + aTag;
-    const memory = unexpiredEntry(receiptMemory.get(key));
-    if (!memory) receiptMemory.delete(key);
-    if (memory) return memory;
-    if (typeof extension.storage.getZapReceipt !== 'function') return null;
-    const stored = await extension.storage.getZapReceipt(pubkey, aTag);
-    if (!stored) return null;
-    const entry = {
-      summary: {
-        totalSats: stored.totalSats,
-        eventCount: stored.eventCount,
-        rows: stored.rows
+  async function handleGetProfiles(payload) {
+    if (!payloadAllows(payload, ['actionId', 'pubkeys']) || !Array.isArray(payload.pubkeys)) {
+      throw new Error('Profile request contains unexpected data');
+    }
+    getActionContext(payload.actionId, false);
+    if (payload.pubkeys.length < 1 || payload.pubkeys.length > PROFILE_PUBKEY_LIMIT) {
+      throw new Error('Profile request contains unexpected data');
+    }
+    const pubkeys = [];
+    for (const value of payload.pubkeys) {
+      const pubkey = String(value || '').toLowerCase();
+      if (!HEX_64_PATTERN.test(pubkey) || pubkeys.indexOf(pubkey) !== -1) {
+        throw new Error('Profile request contains unexpected data');
+      }
+      pubkeys.push(pubkey);
+    }
+    const views = await lookupProfiles(pubkeys, false);
+    const events = [];
+    const requested = new Set(pubkeys);
+    for (const view of views) {
+      if (!requested.has(String(view && view.pubkey || '').toLowerCase())) continue;
+      const kept = applyProfileView(view);
+      if (kept.profile) events.push(kept.profile);
+      if (kept.relayList) events.push(kept.relayList);
+    }
+    return events;
+  }
+
+  async function handleGetZapRoute(payload) {
+    if (!payloadAllows(payload, ['actionId'])) {
+      throw new Error('Zap route request contains unexpected data');
+    }
+    const context = getActionContext(payload.actionId, true);
+    const zapRelays = await zapRelaysForRecipient(context.recipientPubkey);
+    const provider = await resolveZapProvider(payload.actionId, context);
+    return {
+      provider: {
+        lnurl: provider.lnurl,
+        callback: provider.callback,
+        nostrPubkey: provider.nostrPubkey
       },
-      events: null,
-      expiresAt: stored.expiresAt
+      zapRelays: zapRelays
     };
-    rememberBounded(receiptMemory, key, entry, MEMORY_RECEIPT_LIMIT);
-    return entry;
   }
 
-  async function rememberSummary(pubkey, aTag, summary, events) {
-    if (!summary || summary.eventCount < 1) return;
-    const key = pubkey + '\n' + aTag;
-    const now = Date.now();
-    const keepEvents = Array.isArray(events) &&
-      events.length === summary.eventCount &&
-      events.length <= RECEIPT_ROW_LIMIT;
-    rememberBounded(receiptMemory, key, {
-      summary: summary,
-      events: keepEvents ? events : null,
-      expiresAt: now + ZAP_CACHE_STALE_MS
-    }, MEMORY_RECEIPT_LIMIT);
-    if (typeof extension.storage.setZapReceipt === 'function') {
-      await extension.storage.setZapReceipt(pubkey, aTag, summary, ZAP_CACHE_STALE_MS);
+  async function handleGetZapSummary(payload) {
+    if (!payloadAllows(payload, ['actionId'])) {
+      throw new Error('Zap summary request contains unexpected data');
     }
+    const context = getActionContext(payload.actionId, true);
+    const urlKey = await pageUrlKey(context.url);
+    if (!urlKey) throw new Error('Zap total is unavailable');
+    const row = await requestActivity({
+      urlKey: urlKey,
+      recipient: context.recipientPubkey
+    });
+    return {
+      totalAmount: countOf(row.sats),
+      zapDetails: []
+    };
   }
 
-  async function rememberReceipts(pubkey, aTag, events) {
-    const summary = summarizeReceipts(events);
-    await rememberSummary(pubkey, aTag, summary, events);
+  async function handleListZaps(payload) {
+    if (!payloadAllows(payload, ['actionId'])) {
+      throw new Error('Zap list request contains unexpected data');
+    }
+    const context = getActionContext(payload.actionId, true);
+    const urlKey = await pageUrlKey(context.url);
+    if (!urlKey) throw new Error('Zap total is unavailable');
+    const result = await sendExtensionMessage({
+      type: 'LIST_URL_EVENTS',
+      key: urlKey,
+      recipient: context.recipientPubkey,
+      limit: '50'
+    });
+    if (!result || !Array.isArray(result.zaps)) {
+      throw new Error('Zap total is unavailable');
+    }
+    return result.zaps.map(function (row) {
+      const author = typeof row.senderPubkey === 'string' ? row.senderPubkey.toLowerCase() : '';
+      return {
+        amount: countOf(row.sats),
+        createdAt: Number.isFinite(Number(row.createdAt)) ? Number(row.createdAt) : 0,
+        authorPubkey: HEX_64_PATTERN.test(author) ? author : null,
+        comment: typeof row.comment === 'string' ? row.comment : ''
+      };
+    });
   }
 
-  async function queryZapReceiptsUncached(pool, relays, filter) {
-    const pubkey = filter['#p'][0];
-    const aTag = filter['#a'] ? filter['#a'][0] : '';
-    const live = await queryWithFastQuorum(
-      pool,
-      relays,
-      filter,
-      { requireEvent: true }
-    );
-    const stored = await readReceipt(pubkey, aTag);
-    const providerEntry = await readProvider(pubkey);
-    const provider = providerEntry && providerEntry.value;
-    const validated = validatedZapReceipts(live, filter, provider);
-
-    if (validated.length === 0) {
-      if (stored) return receiptCacheMarker(stored.summary);
-      return live;
+  async function handleReceiptWatch(pool, payload) {
+    if (!payloadAllows(payload, ['relays', 'filter', 'actionId'])) {
+      throw new Error('Relay request contains an unsupported filter');
     }
-
-    if (!stored) {
-      await rememberReceipts(pubkey, aTag, validated);
-      return validated;
+    const filter = validateFilter(payload.filter);
+    if (
+      !filter ||
+      filter.kinds[0] !== 9735 ||
+      filter.since === undefined ||
+      !isFilterBoundToAction(filter, payload.actionId)
+    ) {
+      throw new Error('Relay request contains an unsupported filter');
     }
-
-    const haveEvents = Boolean(
-      stored.events &&
-      stored.events.length > 0 &&
-      stored.events.length === stored.summary.eventCount
-    );
-    if (haveEvents) {
-      const byId = new Map();
-      for (const event of validatedZapReceipts(stored.events, filter, provider)) {
-        byId.set(String(event.id).toLowerCase(), event);
-      }
-      for (const event of validated) {
-        byId.set(String(event.id).toLowerCase(), event);
-      }
-      const union = Array.from(byId.values());
-      await rememberReceipts(pubkey, aTag, union);
-      return union;
-    }
-
-    const known = new Set(stored.summary.rows.map(function (row) {
-      return row.id;
+    const recipient = filter['#p'][0];
+    const relays = zapRelaysByPubkey.get(recipient) || RENDEZVOUS_RELAYS.slice();
+    const events = [];
+    const seen = new Set();
+    await Promise.all(relays.map(function (relay) {
+      return watchOneRelay(pool, relay, filter, function (event, source) {
+        if (!event || !event.id || seen.has(event.id)) return;
+        if (event.kind !== 9735 || !eventVerified(event)) return;
+        const pTag = Array.isArray(event.tags)
+          ? event.tags.find(function (tag) {
+            return Array.isArray(tag) && tag[0] === 'p';
+          })
+          : null;
+        if (!pTag || String(pTag[1] || '').toLowerCase() !== recipient) return;
+        seen.add(event.id);
+        events.push(event);
+        if (SWEEP_RELAYS.has(source)) void pushUrlEvent(event, source);
+      });
     }));
-    const novel = validated.filter(function (event) {
-      return !known.has(String(event.id || '').toLowerCase());
-    });
-    if (novel.length === 0) return receiptCacheMarker(stored.summary);
-    const summary = mergeStoredSummary(stored.summary, novel);
-    await rememberSummary(pubkey, aTag, summary, null);
-    return receiptCacheMarker(summary);
+    return events;
   }
 
-  function queryZapReceipts(pool, relays, filter) {
-    const key = filter['#p'][0] + '\n' + (filter['#a'] ? filter['#a'][0] : '');
-    const pending = receiptInflight.get(key);
-    if (pending) return pending;
-    const next = queryZapReceiptsUncached(pool, relays, filter).finally(function () {
-      if (receiptInflight.get(key) === next) receiptInflight.delete(key);
-    });
-    receiptInflight.set(key, next);
-    return next;
+  async function handlePublish(pool, payload) {
+    const actionId = String(payload && payload.actionId || '');
+    const actionContext = ACTION_ID_PATTERN.test(actionId)
+      ? actionContexts.get(actionId)
+      : null;
+    if (
+      !payloadAllows(payload, ['relays', 'event', 'actionId']) ||
+      !actionContext
+    ) {
+      throw new Error('Relay publish is not bound to an action');
+    }
+    const event = validateReactionEvent(payload.event, actionContext.url);
+    if (!event) throw new Error('Relay request contains an invalid reaction event');
+    let acceptedRelay;
+    try {
+      acceptedRelay = await Promise.any(RENDEZVOUS_RELAYS.map(function (relay) {
+        return publishOne(pool, relay, event);
+      }));
+    } catch (_error) {
+      throw new Error('No relay acknowledged the reaction event');
+    }
+    await extension.storage.setKnownPubkey(event.pubkey);
+    await rememberRecentReaction(event);
+    viewerReactions = null;
+    const writesPromise = ensureSignerRelays(event.pubkey);
+    void settleWriteRelays(pool, event, writesPromise);
+    void pushUrlEvent(event, acceptedRelay);
+    return null;
   }
 
   function getExactTag(event, name) {
@@ -1364,9 +1581,12 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     ) {
       return null;
     }
-    const expectedATag =
-      '39735:' + context.recipientPubkey + ':' + normalizeURL(context.url);
+    const pageUrl = canonicalPageUrl(context.url);
+    const expectedATag = pageUrl
+      ? '39735:' + context.recipientPubkey + ':' + pageUrl
+      : null;
     if (
+      !pageUrl ||
       String(getExactTag(event, 'p') || '').toLowerCase() !==
         context.recipientPubkey ||
       getExactTag(event, 'amount') !== String(amount) ||
@@ -1391,7 +1611,7 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     }
   }
 
-  async function fetchZapInvoice(pool, relays, payload) {
+  async function fetchZapInvoice(payload) {
     const context = getActionContext(payload?.actionId, true);
     const amount = payload?.amount;
     const comment = typeof payload?.comment === 'string'
@@ -1422,13 +1642,12 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     if (!zapEvent) {
       throw new Error('Zap request is not bound to the active recipient');
     }
+    assertZapRequestRelays(zapEvent);
 
     let lastError = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const provider = await resolveZapProvider(
-          pool,
-          relays,
           payload.actionId,
           context,
           {
@@ -1522,149 +1741,36 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
 
   async function handleRequest(pool, message) {
     const payload = message.payload;
-    const relays = validateRelays(payload && payload.relays);
-    if (!relays) {
-      throw new Error('Relay request contains an unsupported relay list');
-    }
 
     if (
       message.operation === 'getCachedLikeState' ||
       message.operation === 'getLikeState'
     ) {
-      if (
-        !payload ||
-        Object.keys(payload).some((key) => key !== 'relays' && key !== 'url') ||
-        !isAllowedContentUrl(payload.url) ||
-        !Array.from(actionContexts.values()).some(
-          (context) => context.url === payload.url
-        )
-      ) {
-        throw new Error('Known-reaction request contains unexpected data');
-      }
+      return handleLikeRead(message.operation, payload);
+    }
 
-      const publicKey = await extension.storage.getKnownPubkey();
-      if (message.operation === 'getCachedLikeState') {
-        const cachedEvents = await getRecentReactions(payload.url);
-        const latest = findLatestReaction(cachedEvents, publicKey);
-        return {
-          found: Boolean(latest),
-          isLiked: latest?.content === '+' || latest?.content === ''
-        };
-      }
+    if (message.operation === 'getProfiles') {
+      return handleGetProfiles(payload);
+    }
 
-      const countFilter = {
-        kinds: [17],
-        '#k': ['web'],
-        '#i': [payload.url],
-        limit: 1000
-      };
-      const filters = [countFilter];
-      if (publicKey) {
-        filters.push({
-          kinds: [17],
-          authors: [publicKey],
-          '#k': ['web'],
-          '#i': [payload.url],
-          limit: 1
-        });
-      }
-      const queriedEvents = await queryWithFastQuorum(pool, relays, filters);
-      const recentEvents = await getRecentReactions(payload.url);
-      const eventsById = new Map(
-        [...queriedEvents, ...recentEvents].map((event) => [event.id, event])
-      );
-      const events = Array.from(eventsById.values());
-      const latest = findLatestReaction(events, publicKey);
-      return {
-        ...summarizeReactionEvents(events),
-        isLiked: latest?.content === '+' || latest?.content === ''
-      };
+    if (message.operation === 'getZapRoute') {
+      return handleGetZapRoute(payload);
+    }
+
+    if (message.operation === 'getZapSummary') {
+      return handleGetZapSummary(payload);
+    }
+
+    if (message.operation === 'listZaps') {
+      return handleListZaps(payload);
     }
 
     if (message.operation === 'query') {
-      const filter = validateFilter(payload.filter);
-      if (
-        Object.keys(payload).some(
-          (key) =>
-            key !== 'relays' &&
-            key !== 'filter' &&
-            key !== 'actionId'
-        ) ||
-        !filter ||
-        !isFilterBoundToAction(filter, payload.actionId)
-      ) {
-        throw new Error('Relay request contains an unsupported filter');
-      }
-      const profileQuery = filter.kinds[0] === 0;
-      const singleProfileLookup =
-        profileQuery && filter.authors.length === 1;
-      // A zap for one post often lives on a single slower relay. Three fast
-      // empty replies are not proof the post has no receipts.
-      const zapQuery = filter.kinds[0] === 9735;
-      if (singleProfileLookup) {
-        const profile = await loadVerifiedProfile(
-          pool,
-          relays,
-          filter.authors[0]
-        );
-        return profile ? [profile] : [];
-      }
-      if (zapQuery && filter.since === undefined) {
-        return queryZapReceipts(pool, relays, filter);
-      }
-      const events = await queryWithFastQuorum(
-        pool,
-        relays,
-        filter,
-        zapQuery
-          ? { requireEvent: true }
-          : undefined
-      );
-      if (!profileQuery) return events;
-      const authors = new Set(filter.authors);
-      return events.filter(function (event) {
-        return (
-          event?.kind === 0 &&
-          authors.has(String(event.pubkey || '').toLowerCase()) &&
-          verifyEvent(event)
-        );
-      });
+      return handleReceiptWatch(pool, payload);
     }
 
     if (message.operation === 'publish') {
-      const actionId = String(payload?.actionId || '');
-      const actionContext = ACTION_ID_PATTERN.test(actionId)
-        ? actionContexts.get(actionId)
-        : null;
-      if (
-        !payload ||
-        Object.keys(payload).some(
-          (key) =>
-            key !== 'relays' && key !== 'event' && key !== 'actionId'
-        ) ||
-        !actionContext
-      ) {
-        throw new Error('Relay publish is not bound to an action');
-      }
-      const event = validateReactionEvent(
-        payload.event,
-        actionContext.url
-      );
-      if (!event) {
-        throw new Error('Relay request contains an invalid reaction event');
-      }
-      const publishes = pool.publish(relays, event);
-      if (!Array.isArray(publishes) || publishes.length === 0) {
-        throw new Error('No relay accepted the reaction event');
-      }
-      try {
-        await Promise.any(publishes);
-      } catch (_error) {
-        throw new Error('No relay acknowledged the reaction event');
-      }
-      await extension.storage.setKnownPubkey(event.pubkey);
-      await rememberRecentReaction(event);
-      return null;
+      return handlePublish(pool, payload);
     }
 
     if (
@@ -1673,26 +1779,17 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     ) {
       const context = getActionContext(payload?.actionId, true);
       if (message.operation === 'getZapProvider') {
-        if (
-          Object.keys(payload).some(
-            (key) => key !== 'actionId' && key !== 'relays'
-          )
-        ) {
+        if (!payloadAllows(payload, ['actionId', 'relays'])) {
           throw new Error('Zap provider request contains unexpected data');
         }
-        const provider = await resolveZapProvider(
-          pool,
-          relays,
-          payload.actionId,
-          context
-        );
+        const provider = await resolveZapProvider(payload.actionId, context);
         return {
           lnurl: provider.lnurl,
           callback: provider.callback,
           nostrPubkey: provider.nostrPubkey
         };
       }
-      return fetchZapInvoice(pool, relays, payload);
+      return fetchZapInvoice(payload);
     }
 
     throw new Error('Unsupported relay operation');
@@ -1814,7 +1911,7 @@ import { validateZapReceipt } from '../../src/nostr-zap-button/zap-receipt.ts';
     validateReactionEvent: validateReactionEvent,
     registerActionContext: registerActionContext,
     revokeActionContext: revokeActionContext,
-    validateRelays: validateRelays,
+    seedIdentity: seedIdentity,
     isAllowedZapHttpUrl: function (value) {
       return Boolean(extension.zapHttp && extension.zapHttp.isAllowedZapHttpUrl(value));
     }

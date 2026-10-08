@@ -30,9 +30,28 @@ stale third-party mapping cannot redirect a Zap.
 
 This folder ships the same `<nostr-like-button>` and `<nostr-zap-button>` used
 on the web. They run in the page so they can reach `window.nostr`. Host content
-security policies can block relay WebSockets and Lightning HTTPS, so scoped
-queries, Like publishes, and LNURL/invoice GETs go through a narrow extension
-bridge instead.
+security policies can block relay WebSockets and Lightning HTTPS, so likes,
+receipt watches, and LNURL/invoice GETs go through a narrow extension bridge.
+
+## What leaves your browser
+
+X handles, Nostr pubkeys of the authors and Zap recipients shown on the page,
+URL keys (the hash of a canonical page URL, not the URL itself), the stored
+signer pubkey, your own signed likes, and zap receipts seen on the sweep relays
+go to the Nostr Components directory API. Signed likes also go to the
+rendezvous relays and to up to three write relays from your own kind 10002
+relay list. Receipt watches connect to the rendezvous relays and up to three
+read relays from the recipient's kind 10002 list. Zap requests go to the
+recipient's Lightning (LNURL) provider. Chrome Web Store privacy answers must
+match this section.
+
+Counts are what those relays and the API have seen, not every like or zap on
+Nostr. A zap made in another client is counted only when one of the sweep
+relays holds the receipt. The extension's own unlike replaces that user's
+like. A deleted reaction from another client keeps counting. The liked state
+uses your newest 500 URL reactions, so an older like can look unliked. A like
+reaches your write relays only when your kind 10002 is available and those
+relays accept it.
 
 Signer public keys stay in memory for the current tab. They are not written to
 `sessionStorage`, which X's page can read. Scrolling therefore does not re-prompt

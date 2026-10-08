@@ -102,6 +102,19 @@
     memoryCache.set(handle, { value: value, expiresAt: expiresAt });
   }
 
+  function directoryCacheValue(result) {
+    const value = Object.assign({}, result, { source: 'firestore' });
+    if (!value.activeIdentity || typeof value.activeIdentity !== 'object') {
+      return value;
+    }
+    const identity = Object.assign({}, value.activeIdentity);
+    delete identity.profileEvent;
+    delete identity.relayListEvent;
+    delete identity.nprofile;
+    value.activeIdentity = identity;
+    return value;
+  }
+
   /**
    * Looks up a user handle in the directory cache (memory -> local storage -> firestore lookup).
    * Verified zappable identities are cached for 24 hours, while unverified or non-zappable
@@ -131,9 +144,30 @@
 
     try {
       const result = await sendLookupRequest(handle);
-      const valueToCache = { ...result, source: 'firestore' };
-      const isZappable = valueToCache.zappable === true ||
-        (valueToCache.activeIdentity && valueToCache.activeIdentity.zappable === true);
+      const identity = result && result.activeIdentity;
+      if (
+        identity &&
+        identity.pubkey &&
+        extension.relayClient &&
+        typeof extension.relayClient.seedIdentity === 'function'
+      ) {
+        try {
+          extension.relayClient.seedIdentity(
+            identity.pubkey,
+            identity.profileEvent,
+            identity.relayListEvent,
+            identity.zappable
+          );
+        } catch (_seedError) {
+          // A bad signed event must not hide the directory result.
+        }
+      }
+      const valueToCache = directoryCacheValue(result);
+      const zappable = identity ? identity.zappable : valueToCache.zappable;
+      if (identity && zappable == null) {
+        return valueToCache;
+      }
+      const isZappable = zappable === true;
       const ttlMs = (valueToCache.verified && isZappable) ? VERIFIED_TTL_MS : MISS_TTL_MS;
       const expiresAt = Date.now() + ttlMs;
       setMemoryEntry(handle, valueToCache, expiresAt);
