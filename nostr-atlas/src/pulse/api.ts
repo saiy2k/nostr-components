@@ -218,14 +218,18 @@ export function parsePulseOverview(value: unknown): PulseOverview {
       ...countsOf(value.totals),
     },
     domains: list(value.domains, OVERVIEW_LIMIT, (item) => {
-      if (!record(item)) invalid();
-      return {
-        domain: domainName(item.domain),
-        urlCount: nonNegative(item.urlCount),
-        lastActivityAt: timestamp(item.lastActivityAt),
-        ...countsOf(item),
-      };
-    }),
+      if (!record(item)) return null;
+      try {
+        return {
+          domain: domainName(item.domain),
+          urlCount: nonNegative(item.urlCount),
+          lastActivityAt: timestamp(item.lastActivityAt),
+          ...countsOf(item),
+        };
+      } catch {
+        return null;
+      }
+    }).filter((row): row is PulseDomainRow => row !== null),
   };
 }
 

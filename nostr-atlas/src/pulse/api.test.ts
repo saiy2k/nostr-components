@@ -85,6 +85,28 @@ describe("Web Pulse response checks", () => {
     expect(activity.reactions[0]?.reaction).toBe("emoji");
   });
 
+  it("keeps a valid domain when another row has a trailing dot", () => {
+    const overview = parsePulseOverview({
+      totals: { domainCount: 2, ...counts },
+      domains: [
+        {
+          domain: "x.com",
+          urlCount: 1,
+          lastActivityAt: 10,
+          ...counts,
+        },
+        {
+          domain: "xn--example.",
+          urlCount: 1,
+          lastActivityAt: 10,
+          ...counts,
+        },
+      ],
+    });
+    expect(overview.domains.map((row) => row.domain)).toEqual(["x.com"]);
+    expect(overview.totals.domainCount).toBe(2);
+  });
+
   it("rejects a broken envelope and an unsafe domain", () => {
     expect(() => parsePulseOverview({ totals: counts, domains: [{}] })).toThrow(
       /invalid response/,
