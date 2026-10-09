@@ -1,5 +1,5 @@
 :root {
-  --zap: #c45c12;
+  --zap: #fb923c;
 }
 
 .pulse-page {
@@ -44,14 +44,14 @@
   gap: 16px;
   margin: 0;
   padding: 16px;
-  border: 1px solid rgba(17, 21, 38, 0.1);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(17, 21, 38, 0.02);
+  background: var(--surface-raised);
 }
 
 .pulse-stat-icon {
   flex: 0 0 auto;
-  color: rgba(17, 21, 38, 0.5);
+  color: var(--muted);
 }
 
 .pulse-stat-icon svg {
@@ -93,13 +93,13 @@
 
 .pulse-stat-hero,
 .pulse-stat-zap {
-  border-color: rgba(249, 115, 22, 0.6);
-  background: rgba(255, 237, 213, 0.7);
+  border-color: rgba(249, 115, 22, 0.45);
+  background: rgba(251, 146, 60, 0.12);
 }
 
 .pulse-stat-hero {
-  border-color: rgba(234, 88, 12, 0.7);
-  background: rgba(255, 237, 213, 0.8);
+  border-color: rgba(234, 88, 12, 0.55);
+  background: rgba(251, 146, 60, 0.18);
 }
 
 .pulse-stat-hero .pulse-stat-icon,
@@ -163,7 +163,7 @@
   border: 0;
   border-right: 1px solid var(--line);
   padding: 4px 12px;
-  background: #fff;
+  background: var(--surface-raised);
   color: var(--muted);
   cursor: pointer;
   font-size: 12px;
@@ -175,7 +175,7 @@
 }
 
 .pulse-days button[aria-pressed="true"] {
-  background: rgba(17, 21, 38, 0.1);
+  background: rgba(237, 237, 237, 0.1);
   color: var(--ink);
 }
 
@@ -201,19 +201,19 @@
   align-items: center;
   gap: 12px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-raised);
 }
 
 .pulse-activity-zap {
   padding: 12px;
   border: 1px solid rgba(249, 115, 22, 0.2);
   border-left: 4px solid #f97316;
-  background: #fff7ed;
+  background: var(--zap-soft);
 }
 
 .pulse-activity-reaction {
   padding: 8px 12px;
-  border: 1px solid rgba(17, 21, 38, 0.05);
+  border: 1px solid var(--line);
   border-left: 4px solid #60a5fa;
 }
 
@@ -351,7 +351,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   padding: 0 14px;
-  background: #fff;
+  background: var(--surface-raised);
   color: var(--ink);
 }
 
@@ -382,11 +382,11 @@
 }
 
 .pulse-table thead {
-  background: rgba(17, 21, 38, 0.03);
+  background: rgba(237, 237, 237, 0.03);
 }
 
 .pulse-table tbody tr:hover td {
-  background: rgba(17, 21, 38, 0.02);
+  background: var(--hover);
 }
 
 .pulse-table th,
@@ -492,8 +492,8 @@
 
 .pulse-url-detail td {
   padding: 0;
-  background: rgba(17, 21, 38, 0.02);
-  border-top: 1px solid rgba(17, 21, 38, 0.05);
+  background: var(--hover);
+  border-top: 1px solid var(--line);
 }
 
 .pulse-url-detail .pulse-note {
@@ -514,7 +514,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 24px;
-  border-top: 1px solid rgba(17, 21, 38, 0.05);
+  border-top: 1px solid var(--line);
 }
 
 .pulse-url-event:first-child {
