@@ -178,6 +178,25 @@ describe("frontfill windows", () => {
     expect(plan.cursor.cursorUntil).toBe(NOW - 10);
   });
 
+  it("steps past a repeated boundary second on EOSE without recording a gap", () => {
+    const plan = planFrontfillCursor({
+      page: { reason: "eose", events: [{ id: "e", created_at: NOW - 10 }] },
+      cursor: {
+        cursorUntil: NOW - 10,
+        pageLimit: 250,
+        boundaryTimestamp: NOW - 10,
+        boundarySeenIds: ["e"],
+        stuckCount: 0,
+      },
+      windowStart: NOW - 3600,
+      defaultPageLimit: 250,
+      maxPageLimit: 1000,
+    });
+    expect(plan.completed).toBe(false);
+    expect(plan.gap).toBeNull();
+    expect(plan.cursor.cursorUntil).toBe(NOW - 11);
+  });
+
   it("drops events older than the window start", () => {
     expect(
       eventsInWindow(
@@ -249,6 +268,37 @@ describe("frontfill windows", () => {
 });
 
 describe("frontfill runs", () => {
+  it("finishes a live window of events within the page budget without a gap", async () => {
+    const db = memoryDb();
+    const events = [
+      { id: "new", created_at: NOW - 10 },
+      { id: "older", created_at: NOW - 100 },
+    ];
+    let queries = 0;
+    await runFrontfill(config({ initialLookbackSeconds: 0, liveMaxPages: 4 }), {
+      db,
+      queryRelay: async (_relay, filter) => {
+        queries += 1;
+        return {
+          reason: "eose",
+          events: events.filter(
+            (event) =>
+              event.created_at <= filter.until && event.created_at >= filter.since,
+          ),
+        };
+      },
+      processPage: async () => ({ writes: [] }),
+      commitHandles: async () => ({ deadLetterFailed: 0 }),
+    });
+    expect(queries).toBeLessThanOrEqual(4);
+    expect(cursorDoc(db)).toMatchObject({
+      status: "complete",
+      liveInProgress: false,
+      syncedUntil: NOW,
+    });
+    expect(cursorDoc(db).lastGap).toBeFalsy();
+  });
+
   it("queries kind 10011 before kind 0 and claims only in-window events", async () => {
     const db = memoryDb();
     const seen = [];

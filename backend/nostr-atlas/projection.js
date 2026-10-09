@@ -243,14 +243,44 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     const renewed = await renewProjectionLease(db, args, lease, { now: leaseNow });
     if (!renewed) throw new Error("projection-lease-lost");
   };
+  const readLease = async (tx) => {
+    const ref = projectionLeaseRef(db, args);
+    const snap = await tx.get(ref);
+    return {
+      ref,
+      data: renewedProjectionLease(
+        snap.exists ? snap.data() || {} : {},
+        lease,
+        leaseNow(),
+      ),
+    };
+  };
   try {
-    return await executeProjection(db, args, dependencies, runMetrics, lease, leaseNow, touchLease);
+    return await executeProjection(
+      db,
+      args,
+      dependencies,
+      runMetrics,
+      lease,
+      leaseNow,
+      touchLease,
+      readLease,
+    );
   } finally {
     await releaseProjectionLease(db, args, lease);
   }
 }
 
-async function executeProjection(db, args, dependencies, runMetrics, lease, leaseNow, touchLease) {
+async function executeProjection(
+  db,
+  args,
+  dependencies,
+  runMetrics,
+  lease,
+  leaseNow,
+  touchLease,
+  readLease,
+) {
   const verifyClaims = dependencies.verifyHandleClaims || verifyHandleClaims;
   const now = dependencies.now || Date.now;
   const [handleDocs, pendingHandleCount] = await Promise.all([
@@ -374,9 +404,12 @@ async function executeProjection(db, args, dependencies, runMetrics, lease, leas
       let committed;
       try {
         committed = await db.runTransaction(async (tx) => {
-          const leaseSnap = await tx.get(projectionLeaseRef(db, args));
+          const leaseRef = projectionLeaseRef(db, args);
+          const leaseSnap = await tx.get(leaseRef);
+          const ref = db.collection(args.firestoreHandlesCollection).doc(handleDoc.id);
+          const snap = await tx.get(ref);
           tx.set(
-            projectionLeaseRef(db, args),
+            leaseRef,
             renewedProjectionLease(
               leaseSnap.exists ? leaseSnap.data() || {} : {},
               lease,
@@ -384,8 +417,6 @@ async function executeProjection(db, args, dependencies, runMetrics, lease, leas
             ),
             { merge: true },
           );
-          const ref = db.collection(args.firestoreHandlesCollection).doc(handleDoc.id);
-          const snap = await tx.get(ref);
           const fresh = snap.exists ? snap.data() || {} : {};
           const freshTransition = applyProjectionResults(
             fresh,
@@ -502,7 +533,7 @@ async function executeProjection(db, args, dependencies, runMetrics, lease, leas
         args,
         verifiedProfiles,
         now,
-        touchLease,
+        { touchLease, readLease },
       );
     } catch (error) {
       if (error?.message !== "projection-lease-lost") throw error;
@@ -556,7 +587,7 @@ function collectVerifiedProfiles(targets, handleDoc, results) {
   }
 }
 
-async function refreshProjectionProfiles(db, args, verifiedProfiles, now, touchLease) {
+async function refreshProjectionProfiles(db, args, verifiedProfiles, now, leaseOptions = {}) {
   const health = new Map();
   const nowMs = now();
   let refreshed = 0;
@@ -569,7 +600,7 @@ async function refreshProjectionProfiles(db, args, verifiedProfiles, now, touchL
       fetchImpl: args.fetchImpl,
       handlesCollection: args.firestoreHandlesCollection,
       flushHealth: false,
-      touchLease,
+      ...leaseOptions,
     });
     refreshed += immediate.refreshed;
     writes += immediate.refreshed + immediate.handlesChanged;
@@ -580,11 +611,11 @@ async function refreshProjectionProfiles(db, args, verifiedProfiles, now, touchL
     timeoutMs: args.timeoutMs,
     fetchImpl: args.fetchImpl,
     skipPubkeys: new Set(verifiedProfiles.map((target) => target.pubkey)),
-    touchLease,
+    ...leaseOptions,
   });
   refreshed += due.refreshed;
   writes += due.refreshed + due.handlesChanged + 1;
-  const healthWrites = await flushRelayHealth(db, health);
+  const healthWrites = await flushRelayHealth(db, health, leaseOptions);
   return {
     refreshed,
     scanned: due.scanned,

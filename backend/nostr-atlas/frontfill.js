@@ -219,6 +219,30 @@ export function planFrontfillCursor({
     defaultPageLimit,
     maxPageLimit,
   });
+  // `until` is inclusive, so the next page repeats the boundary second. An
+  // EOSE that adds no older events and no new ids has finished that second.
+  // Step back one second instead of raising the limit or recording a gap.
+  if (
+    reason === "eose" &&
+    (decision.action === "increase-limit" || decision.action === "skip-gap")
+  ) {
+    const cursorUntil =
+      decision.action === "skip-gap" ? decision.cursorUntil : decision.cursorUntil - 1;
+    const completed = cursorUntil < windowStart;
+    return {
+      action: completed ? "complete" : "progress",
+      reason: "eose",
+      completed,
+      gap: null,
+      cursor: {
+        cursorUntil,
+        pageLimit: defaultPageLimit,
+        boundaryTimestamp: null,
+        boundarySeenIds: [],
+        stuckCount: 0,
+      },
+    };
+  }
   const completed = decision.cursorUntil < windowStart;
   return {
     action: completed ? "complete" : decision.action,
