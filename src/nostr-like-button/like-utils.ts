@@ -13,6 +13,130 @@ import type { LikeCountResult, LikeDetails } from './like-netting';
 
 export type { LikeCountResult, LikeDetails };
 
+export const DIRECTORY_WRITE_ERROR = 'Directory did not store the reaction';
+const LOCAL_REACTION_KEY = 'nostr-components:last-reaction';
+const LOCAL_REACTION_LIMIT = 20;
+
+export function isDirectoryWriteError(error: unknown): boolean {
+  return error instanceof Error && error.message === DIRECTORY_WRITE_ERROR;
+}
+
+interface LocalReaction {
+  url: string;
+  pubkey: string;
+  content: string;
+  id: string;
+  created_at: number;
+}
+
+function reactionStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function reactionTargetUrl(event: { tags?: unknown }): string | null {
+  if (!Array.isArray(event?.tags)) return null;
+  const tag = event.tags.find(
+    (item) => Array.isArray(item) && item[0] === 'i' && typeof item[1] === 'string',
+  );
+  return Array.isArray(tag) ? tag[1] : null;
+}
+
+function readLocalReactions(): LocalReaction[] {
+  const storage = reactionStorage();
+  if (!storage) return [];
+  try {
+    const parsed = JSON.parse(storage.getItem(LOCAL_REACTION_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((row): row is LocalReaction => (
+      !!row &&
+      typeof row.url === 'string' &&
+      typeof row.pubkey === 'string' &&
+      typeof row.content === 'string' &&
+      typeof row.id === 'string' &&
+      Number.isFinite(row.created_at)
+    ));
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalReactions(reactions: LocalReaction[]): void {
+  const storage = reactionStorage();
+  if (!storage) return;
+  try {
+    storage.setItem(
+      LOCAL_REACTION_KEY,
+      JSON.stringify(reactions.slice(0, LOCAL_REACTION_LIMIT)),
+    );
+  } catch {
+    // A private window can refuse storage. The relay copy still stands.
+  }
+}
+
+/** Remember a signed reaction until a relay returns the same event id. */
+export function rememberLocalReaction(event: {
+  id?: string;
+  pubkey?: string;
+  content?: string;
+  created_at?: number;
+  tags?: unknown;
+}): void {
+  if (getRelayTransport()) return;
+  const url = reactionTargetUrl(event);
+  const pubkey = typeof event.pubkey === 'string' ? event.pubkey.toLowerCase() : '';
+  const id = typeof event.id === 'string' ? event.id : '';
+  if (!url || !pubkey || !id || !Number.isFinite(event.created_at)) return;
+  const next = readLocalReactions().filter(
+    (row) => !(row.url === url && row.pubkey === pubkey),
+  );
+  next.unshift({
+    url,
+    pubkey,
+    content: typeof event.content === 'string' ? event.content : '',
+    id,
+    created_at: Number(event.created_at),
+  });
+  writeLocalReactions(next);
+}
+
+function forgetLocalReaction(id: string): void {
+  writeLocalReactions(readLocalReactions().filter((row) => row.id !== id));
+}
+
+function readLocalReaction(url: string, pubkey: string): LocalReaction | null {
+  const urls = new Set(likeFilterUrls(url));
+  const tag = likeTagUrl(url);
+  if (tag) urls.add(tag);
+  const normalized = pubkey.toLowerCase();
+  return readLocalReactions().find(
+    (row) => row.pubkey === normalized && urls.has(row.url),
+  ) ?? null;
+}
+
+function latestViewerReaction(events: Array<{ created_at?: number; id?: string } | null>): any | null {
+  let latest: any = null;
+  for (const event of events) {
+    if (!event) continue;
+    latest = newerReaction(latest, event);
+  }
+  return latest;
+}
+
+function newerReaction(current: any, candidate: any): any {
+  if (!candidate) return current;
+  if (!current) return candidate;
+  const createdAt = Number(candidate.created_at);
+  const latestAt = Number(current.created_at);
+  if (createdAt > latestAt) return candidate;
+  if (createdAt < latestAt) return current;
+  return String(candidate.id || '') > String(current.id || '') ? candidate : current;
+}
+
 /** Read a host's short-lived reaction cache without waiting for any relay. */
 export async function fetchCachedLikeStateForUrl(
   url: string,
@@ -109,7 +233,8 @@ export function createUnlikeEvent(url: string): any {
 }
 
 /**
- * Check if user has liked a URL
+ * Check if user has liked a URL.
+ * A failed lookup throws. Callers must not treat that as "not liked".
  */
 export async function hasUserLiked(
   url: string,
@@ -124,7 +249,15 @@ export async function hasUserLiked(
   }
   
   try {
-    // Get user's latest reaction for this URL
+    const transport = getRelayTransport();
+    if (transport?.getLikeState) {
+      const state = await transport.getLikeState(relays, filterUrls[0]);
+      if (state?.isLiked === null || typeof state?.isLiked !== 'boolean') {
+        throw new Error('Could not check whether this page is already liked');
+      }
+      return state.isLiked;
+    }
+
     const filter = {
       kinds: [17],
       authors: [userPubkey],
@@ -132,19 +265,25 @@ export async function hasUserLiked(
       '#i': filterUrls,
       limit: 1
     };
-    const transport = getRelayTransport();
     const events = transport
       ? await transport.query(relays, filter)
       : await pool.querySync(relays, filter);
-    
-    if (events.length === 0) return false;
-    
-    // Check if latest reaction is a like (not an unlike)
-    const latest = events[0];
+    if (!Array.isArray(events)) {
+      throw new Error('Could not check whether this page is already liked');
+    }
+
+    const local = readLocalReaction(url, userPubkey);
+    const echoed = !!local && events.some((event) => event?.id === local.id);
+    if (local && echoed) forgetLocalReaction(local.id);
+    const latest = newerReaction(
+      latestViewerReaction(events),
+      echoed ? null : local,
+    );
+    if (!latest) return false;
     return latest.content === '+' || latest.content === '';
   } catch (error) {
     console.error("Nostr-Components: Like button: Error checking user like status", error);
-    return false;
+    throw error instanceof Error ? error : new Error(String(error));
   } finally {
     pool.close(relays);
   }
@@ -170,6 +309,7 @@ export async function publishSignedReaction(
     return;
   }
   await publishWithNdk();
+  rememberLocalReaction(event);
 }
 
 /** Best-effort copy of a like onto the signer's write relays. A refusal does not fail the like. */

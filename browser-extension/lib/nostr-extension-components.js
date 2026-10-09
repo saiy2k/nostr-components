@@ -20228,12 +20228,19 @@
     if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
     return `https://www.youtube.com/watch?v=${videoId}`;
   }
+  function isTrackingParam(key) {
+    const name = key.toLowerCase();
+    return name.startsWith("utm_") || TRACKING_PARAMS.has(name);
+  }
   function canonicalGeneric(url) {
     const host = stripMobileHost(url.hostname);
     if (!host) return null;
     const port = url.port ? `:${url.port}` : "";
     const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
     const params = new URLSearchParams(url.search);
+    for (const key of [...params.keys()]) {
+      if (isTrackingParam(key)) params.delete(key);
+    }
     params.sort();
     const query = params.toString();
     return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;
@@ -20249,7 +20256,7 @@
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     return canonicalStatus(url) || canonicalVideo(url) || canonicalGeneric(url);
   }
-  var STATUS_HOSTS, STATUS_PATH, YOUTUBE_HOSTS, YOUTUBE_ID;
+  var STATUS_HOSTS, STATUS_PATH, YOUTUBE_HOSTS, YOUTUBE_ID, TRACKING_PARAMS;
   var init_url_canonical = __esm({
     "backend/nostr-pulse/url-canonical.js"() {
       "use strict";
@@ -20266,6 +20273,7 @@
       STATUS_PATH = /^\/([^/]+)\/status\/(\d+)\/?$/;
       YOUTUBE_HOSTS = /* @__PURE__ */ new Set(["www.youtube.com", "youtube.com", "m.youtube.com"]);
       YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+      TRACKING_PARAMS = /* @__PURE__ */ new Set(["fbclid", "gclid", "mc_cid"]);
     }
   });
 
@@ -25946,8 +25954,10 @@ ${url}`;
     if (isError && !compact) {
       return renderError(errorMessage || "");
     }
-    const iconContent = getThumbsUpIcon(isLiked, theme);
-    const textContent = compact ? "" : isLiked ? `<span>Liked</span>` : `<span>${escapeHtml(buttonText)}</span>`;
+    const liked = isLiked === true;
+    const unknown = isLiked === null;
+    const iconContent = getThumbsUpIcon(liked, theme);
+    const textContent = compact || unknown ? "" : liked ? `<span>Liked</span>` : `<span>${escapeHtml(buttonText)}</span>`;
     return renderContainer(
       iconContent,
       textContent,
@@ -25988,13 +25998,16 @@ ${url}`;
       const canOpenLikers = hasLikes && !compact;
       countHtml = `<span class="like-count${canOpenLikers ? " clickable" : ""}"${canOpenLikers ? ' role="button" tabindex="0" aria-label="View likers"' : ""}>${countText}</span>`;
     }
-    const buttonClass = isLiked ? "nostr-like-button liked" : "nostr-like-button";
+    const liked = isLiked === true;
+    const unknown = isLiked === null;
+    const buttonClass = liked ? "nostr-like-button liked" : "nostr-like-button";
     const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : "";
-    const actionLabel = isError ? "Nostr Like failed. Select to retry." : isLiked ? "Unlike this post with Nostr" : "Like this post with Nostr";
+    const actionLabel = isError ? "Nostr Like failed. Select to retry." : unknown ? "Like state unknown" : liked ? "Unlike this post with Nostr" : "Like this post with Nostr";
+    const pressed = unknown ? ' aria-pressed="mixed"' : liked ? ' aria-pressed="true"' : ' aria-pressed="false"';
     const helpIconHtml = compact ? "" : `<button type="button" class="help-icon" aria-label="What is a like?" title="What is a like?">?</button>`;
     return `
     <div class="nostr-like-button-container">
-      <button type="button" class="${buttonClass}" aria-label="${actionLabel}" title="${actionLabel}"${disabledAttrs}${isLiked ? ' aria-pressed="true"' : ' aria-pressed="false"'}>
+      <button type="button" class="${buttonClass}" aria-label="${actionLabel}" title="${actionLabel}"${disabledAttrs}${pressed}>
         ${iconContent}
         ${isLoading && !compact ? '<span class="button-text-skeleton"></span>' : textContent}
         ${compact ? countHtml : ""}
@@ -26700,8 +26713,105 @@ ${url}`;
       dislikedCount
     };
   }
+  function viewerIsLiked(likeDetails, pubkey) {
+    const normalized = pubkey.toLowerCase();
+    const mine = likeDetails.find(
+      (detail) => detail.authorPubkey.toLowerCase() === normalized
+    );
+    return !!mine && isLikeContent(mine.content);
+  }
 
   // src/nostr-like-button/like-utils.ts
+  var DIRECTORY_WRITE_ERROR = "Directory did not store the reaction";
+  var LOCAL_REACTION_KEY = "nostr-components:last-reaction";
+  var LOCAL_REACTION_LIMIT = 20;
+  function isDirectoryWriteError(error) {
+    return error instanceof Error && error.message === DIRECTORY_WRITE_ERROR;
+  }
+  function reactionStorage() {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  }
+  function reactionTargetUrl(event) {
+    if (!Array.isArray(event?.tags)) return null;
+    const tag = event.tags.find(
+      (item) => Array.isArray(item) && item[0] === "i" && typeof item[1] === "string"
+    );
+    return Array.isArray(tag) ? tag[1] : null;
+  }
+  function readLocalReactions() {
+    const storage = reactionStorage();
+    if (!storage) return [];
+    try {
+      const parsed = JSON.parse(storage.getItem(LOCAL_REACTION_KEY) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((row) => !!row && typeof row.url === "string" && typeof row.pubkey === "string" && typeof row.content === "string" && typeof row.id === "string" && Number.isFinite(row.created_at));
+    } catch {
+      return [];
+    }
+  }
+  function writeLocalReactions(reactions) {
+    const storage = reactionStorage();
+    if (!storage) return;
+    try {
+      storage.setItem(
+        LOCAL_REACTION_KEY,
+        JSON.stringify(reactions.slice(0, LOCAL_REACTION_LIMIT))
+      );
+    } catch {
+    }
+  }
+  function rememberLocalReaction(event) {
+    if (getRelayTransport()) return;
+    const url = reactionTargetUrl(event);
+    const pubkey = typeof event.pubkey === "string" ? event.pubkey.toLowerCase() : "";
+    const id = typeof event.id === "string" ? event.id : "";
+    if (!url || !pubkey || !id || !Number.isFinite(event.created_at)) return;
+    const next = readLocalReactions().filter(
+      (row) => !(row.url === url && row.pubkey === pubkey)
+    );
+    next.unshift({
+      url,
+      pubkey,
+      content: typeof event.content === "string" ? event.content : "",
+      id,
+      created_at: Number(event.created_at)
+    });
+    writeLocalReactions(next);
+  }
+  function forgetLocalReaction(id) {
+    writeLocalReactions(readLocalReactions().filter((row) => row.id !== id));
+  }
+  function readLocalReaction(url, pubkey) {
+    const urls = new Set(likeFilterUrls(url));
+    const tag = likeTagUrl(url);
+    if (tag) urls.add(tag);
+    const normalized = pubkey.toLowerCase();
+    return readLocalReactions().find(
+      (row) => row.pubkey === normalized && urls.has(row.url)
+    ) ?? null;
+  }
+  function latestViewerReaction(events) {
+    let latest = null;
+    for (const event of events) {
+      if (!event) continue;
+      latest = newerReaction(latest, event);
+    }
+    return latest;
+  }
+  function newerReaction(current, candidate) {
+    if (!candidate) return current;
+    if (!current) return candidate;
+    const createdAt = Number(candidate.created_at);
+    const latestAt = Number(current.created_at);
+    if (createdAt > latestAt) return candidate;
+    if (createdAt < latestAt) return current;
+    return String(candidate.id || "") > String(current.id || "") ? candidate : current;
+  }
   async function fetchCachedLikeStateForUrl(url, relays) {
     const transport = getRelayTransport();
     if (!transport?.getCachedLikeState) return null;
@@ -26764,6 +26874,14 @@ ${url}`;
       return false;
     }
     try {
+      const transport = getRelayTransport();
+      if (transport?.getLikeState) {
+        const state = await transport.getLikeState(relays, filterUrls[0]);
+        if (state?.isLiked === null || typeof state?.isLiked !== "boolean") {
+          throw new Error("Could not check whether this page is already liked");
+        }
+        return state.isLiked;
+      }
       const filter = {
         kinds: [17],
         authors: [userPubkey],
@@ -26771,14 +26889,22 @@ ${url}`;
         "#i": filterUrls,
         limit: 1
       };
-      const transport = getRelayTransport();
       const events = transport ? await transport.query(relays, filter) : await pool.querySync(relays, filter);
-      if (events.length === 0) return false;
-      const latest = events[0];
+      if (!Array.isArray(events)) {
+        throw new Error("Could not check whether this page is already liked");
+      }
+      const local = readLocalReaction(url, userPubkey);
+      const echoed = !!local && events.some((event) => event?.id === local.id);
+      if (local && echoed) forgetLocalReaction(local.id);
+      const latest = newerReaction(
+        latestViewerReaction(events),
+        echoed ? null : local
+      );
+      if (!latest) return false;
       return latest.content === "+" || latest.content === "";
     } catch (error) {
       console.error("Nostr-Components: Like button: Error checking user like status", error);
-      return false;
+      throw error instanceof Error ? error : new Error(String(error));
     } finally {
       pool.close(relays);
     }
@@ -26797,6 +26923,7 @@ ${url}`;
       return;
     }
     await publishWithNdk();
+    rememberLocalReaction(event);
   }
   async function publishToWriteRelays(event, baseRelays) {
     if (getRelayTransport() || !event.pubkey) return;
@@ -27220,6 +27347,7 @@ ${url}`;
   }
 
   // src/nostr-like-button/nostr-like.ts
+  init_nostr_login_service();
   init_relay_transport();
   init_relay_routing();
   init_url_tags();
@@ -27406,15 +27534,17 @@ ${url}`;
         this.currentUrl = likeTagUrl(this.getActionUrl()) || "";
       }
     }
-    async updateLikeCount() {
+    async updateLikeCount(options) {
       const seq = ++this.loadSeq;
       try {
         await this.ensureNostrConnected();
         if (seq !== this.loadSeq) return;
         const pageUrl = this.getActionUrl();
         this.currentUrl = likeTagUrl(pageUrl) || "";
-        this.likeListStatus.set(1 /* Loading */);
-        this.render();
+        if (!options?.quiet) {
+          this.likeListStatus.set(1 /* Loading */);
+          this.render();
+        }
         try {
           const cachedIsLiked = await fetchCachedLikeStateForUrl(
             this.currentUrl,
@@ -27431,9 +27561,8 @@ ${url}`;
         const result = await fetchLikesForUrl(pageUrl, this.getRelays());
         if (seq !== this.loadSeq) return;
         this.likeCount = clampLikeCount(result.totalCount);
-        if (typeof result.isLiked === "boolean") {
-          this.isLiked = result.isLiked;
-        }
+        await this.applyViewerLike(result, seq);
+        if (seq !== this.loadSeq) return;
         this.cachedLikeDetails = result;
         this.likeListStatus.set(2 /* Ready */);
       } catch (error) {
@@ -27445,6 +27574,20 @@ ${url}`;
           this.render();
         }
       }
+    }
+    async applyViewerLike(result, seq) {
+      if (result.isLiked === null) {
+        this.isLiked = null;
+        return;
+      }
+      if (typeof result.isLiked === "boolean") {
+        this.isLiked = result.isLiked;
+        return;
+      }
+      if (!hasConnectedSigner()) return;
+      const pubkey = getCachedPublicKey() ?? await getPublicKey2();
+      if (seq !== this.loadSeq || !pubkey) return;
+      this.isLiked = viewerIsLiked(result.likeDetails, pubkey);
     }
     queueAuthoritativeCountResync() {
       this.needsResyncLikeCount = true;
@@ -27475,6 +27618,19 @@ ${url}`;
       const errorMessage = error instanceof Error ? error.message : fallbackMessage;
       this.likeActionStatus.set(3 /* Error */, errorMessage);
       this.queueAuthoritativeCountResync();
+    }
+    failLikeMutation(error, snapshot, didApplyOptimisticUpdate, fallbackMessage) {
+      if (didApplyOptimisticUpdate && isDirectoryWriteError(error)) {
+        const errorMessage = error instanceof Error ? error.message : fallbackMessage;
+        this.likeActionStatus.set(3 /* Error */, errorMessage);
+        return;
+      }
+      this.handleLikeMutationFailure(
+        error,
+        snapshot,
+        didApplyOptimisticUpdate,
+        fallbackMessage
+      );
     }
     async #handleLikeClick() {
       if (this.likeActionStatus.get() === 1 /* Loading */) return;
@@ -27569,16 +27725,11 @@ ${url}`;
         void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
           console.warn("[NostrLike] Failed to publish to write relays:", error);
         });
-        await this.updateLikeCount();
+        await this.updateLikeCount({ quiet: true });
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {
         console.error("[NostrLike] Failed to like:", error);
-        this.handleLikeMutationFailure(
-          error,
-          rollbackSnapshot,
-          didApplyOptimisticUpdate,
-          "Failed to like"
-        );
+        this.failLikeMutation(error, rollbackSnapshot, didApplyOptimisticUpdate, "Failed to like");
       } finally {
         this.render();
       }
@@ -27616,16 +27767,11 @@ ${url}`;
         void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
           console.warn("[NostrLike] Failed to publish to write relays:", error);
         });
-        await this.updateLikeCount();
+        await this.updateLikeCount({ quiet: true });
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {
         console.error("[NostrLike] Failed to unlike:", error);
-        this.handleLikeMutationFailure(
-          error,
-          rollbackSnapshot,
-          didApplyOptimisticUpdate,
-          "Failed to unlike"
-        );
+        this.failLikeMutation(error, rollbackSnapshot, didApplyOptimisticUpdate, "Failed to unlike");
       } finally {
         this.render();
       }

@@ -5,7 +5,9 @@ import {
   fetchCachedLikeStateForUrl,
   fetchLikesForUrl,
   hasUserLiked,
+  isDirectoryWriteError,
   publishSignedReaction,
+  DIRECTORY_WRITE_ERROR,
 } from '../like-utils';
 
 const RELAYS = ['wss://relay.damus.io'];
@@ -17,6 +19,7 @@ afterEach(() => {
       __nostrComponentsRelayTransport?: unknown;
     }
   ).__nostrComponentsRelayTransport;
+  vi.unstubAllGlobals();
 });
 
 describe('Like component relay transport', () => {
@@ -116,6 +119,158 @@ describe('Like component relay transport', () => {
       '#i': [STATUS_URL],
       limit: 1,
     });
+  });
+
+  it('throws when the host does not know whether the page is liked', async () => {
+    const query = vi.fn();
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        getLikeState: vi.fn().mockResolvedValue({
+          totalCount: 0,
+          likedCount: 0,
+          dislikedCount: 0,
+          isLiked: null,
+        }),
+        query,
+        publish: vi.fn(),
+      },
+    });
+
+    await expect(
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
+    ).rejects.toThrow('Could not check whether this page is already liked');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('uses the newest reaction and a remembered like when the lookup is empty', async () => {
+    const pubkey = 'a'.repeat(64);
+    const olderLike = {
+      id: '1'.repeat(64),
+      pubkey,
+      created_at: 10,
+      kind: 17,
+      content: '+',
+      tags: [['i', STATUS_URL]],
+      sig: '2'.repeat(128),
+    };
+    const newerUnlike = {
+      id: '3'.repeat(64),
+      pubkey,
+      created_at: 30,
+      kind: 17,
+      content: '-',
+      tags: [['i', STATUS_URL]],
+      sig: '4'.repeat(128),
+    };
+    const query = vi.fn()
+      .mockResolvedValueOnce([olderLike, newerUnlike])
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error('relay down'));
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query,
+        publish: vi.fn(),
+      },
+    });
+
+    await expect(hasUserLiked(STATUS_URL, pubkey, RELAYS)).resolves.toBe(false);
+
+    await publishSignedReaction(
+      {
+        id: '5'.repeat(64),
+        pubkey,
+        created_at: 40,
+        kind: 17,
+        content: '+',
+        tags: [['k', 'web'], ['i', STATUS_URL]],
+      },
+      RELAYS,
+      async () => {},
+    );
+    delete (
+      globalThis as typeof globalThis & {
+        __nostrComponentsRelayTransport?: unknown;
+      }
+    ).__nostrComponentsRelayTransport;
+    const store = new Map<string, string>();
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    });
+    await publishSignedReaction(
+      {
+        id: '5'.repeat(64),
+        pubkey,
+        created_at: 40,
+        kind: 17,
+        content: '+',
+        tags: [['k', 'web'], ['i', STATUS_URL]],
+      },
+      RELAYS,
+      async () => {},
+    );
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn() },
+    });
+
+    await expect(hasUserLiked(STATUS_URL, pubkey, RELAYS)).resolves.toBe(true);
+    await expect(hasUserLiked(STATUS_URL, pubkey, RELAYS)).rejects.toThrow('relay down');
+    expect(isDirectoryWriteError(new Error(DIRECTORY_WRITE_ERROR))).toBe(true);
+    expect(isDirectoryWriteError(new Error('relay down'))).toBe(false);
+  });
+
+  it('forgets a local like once a relay returns the same event', async () => {
+    const pubkey = 'b'.repeat(64);
+    const id = '6'.repeat(64);
+    const store = new Map<string, string>();
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    });
+    await publishSignedReaction(
+      {
+        id,
+        pubkey,
+        created_at: 50,
+        kind: 17,
+        content: '+',
+        tags: [['i', STATUS_URL]],
+      },
+      RELAYS,
+      async () => {},
+    );
+    const query = vi.fn()
+      .mockResolvedValueOnce([
+        {
+          id,
+          pubkey,
+          created_at: 50,
+          kind: 17,
+          content: '+',
+          tags: [['i', STATUS_URL]],
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: { query, publish: vi.fn() },
+    });
+
+    await expect(hasUserLiked(STATUS_URL, pubkey, RELAYS)).resolves.toBe(true);
+    await expect(hasUserLiked(STATUS_URL, pubkey, RELAYS)).resolves.toBe(false);
   });
 
   it('publishes signed reactions through the transport without invoking NDK', async () => {

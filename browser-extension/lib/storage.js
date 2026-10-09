@@ -104,14 +104,12 @@
       : null;
   }
 
-  function getActiveRecentReactionEntries(value, now) {
+  function getActiveRecentReactionEntries(value) {
     if (!Array.isArray(value)) return [];
     return value.filter(function (entry) {
       return Boolean(
         entry &&
         typeof entry === 'object' &&
-        Number.isFinite(entry.expiresAt) &&
-        entry.expiresAt > now &&
         entry.event &&
         typeof entry.event === 'object' &&
         typeof entry.event.pubkey === 'string' &&
@@ -126,7 +124,7 @@
       return {};
     });
     const stored = values[RECENT_REACTIONS_STORAGE_KEY];
-    const active = getActiveRecentReactionEntries(stored, Date.now());
+    const active = getActiveRecentReactionEntries(stored);
     if (Array.isArray(stored) && active.length !== stored.length) {
       await setValues({ [RECENT_REACTIONS_STORAGE_KEY]: active }).catch(function () {});
     }
@@ -156,8 +154,7 @@
       return {};
     });
     const active = getActiveRecentReactionEntries(
-      values[RECENT_REACTIONS_STORAGE_KEY],
-      now
+      values[RECENT_REACTIONS_STORAGE_KEY]
     ).filter(function (entry) {
       return !(
         entry.event.pubkey === event.pubkey &&
@@ -170,6 +167,21 @@
     });
     await setValues({
       [RECENT_REACTIONS_STORAGE_KEY]: active.slice(0, RECENT_REACTION_CACHE_LIMIT)
+    }).catch(function () {});
+  }
+
+  async function forgetRecentReaction(eventId) {
+    if (typeof eventId !== 'string' || !EVENT_ID_PATTERN.test(eventId)) return;
+    const values = await getValues(RECENT_REACTIONS_STORAGE_KEY).catch(function () {
+      return {};
+    });
+    const stored = getActiveRecentReactionEntries(values[RECENT_REACTIONS_STORAGE_KEY]);
+    const next = stored.filter(function (entry) {
+      return entry.event.id !== eventId;
+    });
+    if (next.length === stored.length) return;
+    await setValues({
+      [RECENT_REACTIONS_STORAGE_KEY]: next
     }).catch(function () {});
   }
 
@@ -591,6 +603,7 @@
     setKnownPubkey: setKnownPubkey,
     getRecentReactions: getRecentReactions,
     setRecentReaction: setRecentReaction,
+    forgetRecentReaction: forgetRecentReaction,
     getDirectoryEntry: getDirectoryEntry,
     setDirectoryEntry: setDirectoryEntry,
     getZapProvider: getZapProvider,

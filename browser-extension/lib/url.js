@@ -59,12 +59,20 @@
     if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
     return `https://www.youtube.com/watch?v=${videoId}`;
   }
+  var TRACKING_PARAMS = /* @__PURE__ */ new Set(["fbclid", "gclid", "mc_cid"]);
+  function isTrackingParam(key) {
+    const name = key.toLowerCase();
+    return name.startsWith("utm_") || TRACKING_PARAMS.has(name);
+  }
   function canonicalGeneric(url) {
     const host = stripMobileHost(url.hostname);
     if (!host) return null;
     const port = url.port ? `:${url.port}` : "";
     const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
     const params = new URLSearchParams(url.search);
+    for (const key of [...params.keys()]) {
+      if (isTrackingParam(key)) params.delete(key);
+    }
     params.sort();
     const query = params.toString();
     return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;

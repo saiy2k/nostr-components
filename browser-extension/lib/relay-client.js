@@ -7518,12 +7518,20 @@
     if (!videoId || !YOUTUBE_ID.test(videoId)) return null;
     return `https://www.youtube.com/watch?v=${videoId}`;
   }
+  var TRACKING_PARAMS = /* @__PURE__ */ new Set(["fbclid", "gclid", "mc_cid"]);
+  function isTrackingParam(key) {
+    const name = key.toLowerCase();
+    return name.startsWith("utm_") || TRACKING_PARAMS.has(name);
+  }
   function canonicalGeneric(url) {
     const host = stripMobileHost(url.hostname);
     if (!host) return null;
     const port = url.port ? `:${url.port}` : "";
     const pathname = url.pathname.replace(/\/+/g, "/").replace(/\/+$/, "");
     const params = new URLSearchParams(url.search);
+    for (const key of [...params.keys()]) {
+      if (isTrackingParam(key)) params.delete(key);
+    }
     params.sort();
     const query = params.toString();
     return `https://${host}${port}${pathname}${query ? `?${query}` : ""}`;
@@ -7741,10 +7749,7 @@
         reactionsByPubkey = /* @__PURE__ */ new Map();
         recentReactionsByUrl.set(url, reactionsByPubkey);
       }
-      reactionsByPubkey.set(event.pubkey, {
-        event,
-        expiresAt: Date.now() + RECENT_REACTION_TTL_MS
-      });
+      reactionsByPubkey.set(event.pubkey, { event });
       if (typeof extension.storage.setRecentReaction === "function") {
         try {
           await extension.storage.setRecentReaction(event, RECENT_REACTION_TTL_MS);
@@ -7755,14 +7760,20 @@
     function getInMemoryRecentReactions(url) {
       const reactionsByPubkey = recentReactionsByUrl.get(url);
       if (!reactionsByPubkey) return [];
-      const now2 = Date.now();
-      const events = [];
-      for (const [pubkey, entry] of reactionsByPubkey) {
-        if (entry.expiresAt <= now2) reactionsByPubkey.delete(pubkey);
-        else events.push(entry.event);
+      return Array.from(reactionsByPubkey.values()).map(function(entry) {
+        return entry.event;
+      });
+    }
+    function forgetRecentReaction(eventId) {
+      for (const [url, reactionsByPubkey] of recentReactionsByUrl) {
+        for (const [pubkey, entry] of reactionsByPubkey) {
+          if (entry.event && entry.event.id === eventId) reactionsByPubkey.delete(pubkey);
+        }
+        if (reactionsByPubkey.size === 0) recentReactionsByUrl.delete(url);
       }
-      if (reactionsByPubkey.size === 0) recentReactionsByUrl.delete(url);
-      return events;
+      if (typeof extension.storage.forgetRecentReaction === "function") {
+        void extension.storage.forgetRecentReaction(eventId);
+      }
     }
     async function getRecentReactions(url) {
       const storedEvents = typeof extension.storage.getRecentReactions === "function" ? await extension.storage.getRecentReactions(url) : [];
@@ -8555,18 +8566,24 @@
         return localEvent.content === "+" || localEvent.content === "";
       }
       if (viewerOk && remote) return reactionIsLike(remote.content, remote.reaction);
-      return false;
+      if (viewerOk) return false;
+      return null;
     }
     async function pushUrlEvent(event, relay) {
+      let result;
       try {
-        const result = await sendExtensionMessage({
+        result = await sendExtensionMessage({
           type: "INGEST_URL_EVENT",
           event,
           relay
         });
-        if (result && result.activity) rememberActivityFromIngest(result.activity);
       } catch (_error) {
+        throw new Error("Directory did not store the reaction");
       }
+      if (!result || result.ok === false) {
+        throw new Error("Directory did not store the reaction");
+      }
+      if (result.activity) rememberActivityFromIngest(result.activity);
     }
     function publishOne(pool, relay, event) {
       let pending;
@@ -8697,6 +8714,9 @@
       const viewer = await viewerPromise;
       const local = findLatestReaction(await getRecentReactions(payload.url), publicKey);
       const remote = newestViewerReaction(viewer.reactions, urlKey);
+      if (local && remote && remote.eventId && remote.eventId === local.id) {
+        forgetRecentReaction(local.id);
+      }
       return {
         totalCount: countOf(row.likes),
         likedCount: countOf(row.likes),
@@ -8820,7 +8840,10 @@
           if (!pTag || String(pTag[1] || "").toLowerCase() !== recipient) return;
           seen.add(event.id);
           events.push(event);
-          if (SWEEP_RELAYS.has(source)) void pushUrlEvent(event, source);
+          if (SWEEP_RELAYS.has(source)) {
+            void pushUrlEvent(event, source).catch(function() {
+            });
+          }
         });
       }));
       return events;
@@ -8846,7 +8869,7 @@
       viewerReactions = null;
       const writesPromise = ensureSignerRelays(event.pubkey);
       void settleWriteRelays(pool, event, writesPromise);
-      void pushUrlEvent(event, acceptedRelay);
+      await pushUrlEvent(event, acceptedRelay);
       return null;
     }
     function getExactTag(event, name) {

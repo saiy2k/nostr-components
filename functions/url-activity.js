@@ -123,6 +123,7 @@ function reactionRow(doc) {
     pubkey: hex64(data.pubkey) || hex64(doc.id),
     reaction: typeof data.reaction === "string" ? data.reaction : null,
     content: typeof data.content === "string" ? data.content : "",
+    eventId: hex64(data.eventId),
     createdAt: Number.isFinite(Number(data.createdAt)) ? Number(data.createdAt) : null,
     urlKey: hex64(data.urlKey),
   };

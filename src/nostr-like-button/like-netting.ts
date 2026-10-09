@@ -13,8 +13,11 @@ export interface LikeCountResult {
   likeDetails: LikeDetails[];
   likedCount: number;
   dislikedCount: number;
-  /** Active user's current state when supplied by an extension host. */
-  isLiked?: boolean;
+  /**
+   * Viewer state when known. Null means the lookup failed.
+   * A plain-page count leaves this unset; the button fills it from the details.
+   */
+  isLiked?: boolean | null;
 }
 
 function isLikeContent(content: string): boolean {
@@ -71,4 +74,13 @@ export function netLikesByPubkey(events: Iterable<Event>): LikeCountResult {
     likedCount,
     dislikedCount,
   };
+}
+
+/** True when this pubkey's newest reaction in the count sample is a like. */
+export function viewerIsLiked(likeDetails: LikeDetails[], pubkey: string): boolean {
+  const normalized = pubkey.toLowerCase();
+  const mine = likeDetails.find(
+    (detail) => detail.authorPubkey.toLowerCase() === normalized,
+  );
+  return !!mine && isLikeContent(mine.content);
 }

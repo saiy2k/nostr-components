@@ -4,6 +4,8 @@ import type { Meta, StoryObj } from '@storybook/web-components';
 import { generateCode, generateCodeWithScript, getArgTypes } from './utils';
 import { TEST_CASES } from './test-cases-valid';
 
+const STORY_PAGE_URL = 'https://saiy2k.in/2025/02/17/nostr-components/';
+
 const meta: Meta = {
   title: 'Like Button',
   tags: ['autodocs'],
@@ -30,17 +32,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   name: TEST_CASES.default.name,
-  args: TEST_CASES.default.args,
+  args: { ...TEST_CASES.default.args, url: STORY_PAGE_URL },
 };
 
 export const DarkTheme: Story = {
   name: TEST_CASES.darkTheme.name,
-  args: TEST_CASES.darkTheme.args,
+  args: { ...TEST_CASES.darkTheme.args, url: STORY_PAGE_URL },
 };
 
 export const CustomText: Story = {
   name: TEST_CASES.customText.name,
-  args: TEST_CASES.customText.args,
+  args: { ...TEST_CASES.customText.args, url: STORY_PAGE_URL },
 };
 
 export const CustomUrl: Story = {
@@ -50,7 +52,7 @@ export const CustomUrl: Story = {
 
 export const CustomRelays: Story = {
   name: TEST_CASES.customRelays.name,
-  args: TEST_CASES.customRelays.args,
+  args: { ...TEST_CASES.customRelays.args, url: STORY_PAGE_URL },
 };
 
 export const NoUrl: Story = {

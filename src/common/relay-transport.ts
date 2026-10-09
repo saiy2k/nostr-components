@@ -31,7 +31,8 @@ export interface NostrRelayTransport {
     totalCount: number;
     likedCount: number;
     dislikedCount: number;
-    isLiked: boolean;
+    /** Null when the viewer lookup failed and the host will not guess. */
+    isLiked: boolean | null;
   }>;
   publish(
     relays: string[],

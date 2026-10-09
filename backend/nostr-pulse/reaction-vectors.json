@@ -2,7 +2,7 @@
   "buckets": [
     { "content": "+", "bucket": "like" },
     { "content": "", "bucket": "like" },
-    { "content": "-", "bucket": "dislike" },
+    { "content": "-", "bucket": "cleared" },
     { "content": "🔥", "bucket": "emoji" }
   ],
   "newest": [

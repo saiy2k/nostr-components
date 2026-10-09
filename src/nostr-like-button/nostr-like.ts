@@ -15,16 +15,19 @@ import {
   hasUserLiked, 
   publishSignedReaction,
   publishToWriteRelays,
-  signEvent, 
+  signEvent,
+  isDirectoryWriteError,
   LikeCountResult 
 } from './like-utils';
-import { ensureSignerForAction } from '../common/auth-onboarding';
+import { ensureSignerForAction, hasConnectedSigner } from '../common/auth-onboarding';
+import { getCachedPublicKey, getPublicKey } from '../common/nostr-login-service';
 import {
   getRelayTransport,
   hasInstalledRelayTransport,
 } from '../common/relay-transport';
 import { relaysForComponent } from '../common/relay-routing';
 import { likeTagUrl } from '../common/url-tags';
+import { viewerIsLiked } from './like-netting';
 import { setTrustedInnerHTML } from '../common/trusted-html';
 import { getTrustedActionContext } from '../common/trusted-action-context';
 import { isTrustedUserEvent } from '../common/trusted-user-activation';
@@ -58,7 +61,7 @@ export default class NostrLike extends NostrBaseComponent {
   }
 
   private currentUrl: string  = '';
-  private isLiked: boolean    = false;
+  private isLiked: boolean | null = false;
   private likeCount: number   = 0;
   private cachedLikeDetails: LikeCountResult | null = null;
   private loadSeq = 0;
@@ -210,15 +213,17 @@ export default class NostrLike extends NostrBaseComponent {
     }
   }
 
-  private async updateLikeCount() {
+  private async updateLikeCount(options?: { quiet?: boolean }) {
     const seq = ++this.loadSeq;
     try {
       await this.ensureNostrConnected();
       if (seq !== this.loadSeq) return;
       const pageUrl = this.getActionUrl();
       this.currentUrl = likeTagUrl(pageUrl) || '';
-      this.likeListStatus.set(NCStatus.Loading);
-      this.render();
+      if (!options?.quiet) {
+        this.likeListStatus.set(NCStatus.Loading);
+        this.render();
+      }
 
       // Extension storage is local and fast: restore the user's recent state
       // before the bounded relay query revalidates the count in the background.
@@ -239,9 +244,8 @@ export default class NostrLike extends NostrBaseComponent {
       const result = await fetchLikesForUrl(pageUrl, this.getRelays());
       if (seq !== this.loadSeq) return; // stale
       this.likeCount = clampLikeCount(result.totalCount);
-      if (typeof result.isLiked === 'boolean') {
-        this.isLiked = result.isLiked;
-      }
+      await this.applyViewerLike(result, seq);
+      if (seq !== this.loadSeq) return;
       this.cachedLikeDetails = result;
       this.likeListStatus.set(NCStatus.Ready);
     } catch (error) {
@@ -253,6 +257,21 @@ export default class NostrLike extends NostrBaseComponent {
         this.render();
       }
     }
+  }
+
+  private async applyViewerLike(result: LikeCountResult, seq: number): Promise<void> {
+    if (result.isLiked === null) {
+      this.isLiked = null;
+      return;
+    }
+    if (typeof result.isLiked === 'boolean') {
+      this.isLiked = result.isLiked;
+      return;
+    }
+    if (!hasConnectedSigner()) return;
+    const pubkey = getCachedPublicKey() ?? (await getPublicKey());
+    if (seq !== this.loadSeq || !pubkey) return;
+    this.isLiked = viewerIsLiked(result.likeDetails, pubkey);
   }
 
   private queueAuthoritativeCountResync(): void {
@@ -294,6 +313,25 @@ export default class NostrLike extends NostrBaseComponent {
     this.likeActionStatus.set(NCStatus.Error, errorMessage);
 
     this.queueAuthoritativeCountResync();
+  }
+
+  private failLikeMutation(
+    error: unknown,
+    snapshot: LikeUiState,
+    didApplyOptimisticUpdate: boolean,
+    fallbackMessage: string,
+  ): void {
+    if (didApplyOptimisticUpdate && isDirectoryWriteError(error)) {
+      const errorMessage = error instanceof Error ? error.message : fallbackMessage;
+      this.likeActionStatus.set(NCStatus.Error, errorMessage);
+      return;
+    }
+    this.handleLikeMutationFailure(
+      error,
+      snapshot,
+      didApplyOptimisticUpdate,
+      fallbackMessage,
+    );
   }
 
   async #handleLikeClick() {
@@ -427,18 +465,12 @@ export default class NostrLike extends NostrBaseComponent {
         console.warn('[NostrLike] Failed to publish to write relays:', error);
       });
 
-      // Keep action locked until authoritative refresh finishes
-      await this.updateLikeCount();
+      // Keep the optimistic count on screen until the directory total replaces it.
+      await this.updateLikeCount({ quiet: true });
       this.likeActionStatus.set(NCStatus.Ready);
     } catch (error) {
       console.error('[NostrLike] Failed to like:', error);
-
-      this.handleLikeMutationFailure(
-        error,
-        rollbackSnapshot,
-        didApplyOptimisticUpdate,
-        'Failed to like'
-      );
+      this.failLikeMutation(error, rollbackSnapshot, didApplyOptimisticUpdate, 'Failed to like');
     } finally {
       this.render();
     }
@@ -489,18 +521,11 @@ export default class NostrLike extends NostrBaseComponent {
         console.warn('[NostrLike] Failed to publish to write relays:', error);
       });
 
-      // Keep action locked until authoritative refresh finishes
-      await this.updateLikeCount();
+      await this.updateLikeCount({ quiet: true });
       this.likeActionStatus.set(NCStatus.Ready);
     } catch (error) {
       console.error('[NostrLike] Failed to unlike:', error);
-
-      this.handleLikeMutationFailure(
-        error,
-        rollbackSnapshot,
-        didApplyOptimisticUpdate,
-        'Failed to unlike'
-      );
+      this.failLikeMutation(error, rollbackSnapshot, didApplyOptimisticUpdate, 'Failed to unlike');
     } finally {
       this.render();
     }

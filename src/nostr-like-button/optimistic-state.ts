@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 export interface LikeUiState {
-  isLiked: boolean;
+  isLiked: boolean | null;
   likeCount: number;
 }
 
