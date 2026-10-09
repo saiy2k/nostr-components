@@ -124,7 +124,7 @@ Error:
 No Likes:
 ```text
 ┌──────────┐
-│ 👍 Like  │ (?)
+│ 👍 Like  │ 0 likes (?)
 └──────────┘
 ```
 
