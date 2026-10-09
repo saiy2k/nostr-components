@@ -118,6 +118,72 @@ describe('Like component relay transport', () => {
     });
   });
 
+  it('uses the newest reaction and refuses to treat a failed lookup as not liked', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: 'b'.repeat(64),
+          pubkey: 'a'.repeat(64),
+          created_at: 20,
+          kind: 17,
+          content: '-',
+          tags: [],
+          sig: 'c'.repeat(128),
+        },
+        {
+          id: 'd'.repeat(64),
+          pubkey: 'a'.repeat(64),
+          created_at: 10,
+          kind: 17,
+          content: '+',
+          tags: [],
+          sig: 'e'.repeat(128),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: '1'.repeat(64),
+          pubkey: 'a'.repeat(64),
+          created_at: 10,
+          kind: 17,
+          content: '+',
+          tags: [],
+          sig: '2'.repeat(128),
+        },
+        {
+          id: '3'.repeat(64),
+          pubkey: 'a'.repeat(64),
+          created_at: 30,
+          kind: 17,
+          content: '+',
+          tags: [],
+          sig: '4'.repeat(128),
+        },
+      ])
+      .mockRejectedValueOnce(new Error('Relay request contains an unsupported filter'))
+      .mockResolvedValueOnce(null);
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query: query,
+        publish: vi.fn(),
+      },
+    });
+
+    await expect(
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
+    ).resolves.toBe(false);
+    await expect(
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
+    ).resolves.toBe(true);
+    await expect(
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
+    ).rejects.toThrow('Relay request contains an unsupported filter');
+    await expect(
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
+    ).rejects.toThrow('Could not check whether this page is already liked');
+  });
+
   it('publishes signed reactions through the transport without invoking NDK', async () => {
     const signedEvent = { id: '1'.repeat(64), kind: 17, content: '+' };
     const publish = vi.fn(async () => {});

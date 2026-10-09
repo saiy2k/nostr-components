@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { finalizeEvent, nip19 } from 'nostr-tools';
+import { DEFAULT_RELAYS } from '../../src/common/constants';
 
 import { EventEmitter as CspEventEmitter } from '../src/csp-event-emitter.js';
 import {
@@ -2332,7 +2333,7 @@ describe('CSP-safe component and relay integration', function () {
       totalCount: 1,
       likedCount: 1,
       dislikedCount: 0,
-      isLiked: false
+      isLiked: null
     });
     expect(JSON.stringify(responses[0].message)).not.toContain('a'.repeat(64));
     expect(responses[3].message.ok).toBe(true);
@@ -2358,6 +2359,400 @@ describe('CSP-safe component and relay integration', function () {
     extension.storage.getKnownPubkey = originalGetKnownPubkey;
     extension.storage.setKnownPubkey = originalSetKnownPubkey;
     extension.storage.setRecentReaction = originalSetRecentReaction;
+  });
+
+  it('answers a kind 17 reaction query for the active page through handleRequest', async function () {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: 'https://x.com' },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message) {
+        responses.push(message);
+      }
+    };
+    const pageUrl = 'https://x.com/alokdangre/status/77';
+    const youtubeUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    const secret = new Uint8Array(32).fill(4);
+    const otherSecret = new Uint8Array(32).fill(5);
+    const olderUnlike = finalizeEvent(
+      {
+        kind: 17,
+        content: '-',
+        tags: [['k', 'web'], ['i', pageUrl]],
+        created_at: 10
+      },
+      secret
+    );
+    const newerLike = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [['k', 'web'], ['i', pageUrl]],
+        created_at: 20
+      },
+      secret
+    );
+    const otherAuthor = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [['k', 'web'], ['i', pageUrl]],
+        created_at: 30
+      },
+      otherSecret
+    );
+    const wrongUrl = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [['k', 'web'], ['i', 'https://x.com/mallory/status/99']],
+        created_at: 40
+      },
+      secret
+    );
+    const youtubeLike = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [['k', 'web'], ['i', youtubeUrl]],
+        created_at: 15
+      },
+      secret
+    );
+    const unsigned = {
+      id: 'ab'.repeat(32),
+      pubkey: newerLike.pubkey,
+      kind: 17,
+      content: '+',
+      created_at: 50,
+      tags: [['k', 'web'], ['i', pageUrl]],
+      sig: 'cd'.repeat(64)
+    };
+    const eventsByUrl = new Map([
+      [pageUrl, [unsigned, wrongUrl, otherAuthor, olderUnlike, newerLike, { kind: 1, id: '11'.repeat(32) }]],
+      [youtubeUrl, [youtubeLike, newerLike]]
+    ]);
+    let mode = 'fail';
+    const seenRelays = [];
+    const seenFilters = [];
+    const pool = {
+      subscribe(relays, filter, options) {
+        seenRelays.push(relays[0]);
+        seenFilters.push(filter);
+        queueMicrotask(function () {
+          if (mode === 'fail') {
+            options.onclose();
+            return;
+          }
+          for (const event of eventsByUrl.get(filter['#i'][0]) || []) {
+            options.onevent(event);
+          }
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      },
+      destroy: vi.fn()
+    };
+    const requestedRelays = DEFAULT_RELAYS.concat(['wss://evil.example']);
+    const channel = '17'.repeat(32);
+    const actionId = '27'.repeat(32);
+    const youtubeActionId = '37'.repeat(32);
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: pageUrl
+    });
+    extension.relayClient.registerActionContext(youtubeActionId, {
+      kind: 'youtube',
+      url: youtubeUrl
+    });
+    const onMessage = listeners.get('message');
+    async function ask(requestId, filter, relays) {
+      await onMessage({
+        source: pageWindow,
+        origin: 'https://x.com',
+        data: await createAuthenticatedRelayRequest(channel, requestId, 'query', {
+          relays: relays || requestedRelays,
+          filter: filter
+        })
+      });
+    }
+    const viewerFilter = {
+      kinds: [17],
+      authors: [newerLike.pubkey.toUpperCase()],
+      '#k': ['web'],
+      '#i': [pageUrl],
+      limit: 1
+    };
+
+    try {
+      await ask('10'.repeat(16), viewerFilter);
+      mode = 'ok';
+      await ask('20'.repeat(16), viewerFilter);
+      const subscribedBeforeRejection = seenRelays.length;
+      await ask('30'.repeat(16), {
+        kinds: [17],
+        '#k': ['web'],
+        '#i': [pageUrl],
+        limit: 1000
+      });
+      await ask('40'.repeat(16), {
+        kinds: [17],
+        authors: [newerLike.pubkey],
+        '#k': ['web'],
+        '#i': [pageUrl],
+        limit: 1000
+      });
+      await ask('50'.repeat(16), {
+        kinds: [17],
+        authors: [newerLike.pubkey, otherAuthor.pubkey],
+        '#k': ['web'],
+        '#i': [pageUrl],
+        limit: 1
+      });
+      await ask('60'.repeat(16), {
+        ...viewerFilter,
+        '#i': ['https://x.com/mallory/status/99']
+      });
+      await ask('70'.repeat(16), {
+        ...viewerFilter,
+        search: pageUrl
+      });
+      await ask('80'.repeat(16), viewerFilter, ['wss://nos.lol', 'wss://evil.example']);
+      await ask('90'.repeat(16), viewerFilter, Array.from({ length: 81 }, function () {
+        return 'wss://relay.damus.io';
+      }));
+      await ask('a0'.repeat(16), {
+        kinds: [17],
+        authors: [newerLike.pubkey],
+        '#k': ['web'],
+        '#i': [youtubeUrl],
+        limit: 1
+      });
+      extension.relayClient.revokeActionContext(actionId);
+      await ask('b0'.repeat(16), viewerFilter);
+
+      expect(responses[0]).toMatchObject({
+        ok: false,
+        error: 'Could not check whether this page is already liked'
+      });
+      expect(responses[1]).toMatchObject({
+        ok: true,
+        result: [expect.objectContaining({ id: newerLike.id, content: '+' })]
+      });
+      expect(responses[1].result).toHaveLength(1);
+      expect(responses.slice(2, 9).map(function (response) {
+        return response.ok;
+      })).toEqual([false, false, false, false, false, false, false]);
+      expect(responses.slice(2, 9).every(function (response) {
+        return response.error === 'Relay request contains an unsupported filter';
+      })).toBe(true);
+      expect(responses[9]).toMatchObject({
+        ok: true,
+        result: [expect.objectContaining({ id: youtubeLike.id, content: '+' })]
+      });
+      expect(responses[10]).toMatchObject({
+        ok: false,
+        error: 'Relay request contains an unsupported filter'
+      });
+      expect(seenRelays.slice(0, 5)).toEqual([
+        'wss://relay.ditto.pub/',
+        'wss://relay.damus.io/',
+        'wss://nostr.mom/',
+        'wss://nostr.oxtr.dev/',
+        'wss://relay.nostr.wirednet.jp/'
+      ]);
+      expect(seenRelays).not.toContain('wss://evil.example/');
+      expect(seenRelays).not.toContain('wss://nos.lol/');
+      expect(responses).toHaveLength(11);
+      expect(seenRelays).toHaveLength(subscribedBeforeRejection + 5);
+      expect(seenFilters[0]).toEqual({
+        kinds: [17],
+        authors: [newerLike.pubkey],
+        '#k': ['web'],
+        '#i': [pageUrl],
+        limit: 1
+      });
+      expect(extension.relayClient.validateFilter({
+        kinds: [17],
+        '#k': ['web'],
+        '#i': [pageUrl],
+        limit: 1000
+      })).not.toBeNull();
+    } finally {
+      extension.relayClient.revokeActionContext(actionId);
+      extension.relayClient.revokeActionContext(youtubeActionId);
+      session.dispose();
+    }
+  });
+
+  it('likes, unlikes, and re-likes from the latest kind 17 reaction', async function () {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: 'https://x.com' },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message) {
+        responses.push(message);
+      }
+    };
+    const pageUrl = 'https://x.com/unlike/status/1701';
+    const secret = new Uint8Array(32).fill(21);
+    function reaction(content, createdAt) {
+      return finalizeEvent(
+        {
+          kind: 17,
+          content: content,
+          tags: [['k', 'web'], ['i', pageUrl]],
+          created_at: createdAt
+        },
+        secret
+      );
+    }
+    const like = reaction('+', 100);
+    const unlike = reaction('-', 200);
+    const relike = reaction('+', 300);
+    const published = [];
+    let echo = 'all';
+    const seenRelays = [];
+    const pool = {
+      subscribe(relays, filter, options) {
+        seenRelays.push(relays[0]);
+        queueMicrotask(function () {
+          const author = filter.authors[0];
+          const url = filter['#i'][0];
+          const matches = [];
+          const seen = new Set();
+          for (const event of published) {
+            if (seen.has(event.id) || event.pubkey !== author) continue;
+            const identifier = event.tags.find(function (tag) {
+              return Array.isArray(tag) && tag[0] === 'i';
+            });
+            if (!identifier || identifier[1] !== url) continue;
+            seen.add(event.id);
+            if (echo === 'stale-like' && event.content !== '+') continue;
+            if (echo === 'stale-like' && event.created_at !== 100) continue;
+            matches.push(event);
+          }
+          for (const event of matches) options.onevent(event);
+          options.oneose();
+        });
+        return { close: vi.fn(async function () {}) };
+      },
+      publish(_relays, event) {
+        published.push(event);
+        return [Promise.resolve('saved')];
+      },
+      destroy: vi.fn()
+    };
+    const channel = '47'.repeat(32);
+    const actionId = '57'.repeat(32);
+    const requestedRelays = DEFAULT_RELAYS.concat(['wss://evil.example']);
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: pageUrl
+    });
+    const onMessage = listeners.get('message');
+    const viewerFilter = {
+      kinds: [17],
+      authors: [like.pubkey],
+      '#k': ['web'],
+      '#i': [pageUrl],
+      limit: 1
+    };
+    async function ask(requestId, operation, payload) {
+      await onMessage({
+        source: pageWindow,
+        origin: 'https://x.com',
+        data: await createAuthenticatedRelayRequest(
+          channel,
+          requestId,
+          operation,
+          payload
+        )
+      });
+    }
+
+    try {
+      await ask('c0'.repeat(16), 'query', {
+        relays: requestedRelays,
+        filter: viewerFilter
+      });
+      await ask('c1'.repeat(16), 'publish', {
+        relays: requestedRelays,
+        event: like,
+        actionId: actionId
+      });
+      await ask('c2'.repeat(16), 'query', {
+        relays: requestedRelays,
+        filter: viewerFilter
+      });
+      await ask('c3'.repeat(16), 'publish', {
+        relays: requestedRelays,
+        event: unlike,
+        actionId: actionId
+      });
+      echo = 'stale-like';
+      await ask('c4'.repeat(16), 'query', {
+        relays: requestedRelays,
+        filter: viewerFilter
+      });
+      echo = 'all';
+      await ask('c5'.repeat(16), 'publish', {
+        relays: requestedRelays,
+        event: relike,
+        actionId: actionId
+      });
+      await ask('c6'.repeat(16), 'query', {
+        relays: requestedRelays,
+        filter: viewerFilter
+      });
+
+      expect(responses.map(function (response) {
+        return response.ok;
+      })).toEqual([true, true, true, true, true, true, true]);
+      expect(responses[0].result).toEqual([]);
+      expect(responses[2].result).toEqual([
+        expect.objectContaining({ id: like.id, content: '+' })
+      ]);
+      expect(responses[4].result).toEqual([
+        expect.objectContaining({ id: unlike.id, content: '-' })
+      ]);
+      expect(responses[6].result).toEqual([
+        expect.objectContaining({ id: relike.id, content: '+' })
+      ]);
+      const publishedContents = [];
+      const seenIds = new Set();
+      for (const event of published) {
+        if (seenIds.has(event.id)) continue;
+        seenIds.add(event.id);
+        publishedContents.push(event.content);
+      }
+      expect(publishedContents).toEqual(['+', '-', '+']);
+      expect(seenRelays).not.toContain('wss://evil.example/');
+      expect(seenRelays).not.toContain('wss://nos.lol/');
+    } finally {
+      extension.relayClient.revokeActionContext(actionId);
+      session.dispose();
+    }
   });
 
   it('accepts scoped YouTube reactions, profiles, and URL zap receipt filters', function () {

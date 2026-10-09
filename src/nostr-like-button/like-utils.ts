@@ -108,8 +108,26 @@ export function createUnlikeEvent(url: string): any {
   return createReactionEvent(url, '-');
 }
 
+function latestViewerReaction(events: any[]): any | null {
+  let latest: any = null;
+  for (const event of events) {
+    if (!event) continue;
+    const createdAt = Number(event.created_at);
+    const latestAt = latest ? Number(latest.created_at) : Number.NEGATIVE_INFINITY;
+    if (
+      !latest ||
+      createdAt > latestAt ||
+      (createdAt === latestAt && String(event.id || '') > String(latest.id || ''))
+    ) {
+      latest = event;
+    }
+  }
+  return latest;
+}
+
 /**
- * Check if user has liked a URL
+ * Check if user has liked a URL.
+ * A failed lookup throws. Callers must not treat that as "not liked".
  */
 export async function hasUserLiked(
   url: string,
@@ -136,15 +154,18 @@ export async function hasUserLiked(
     const events = transport
       ? await transport.query(relays, filter)
       : await pool.querySync(relays, filter);
-    
-    if (events.length === 0) return false;
-    
+    if (!Array.isArray(events)) {
+      throw new Error('Could not check whether this page is already liked');
+    }
+
+    const latest = latestViewerReaction(events);
+    if (!latest) return false;
+
     // Check if latest reaction is a like (not an unlike)
-    const latest = events[0];
     return latest.content === '+' || latest.content === '';
   } catch (error) {
     console.error("Nostr-Components: Like button: Error checking user like status", error);
-    return false;
+    throw error instanceof Error ? error : new Error(String(error));
   } finally {
     pool.close(relays);
   }

@@ -42,6 +42,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
   const ACTIVITY_CACHE_MS = 60 * 1000;
   const ACTIVITY_BATCH_MS = 50;
   const PROFILE_PUBKEY_LIMIT = 50;
+  const VIEWER_QUERY_RELAY_LIMIT = 80;
 
   function normalizeRelayUrl(value) {
     let url;
@@ -352,6 +353,10 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     const keepNewestProfile = options && options.keepNewestProfile === true;
     const requireEvent =
       keepNewestProfile || (options && options.requireEvent === true);
+    const withOutcome = Boolean(options && options.withOutcome);
+    const acceptEvent = options && typeof options.acceptEvent === 'function'
+      ? options.acceptEvent
+      : null;
 
     return new Promise(function (resolve) {
       let successfulResponses = 0;
@@ -375,7 +380,8 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
           }
         }
         for (const closer of closers) void closer.close();
-        resolve(Array.from(eventsById.values()));
+        const events = Array.from(eventsById.values());
+        resolve(withOutcome ? { events: events, answered: successfulResponses } : events);
       }
 
       const timeoutId = setTimeout(function () {
@@ -416,6 +422,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
               relaysWithEvents.add(relay);
               return;
             }
+            if (acceptEvent && !acceptEvent(event)) return;
             if (event && event.id) {
               eventsById.set(event.id, event);
               relaysWithEvents.add(relay);
@@ -1238,7 +1245,9 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
       return localEvent.content === '+' || localEvent.content === '';
     }
     if (viewerOk && remote) return reactionIsLike(remote.content, remote.reaction);
-    return false;
+    // A completed list with no row is "not liked". A failed list is unknown.
+    if (viewerOk) return false;
+    return null;
   }
 
   async function pushUrlEvent(event, relay) {
@@ -1749,6 +1758,81 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     return false;
   }
 
+  function newerReaction(current, candidate) {
+    if (!candidate) return current || null;
+    if (!current) return candidate;
+    const candidateAt = Number(candidate.created_at);
+    const currentAt = Number(current.created_at);
+    if (!Number.isFinite(candidateAt)) return current;
+    if (!Number.isFinite(currentAt) || candidateAt > currentAt) return candidate;
+    if (candidateAt < currentAt) return current;
+    return String(candidate.id) > String(current.id) ? candidate : current;
+  }
+
+  function isViewerReactionEvent(event, filter) {
+    if (!event || event.kind !== 17 || !Array.isArray(event.tags)) return false;
+    if (String(event.pubkey || '').toLowerCase() !== filter.authors[0]) return false;
+    if (event.content !== '+' && event.content !== '-' && event.content !== '') return false;
+    if (getExactTag(event, 'k') !== 'web') return false;
+    if (getExactTag(event, 'i') !== filter['#i'][0]) return false;
+    return eventVerified(event);
+  }
+
+  // One author's latest kind 17 for the active page. Anything wider is rejected.
+  // An unanswered lookup throws so a click cannot publish another '+'.
+  async function handleReactionQuery(pool, payload) {
+    if (!payloadAllows(payload, ['relays', 'filter', 'actionId'])) {
+      throw new Error('Relay request contains an unsupported filter');
+    }
+    const filter = validateFilter(payload.filter);
+    if (
+      !filter ||
+      filter.kinds[0] !== 17 ||
+      !Array.isArray(filter.authors) ||
+      filter.authors.length !== 1 ||
+      filter.limit !== 1 ||
+      !isFilterBoundToAction(filter, payload.actionId)
+    ) {
+      throw new Error('Relay request contains an unsupported filter');
+    }
+    const requested = payload.relays;
+    if (
+      !Array.isArray(requested) ||
+      requested.length < 1 ||
+      requested.length > VIEWER_QUERY_RELAY_LIMIT
+    ) {
+      throw new Error('Relay request contains an unsupported filter');
+    }
+    const relays = uniqueRelays(requested).filter(function (url) {
+      return RENDEZVOUS_SET.has(url);
+    });
+    if (!relays.length) {
+      throw new Error('Relay request contains an unsupported filter');
+    }
+
+    const outcome = await queryWithFastQuorum(pool, relays, filter, {
+      selectedRelays: relays,
+      requireEvent: true,
+      withOutcome: true,
+      acceptEvent: function (event) {
+        return isViewerReactionEvent(event, filter);
+      }
+    });
+    const relayEvents = outcome && Array.isArray(outcome.events) ? outcome.events : [];
+    const answered = outcome && Number.isInteger(outcome.answered) ? outcome.answered : 0;
+    let latest = null;
+    for (const event of relayEvents) {
+      if (isViewerReactionEvent(event, filter)) latest = newerReaction(latest, event);
+    }
+    for (const event of await getRecentReactions(filter['#i'][0])) {
+      if (isViewerReactionEvent(event, filter)) latest = newerReaction(latest, event);
+    }
+    if (!latest && answered < 1) {
+      throw new Error('Could not check whether this page is already liked');
+    }
+    return latest ? [latest] : [];
+  }
+
   async function handleRequest(pool, message) {
     const payload = message.payload;
 
@@ -1779,6 +1863,9 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
       const filter = validateFilter(payload && payload.filter);
       if (filter && filter.kinds[0] === 0) {
         return handleYouTubeProfileQuery(pool, payload, filter);
+      }
+      if (filter && filter.kinds[0] === 17 && filter.authors && filter.limit === 1) {
+        return handleReactionQuery(pool, payload);
       }
       return handleReceiptWatch(pool, payload);
     }

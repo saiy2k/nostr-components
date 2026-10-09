@@ -163,7 +163,7 @@ describe('extension profile and relay-list cache', function () {
       totalCount: 0,
       likedCount: 0,
       dislikedCount: 0,
-      isLiked: false
+      isLiked: null
     });
     await vi.waitFor(function () {
       expect(profileLookups).toEqual([
