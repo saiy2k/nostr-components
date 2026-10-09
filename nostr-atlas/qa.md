@@ -1,3 +1,7 @@
+# Nostr Atlas QA
+
+Web Pulse checks are at the end of this file. The claim checks below are unchanged.
+
 # X account claim QA
 
 PR: https://github.com/saiy2k/nostr-components/pull/144
@@ -121,3 +125,16 @@ Run the blocked `ingestClaim` attempt before the successful publish, so a missin
 59. **Relay event for this claim.** On the acknowledged relay the event is kind 10011, content empty, `i` tag `twitter:grayfaceofindia` plus `https://x.com/grayfaceofindia/status/2104276147907481649`, and `["client","Nostr Atlas"]`.
 60. **URL variants of this status.** With this npub, `checkClaimProof` accepts `www.x.com`, `twitter.com`, `www.twitter.com`, `@grayfaceofindia`, a `?s=20` query, a trailing slash, `/photo/1`, and `/video/1`. A publish stores the canonical `https://x.com/grayfaceofindia/status/2104276147907481649`.
 61. **Different npub, this same tweet.** Expected: “The proof tweet does not contain the connected npub.” No signature.
+
+# Web Pulse
+
+Open `/pulse/` with `npm run preview:atlas` after `npm run build:atlas`, against the Functions emulator or the deployed pulse functions. The directory API URL is the same origin the page uses for `getPulseOverview`, `getPulseDomain`, `listPulseActivity`, `listUrlEvents`, and `lookupNostrProfiles`.
+
+1. **Menu.** Directory and Web Pulse are in the header, between the brand and the like and zap buttons. Web Pulse is the current page. Directory returns to `/`. Check the header at 1280, 980, 761, 760, and 375 pixels. At 761 and above the header stays on one row and the zap button does not shrink. At 760 and below the nav is its own full-width row under the brand and above the like and zap row.
+2. **Overview.** The page shows the title, the line about relays we index, four all-time stat cards, the Nostr Components link, latest activity with 7D selected, domain search, and the domain table sorted by reactions. A failed load shows an error and no sample rows. An empty index says there are no domains yet.
+3. **Day tabs.** Switch to 1D and 30D. Only the latest-activity request changes. The stat cards and the domain table stay as they were.
+4. **Sort and search.** Sorting by sats, zaps, dislikes, emoji, or last active asks for that column, still descending. A domain prefix search asks again and returns the matching rows. Clearing the search restores the unfiltered table.
+5. **Domain view.** Open a domain. The URL is `/pulse/?domain=<domain>`. There is no banner and no search. Three all-time stat cards come first, then the URL table sorted by sats, then that domain's latest activity. Each URL cell shows the path and query. The separate icon opens the full `https` URL. An `http` URL is text, not a link.
+6. **Expanded row.** Open a URL row. Reactions and zaps share one list in time order, with names and avatars. A missing name is a short npub linking to njump. A zap with no sender says Anonymous and still shows its comment. Close the row and it collapses.
+7. **Header buttons.** On `/pulse/` the like and zap buttons target `https://nostr-atlas.web.app/pulse/` even when `?domain=` is set. On `/` they target `https://nostr-atlas.web.app/`.
+8. **Missing domain.** `?domain=` for a domain the API does not have says it is not in the index. A domain with a space says it is not valid. Neither shows sample rows.

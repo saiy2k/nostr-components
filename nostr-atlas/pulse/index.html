@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- seo:start -->
+    <title>Nostr Web Pulse — likes and zaps on the open web</title>
+    <meta name="description" content="Nostr Web Pulse shows the sats, zaps, and reactions Nostr Atlas has indexed across the open web." />
+    <link rel="canonical" href="https://nostr-atlas.web.app/pulse/" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Nostr Atlas" />
+    <meta property="og:title" content="Nostr Web Pulse — likes and zaps on the open web" />
+    <meta property="og:description" content="Nostr Web Pulse shows the sats, zaps, and reactions Nostr Atlas has indexed across the open web." />
+    <meta property="og:url" content="https://nostr-atlas.web.app/pulse/" />
+    <meta property="og:image" content="https://nostr-atlas.web.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Nostr Web Pulse — likes and zaps on the open web" />
+    <meta name="twitter:description" content="Nostr Web Pulse shows the sats, zaps, and reactions Nostr Atlas has indexed across the open web." />
+    <meta name="twitter:image" content="https://nostr-atlas.web.app/og.png" />
+    <script type="application/ld+json" id="seo-jsonld">{"@context":"https://schema.org","@type":"WebPage","name":"Nostr Web Pulse","url":"https://nostr-atlas.web.app/pulse/","description":"Nostr Web Pulse shows the sats, zaps, and reactions Nostr Atlas has indexed across the open web.","isPartOf":{"@type":"WebSite","name":"Nostr Atlas","url":"https://nostr-atlas.web.app/"}}</script>
+    <!-- seo:end -->
+  </head>
+  <body>
+    <a class="skip-link" href="#pulse">Skip to Web Pulse</a>
+    <!-- site-header -->
+
+    <main id="pulse">
+      <section class="pulse-page shell" id="pulse-overview">
+        <h1>Nostr Web Pulse</h1>
+        <p class="pulse-tagline">Discover what the Nostr community loves, zaps, and reacts to on the open web.</p>
+        <p class="pulse-coverage">These counts cover the relays we index.</p>
+        <div id="overview-stats"></div>
+        <a class="pulse-banner" href="https://nostr-components.web.app/">
+          Want zap and like buttons on your site? <strong>Nostr Components</strong>
+        </a>
+        <section id="overview-activity" aria-live="polite"></section>
+        <form class="pulse-search" id="domain-search" role="search">
+          <label class="sr-only" for="domain-search-input">Search domains</label>
+          <input id="domain-search-input" type="search" name="search" maxlength="253" autocomplete="off" placeholder="Search domains" />
+          <button class="secondary-button" type="submit">Search</button>
+        </form>
+        <div id="domain-table"></div>
+      </section>
+
+      <section class="pulse-page shell" id="pulse-domain" hidden>
+        <a class="pulse-back" href="/pulse/">Back to Web Pulse</a>
+        <h1 id="domain-heading"></h1>
+        <div id="domain-stats"></div>
+        <div id="url-table"></div>
+        <section id="domain-activity" aria-live="polite"></section>
+      </section>
+    </main>
+
+    <!-- site-footer -->
+    <noscript>Web Pulse needs JavaScript to load counts.</noscript>
+    <script type="module" src="/src/pulse/main.ts"></script>
+  </body>
+</html>

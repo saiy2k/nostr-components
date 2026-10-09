@@ -49,6 +49,10 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
         {
+          "source": "/pulse/**",
+          "destination": "/pulse/index.html"
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }

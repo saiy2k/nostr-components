@@ -18,7 +18,7 @@ Read the surface README for runbooks. This file only routes work and names the t
 
 - Source: `nostr-atlas/`. Local notes: [nostr-atlas/AGENTS.md](nostr-atlas/AGENTS.md).
 - Check: `npm run dev:atlas`, `npm run build:atlas`.
-- Ships as Firebase Hosting target `atlas` on site `nostr-atlas` (`https://nostr-atlas.web.app`).
+- Ships as Firebase Hosting target `atlas` on site `nostr-atlas` (`https://nostr-atlas.web.app`). `/` is the directory. `/pulse/` is Web Pulse, which reads the pulse HTTP functions. Each page's header like and zap buttons target one fixed URL for that page.
 - `VITE_*` values are bundled into the public site. Keep credentials out of them.
 
 ### Directory HTTP API
