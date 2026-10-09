@@ -38,6 +38,16 @@ export const DarkTheme: Story = {
   args: TEST_CASES.darkTheme.args,
 };
 
+export const Compact: Story = {
+  name: TEST_CASES.compact.name,
+  args: TEST_CASES.compact.args,
+};
+
+export const CompactDarkTheme: Story = {
+  name: TEST_CASES.compactDarkTheme.name,
+  args: TEST_CASES.compactDarkTheme.args,
+};
+
 export const CustomText: Story = {
   name: TEST_CASES.customText.name,
   args: TEST_CASES.customText.args,

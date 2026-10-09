@@ -22,6 +22,21 @@ export const TEST_CASES = {
       'data-theme': 'dark',
     },
   },
+  compact: {
+    name: 'Compact',
+    args: {
+      text: 'Like',
+      compact: true,
+    },
+  },
+  compactDarkTheme: {
+    name: 'Compact Dark Theme',
+    args: {
+      text: 'Like',
+      compact: true,
+      'data-theme': 'dark',
+    },
+  },
   customText: {
     name: 'Custom Text',
     args: {

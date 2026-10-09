@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
-import { generateCode, getArgTypes, getTestingParameters } from './utils';
+import { BOOLEAN_ATTRIBUTE_MODES, generateCode, getArgTypes, getTestingParameters } from './utils';
 import { TEST_CASES as INVALID_TEST_CASES } from './test-cases-invalid';
 import { createComprehensiveDynamicPlay } from '../common/comprehensive-dynamic';
 import { createFastSwitchingPlay } from '../common/fast-switching';
@@ -38,7 +38,8 @@ export const AllAttributes: Story = {
       { type: 'url', value: 'https://damus.io/', name: 'Damus' },
     ],
     widths: [600, 500, 400, 700],
-    booleanAttributes: [],
+    booleanAttributes: ['compact'],
+    booleanAttributeModes: BOOLEAN_ATTRIBUTE_MODES,
     updateInterval: 20000
   }),
 };
