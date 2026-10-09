@@ -284,6 +284,7 @@ function boot(): void {
       searchInput.value = search;
       searchError = "";
     } catch (error) {
+      tableToken += 1;
       search = "";
       searchError = error instanceof Error ? error.message : "That domain is not valid.";
       paint();
