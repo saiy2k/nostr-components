@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: MIT
 
+import { randomUUID } from "node:crypto";
 import {
   DEFAULT_MAX_INACTIVE_VERIFIED_CLAIMS,
   DEFAULT_MAX_PENDING_CLAIMS,
@@ -148,10 +149,108 @@ function projectionRelays(env) {
   }
 }
 
+export const PROJECTION_LEASE_DOC_ID = "lease";
+export const PROJECTION_LEASE_MS = 10 * 60 * 1000;
+
+export function projectionLeaseIsCurrent(data, nowMs) {
+  const until = Date.parse(data?.until || "");
+  return Boolean(data?.token) && Number.isFinite(until) && until > nowMs;
+}
+
+/** Renew only while this run still owns the token, including after its expiry. */
+export function renewedProjectionLease(data, lease, nowMs) {
+  if (!lease?.token || data?.token !== lease.token) {
+    throw new Error("projection-lease-lost");
+  }
+  return {
+    owner: lease.owner,
+    token: lease.token,
+    until: new Date(nowMs + lease.leaseMs).toISOString(),
+  };
+}
+
+function projectionLeaseRef(db, args) {
+  return db
+    .collection(
+      args.firestoreProjectionRunsCollection || DEFAULT_COLLECTIONS.projectionRuns,
+    )
+    .doc(PROJECTION_LEASE_DOC_ID);
+}
+
+export async function acquireProjectionLease(db, args, options = {}) {
+  const now = options.now || Date.now;
+  const lease = {
+    owner: "projection",
+    token: `projection:${randomUUID()}`,
+    leaseMs: options.leaseMs ?? PROJECTION_LEASE_MS,
+  };
+  const acquired = await db.runTransaction(async (tx) => {
+    const ref = projectionLeaseRef(db, args);
+    const snap = await tx.get(ref);
+    const data = snap.exists ? snap.data() || {} : {};
+    if (projectionLeaseIsCurrent(data, now()) && data.token !== lease.token) return false;
+    tx.set(
+      ref,
+      {
+        owner: lease.owner,
+        token: lease.token,
+        until: new Date(now() + lease.leaseMs).toISOString(),
+      },
+      { merge: true },
+    );
+    return true;
+  });
+  return acquired ? lease : null;
+}
+
+export async function renewProjectionLease(db, args, lease, options = {}) {
+  const now = options.now || Date.now;
+  try {
+    return await db.runTransaction(async (tx) => {
+      const ref = projectionLeaseRef(db, args);
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() || {} : {};
+      tx.set(ref, renewedProjectionLease(data, lease, now()), { merge: true });
+      return true;
+    });
+  } catch (error) {
+    if (error?.message === "projection-lease-lost") return false;
+    throw error;
+  }
+}
+
+export async function releaseProjectionLease(db, args, lease) {
+  await db.runTransaction(async (tx) => {
+    const ref = projectionLeaseRef(db, args);
+    const snap = await tx.get(ref);
+    if (snap.exists && snap.data()?.token === lease.token) {
+      tx.set(ref, { owner: null, token: null, until: null }, { merge: true });
+    }
+  });
+}
+
 export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   const runMetrics = createRunMetrics("projection");
   const db =
     dependencies.db ?? (await createFirestore(args, FirestoreCtor));
+  const leaseNow = dependencies.leaseNow || Date.now;
+  const lease = await acquireProjectionLease(db, args, { now: leaseNow });
+  if (!lease) {
+    logProjectionEvent("projection_run_skipped", { reason: "lease-held" });
+    return { skipped: true, stats: { stoppedReason: "lease-held" } };
+  }
+  const touchLease = async () => {
+    const renewed = await renewProjectionLease(db, args, lease, { now: leaseNow });
+    if (!renewed) throw new Error("projection-lease-lost");
+  };
+  try {
+    return await executeProjection(db, args, dependencies, runMetrics, lease, leaseNow, touchLease);
+  } finally {
+    await releaseProjectionLease(db, args, lease);
+  }
+}
+
+async function executeProjection(db, args, dependencies, runMetrics, lease, leaseNow, touchLease) {
   const verifyClaims = dependencies.verifyHandleClaims || verifyHandleClaims;
   const now = dependencies.now || Date.now;
   const [handleDocs, pendingHandleCount] = await Promise.all([
@@ -201,6 +300,18 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   for (const handleDoc of handleDocs) {
     if (now() >= deadlineAt) {
       stats.stoppedReason = "run_deadline_reached";
+      logProjectionEvent("projection_run_stopped", {
+        reason: stats.stoppedReason,
+        handlesDue: stats.handlesDue,
+        handlesChanged: stats.handlesChanged,
+      });
+      break;
+    }
+    try {
+      await touchLease();
+    } catch (error) {
+      if (error?.message !== "projection-lease-lost") throw error;
+      stats.stoppedReason = "lease-lost";
       logProjectionEvent("projection_run_stopped", {
         reason: stats.stoppedReason,
         handlesDue: stats.handlesDue,
@@ -260,27 +371,51 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     );
     let writes = buildHandleProjectionWrites(handleDoc, transition, args);
     if (writes.length) {
-      const committed = await db.runTransaction(async (tx) => {
-        const ref = db.collection(args.firestoreHandlesCollection).doc(handleDoc.id);
-        const snap = await tx.get(ref);
-        const fresh = snap.exists ? snap.data() || {} : {};
-        const freshTransition = applyProjectionResults(
-          fresh,
-          verification.results,
-          projectionOptions,
-        );
-        const freshWrites = buildHandleProjectionWrites(
-          handleDoc,
-          freshTransition,
-          args,
-        );
-        for (const write of freshWrites) {
-          tx.set(db.collection(write.collection).doc(write.id), write.data, {
-            merge: true,
-          });
-        }
-        return { writes: freshWrites, transition: freshTransition };
-      });
+      let committed;
+      try {
+        committed = await db.runTransaction(async (tx) => {
+          const leaseSnap = await tx.get(projectionLeaseRef(db, args));
+          tx.set(
+            projectionLeaseRef(db, args),
+            renewedProjectionLease(
+              leaseSnap.exists ? leaseSnap.data() || {} : {},
+              lease,
+              leaseNow(),
+            ),
+            { merge: true },
+          );
+          const ref = db.collection(args.firestoreHandlesCollection).doc(handleDoc.id);
+          const snap = await tx.get(ref);
+          const fresh = snap.exists ? snap.data() || {} : {};
+          const freshTransition = applyProjectionResults(
+            fresh,
+            verification.results,
+            projectionOptions,
+          );
+          const freshWrites = buildHandleProjectionWrites(
+            handleDoc,
+            freshTransition,
+            args,
+          );
+          for (const write of freshWrites) {
+            tx.set(db.collection(write.collection).doc(write.id), write.data, {
+              merge: true,
+            });
+          }
+          return { writes: freshWrites, transition: freshTransition };
+        });
+      } catch (error) {
+        if (error?.message !== "projection-lease-lost") throw error;
+        stats.stoppedReason = "lease-lost";
+        logProjectionEvent("projection_run_stopped", {
+          reason: stats.stoppedReason,
+          handleDocId: handleDoc.id,
+          handle,
+          handlesDue: stats.handlesDue,
+          handlesChanged: stats.handlesChanged,
+        });
+        break;
+      }
       writes = committed.writes;
       transition = committed.transition;
       if (writes.length) {
@@ -359,13 +494,21 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
     }
   }
 
-  if (args.profileRefresh === true) {
-    const profileStats = await refreshProjectionProfiles(
-      db,
-      args,
-      verifiedProfiles,
-      now,
-    );
+  if (args.profileRefresh === true && stats.stoppedReason !== "lease-lost") {
+    let profileStats;
+    try {
+      profileStats = await refreshProjectionProfiles(
+        db,
+        args,
+        verifiedProfiles,
+        now,
+        touchLease,
+      );
+    } catch (error) {
+      if (error?.message !== "projection-lease-lost") throw error;
+      stats.stoppedReason = "lease-lost";
+      profileStats = { refreshed: 0, scanned: 0, writes: 0 };
+    }
     stats.profilesRefreshed = profileStats.refreshed;
     stats.profilesScanned = profileStats.scanned;
     stats.firestoreWrites += profileStats.writes;
@@ -390,7 +533,7 @@ export async function runProjection(args, FirestoreCtor, dependencies = {}) {
   };
   output.run = finishRunMetrics(runMetrics, stats);
   logRunSummary(output.run);
-  await persistRunSummary(db, output, args);
+  if (stats.stoppedReason !== "lease-lost") await persistRunSummary(db, output, args);
   if (args.out) await writeJson(args.out, output);
   printProjectionSummary(output, args);
   return output;
@@ -413,7 +556,7 @@ function collectVerifiedProfiles(targets, handleDoc, results) {
   }
 }
 
-async function refreshProjectionProfiles(db, args, verifiedProfiles, now) {
+async function refreshProjectionProfiles(db, args, verifiedProfiles, now, touchLease) {
   const health = new Map();
   const nowMs = now();
   let refreshed = 0;
@@ -426,6 +569,7 @@ async function refreshProjectionProfiles(db, args, verifiedProfiles, now) {
       fetchImpl: args.fetchImpl,
       handlesCollection: args.firestoreHandlesCollection,
       flushHealth: false,
+      touchLease,
     });
     refreshed += immediate.refreshed;
     writes += immediate.refreshed + immediate.handlesChanged;
@@ -436,6 +580,7 @@ async function refreshProjectionProfiles(db, args, verifiedProfiles, now) {
     timeoutMs: args.timeoutMs,
     fetchImpl: args.fetchImpl,
     skipPubkeys: new Set(verifiedProfiles.map((target) => target.pubkey)),
+    touchLease,
   });
   refreshed += due.refreshed;
   writes += due.refreshed + due.handlesChanged + 1;

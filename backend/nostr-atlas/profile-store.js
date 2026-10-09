@@ -387,6 +387,7 @@ export async function fetchReplaceableGrouped(groups, kind, options = {}) {
 }
 
 export async function refreshProfiles(db, targets, options = {}) {
+  if (typeof options.touchLease === "function") await options.touchLease();
   const nowMs = options.nowMs ?? Date.now();
   const nowSec = Math.floor(nowMs / 1000);
   const health = options.health || new Map();
@@ -602,6 +603,7 @@ export async function runDueProfilePass(db, args, options = {}) {
   let scanned = 0;
   let wrapped = false;
   while (targets.length < limit && scanned < maxScan) {
+    if (typeof options.touchLease === "function") await options.touchLease();
     const page = await readHandlePage(db, handles, afterId, pageSize);
     if (!page.length) {
       if (!afterId || wrapped) break;

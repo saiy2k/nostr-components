@@ -14,6 +14,7 @@ cp .env.example .env
 # Set FIRESTORE_PROJECT and local Google credentials in your environment.
 npm test
 npm run backfill
+npm run frontfill
 npm run project
 ```
 
@@ -22,6 +23,7 @@ Cloud Run deployment scripts (PROJECT_ID is required):
 ```sh
 cd "$(git rev-parse --show-toplevel)"
 PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh
+PROJECT_ID=nostr-components backend/deploy-nostr-atlas-frontfill.sh
 PROJECT_ID=nostr-components backend/deploy-nostr-atlas-projection.sh
 ```
 
@@ -64,11 +66,21 @@ in `nostr-atlas/public-network.js`, which resolves the host and refuses a
 private address before connecting. The jobs retain explicit event validation,
 pagination, deduplication, Firestore writes, and checkpoint logic.
 
-Run projection after backfill because it consumes the handle documents created
-by backfill. `deploy-nostr-atlas-projection.sh` schedules
-`nostr-atlas-projection-daily` at 08:00 UTC, two hours after the backfill.
-Set `CREATE_SCHEDULER=false` to deploy the job without that schedule, or
-`RUN_AFTER_DEPLOY=true` to execute it once immediately.
+Run projection after backfill or frontfill because it consumes the handle
+documents they create. Frontfill (`deploy-nostr-atlas-frontfill.sh`) schedules
+`nostr-atlas-frontfill-hourly` at the top of every hour (`0 * * * *` UTC) with
+a 25 minute task timeout. Each hour scans a live window of about one hour,
+overlapping the previous cursor by 15 minutes, and only then walks a one-time
+gap down to the floor stored on first create. The daily backfill schedule
+stays. `deploy-nostr-atlas-projection.sh` schedules
+`nostr-atlas-projection-hourly` at half past every hour and pauses
+`nostr-atlas-projection-daily`. Projection holds `relayProjectionRuns/lease`
+until it exits, and a second run exits without writing while that lease is
+held. Set `CREATE_SCHEDULER=false` to deploy a job without its schedule, or
+`RUN_AFTER_DEPLOY=true` to execute it once immediately. Size
+`FRONTFILL_INITIAL_LOOKBACK_SECONDS` before the first frontfill deploy so the
+gap covers the time since backfill finished. The floor is frozen after that;
+delete the `frontfill:` documents in `relayCrawlerState` to re-seed it.
 X bio scans, NIP-39 proof-tweet checks, and backfill `@mention` existence
 checks all use FxTwitter's public API (`api.fxtwitter.com`); no X bearer token
 is required. Projection limits and timeouts are passed to Cloud Run as
