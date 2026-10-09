@@ -6,6 +6,8 @@ import {
   checkZapSupport,
   lightningAddressToLnurlp,
   loadProjectionConfig,
+  projectionLeaseIsCurrent,
+  renewedProjectionLease,
   runProjection,
   verifyHandleClaims,
 } from "./projection.js";
@@ -1380,6 +1382,7 @@ describe("projection execution", () => {
       }),
     );
     const writes = [];
+    const store = new Map();
     const handle = {
       handle: "alice",
       claims: [pendingClaim("proof", PUBKEY_A, 100)],
@@ -1389,7 +1392,7 @@ describe("projection execution", () => {
     const queryCalls = [];
     class FakeFirestore {
       collection(name) {
-        return collectionAdapter(name, handle, queryCalls);
+        return collectionAdapter(name, handle, queryCalls, store);
       }
       batch() {
         return {
@@ -1406,13 +1409,17 @@ describe("projection execution", () => {
       async runTransaction(fn) {
         const tx = {
           get: (ref) => ref.get(),
-          set: (ref, data, options) =>
+          set: (ref, data, options) => {
+            const key = `${ref.collection}/${ref.id}`;
+            const prev = store.get(key) || {};
+            store.set(key, options?.merge ? { ...prev, ...data } : { ...data });
             writes.push({
               collection: ref.collection,
               id: ref.id,
               data,
               options,
-            }),
+            });
+          },
         };
         return fn(tx);
       }
@@ -1433,18 +1440,17 @@ describe("projection execution", () => {
       handlesChanged: 1,
       firestoreWrites: 1,
     });
-    expect(writes.map((write) => write.collection)).toEqual([
-      "handles",
-      "relayProjectionRuns",
-    ]);
-    expect(writes[1].data).toMatchObject({
+    const handleWrite = writes.find((write) => write.collection === "handles");
+    const summary = writes.find((write) => write.data?.mode === "projection");
+    expect(handleWrite.options).toEqual({ merge: true });
+    expect(summary.data).toMatchObject({
       mode: "projection",
       source: "directory-handle-claims",
       runId: expect.stringMatching(/^projection-/),
       stats: expect.objectContaining({ verified: 1, handlesChanged: 1 }),
     });
     expect(queryCalls).toContainEqual(["orderBy", "nextAttemptAt"]);
-    expect(writes[0].options).toEqual({ merge: true });
+    expect(store.get("relayProjectionRuns/lease").token).toBeNull();
   });
 
   it("persists the run summary to the configured collection", async () => {
@@ -1463,7 +1469,9 @@ describe("projection execution", () => {
       { db },
     );
 
-    const summary = writes.find((write) => write.collection === "customRuns");
+    const summary = writes.find(
+      (write) => write.collection === "customRuns" && write.data?.mode === "projection",
+    );
     expect(summary).toBeDefined();
     expect(summary.id).toBe(output.run.runId);
     expect(summary.data).toMatchObject({
@@ -1504,7 +1512,9 @@ describe("projection execution", () => {
     );
 
     expect(output.stats).toMatchObject({ verified: 1, handlesChanged: 1 });
-    expect(writes.map((write) => write.collection)).toEqual(["handles"]);
+    expect(
+      writes.filter((write) => write.id !== "lease").map((write) => write.collection),
+    ).toEqual(["handles"]);
   });
 
   it("stops iterating when verification requests a run stop", async () => {
@@ -1619,7 +1629,8 @@ describe("projection execution", () => {
       handleDocsRead: 2,
     });
     const summary = writes.find(
-      (write) => write.collection === "relayProjectionRuns",
+      (write) =>
+        write.collection === "relayProjectionRuns" && write.data?.mode === "projection",
     );
     expect(summary.data.stats).toMatchObject({
       pendingHandleCount: 3,
@@ -1695,7 +1706,8 @@ describe("projection execution", () => {
         rejected: 0,
       });
       const summary = writes.find(
-        (write) => write.collection === "relayProjectionRuns",
+        (write) =>
+          write.collection === "relayProjectionRuns" && write.data?.mode === "projection",
       );
       expect(summary.data.stats).toMatchObject({
         handlesDeferred: 1,
@@ -1825,6 +1837,86 @@ describe("projection execution", () => {
       logSpy.mockRestore();
     }
   });
+
+  it("exits without writing when another run holds the projection lease", async () => {
+    const verifyClaims = vi.fn();
+    let wrote = false;
+    const db = {
+      collection() {
+        return {
+          doc() {
+            return {
+              get: async () => ({
+                exists: true,
+                data: () => ({
+                  token: "projection:other",
+                  owner: "projection",
+                  until: new Date(Date.now() + 60_000).toISOString(),
+                }),
+              }),
+            };
+          },
+        };
+      },
+      async runTransaction(fn) {
+        return fn({
+          get: (ref) => ref.get(),
+          set: () => {
+            wrote = true;
+          },
+        });
+      },
+    };
+
+    const output = await runProjection(projectionArgs(), null, {
+      db,
+      verifyHandleClaims: verifyClaims,
+    });
+
+    expect(output.stats.stoppedReason).toBe("lease-held");
+    expect(verifyClaims).not.toHaveBeenCalled();
+    expect(wrote).toBe(false);
+  });
+
+  it("renews the projection lease only for the owner and clears it afterward", async () => {
+    expect(
+      renewedProjectionLease(
+        { token: "projection:a" },
+        { owner: "projection", token: "projection:a", leaseMs: 1000 },
+        5_000,
+      ),
+    ).toMatchObject({ token: "projection:a", until: new Date(6_000).toISOString() });
+    expect(() =>
+      renewedProjectionLease(
+        { token: "projection:b" },
+        { owner: "projection", token: "projection:a", leaseMs: 1000 },
+        5_000,
+      ),
+    ).toThrow(/projection-lease-lost/);
+    expect(
+      projectionLeaseIsCurrent(
+        { token: "projection:a", until: new Date(Date.now() + 1000).toISOString() },
+        Date.now(),
+      ),
+    ).toBe(true);
+
+    const db = fakeFirestore([dueHandle("alice", "claim", PUBKEY_A)]);
+    await runProjection(projectionArgs(), null, {
+      db,
+      verifyHandleClaims: vi.fn(async (handleData) =>
+        verificationOutput({
+          results: [
+            {
+              claimId: handleData.claims[0].claimId,
+              identityStatus: "rejected",
+              rejectionReason: "test",
+            },
+          ],
+        }),
+      ),
+    });
+    expect(db.store.get("relayProjectionRuns/lease").token).toBeNull();
+  });
 });
 
 function pendingClaim(
@@ -1937,7 +2029,7 @@ function fxTwitterFetch(
   });
 }
 
-function collectionAdapter(name, handle, calls = []) {
+function collectionAdapter(name, handle, calls = [], store = null) {
   const handles = Array.isArray(handle) ? handle : [handle];
   const make = (ordered, maxDocs = Infinity) => ({
     where: (...args) => {
@@ -1983,6 +2075,11 @@ function collectionAdapter(name, handle, calls = []) {
       collection: name,
       id,
       get: async () => {
+        const key = `${name}/${id}`;
+        if (store?.has(key)) {
+          const stored = store.get(key);
+          return { exists: stored != null, data: () => (stored ? { ...stored } : null) };
+        }
         const data = handles.find((item) => `twitter:${item.handle}` === id);
         return { exists: Boolean(data), data: () => data || null };
       },
@@ -2033,19 +2130,25 @@ function loggedProjectionEvent(logSpy, message) {
 }
 
 function fakeFirestore(handles, writes = []) {
+  const store = new Map();
   return {
-    collection: (name) => collectionAdapter(name, handles),
+    store,
+    collection: (name) => collectionAdapter(name, handles, [], store),
     async runTransaction(fn) {
       const pendingWrites = [];
       const tx = {
         get: (ref) => ref.get(),
-        set: (ref, data, options) =>
+        set: (ref, data, options) => {
+          const key = `${ref.collection}/${ref.id}`;
+          const prev = store.get(key) || {};
+          store.set(key, options?.merge ? { ...prev, ...data } : { ...data });
           pendingWrites.push({
             collection: ref.collection,
             id: ref.id,
             data,
             options,
-          }),
+          });
+        },
       };
       const result = await fn(tx);
       writes.push(...pendingWrites);

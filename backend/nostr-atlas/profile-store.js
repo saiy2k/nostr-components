@@ -387,6 +387,7 @@ export async function fetchReplaceableGrouped(groups, kind, options = {}) {
 }
 
 export async function refreshProfiles(db, targets, options = {}) {
+  if (typeof options.touchLease === "function") await options.touchLease();
   const nowMs = options.nowMs ?? Date.now();
   const nowSec = Math.floor(nowMs / 1000);
   const health = options.health || new Map();
@@ -577,9 +578,9 @@ export async function refreshProfiles(db, targets, options = {}) {
       },
     });
   }
-  await commitSets(db, profileWrites);
+  await commitSets(db, profileWrites, options);
   const handlesChanged = await applyHandlePlans(db, handlePlans, options);
-  if (options.flushHealth === true) await flushRelayHealth(db, health);
+  if (options.flushHealth === true) await flushRelayHealth(db, health, options);
   return {
     refreshed: normalized.length,
     handlesChanged,
@@ -602,6 +603,7 @@ export async function runDueProfilePass(db, args, options = {}) {
   let scanned = 0;
   let wrapped = false;
   while (targets.length < limit && scanned < maxScan) {
+    if (typeof options.touchLease === "function") await options.touchLease();
     const page = await readHandlePage(db, handles, afterId, pageSize);
     if (!page.length) {
       if (!afterId || wrapped) break;
@@ -636,7 +638,7 @@ export async function runDueProfilePass(db, args, options = {}) {
       break;
     }
   }
-  await writeProfileCursor(db, runs, afterId);
+  await writeProfileCursor(db, runs, afterId, options);
   const refreshed = await refreshProfiles(db, targets, {
     ...options,
     health,
@@ -652,7 +654,7 @@ export async function runDueProfilePass(db, args, options = {}) {
   };
 }
 
-export async function flushRelayHealth(db, health) {
+export async function flushRelayHealth(db, health, options = {}) {
   const writes = [];
   for (const [url, row] of health || []) {
     if (!row?.touched) continue;
@@ -670,7 +672,7 @@ export async function flushRelayHealth(db, health) {
       }),
     });
   }
-  await commitSets(db, writes);
+  await commitSets(db, writes, options);
   return writes.length;
 }
 
@@ -704,7 +706,9 @@ async function applyHandlePlans(db, plans, options) {
   for (const plan of plans) {
     const ref = db.collection(collection).doc(plan.handleId);
     const wrote = await db.runTransaction(async (tx) => {
+      const leaseUpdate = await readLeaseUpdate(tx, options);
       const snap = await tx.get(ref);
+      writeLeaseUpdate(tx, leaseUpdate);
       if (!snap.exists) return false;
       const data = snap.data() || {};
       const next = applyProfileToHandle(data, plan.snapshot);
@@ -747,7 +751,7 @@ async function readProfileCursor(db, runsCollection) {
   }
 }
 
-async function writeProfileCursor(db, runsCollection, afterId) {
+async function writeProfileCursor(db, runsCollection, afterId, options = {}) {
   await commitSets(db, [
     {
       collection: runsCollection,
@@ -757,7 +761,7 @@ async function writeProfileCursor(db, runsCollection, afterId) {
         updatedAt: new Date().toISOString(),
       },
     },
-  ]);
+  ], options);
 }
 
 async function seedRelayHealth(db, urls, health) {
@@ -792,8 +796,33 @@ function noteRelayHealth(health, url, ok, latencyMs) {
   });
 }
 
-async function commitSets(db, writes) {
+async function readLeaseUpdate(tx, options) {
+  if (typeof options.readLease !== "function") return null;
+  return options.readLease(tx);
+}
+
+function writeLeaseUpdate(tx, leaseUpdate) {
+  if (!leaseUpdate?.ref) return;
+  tx.set(leaseUpdate.ref, leaseUpdate.data, { merge: true });
+}
+
+async function commitSets(db, writes, options = {}) {
   if (!writes.length) return;
+  if (typeof options.readLease === "function") {
+    for (let index = 0; index < writes.length; index += 400) {
+      const chunk = writes.slice(index, index + 400);
+      await db.runTransaction(async (tx) => {
+        const leaseUpdate = await readLeaseUpdate(tx, options);
+        writeLeaseUpdate(tx, leaseUpdate);
+        for (const write of chunk) {
+          tx.set(db.collection(write.collection).doc(write.id), write.data, {
+            merge: true,
+          });
+        }
+      });
+    }
+    return;
+  }
   if (typeof db.batch === "function") {
     let batch = db.batch();
     let count = 0;

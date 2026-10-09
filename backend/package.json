@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "backfill": "node --env-file-if-exists=.env nostr-atlas/backfill.js",
+    "frontfill": "node --env-file-if-exists=.env nostr-atlas/frontfill.js",
     "project": "node --env-file-if-exists=.env nostr-atlas/projection.js",
     "test": "vitest run"
   },

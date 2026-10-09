@@ -723,7 +723,7 @@ async function commitProcessedPage(
 
 const HANDLE_WRITE_BATCH_SIZE = 50;
 
-async function commitHandleWritesBestEffort(
+export async function commitHandleWritesBestEffort(
   db,
   writes,
   handleStateCache,

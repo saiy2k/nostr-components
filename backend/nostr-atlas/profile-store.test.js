@@ -12,6 +12,7 @@ import {
   UNSETTLED_RETRY_MS,
   applyProfileToHandle,
   fetchReplaceableGrouped,
+  flushRelayHealth,
   listingMetadataFromKind0,
   preferNewerReplaceable,
   profileIsDue,
@@ -599,5 +600,34 @@ describe("shared profile routing vectors", () => {
         hints: [],
       }),
     ).toEqual(vectors.readFallback.expected);
+  });
+});
+
+describe("projection lease on profile writes", () => {
+  it("does not write relay health after the lease is lost", async () => {
+    const sets = [];
+    const db = {
+      collection() {
+        return { doc(id) { return { id }; } };
+      },
+      async runTransaction(fn) {
+        await fn({
+          get: async () => ({ exists: true, data: () => ({ token: "gone" }) }),
+          set: (ref) => sets.push(ref.id),
+        });
+      },
+    };
+    await expect(
+      flushRelayHealth(
+        db,
+        new Map([["wss://relay.damus.io/", { touched: true, consecutiveFailures: 1 }]]),
+        {
+          readLease: async () => {
+            throw new Error("projection-lease-lost");
+          },
+        },
+      ),
+    ).rejects.toThrow(/projection-lease-lost/);
+    expect(sets).toEqual([]);
   });
 });
