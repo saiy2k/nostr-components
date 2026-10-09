@@ -26,5 +26,11 @@ export const LIKE_BUTTON_PARAMETERS: ParameterDefinition[] = [
     defaultValue: 'Like',
     control: 'text',
   },
+  {
+    variable: 'compact',
+    description: 'Icon and numeric count only, in a short action row. Hides the label and help control.',
+    defaultValue: 'false',
+    control: 'boolean',
+  },
   ...COMMON_PARAMETERS,
 ];

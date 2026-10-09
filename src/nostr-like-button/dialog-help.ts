@@ -32,11 +32,11 @@ export const showHelpDialog = async (theme?: 'light' | 'dark'): Promise<void> =>
   // Set dialog content
   setTrustedInnerHTML(dialogComponent, `
     <div class="help-content">
-      <p>Like any webpage to show your appreciation! Your likes are stored on Nostr, a decentralized network you control—no accounts needed.</p>
+      <p>Like any webpage to show your appreciation! Connect a Nostr signer once to save your likes on Nostr and carry them with you across the web. There is no site-specific account to create.</p>
       <ul>
         <li>Like any webpage or article</li>
         <li>See who liked the content</li>
-        <li>Works with a browser extension like <a href="https://getalby.com" target="_blank" rel="noopener noreferrer">Alby</a> or nos2x</li>
+        <li>Set up once with a signer such as <a href="https://getalby.com" target="_blank" rel="noopener noreferrer">Alby</a> or nos2x</li>
       </ul>
     </div>
   `);

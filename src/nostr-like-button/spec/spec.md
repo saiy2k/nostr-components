@@ -247,8 +247,10 @@ Each reaction entry shows:
 **Header:** "What is a Like?"
 
 **Body:**
-- A like is a reaction stored on Nostr using NIP-25 kind 17 events
-- This component uses URL-based likes with kind 17 events
+- Like any webpage to show your appreciation
+- Likes are stored on Nostr using NIP-25 kind 17 URL reactions
+- Connect a Nostr signer once; there is no site-specific account to create
+- Set up once with a signer such as Alby or nos2x
 
 **Features:**
 - One-click liking of any URL
