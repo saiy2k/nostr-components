@@ -126,6 +126,7 @@ describe('renderLikeButton', () => {
     expect(html).not.toContain(' disabled');
     expect(html).toContain('aria-label="Failed to load likes"');
     expect(html).toContain('title="Failed to load likes"');
+    expect(html).toContain('<span class="compact-error">Failed to load likes</span>');
     expect(html).not.toContain('0 likes');
   });
 

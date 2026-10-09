@@ -129,6 +129,9 @@ function renderContainer(
   const helpIconHtml = compact
     ? ''
     : `<button type="button" class="help-icon" aria-label="What is a like?" title="What is a like?">?</button>`;
+  const compactErrorHtml = compact && isError
+    ? `<span class="compact-error">${actionLabel}</span>`
+    : '';
 
   return `
     <div class="nostr-like-button-container">
@@ -137,6 +140,7 @@ function renderContainer(
         ${isLoading && !compact ? '<span class="button-text-skeleton"></span>' : textContent}
         ${compact ? countHtml : ''}
       </button>
+      ${compactErrorHtml}
       ${compact ? '' : countHtml} ${helpIconHtml}
     </div>
   `;

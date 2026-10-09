@@ -202,6 +202,13 @@ export function getLikeButtonStyles(): string {
       box-shadow: inset 0 0 0 1px var(--nostrc-color-error-text);
     }
 
+    :host([compact].is-error) .compact-error {
+      color: var(--nostrc-color-error-text);
+      font-size: 13px;
+      line-height: 16px;
+      white-space: nowrap;
+    }
+
     .nostr-like-button-container {
       display: flex;
       align-items: center;
