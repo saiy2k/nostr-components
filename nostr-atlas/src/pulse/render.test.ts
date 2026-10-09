@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DisplayProfile, PulseActivity, PulseDomainRow } from "./api";
+import type { DisplayProfile, PulseActivity, PulseDomainPage, PulseDomainRow } from "./api";
 import {
   activityHtml,
   actorHtml,
@@ -9,8 +9,10 @@ import {
   formatSats,
   httpsPageUrl,
   mergeActivity,
+  overviewStats,
   reactionBadge,
   urlPathAndQuery,
+  urlTableHtml,
 } from "./render";
 
 const PUBKEY = "ab".repeat(32);
@@ -39,7 +41,8 @@ describe("Web Pulse rendering", () => {
     expect(reactionBadge("emoji", "🇺🇸👍")).toContain("🇺🇸");
     expect(reactionBadge("emoji", "🇺🇸👍")).not.toContain("👍");
     expect(reactionBadge("emoji", `a${"\u0301".repeat(20)}`)).not.toContain("\u0301");
-    expect(reactionBadge("like", "+")).toContain("+");
+    expect(reactionBadge("like", "+")).toContain('title="Like"');
+    expect(reactionBadge("dislike", "-")).toContain('title="Dislike"');
   });
 
   it("escapes text, links only https pages, and shows a path with its query", () => {
@@ -83,11 +86,28 @@ describe("Web Pulse rendering", () => {
     const items = mergeActivity(activity);
     expect(items.map((item) => item.kind)).toEqual(["reaction", "zap"]);
     const html = activityHtml(items, 7, new Map(), NOW, "ready");
-    expect(html).toContain("&lt;b&gt;thanks&lt;/b&gt;");
+    expect(html).not.toContain("thanks");
     expect(html).toContain("Anonymous");
     expect(html).not.toContain('href="http://example.com/secret"');
     expect(html).toContain('href="https://example.com/ok"');
     expect(html).toContain('aria-pressed="true">7D');
+    expect(html).toContain("Latest Activity");
+    expect(html).toContain("pulse-zap-lg");
+    expect(html).toContain("pulse-emoji");
+  });
+
+  it("puts icons beside the overview counts", () => {
+    const html = overviewStats({
+      ...emptyCounts,
+      domainCount: 3,
+    });
+    expect(html).toContain("Total Sats Zapped");
+    expect(html).toContain("Total Zaps");
+    expect(html).toContain("Total Reactions");
+    expect(html).toContain("Domains Tracked");
+    expect(html).toContain("pulse-stat-hero");
+    expect(html).toContain("M12 2C6.48 2 2 6.48 2 12");
+    expect(html).toContain("1,500");
   });
 
   it("links a named profile and drops an http avatar", () => {
@@ -108,5 +128,53 @@ describe("Web Pulse rendering", () => {
     expect(html).not.toContain("<img");
     expect(actorHtml(null, profiles)).toContain("Anonymous");
     expect(actorHtml(null, profiles)).not.toContain("href");
+  });
+
+  it("expands a URL as a person, badge, and comment", () => {
+    const page: PulseDomainPage = {
+      domain: "example.com",
+      totals: { ...emptyCounts, urlCount: 1, lastActivityAt: NOW },
+      urls: [
+        {
+          ...emptyCounts,
+          url: "https://example.com/a",
+          urlKey: "key",
+          lastActivityAt: NOW,
+        },
+      ],
+    };
+    const html = urlTableHtml(
+      page,
+      "sats",
+      new Map([
+        [
+          "key",
+          {
+            status: "ready",
+            items: mergeActivity({
+              zaps: [
+                {
+                  id: "cd".repeat(32),
+                  sats: 21,
+                  createdAt: NOW,
+                  senderPubkey: null,
+                  comment: `<b>thanks</b>`,
+                  url: "https://example.com/a",
+                },
+              ],
+              reactions: [],
+            }),
+          },
+        ],
+      ]),
+      new Map(),
+      "ready",
+      NOW,
+    );
+    expect(html).toContain("pulse-url-event");
+    expect(html).not.toContain("pulse-activity-url");
+    expect(html).toContain("&lt;b&gt;thanks&lt;/b&gt;");
+    expect(html).not.toContain("<b>thanks</b>");
+    expect(html).toContain("Anonymous");
   });
 });

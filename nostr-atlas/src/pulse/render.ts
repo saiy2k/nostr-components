@@ -45,7 +45,7 @@ const DOMAIN_COLUMNS: readonly { label: string; sort: OverviewSort | null }[] = 
 ];
 
 const URL_COLUMNS: readonly { label: string; sort: UrlSort | null }[] = [
-  { label: "URL", sort: null },
+  { label: "URL Path", sort: null },
   { label: "Total sats", sort: "sats" },
   { label: "Zaps", sort: "zaps" },
   { label: "Reactions", sort: "reactions" },
@@ -112,51 +112,86 @@ export function timeAgo(createdAt: number | null, nowSeconds: number): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+const BOLT_PATH = `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`;
+const HEART_PATH = `<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>`;
+const GLOBE_PATH = `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>`;
+const THUMB_UP = `<path d="M17.73 13.77C18.65 12.86 19.19 11.57 19 10.22C18.73 8.39 17.16 7 15.31 7H11.9L12.6 3.34C12.67 2.97 12.56 2.59 12.31 2.31C11.83 1.77 11 1.74 10.49 2.23L4 8.59V18H14.4C15.71 18 16.84 17.12 17.12 15.84L17.73 13.77Z"/><path d="M2 18H4V8H2V18Z"/>`;
+const THUMB_DOWN = `<path d="M6.27 10.23C5.35 11.14 4.81 12.43 5 13.78C5.27 15.61 6.84 17 8.69 17H12.1L11.4 20.66C11.33 21.03 11.44 21.41 11.69 21.69C12.17 22.23 13 22.26 13.51 21.77L20 15.41V6H9.6C8.29 6 7.16 6.88 6.88 8.16L6.27 10.23Z"/><path d="M22 6H20V16H22V6Z"/>`;
+
+type StatIcon = "bolt" | "heart" | "globe";
+type StatTone = "hero" | "zap" | "plain";
+
+function filledIcon(path: string, size: "md" | "lg"): string {
+  return `<svg class="pulse-stat-icon-${size}" viewBox="0 0 24 24" aria-hidden="true">${path}</svg>`;
+}
+
+function statIcon(icon: StatIcon, size: "md" | "lg"): string {
+  const path = icon === "bolt" ? BOLT_PATH : icon === "heart" ? HEART_PATH : GLOBE_PATH;
+  return filledIcon(path, size);
+}
+
 export function statCards(
-  cards: readonly { label: string; value: string; zap?: boolean }[],
+  cards: readonly {
+    label: string;
+    value: string;
+    icon: StatIcon;
+    iconSize?: "md" | "lg";
+    tone: StatTone;
+  }[],
 ): string {
   const columns = cards.length === 3 ? "pulse-stats-3" : "pulse-stats-4";
   return `<div class="pulse-stats ${columns}">${cards
-    .map(
-      (card) => `<article class="pulse-stat${card.zap ? " pulse-stat-zap" : ""}">
-        <p>${escapeHtml(card.label)}</p>
-        <strong>${escapeHtml(card.value)}</strong>
-      </article>`,
-    )
+    .map((card) => {
+      const tone = card.tone === "plain" ? "" : ` pulse-stat-${card.tone}`;
+      return `<article class="pulse-stat${tone}">
+        <span class="pulse-stat-icon">${statIcon(card.icon, card.iconSize ?? "md")}</span>
+        <div>
+          <strong>${escapeHtml(card.value)}</strong>
+          <p>${escapeHtml(card.label)}</p>
+        </div>
+      </article>`;
+    })
     .join("")}</div>`;
 }
 
 export function overviewStats(totals: PulseOverview["totals"]): string {
   return statCards([
-    { label: "Total sats zapped", value: formatMsatsAsSats(totals.zapMsats), zap: true },
-    { label: "Zaps", value: formatSats(totals.zapCount), zap: true },
-    { label: "Reactions", value: formatSats(totals.reactionCount) },
-    { label: "Domains tracked", value: formatSats(totals.domainCount) },
+    {
+      label: "Total Sats Zapped",
+      value: formatMsatsAsSats(totals.zapMsats),
+      icon: "bolt",
+      iconSize: "lg",
+      tone: "hero",
+    },
+    { label: "Total Zaps", value: formatSats(totals.zapCount), icon: "bolt", tone: "zap" },
+    { label: "Total Reactions", value: formatSats(totals.reactionCount), icon: "heart", tone: "plain" },
+    { label: "Domains Tracked", value: formatSats(totals.domainCount), icon: "globe", tone: "plain" },
   ]);
 }
 
 export function domainStats(totals: PulseDomainPage["totals"]): string {
   return statCards([
-    { label: "Total sats", value: formatMsatsAsSats(totals.zapMsats), zap: true },
-    { label: "Zaps", value: formatSats(totals.zapCount), zap: true },
-    { label: "Reactions", value: formatSats(totals.reactionCount) },
+    { label: "Total Sats", value: formatMsatsAsSats(totals.zapMsats), icon: "bolt", tone: "hero" },
+    { label: "Zaps", value: formatSats(totals.zapCount), icon: "bolt", tone: "zap" },
+    { label: "Reactions", value: formatSats(totals.reactionCount), icon: "heart", tone: "plain" },
   ]);
 }
 
 export function reactionBadge(reaction: string, content: string): string {
   if (reaction === "like") {
-    return `<span class="pulse-badge" title="Like">+</span>`;
+    return `<span class="pulse-react" title="Like"><svg viewBox="0 0 24 24" aria-hidden="true">${THUMB_UP}</svg></span>`;
   }
   if (reaction === "dislike") {
-    return `<span class="pulse-badge" title="Dislike">−</span>`;
+    return `<span class="pulse-react pulse-react-down" title="Dislike"><svg viewBox="0 0 24 24" aria-hidden="true">${THUMB_DOWN}</svg></span>`;
   }
   const grapheme = firstGrapheme(content);
-  if (!grapheme) return `<span class="pulse-badge">•</span>`;
-  return `<span class="pulse-badge pulse-badge-emoji">${escapeHtml(grapheme)}</span>`;
+  if (!grapheme) return `<span class="pulse-emoji">•</span>`;
+  return `<span class="pulse-emoji">${escapeHtml(grapheme)}</span>`;
 }
 
-export function zapBadge(sats: number): string {
-  return `<span class="pulse-badge pulse-badge-zap">${escapeHtml(formatSats(sats))} sats</span>`;
+export function zapBadge(sats: number, size: "sm" | "lg" = "sm"): string {
+  const sizeClass = size === "lg" ? "pulse-zap-lg" : "pulse-zap-sm";
+  return `<span class="pulse-zap ${sizeClass}"><svg viewBox="0 0 24 24" aria-hidden="true">${BOLT_PATH}</svg>${escapeHtml(formatSats(sats))}<span>sats</span></span>`;
 }
 
 export function actorHtml(
@@ -176,7 +211,8 @@ export function actorHtml(
   const avatar = picture
     ? `<img class="pulse-avatar" src="${escapeHtml(picture)}" alt="" />`
     : `<span class="pulse-avatar" aria-hidden="true"></span>`;
-  return `<a class="pulse-actor" href="${escapeHtml(`https://njump.me/${npub}`)}" target="_blank" rel="noreferrer">${avatar}<span>${escapeHtml(name || truncateNpub(npub))}</span></a>`;
+  const labelClass = name ? "" : ` class="pulse-handle"`;
+  return `<a class="pulse-actor" href="${escapeHtml(`https://njump.me/${npub}`)}" target="_blank" rel="noreferrer">${avatar}<span${labelClass}>${escapeHtml(name || truncateNpub(npub))}</span></a>`;
 }
 
 function pageLink(url: string, text: string): string {
@@ -249,7 +285,7 @@ export function activityHtml(
     body = `<ul class="pulse-activity-list">${items.map((item) => activityRow(item, profiles, nowSeconds)).join("")}</ul>`;
   }
   return `<div class="pulse-activity-head">
-      <h2>Latest activity</h2>
+      <h2>Latest Activity</h2>
       <div class="pulse-days" role="group" aria-label="Activity window">${tabs}</div>
     </div>
     ${body}`;
@@ -261,10 +297,9 @@ function activityRow(
   nowSeconds: number,
 ): string {
   const badge =
-    item.kind === "zap" ? zapBadge(item.sats ?? 0) : reactionBadge(item.reaction, item.content);
-  const comment = item.comment
-    ? `<p class="pulse-comment">${escapeHtml(item.comment)}</p>`
-    : "";
+    item.kind === "zap"
+      ? zapBadge(item.sats ?? 0, "lg")
+      : reactionBadge(item.reaction, item.content);
   const when =
     item.createdAt === null
       ? "—"
@@ -274,7 +309,6 @@ function activityRow(
       <span class="pulse-activity-url">${pageLink(item.url, item.url || "—")}</span>
       ${actorHtml(item.pubkey, profiles)}
       <span class="pulse-when">${when}</span>
-      ${comment}
     </li>`;
 }
 
@@ -341,7 +375,7 @@ export function urlTableHtml(
       return `<tr>
           <td>
             <button type="button" class="pulse-expand" data-expand="${escapeHtml(url.urlKey)}" aria-expanded="${open ? "true" : "false"}">
-              ${icon.chevronRight()}
+              <svg class="pulse-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l8 7-8 7z"/></svg>
               <span>${escapeHtml(path || "/")}</span>
             </button>
             ${opener}
@@ -361,18 +395,42 @@ export function urlTableHtml(
     </table></div>`;
 }
 
+function expansionRow(
+  item: ActivityItem,
+  profiles: ReadonlyMap<string, DisplayProfile>,
+  nowSeconds: number,
+): string {
+  const badge =
+    item.kind === "zap"
+      ? zapBadge(item.sats ?? 0, "sm")
+      : reactionBadge(item.reaction, item.content);
+  const comment = item.comment
+    ? `<p class="pulse-comment">${escapeHtml(item.comment)}</p>`
+    : "";
+  const when =
+    item.createdAt === null
+      ? "—"
+      : `<time datetime="${escapeHtml(new Date(item.createdAt * 1000).toISOString())}">${escapeHtml(timeAgo(item.createdAt, nowSeconds))}</time>`;
+  return `<li class="pulse-url-event">
+      ${actorHtml(item.pubkey, profiles)}
+      ${badge}
+      ${comment}
+      <span class="pulse-when">${when}</span>
+    </li>`;
+}
+
 function urlDetail(
   expansion: UrlExpansionView,
   profiles: ReadonlyMap<string, DisplayProfile>,
   nowSeconds: number,
 ): string {
-  let body = `<p class="pulse-note">Loading this URL…</p>`;
+  let body = `<p class="pulse-note">Loading reactions...</p>`;
   if (expansion.status === "error") body = `<p class="pulse-note">This URL could not be loaded.</p>`;
   else if (expansion.status === "ready" && expansion.items.length === 0) {
-    body = `<p class="pulse-note">No reactions or zaps for this URL.</p>`;
+    body = `<p class="pulse-note">No individual reactions found.</p>`;
   } else if (expansion.status === "ready") {
-    body = `<ul class="pulse-activity-list">${expansion.items
-      .map((item) => activityRow(item, profiles, nowSeconds))
+    body = `<ul class="pulse-url-events">${expansion.items
+      .map((item) => expansionRow(item, profiles, nowSeconds))
       .join("")}</ul>`;
   }
   return `<tr class="pulse-url-detail"><td colspan="5">${body}</td></tr>`;
@@ -381,7 +439,8 @@ function urlDetail(
 function sortHeader(label: string, sort: string | null, current: string): string {
   if (!sort) return `<th scope="col">${escapeHtml(label)}</th>`;
   const selected = sort === current;
-  return `<th scope="col" aria-sort="${selected ? "descending" : "none"}">
+  const zap = sort === "sats" || sort === "zaps" ? ` class="pulse-th-zap"` : "";
+  return `<th scope="col"${zap} aria-sort="${selected ? "descending" : "none"}">
       <button type="button" data-sort="${escapeHtml(sort)}"${selected ? ` aria-current="true"` : ""}>${escapeHtml(label)}</button>
     </th>`;
 }
