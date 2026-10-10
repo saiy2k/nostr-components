@@ -27441,6 +27441,8 @@ ${url}`;
     actionSeq = 0;
     isResyncingLikeCount = false;
     needsResyncLikeCount = false;
+    /** created_at of the reaction just published. A directory count older than this is ignored. */
+    pendingReactionAt = null;
     constructor() {
       super();
     }
@@ -27470,6 +27472,7 @@ ${url}`;
       if (name === "url" || name === "text") {
         if (name === "url") {
           this.actionSeq++;
+          this.pendingReactionAt = null;
         }
         this.likeActionStatus.set(2 /* Ready */);
         this.likeListStatus.set(1 /* Loading */);
@@ -27579,7 +27582,7 @@ ${url}`;
         }
         const result = await fetchLikesForUrl(pageUrl, this.getRelays());
         if (seq !== this.loadSeq) return;
-        this.likeCount = clampLikeCount(result.totalCount);
+        this.applyRefreshedCount(result);
         await this.applyViewerLike(pageUrl, result, seq);
         if (seq !== this.loadSeq) return;
         this.cachedLikeDetails = result;
@@ -27593,6 +27596,15 @@ ${url}`;
           this.render();
         }
       }
+    }
+    applyRefreshedCount(result) {
+      const pending = this.pendingReactionAt;
+      const activityAt = result.activityAt;
+      const directoryCount = activityAt !== void 0;
+      const confirmed = typeof activityAt === "number" && pending != null && activityAt >= pending;
+      if (pending != null && directoryCount && !confirmed) return;
+      this.likeCount = clampLikeCount(result.totalCount);
+      this.pendingReactionAt = null;
     }
     async applyViewerLike(pageUrl, result, seq) {
       if (result.isLiked === null) {
@@ -27748,6 +27760,7 @@ ${url}`;
         void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
           console.warn("[NostrLike] Failed to publish to write relays:", error);
         });
+        this.pendingReactionAt = Number(signedEvent.created_at);
         await this.updateLikeCount({ quiet: true });
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {
@@ -27790,6 +27803,7 @@ ${url}`;
         void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
           console.warn("[NostrLike] Failed to publish to write relays:", error);
         });
+        this.pendingReactionAt = Number(signedEvent.created_at);
         await this.updateLikeCount({ quiet: true });
         this.likeActionStatus.set(2 /* Ready */);
       } catch (error) {

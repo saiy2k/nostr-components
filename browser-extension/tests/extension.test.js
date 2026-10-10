@@ -2371,6 +2371,7 @@ describe('CSP-safe component and relay integration', function () {
       totalCount: 1,
       likedCount: 1,
       dislikedCount: 0,
+      activityAt: null,
       isLiked: null
     });
     expect(JSON.stringify(responses[0].message)).not.toContain('a'.repeat(64));

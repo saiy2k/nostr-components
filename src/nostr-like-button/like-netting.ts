@@ -18,6 +18,11 @@ export interface LikeCountResult {
    * A plain-page count leaves this unset; the button fills it from the details.
    */
   isLiked?: boolean | null;
+  /**
+   * Directory lastActivityAt for this page. Null when that row has no timestamp.
+   * Omitted when the count came from relays.
+   */
+  activityAt?: number | null;
 }
 
 function isLikeContent(content: string): boolean {

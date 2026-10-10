@@ -31,7 +31,7 @@ describe('Storybook CDN bundle scripts', () => {
   });
 
   it('uses workspace source locally and jsDelivr for the hosted build', () => {
-    expect(previewComponentScript(undefined)).toBe('/src/index.ts');
+    expect(previewComponentScript('development')).toBe('/src/index.ts');
     expect(previewComponentScript('production')).toBe(CDN_COMPONENT_BUNDLE);
   });
 

@@ -68,6 +68,8 @@ export default class NostrLike extends NostrBaseComponent {
   private actionSeq = 0;
   private isResyncingLikeCount = false;
   private needsResyncLikeCount = false;
+  /** created_at of the reaction just published. A directory count older than this is ignored. */
+  private pendingReactionAt: number | null = null;
 
   constructor() {
     super();
@@ -108,6 +110,7 @@ export default class NostrLike extends NostrBaseComponent {
       if (name === 'url') {
         // Invalidate any in-flight like/unlike action for the previous URL.
         this.actionSeq++;
+        this.pendingReactionAt = null;
       }
       this.likeActionStatus.set(NCStatus.Ready);
       this.likeListStatus.set(NCStatus.Loading);
@@ -246,7 +249,7 @@ export default class NostrLike extends NostrBaseComponent {
      
       const result = await fetchLikesForUrl(pageUrl, this.getRelays());
       if (seq !== this.loadSeq) return; // stale
-      this.likeCount = clampLikeCount(result.totalCount);
+      this.applyRefreshedCount(result);
       await this.applyViewerLike(pageUrl, result, seq);
       if (seq !== this.loadSeq) return;
       this.cachedLikeDetails = result;
@@ -260,6 +263,16 @@ export default class NostrLike extends NostrBaseComponent {
         this.render();
       }
     }
+  }
+
+  private applyRefreshedCount(result: LikeCountResult): void {
+    const pending = this.pendingReactionAt;
+    const activityAt = result.activityAt;
+    const directoryCount = activityAt !== undefined;
+    const confirmed = typeof activityAt === 'number' && pending != null && activityAt >= pending;
+    if (pending != null && directoryCount && !confirmed) return;
+    this.likeCount = clampLikeCount(result.totalCount);
+    this.pendingReactionAt = null;
   }
 
   private async applyViewerLike(
@@ -476,7 +489,7 @@ export default class NostrLike extends NostrBaseComponent {
         console.warn('[NostrLike] Failed to publish to write relays:', error);
       });
 
-      // Keep the optimistic count on screen until the directory total replaces it.
+      this.pendingReactionAt = Number(signedEvent.created_at);
       await this.updateLikeCount({ quiet: true });
       this.likeActionStatus.set(NCStatus.Ready);
     } catch (error) {
@@ -532,6 +545,7 @@ export default class NostrLike extends NostrBaseComponent {
         console.warn('[NostrLike] Failed to publish to write relays:', error);
       });
 
+      this.pendingReactionAt = Number(signedEvent.created_at);
       await this.updateLikeCount({ quiet: true });
       this.likeActionStatus.set(NCStatus.Ready);
     } catch (error) {

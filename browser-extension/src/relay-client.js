@@ -1117,9 +1117,11 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     for (const [key, entry] of activityCache) {
       if (key !== urlKey && !key.startsWith(urlKey + ':')) continue;
       found = true;
+      const activityAt = Number(activity.lastActivityAt);
       entry.row = Object.assign({}, entry.row, {
         likes: countOf(activity.likeCount),
-        dislikes: countOf(activity.dislikeCount)
+        dislikes: countOf(activity.dislikeCount),
+        activityAt: Number.isFinite(activityAt) ? activityAt : null
       });
       entry.expiresAt = Date.now() + ACTIVITY_CACHE_MS;
     }
@@ -1129,6 +1131,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
         recipient: null,
         likes: countOf(activity.likeCount),
         dislikes: countOf(activity.dislikeCount),
+        activityAt: Number.isFinite(Number(activity.lastActivityAt)) ? Number(activity.lastActivityAt) : null,
         zapCount: null,
         sats: null
       });
@@ -1405,10 +1408,12 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     if (local && remote && remote.eventId && remote.eventId === local.id) {
       forgetRecentReaction(local.id);
     }
+    const activityAt = Number(row.activityAt);
     return {
       totalCount: countOf(row.likes),
       likedCount: countOf(row.likes),
       dislikedCount: countOf(row.dislikes),
+      activityAt: Number.isFinite(activityAt) ? activityAt : null,
       isLiked: likedNow(local, remote, viewer.ok)
     };
   }

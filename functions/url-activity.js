@@ -70,6 +70,7 @@ function activityRow(item, url, recipient) {
     recipient: item.recipient,
     likes: countOf(url?.likeCount),
     dislikes: countOf(url?.dislikeCount),
+    activityAt: Number.isFinite(Number(url?.lastActivityAt)) ? Number(url.lastActivityAt) : null,
     zapCount: null,
     sats: null,
   };
