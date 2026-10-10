@@ -17,6 +17,7 @@ import {
   publishToWriteRelays,
   signEvent,
   isDirectoryWriteError,
+  restoredViewerLiked,
   LikeCountResult 
 } from './like-utils';
 import { ensureSignerForAction, hasConnectedSigner } from '../common/auth-onboarding';
@@ -27,7 +28,6 @@ import {
 } from '../common/relay-transport';
 import { relaysForComponent } from '../common/relay-routing';
 import { likeTagUrl } from '../common/url-tags';
-import { viewerIsLiked } from './like-netting';
 import { setTrustedInnerHTML } from '../common/trusted-html';
 import { getTrustedActionContext } from '../common/trusted-action-context';
 import { isTrustedUserEvent } from '../common/trusted-user-activation';
@@ -215,10 +215,13 @@ export default class NostrLike extends NostrBaseComponent {
 
   private async updateLikeCount(options?: { quiet?: boolean }) {
     const seq = ++this.loadSeq;
+    const pageUrl = this.getActionUrl();
+    if (restoredViewerLiked(pageUrl, [], getCachedPublicKey()) === true) {
+      this.isLiked = true;
+    }
     try {
       await this.ensureNostrConnected();
       if (seq !== this.loadSeq) return;
-      const pageUrl = this.getActionUrl();
       this.currentUrl = likeTagUrl(pageUrl) || '';
       if (!options?.quiet) {
         this.likeListStatus.set(NCStatus.Loading);
@@ -244,7 +247,7 @@ export default class NostrLike extends NostrBaseComponent {
       const result = await fetchLikesForUrl(pageUrl, this.getRelays());
       if (seq !== this.loadSeq) return; // stale
       this.likeCount = clampLikeCount(result.totalCount);
-      await this.applyViewerLike(result, seq);
+      await this.applyViewerLike(pageUrl, result, seq);
       if (seq !== this.loadSeq) return;
       this.cachedLikeDetails = result;
       this.likeListStatus.set(NCStatus.Ready);
@@ -259,7 +262,11 @@ export default class NostrLike extends NostrBaseComponent {
     }
   }
 
-  private async applyViewerLike(result: LikeCountResult, seq: number): Promise<void> {
+  private async applyViewerLike(
+    pageUrl: string,
+    result: LikeCountResult,
+    seq: number,
+  ): Promise<void> {
     if (result.isLiked === null) {
       this.isLiked = null;
       return;
@@ -268,10 +275,13 @@ export default class NostrLike extends NostrBaseComponent {
       this.isLiked = result.isLiked;
       return;
     }
-    if (!hasConnectedSigner()) return;
-    const pubkey = getCachedPublicKey() ?? (await getPublicKey());
-    if (seq !== this.loadSeq || !pubkey) return;
-    this.isLiked = viewerIsLiked(result.likeDetails, pubkey);
+    let decided = restoredViewerLiked(pageUrl, result.likeDetails, getCachedPublicKey());
+    if (decided === null && hasConnectedSigner()) {
+      const pubkey = await getPublicKey();
+      if (seq !== this.loadSeq) return;
+      decided = restoredViewerLiked(pageUrl, result.likeDetails, pubkey);
+    }
+    if (decided !== null) this.isLiked = decided;
   }
 
   private queueAuthoritativeCountResync(): void {

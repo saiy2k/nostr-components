@@ -1,4 +1,5 @@
 import type { StorybookConfig } from '@storybook/web-components-vite';
+import { previewComponentScript } from './preview-script';
 
 const getStories = () => {
   if (process.env.STORYBOOK_ENV === 'production') {
@@ -30,8 +31,9 @@ const config: StorybookConfig = {
     name: '@storybook/web-components-vite',
     options: {},
   },
-  // Components load from jsDelivr in preview-head.html; only local images are served here.
   staticDirs: [{ from: '../images', to: '/images' }],
+  previewHead: (head) =>
+    `${head}\n<script type="module" src="${previewComponentScript()}"></script>\n`,
   // SPA fallback so /zap-button deep links work in `storybook dev`.
   async viteFinal(config) {
     return { ...config, appType: 'spa' };

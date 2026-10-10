@@ -7,6 +7,7 @@ import {
   hasUserLiked,
   isDirectoryWriteError,
   publishSignedReaction,
+  restoredViewerLiked,
   DIRECTORY_WRITE_ERROR,
 } from '../like-utils';
 
@@ -119,6 +120,41 @@ describe('Like component relay transport', () => {
       '#i': [STATUS_URL],
       limit: 1,
     });
+  });
+
+  it('restores liked from the saved reaction when the signer is not loaded', async () => {
+    const pubkey = 'c'.repeat(64);
+    const store = new Map<string, string>();
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    });
+    await publishSignedReaction(
+      {
+        id: '7'.repeat(64),
+        pubkey,
+        created_at: 40,
+        kind: 17,
+        content: '+',
+        tags: [['i', STATUS_URL]],
+      },
+      RELAYS,
+      async () => {},
+    );
+
+    expect(restoredViewerLiked(STATUS_URL, [], null)).toBe(true);
+    expect(restoredViewerLiked(STATUS_URL, [{
+      authorPubkey: pubkey,
+      date: new Date(80 * 1000),
+      content: '-',
+    }], null)).toBe(false);
   });
 
   it('throws when the host does not know whether the page is liked', async () => {

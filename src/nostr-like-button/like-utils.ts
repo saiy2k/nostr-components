@@ -108,14 +108,50 @@ function forgetLocalReaction(id: string): void {
   writeLocalReactions(readLocalReactions().filter((row) => row.id !== id));
 }
 
-function readLocalReaction(url: string, pubkey: string): LocalReaction | null {
+function pageReactionUrls(url: string): Set<string> {
   const urls = new Set(likeFilterUrls(url));
   const tag = likeTagUrl(url);
   if (tag) urls.add(tag);
+  if (url) urls.add(url);
+  return urls;
+}
+
+function readLocalReaction(url: string, pubkey: string): LocalReaction | null {
+  const urls = pageReactionUrls(url);
   const normalized = pubkey.toLowerCase();
   return readLocalReactions().find(
     (row) => row.pubkey === normalized && urls.has(row.url),
   ) ?? null;
+}
+
+/**
+ * Whether this browser's signer currently likes the page.
+ * Uses the reaction saved at publish time even when window.nostr is not
+ * loaded yet, then lets a newer relay reaction replace it.
+ * Null means this page has no saved signer to check.
+ */
+export function restoredViewerLiked(
+  url: string,
+  likeDetails: LikeDetails[],
+  pubkey: string | null,
+): boolean | null {
+  const urls = pageReactionUrls(url);
+  const normalized = pubkey?.toLowerCase() || null;
+  const local = readLocalReactions()
+    .filter((row) => urls.has(row.url) && (!normalized || row.pubkey === normalized))
+    .sort((a, b) => b.created_at - a.created_at || (a.id < b.id ? 1 : -1))[0];
+  const viewer = normalized || local?.pubkey || null;
+  if (!viewer) return null;
+
+  const relay = likeDetails.find(
+    (detail) => detail.authorPubkey.toLowerCase() === viewer,
+  );
+  const relayAt = relay ? Math.floor(relay.date.getTime() / 1000) : null;
+  if (relay && (local == null || relayAt! >= local.created_at)) {
+    return relay.content === '+' || relay.content === '';
+  }
+  if (local) return local.content === '+' || local.content === '';
+  return false;
 }
 
 function latestViewerReaction(events: Array<{ created_at?: number; id?: string } | null>): any | null {
