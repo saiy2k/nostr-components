@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: MIT
 
 import type { Event } from 'nostr-tools';
-import {
-  DIRECTORY_API_ORIGIN,
-  INDEXER_RELAYS,
-  PROFILE_ARCHIVE_RELAYS,
-} from '../common/constants';
+import { INDEXER_RELAYS, PROFILE_ARCHIVE_RELAYS } from '../common/constants';
 import { cloneVerifiedEvent } from '../common/nostr-event';
 import { queryRelays } from '../common/relay-routing';
-import { getRelayTransport, httpGetJson } from '../common/relay-transport';
+import { getRelayTransport } from '../common/relay-transport';
 
 const PROFILE_BATCH_SIZE = 50;
 const HEX_64 = /^[0-9a-f]{64}$/;
 
 export interface ZapperProfileSources {
   queryKind0(relays: string[], authors: string[]): Promise<unknown[]>;
-  fetchSignedProfiles(authors: string[]): Promise<unknown[]>;
 }
 
 /** Kind 0 lookup relays: indexers, archives, and the button's own relays. */
@@ -41,19 +36,6 @@ export function zapperPubkeyList(authorIds: string[]): string[] {
     pubkeys.push(pubkey);
   }
   return pubkeys;
-}
-
-export function signedProfileEventsFromLookup(body: unknown): unknown[] {
-  if (!body || typeof body !== 'object') return [];
-  const profiles = (body as { profiles?: unknown }).profiles;
-  if (!Array.isArray(profiles)) return [];
-  const events: unknown[] = [];
-  for (const row of profiles) {
-    if (!row || typeof row !== 'object') continue;
-    const event = (row as { profileEvent?: unknown }).profileEvent;
-    if (event) events.push(event);
-  }
-  return events;
 }
 
 function rememberProfile(
@@ -104,22 +86,14 @@ async function queryKind0(
   return result.events;
 }
 
-async function fetchSignedProfiles(authors: string[]): Promise<unknown[]> {
-  const url = new URL(`${DIRECTORY_API_ORIGIN}/lookupNostrProfiles`);
-  url.searchParams.set('pubkeys', authors.join(','));
-  const { status, json } = await httpGetJson(url.toString());
-  if (status < 200 || status >= 300) return [];
-  return signedProfileEventsFromLookup(json);
-}
-
 const defaultSources: ZapperProfileSources = {
   queryKind0,
-  fetchSignedProfiles,
 };
 
 /**
- * Kind 0 from indexer and archive relays, in parallel with signed profiles
- * from the directory API. A host `getProfiles` result is used when present.
+ * Injected x.com and YouTube buttons ask the host for profiles. That host
+ * reads the directory API. A generic site has no host, so kind 0 comes from
+ * indexer, archive, and hint relays.
  */
 export async function loadZapperProfiles(
   authorIds: string[],
@@ -131,25 +105,15 @@ export async function loadZapperProfiles(
   const found = new Map<string, Event>();
   if (ids.length === 0) return found;
 
-  const transport = getRelayTransport();
   const requested = new Set(ids);
-  const relayList = zapperProfileRelays(relays);
-  const getProfiles = transport?.getProfiles;
-  const hostProfiles =
+  const getProfiles = getRelayTransport()?.getProfiles;
+  const events =
     actionId && getProfiles
-      ? collectBatches(ids, (batch) => getProfiles(actionId, batch))
-      : Promise.resolve([] as unknown[]);
+      ? await collectBatches(ids, (batch) => getProfiles(actionId, batch))
+      : await collectBatches(ids, (batch) =>
+          sources.queryKind0(zapperProfileRelays(relays), batch),
+        );
 
-  const [relayEvents, directoryEvents, hostedEvents] = await Promise.all([
-    relayList.length
-      ? collectBatches(ids, (batch) => sources.queryKind0(relayList, batch))
-      : Promise.resolve([] as unknown[]),
-    collectBatches(ids, (batch) => sources.fetchSignedProfiles(batch)),
-    hostProfiles,
-  ]);
-
-  for (const event of [...relayEvents, ...directoryEvents, ...hostedEvents]) {
-    rememberProfile(found, event, requested);
-  }
+  for (const event of events) rememberProfile(found, event, requested);
   return found;
 }

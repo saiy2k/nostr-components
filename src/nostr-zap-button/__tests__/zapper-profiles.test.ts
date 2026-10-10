@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
 import { zapperDisplayName } from '../render-zap-entry';
-import {
-  loadZapperProfiles,
-  signedProfileEventsFromLookup,
-  zapperProfileRelays,
-} from '../zapper-profiles';
+import { loadZapperProfiles, zapperProfileRelays } from '../zapper-profiles';
 import { INDEXER_RELAYS, PROFILE_ARCHIVE_RELAYS } from '../../common/constants';
 
 function profileEvent(
@@ -26,8 +22,13 @@ function profileEvent(
   );
 }
 
+afterEach(() => {
+  delete (globalThis as { __nostrComponentsRelayTransport?: unknown })
+    .__nostrComponentsRelayTransport;
+});
+
 describe('zapper profiles', () => {
-  it('queries indexer relays and the directory API in parallel', async () => {
+  it('queries indexer relays directly on a generic site', async () => {
     const secret = generateSecretKey();
     const pubkey = getPublicKey(secret);
     const profile = profileEvent(
@@ -35,34 +36,20 @@ describe('zapper profiles', () => {
       { display_name: 'Sai', picture: 'https://cdn.example/sai.png' },
       20,
     );
-    let releaseRelay: () => void = () => {};
-    const gate = new Promise<void>((resolve) => {
-      releaseRelay = resolve;
-    });
-    const seen: string[] = [];
     let queriedRelays: string[] = [];
 
-    const pending = loadZapperProfiles(
+    const profiles = await loadZapperProfiles(
       [pubkey],
       ['wss://hint.example'],
       undefined,
       {
         queryKind0: async (relays) => {
-          seen.push('relay');
           queriedRelays = relays;
-          await gate;
           return [profile];
-        },
-        fetchSignedProfiles: async (authors) => {
-          seen.push('directory');
-          expect(authors).toEqual([pubkey]);
-          return [];
         },
       },
     );
 
-    await Promise.resolve();
-    expect(seen).toEqual(['relay', 'directory']);
     expect(queriedRelays).toEqual(
       expect.arrayContaining([
         ...INDEXER_RELAYS,
@@ -70,15 +57,43 @@ describe('zapper profiles', () => {
         'wss://hint.example',
       ]),
     );
-    releaseRelay();
-
-    const profiles = await pending;
     const content = JSON.parse(profiles.get(pubkey)?.content || '{}');
     expect(zapperDisplayName(pubkey, content)).toBe('Sai');
     expect(content.picture).toBe('https://cdn.example/sai.png');
   });
 
-  it('prefers the newer signed profile and ignores an unsigned one', async () => {
+  it('uses the host profile lookup for an injected x.com or YouTube button', async () => {
+    const secret = generateSecretKey();
+    const pubkey = getPublicKey(secret);
+    const profile = profileEvent(secret, { display_name: 'Sai' }, 20);
+    const actionId = 'a'.repeat(64);
+    const getProfiles = vi.fn().mockResolvedValue([profile]);
+    const query = vi.fn();
+    const queryKind0 = vi.fn();
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query,
+        publish: vi.fn(),
+        getProfiles,
+      },
+    });
+
+    const profiles = await loadZapperProfiles(
+      [pubkey],
+      ['wss://hint.example'],
+      actionId,
+      { queryKind0 },
+    );
+
+    expect(getProfiles).toHaveBeenCalledWith(actionId, [pubkey]);
+    expect(queryKind0).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+    expect(zapperDisplayName(pubkey, JSON.parse(profiles.get(pubkey)?.content || '{}'))).toBe(
+      'Sai',
+    );
+  });
+
+  it('keeps a newer verified profile and ignores an unsigned one', async () => {
     const secret = generateSecretKey();
     const pubkey = getPublicKey(secret);
     const older = profileEvent(secret, { name: 'old' }, 10);
@@ -88,34 +103,13 @@ describe('zapper profiles', () => {
       content: JSON.stringify({ display_name: 'Spoofed' }),
     };
 
-    const profiles = await loadZapperProfiles(
-      [pubkey.toUpperCase()],
-      [],
-      undefined,
-      {
-        queryKind0: async () => [older],
-        fetchSignedProfiles: async () => [spoofed, newer],
-      },
-    );
+    const profiles = await loadZapperProfiles([pubkey.toUpperCase()], [], undefined, {
+      queryKind0: async () => [older, spoofed, newer],
+    });
 
     expect(JSON.parse(profiles.get(pubkey)?.content || '{}').display_name).toBe(
       'Newer',
     );
-    expect(zapperDisplayName(pubkey, { name: 'old' })).toBe('old');
-  });
-
-  it('reads signed profile events from a directory lookup body', () => {
-    const secret = generateSecretKey();
-    const event = profileEvent(secret, { name: 'Sai' }, 1);
-    expect(
-      signedProfileEventsFromLookup({
-        profiles: [
-          { pubkey: event.pubkey, profileEvent: event },
-          { pubkey: 'ab' },
-        ],
-      }),
-    ).toEqual([event]);
-    expect(signedProfileEventsFromLookup(null)).toEqual([]);
   });
 
   it('includes lookup and indexer relays', () => {
