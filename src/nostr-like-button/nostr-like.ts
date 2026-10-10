@@ -333,7 +333,8 @@ export default class NostrLike extends NostrBaseComponent {
   ): void {
     if (didApplyOptimisticUpdate && isDirectoryWriteError(error)) {
       const errorMessage = error instanceof Error ? error.message : fallbackMessage;
-      this.likeActionStatus.set(NCStatus.Error, errorMessage);
+      console.warn('[NostrLike]', errorMessage);
+      this.likeActionStatus.set(NCStatus.Ready);
       return;
     }
     this.handleLikeMutationFailure(

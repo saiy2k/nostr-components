@@ -1242,7 +1242,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
       return localEvent.content === '+' || localEvent.content === '';
     }
     if (viewerOk && remote) return reactionIsLike(remote.content, remote.reaction);
-    if (viewerOk) return false;
+    // A completed list with no row can mean "not backfilled" as well as "not liked".
     return null;
   }
 

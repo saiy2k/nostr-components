@@ -27644,7 +27644,8 @@ ${url}`;
     failLikeMutation(error, snapshot, didApplyOptimisticUpdate, fallbackMessage) {
       if (didApplyOptimisticUpdate && isDirectoryWriteError(error)) {
         const errorMessage = error instanceof Error ? error.message : fallbackMessage;
-        this.likeActionStatus.set(3 /* Error */, errorMessage);
+        console.warn("[NostrLike]", errorMessage);
+        this.likeActionStatus.set(2 /* Ready */);
         return;
       }
       this.handleLikeMutationFailure(

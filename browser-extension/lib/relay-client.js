@@ -8566,7 +8566,6 @@
         return localEvent.content === "+" || localEvent.content === "";
       }
       if (viewerOk && remote) return reactionIsLike(remote.content, remote.reaction);
-      if (viewerOk) return false;
       return null;
     }
     async function pushUrlEvent(event, relay) {
