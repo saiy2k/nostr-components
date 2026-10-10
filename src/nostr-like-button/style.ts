@@ -42,6 +42,13 @@ export function getLikeButtonStyles(): string {
       font-size: var(--nostrc-like-btn-font-size);
     }
 
+    :host([data-theme="dark"]:not([compact])) {
+      --nostrc-like-btn-liked-bg: #12345a;
+      --nostrc-like-btn-liked-color: #e8f2ff;
+      --nostrc-like-btn-liked-border: #8ab4f8;
+      --nostrc-like-btn-liked-hover-bg: #1a3f6b;
+    }
+
     /* Compact action-row mode used by dense host UIs such as X timelines. */
     :host([compact]) {
       --nostrc-icon-height: 18px;
@@ -79,14 +86,15 @@ export function getLikeButtonStyles(): string {
     :host([compact]) .nostr-like-button-container {
       justify-content: center;
       gap: 2px;
-      width: 100%;
-      min-width: 0;
+      flex: 0 0 auto;
+      width: auto;
     }
 
     :host([compact]) .nostr-like-button {
       box-sizing: border-box;
-      flex: 1 1 auto;
-      width: 100%;
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 34px;
       border-radius: 9999px;
       justify-content: center;
       cursor: pointer;
@@ -186,7 +194,19 @@ export function getLikeButtonStyles(): string {
     :host([compact].is-error) .nostr-like-button-container {
       border: 0;
       padding: 0;
-      color: var(--nostrc-like-btn-color);
+    }
+
+    :host([compact].is-error) .nostr-like-button,
+    :host([compact].is-error) .nostr-like-button:hover {
+      color: var(--nostrc-color-error-text);
+      box-shadow: inset 0 0 0 1px var(--nostrc-color-error-text);
+    }
+
+    :host([compact].is-error) .compact-error {
+      color: var(--nostrc-color-error-text);
+      font-size: 13px;
+      line-height: 16px;
+      white-space: nowrap;
     }
 
     .nostr-like-button-container {
@@ -268,6 +288,11 @@ export function getLikeButtonStyles(): string {
       text-decoration: underline;
       text-decoration-color: transparent;
       transition: text-decoration-color 0.2s ease, color 0.2s ease;
+    }
+
+    :host(:not([compact])) .like-count {
+      display: inline-block;
+      min-width: 80px;
     }
 
     /* Clickable like count */

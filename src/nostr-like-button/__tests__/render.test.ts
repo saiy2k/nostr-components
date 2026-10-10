@@ -35,6 +35,7 @@ describe('renderLikeButton', () => {
     expect(html).not.toContain(' disabled');
     expect(html).not.toContain('aria-busy');
     expect(html).toContain('>Like</span>');
+    expect(html).toContain('>0 likes</span>');
   });
 
   it('renders compact action-row markup with a numeric count', () => {
@@ -123,14 +124,20 @@ describe('renderLikeButton', () => {
     });
 
     expect(html).not.toContain(' disabled');
-    expect(html).toContain('aria-label="Nostr Like failed. Select to retry."');
+    expect(html).toContain('aria-label="Failed to load likes"');
+    expect(html).toContain('title="Failed to load likes"');
+    expect(html).toContain('<span class="compact-error">Failed to load likes</span>');
+    expect(html).not.toContain('0 likes');
   });
 
   it('gives compact actions a full-width target and a legible icon stroke', () => {
     const styles = getLikeButtonStyles();
 
     expect(styles).toMatch(
-      /:host\(\[compact\]\) \.nostr-like-button \{[^}]*width: 100%/s,
+      /:host\(\[compact\]\) \.nostr-like-button \{[^}]*width: auto/s,
+    );
+    expect(styles).toMatch(
+      /:host\(\[compact\]\.is-error\) \.nostr-like-button[\s\S]*box-shadow: inset 0 0 0 1px var\(--nostrc-color-error-text\)/,
     );
     expect(styles).toMatch(
       /:host\(\[compact\]\) \.nostr-like-button svg path \{[^}]*stroke-width: 7/s,
@@ -147,5 +154,26 @@ describe('renderLikeButton', () => {
     expect(styles).toMatch(
       /:host\(\[compact\]\[data-surface="youtube"\]\) \.nostr-like-button\s*\{[^}]*min-width: 40px/s,
     );
+  });
+
+  it('keeps the dark liked icon on the same color as the pill label', () => {
+    const styles = getLikeButtonStyles();
+    const html = renderLikeButton({
+      isLoading: false,
+      isError: false,
+      errorMessage: '',
+      buttonText: 'Like',
+      isLiked: true,
+      likeCount: 1,
+      theme: 'dark',
+    });
+
+    expect(styles).toContain(':host([data-theme="dark"]:not([compact]))');
+    expect(styles).toContain('--nostrc-like-btn-liked-bg: #12345a');
+    expect(styles).toContain('--nostrc-like-btn-liked-color: #e8f2ff');
+    expect(styles).toContain('--nostrc-like-btn-liked-hover-bg: #1a3f6b');
+    expect(html).toContain('fill="currentColor"');
+    expect(html).not.toContain('#8ab4f8');
+    expect(html).not.toContain('#1877f2');
   });
 });
