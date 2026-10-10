@@ -31,7 +31,10 @@ export interface NostrRelayTransport {
     totalCount: number;
     likedCount: number;
     dislikedCount: number;
-    isLiked: boolean;
+    /** Null when the viewer lookup failed and the host will not guess. */
+    isLiked: boolean | null;
+    /** Directory lastActivityAt. Null when the row has no timestamp. */
+    activityAt?: number | null;
   }>;
   publish(
     relays: string[],

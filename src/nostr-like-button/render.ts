@@ -5,7 +5,7 @@ import { IRenderOptions } from '../base/render-options';
 
 export interface RenderLikeButtonOptions extends IRenderOptions {
   buttonText: string;
-  isLiked: boolean;
+  isLiked: boolean | null;
   likeCount: number;
   hasLikes?: boolean;
   isCountLoading?: boolean;
@@ -44,10 +44,12 @@ export function renderLikeButton({
     return renderError(errorMessage || '');
   }
 
-  const iconContent = getThumbsUpIcon(isLiked, theme);
-  const textContent = compact
+  const liked = isLiked === true;
+  const unknown = isLiked === null;
+  const iconContent = getThumbsUpIcon(liked, theme);
+  const textContent = compact || unknown
     ? ''
-    : isLiked
+    : liked
       ? `<span>Liked</span>`
       : `<span>${escapeHtml(buttonText)}</span>`;
 
@@ -89,7 +91,7 @@ function renderContainer(
   textContent: string,
   likeCount: number,
   hasLikes: boolean = false,
-  isLiked: boolean = false,
+  isLiked: boolean | null = false,
   isLoading: boolean = false,
   isCountLoading: boolean = false,
   compact: boolean = false,
@@ -105,20 +107,29 @@ function renderContainer(
     countHtml = `<span class="like-count${canOpenLikers ? ' clickable' : ''}"${canOpenLikers ? ' role="button" tabindex="0" aria-label="View likers"' : ''}>${countText}</span>`;
   }
 
-  const buttonClass = isLiked ? 'nostr-like-button liked' : 'nostr-like-button';
+  const liked = isLiked === true;
+  const unknown = isLiked === null;
+  const buttonClass = liked ? 'nostr-like-button liked' : 'nostr-like-button';
   const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : '';
   const actionLabel = isError
     ? 'Nostr Like failed. Select to retry.'
-    : isLiked
-      ? 'Unlike this post with Nostr'
-      : 'Like this post with Nostr';
+    : unknown
+      ? 'Like state unknown'
+      : liked
+        ? 'Unlike this post with Nostr'
+        : 'Like this post with Nostr';
+  const pressed = unknown
+    ? ' aria-pressed="mixed"'
+    : liked
+      ? ' aria-pressed="true"'
+      : ' aria-pressed="false"';
   const helpIconHtml = compact
     ? ''
     : `<button type="button" class="help-icon" aria-label="What is a like?" title="What is a like?">?</button>`;
 
   return `
     <div class="nostr-like-button-container">
-      <button type="button" class="${buttonClass}" aria-label="${actionLabel}" title="${actionLabel}"${disabledAttrs}${isLiked ? ' aria-pressed="true"' : ' aria-pressed="false"'}>
+      <button type="button" class="${buttonClass}" aria-label="${actionLabel}" title="${actionLabel}"${disabledAttrs}${pressed}>
         ${iconContent}
         ${isLoading && !compact ? '<span class="button-text-skeleton"></span>' : textContent}
         ${compact ? countHtml : ''}

@@ -115,8 +115,11 @@ createUnlikeEvent(url):
   - tags: [['k', 'web'], ['i', normalizedUrl]]
 
 hasUserLiked(url, userPubkey, relays):
-  - Query user's kind 17 events for this URL (limit 1)
-  - Return true if latest content is '+' or ''
+  - A host transport reads `getLikeState`. `isLiked: null` throws, so a failed lookup does not publish another like
+  - Otherwise query the viewer's kind 17 events and keep the newest by `created_at`
+  - A local reaction remembered at publish time wins when it is newer, including when the query is empty
+  - Return true if that reaction's content is '+' or ''
+  - A thrown lookup is rethrown
 ```
 ### Reused Utilities
 - `formatRelativeTime()` from `src/common/utils.ts`

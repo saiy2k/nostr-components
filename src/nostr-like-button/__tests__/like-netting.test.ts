@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Event } from 'nostr-tools';
 import vectors from '../../../backend/nostr-pulse/reaction-vectors.json';
-import { netLikesByPubkey } from '../like-netting';
+import { netLikesByPubkey, viewerIsLiked } from '../like-netting';
 
 function reaction(
   pubkey: string,
@@ -63,6 +63,10 @@ describe('netLikesByPubkey', () => {
       const result = netLikesByPubkey([reaction('aaa', row.content, 1, 'bucket')]);
       if (row.bucket === 'like') expect(result.likedCount).toBe(1);
       if (row.bucket === 'dislike') expect(result.dislikedCount).toBe(1);
+      if (row.bucket === 'cleared') {
+        expect(result.likedCount).toBe(0);
+        expect(result.totalCount).toBe(0);
+      }
       if (row.bucket === 'emoji') {
         expect(result.likedCount).toBe(0);
         expect(result.dislikedCount).toBe(0);
@@ -81,5 +85,19 @@ describe('netLikesByPubkey', () => {
         winner?.content,
       ]);
     }
+  });
+
+  it('reports the viewer as liked when their newest reaction is a like', () => {
+    const pubkey = 'AbC'.padEnd(64, 'd');
+    const result = netLikesByPubkey([
+      reaction(pubkey, '+', 10),
+      reaction(pubkey, '-', 20),
+      reaction(pubkey, '+', 30),
+      reaction('eee', '-', 40),
+    ]);
+
+    expect(viewerIsLiked(result.likeDetails, pubkey.toLowerCase())).toBe(true);
+    expect(viewerIsLiked(result.likeDetails, 'eee')).toBe(false);
+    expect(viewerIsLiked(result.likeDetails, 'f'.repeat(64))).toBe(false);
   });
 });

@@ -61,7 +61,7 @@ None - works out of the box with current page URL.
 ### Optional Attributes
 
 - `url` (string) - URL to like/unlike (default: current page URL)
-  - URLs are normalized for consistency (normalizeURL from nostr-tools)
+  - The page identity drops `utm_*`, `fbclid`, `gclid`, and `mc_cid`
   - Without this attribute, the component automatically uses the current page URL
 - `text` (string, default: "Like") - Button text (max 32 chars)
 - `compact` (boolean) - Render only the icon and numeric count in a 34px-tall action row; hides the text and help control
@@ -105,7 +105,7 @@ Liked:
 (button has blue background/text, text changes to "Liked")
 ```
 
-Note: The count is each pubkey's newest reaction. A newer unlike replaces that pubkey's like.
+Note: The count is each pubkey's newest reaction. A newer unlike replaces that pubkey's like and is not counted as a dislike. On load, a connected signer's cached public key is matched to those reactions, so a reload shows Liked when that pubkey's newest reaction is `+`. A failed viewer lookup is not shown as unliked.
 
 Loading:
 ```text

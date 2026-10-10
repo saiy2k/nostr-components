@@ -91,6 +91,26 @@ describe('renderLikeButton', () => {
     ).toBe(true);
   });
 
+  it('does not paint an unknown liked state as unliked', () => {
+    const html = renderLikeButton({
+      isLoading: false,
+      isError: false,
+      errorMessage: '',
+      buttonText: 'Like',
+      isLiked: null,
+      likeCount: 1,
+    });
+
+    expect(html).toContain('aria-pressed="mixed"');
+    expect(html).toContain('aria-label="Like state unknown"');
+    expect(html).not.toContain('aria-pressed="false"');
+    expect(html).not.toContain('aria-pressed="true"');
+    expect(html).not.toContain('nostr-like-button liked');
+    expect(html).not.toContain('>Like</span>');
+    expect(html).not.toContain('>Liked</span>');
+    expect(html).toContain('1 like');
+  });
+
   it('keeps compact actions retryable after a background relay error', () => {
     const html = renderLikeButton({
       isLoading: false,

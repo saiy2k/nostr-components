@@ -164,6 +164,45 @@ describe('Recent reaction storage', function () {
     expect(await extension.storage.getRecentReactions(videoUrl)).toEqual([reaction]);
     expect(JSON.stringify(values)).toContain(reaction.id);
   });
+
+  it('keeps a recent reaction until its event id is forgotten', async function () {
+    const values = {};
+    globalThis.chrome = {
+      storage: {
+        local: {
+          get(keys, callback) {
+            const result = {};
+            for (const key of [].concat(keys)) result[key] = values[key];
+            callback(result);
+          },
+          set(nextValues, callback) {
+            Object.assign(values, nextValues);
+            callback();
+          }
+        }
+      }
+    };
+    const videoUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    const reaction = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [
+          ['k', 'web'],
+          ['i', videoUrl]
+        ],
+        created_at: 1234567890
+      },
+      new Uint8Array(32).fill(9)
+    );
+
+    await extension.storage.setRecentReaction(reaction, 1);
+    const later = Date.now() + 10 * 60 * 1000;
+    vi.spyOn(Date, 'now').mockReturnValue(later);
+    expect(await extension.storage.getRecentReactions(videoUrl)).toEqual([reaction]);
+    await extension.storage.forgetRecentReaction(reaction.id);
+    expect(await extension.storage.getRecentReactions(videoUrl)).toEqual([]);
+  });
 });
 
 describe('Zap action integration', function () {
@@ -2332,11 +2371,13 @@ describe('CSP-safe component and relay integration', function () {
       totalCount: 1,
       likedCount: 1,
       dislikedCount: 0,
-      isLiked: false
+      activityAt: null,
+      isLiked: null
     });
     expect(JSON.stringify(responses[0].message)).not.toContain('a'.repeat(64));
     expect(responses[3].message.ok).toBe(true);
     expect(responses[4].message.result).toMatchObject({
+      totalCount: 2,
       isLiked: true
     });
     expect(
@@ -2358,6 +2399,119 @@ describe('CSP-safe component and relay integration', function () {
     extension.storage.getKnownPubkey = originalGetKnownPubkey;
     extension.storage.setKnownPubkey = originalSetKnownPubkey;
     extension.storage.setRecentReaction = originalSetRecentReaction;
+  });
+
+  it('keeps a relay like when the directory does not store the reaction', async function () {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: 'https://x.com' },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message) {
+        responses.push(message);
+      }
+    };
+    const pageUrl = 'https://x.com/alokdangre/status/77';
+    const pool = {
+      subscribe: vi.fn(),
+      publish: vi.fn(function () {
+        return [Promise.resolve('saved')];
+      }),
+      destroy: vi.fn()
+    };
+    globalThis.chrome = {
+      runtime: {
+        sendMessage(_message, callback) {
+          callback({ ok: false, error: 'Directory API failed with status 500' });
+        }
+      }
+    };
+    const channel = 'd'.repeat(64);
+    const actionId = 'e'.repeat(64);
+    const originalGetKnownPubkey = extension.storage.getKnownPubkey;
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: pageUrl
+    });
+    const signedEvent = finalizeEvent(
+      {
+        kind: 17,
+        content: '+',
+        tags: [
+          ['k', 'web'],
+          ['i', pageUrl]
+        ],
+        created_at: 1234567890
+      },
+      new Uint8Array(32).fill(4)
+    );
+    extension.storage.getKnownPubkey = async function () {
+      return signedEvent.pubkey;
+    };
+    const onMessage = listeners.get('message');
+    await onMessage({
+      source: pageWindow,
+      origin: 'https://x.com',
+      data: await createAuthenticatedRelayRequest(
+        channel,
+        '8'.repeat(32),
+        'publish',
+        {
+          relays: ['wss://relay.damus.io'],
+          event: signedEvent,
+          actionId: actionId
+        }
+      )
+    });
+    expect(responses[0]).toMatchObject({
+      ok: true,
+      result: null
+    });
+    globalThis.chrome.runtime.sendMessage = function (message, callback) {
+      if (message.type === 'GET_URL_ACTIVITY') {
+        callback({
+          ok: true,
+          result: {
+            items: [{
+              urlKey: String(message.items).split(':')[0],
+              recipient: null,
+              likes: 0,
+              dislikes: 0,
+              zapCount: null,
+              sats: null
+            }]
+          }
+        });
+        return;
+      }
+      callback({ ok: false, error: 'viewer list failed' });
+    };
+    await onMessage({
+      source: pageWindow,
+      origin: 'https://x.com',
+      data: await createAuthenticatedRelayRequest(
+        channel,
+        '9'.repeat(32),
+        'getLikeState',
+        { relays: ['wss://relay.damus.io'], url: pageUrl }
+      )
+    });
+    expect(responses[1].result).toMatchObject({
+      totalCount: 0,
+      isLiked: true
+    });
+    session.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+    extension.storage.getKnownPubkey = originalGetKnownPubkey;
   });
 
   it('accepts scoped YouTube reactions, profiles, and URL zap receipt filters', function () {

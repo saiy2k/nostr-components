@@ -90,6 +90,18 @@ describe("canonicalUrl", () => {
     );
   });
 
+  it("drops tracking parameters and keeps content parameters", () => {
+    expect(
+      canonicalUrl("https://example.com/a?utm_source=newsletter&b=2&a=1"),
+    ).toBe("https://example.com/a?a=1&b=2");
+    expect(
+      canonicalUrl("https://example.com/a?fbclid=1&gclid=2&mc_cid=3&utm_medium=email"),
+    ).toBe("https://example.com/a");
+    expect(canonicalUrl("https://example.com/a?a=1&b=2")).toBe(
+      "https://example.com/a?a=1&b=2",
+    );
+  });
+
   it("leaves a YouTube URL with a short id on the generic path", () => {
     expect(canonicalUrl("https://www.youtube.com/watch?v=short")).toBe(
       "https://www.youtube.com/watch?v=short",

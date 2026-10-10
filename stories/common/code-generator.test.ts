@@ -3,6 +3,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  CDN_COMPONENT_BUNDLE,
+  previewComponentScript,
+} from '../../.storybook/preview-script';
+import {
   BUNDLE_SCRIPT,
   CDN_BASE,
   generateBundleScript,
@@ -26,11 +30,17 @@ describe('Storybook CDN bundle scripts', () => {
     );
   });
 
-  it('keeps preview-head.html on the same CDN_BASE', () => {
+  it('uses workspace source locally and jsDelivr for the hosted build', () => {
+    expect(previewComponentScript('development')).toBe('/src/index.ts');
+    expect(previewComponentScript('production')).toBe(CDN_COMPONENT_BUNDLE);
+  });
+
+  it('keeps preview themes on jsDelivr and leaves the component script to main.ts', () => {
     expect(previewHead).toContain(
       `href="${CDN_BASE}/themes.css"`
     );
-    expect(previewHead).toContain(
+    expect(previewHead).not.toContain('src="/src/index.ts"');
+    expect(previewHead).not.toContain(
       `src="${CDN_BASE}/nostr-components.es.js"`
     );
   });

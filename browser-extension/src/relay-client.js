@@ -223,10 +223,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
       reactionsByPubkey = new Map();
       recentReactionsByUrl.set(url, reactionsByPubkey);
     }
-    reactionsByPubkey.set(event.pubkey, {
-      event: event,
-      expiresAt: Date.now() + RECENT_REACTION_TTL_MS
-    });
+    reactionsByPubkey.set(event.pubkey, { event: event });
     if (typeof extension.storage.setRecentReaction === 'function') {
       try {
         await extension.storage.setRecentReaction(event, RECENT_REACTION_TTL_MS);
@@ -239,14 +236,21 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
   function getInMemoryRecentReactions(url) {
     const reactionsByPubkey = recentReactionsByUrl.get(url);
     if (!reactionsByPubkey) return [];
-    const now = Date.now();
-    const events = [];
-    for (const [pubkey, entry] of reactionsByPubkey) {
-      if (entry.expiresAt <= now) reactionsByPubkey.delete(pubkey);
-      else events.push(entry.event);
+    return Array.from(reactionsByPubkey.values()).map(function (entry) {
+      return entry.event;
+    });
+  }
+
+  function forgetRecentReaction(eventId) {
+    for (const [url, reactionsByPubkey] of recentReactionsByUrl) {
+      for (const [pubkey, entry] of reactionsByPubkey) {
+        if (entry.event && entry.event.id === eventId) reactionsByPubkey.delete(pubkey);
+      }
+      if (reactionsByPubkey.size === 0) recentReactionsByUrl.delete(url);
     }
-    if (reactionsByPubkey.size === 0) recentReactionsByUrl.delete(url);
-    return events;
+    if (typeof extension.storage.forgetRecentReaction === 'function') {
+      void extension.storage.forgetRecentReaction(eventId);
+    }
   }
 
   async function getRecentReactions(url) {
@@ -1113,9 +1117,11 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     for (const [key, entry] of activityCache) {
       if (key !== urlKey && !key.startsWith(urlKey + ':')) continue;
       found = true;
+      const activityAt = Number(activity.lastActivityAt);
       entry.row = Object.assign({}, entry.row, {
         likes: countOf(activity.likeCount),
-        dislikes: countOf(activity.dislikeCount)
+        dislikes: countOf(activity.dislikeCount),
+        activityAt: Number.isFinite(activityAt) ? activityAt : null
       });
       entry.expiresAt = Date.now() + ACTIVITY_CACHE_MS;
     }
@@ -1125,6 +1131,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
         recipient: null,
         likes: countOf(activity.likeCount),
         dislikes: countOf(activity.dislikeCount),
+        activityAt: Number.isFinite(Number(activity.lastActivityAt)) ? Number(activity.lastActivityAt) : null,
         zapCount: null,
         sats: null
       });
@@ -1238,20 +1245,25 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
       return localEvent.content === '+' || localEvent.content === '';
     }
     if (viewerOk && remote) return reactionIsLike(remote.content, remote.reaction);
-    return false;
+    // A completed list with no row can mean "not backfilled" as well as "not liked".
+    return null;
   }
 
   async function pushUrlEvent(event, relay) {
+    let result;
     try {
-      const result = await sendExtensionMessage({
+      result = await sendExtensionMessage({
         type: 'INGEST_URL_EVENT',
         event: event,
         relay: relay
       });
-      if (result && result.activity) rememberActivityFromIngest(result.activity);
     } catch (_error) {
-      // A failed push leaves the local like in place until the sweep stores it.
+      throw new Error('Directory did not store the reaction');
     }
+    if (!result || result.ok === false) {
+      throw new Error('Directory did not store the reaction');
+    }
+    if (result.activity) rememberActivityFromIngest(result.activity);
   }
 
   function publishOne(pool, relay, event) {
@@ -1393,10 +1405,15 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     const viewer = await viewerPromise;
     const local = findLatestReaction(await getRecentReactions(payload.url), publicKey);
     const remote = newestViewerReaction(viewer.reactions, urlKey);
+    if (local && remote && remote.eventId && remote.eventId === local.id) {
+      forgetRecentReaction(local.id);
+    }
+    const activityAt = Number(row.activityAt);
     return {
       totalCount: countOf(row.likes),
       likedCount: countOf(row.likes),
       dislikedCount: countOf(row.dislikes),
+      activityAt: Number.isFinite(activityAt) ? activityAt : null,
       isLiked: likedNow(local, remote, viewer.ok)
     };
   }
@@ -1529,7 +1546,9 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
         if (!pTag || String(pTag[1] || '').toLowerCase() !== recipient) return;
         seen.add(event.id);
         events.push(event);
-        if (SWEEP_RELAYS.has(source)) void pushUrlEvent(event, source);
+        if (SWEEP_RELAYS.has(source)) {
+          void pushUrlEvent(event, source).catch(function () {});
+        }
       });
     }));
     return events;
@@ -1561,7 +1580,12 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     viewerReactions = null;
     const writesPromise = ensureSignerRelays(event.pubkey);
     void settleWriteRelays(pool, event, writesPromise);
-    void pushUrlEvent(event, acceptedRelay);
+    try {
+      await pushUrlEvent(event, acceptedRelay);
+    } catch (_error) {
+      // The relay already accepted the reaction. A directory miss must not
+      // fail the like; the sweep can store it later.
+    }
     return null;
   }
 

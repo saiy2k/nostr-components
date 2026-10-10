@@ -25,7 +25,7 @@ const URL_A_KIND = "39735";
 
 export function reactionBucket(content) {
   if (content === "+" || content === "") return "like";
-  if (content === "-") return "dislike";
+  if (content === "-") return "cleared";
   return "emoji";
 }
 

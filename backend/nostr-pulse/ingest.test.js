@@ -327,9 +327,9 @@ describe("ingestUrlEvent reactions", () => {
     expect(second.stored).toBe(true);
     expect(emoji.activity).toMatchObject({
       likeCount: 0,
-      dislikeCount: 1,
+      dislikeCount: 0,
       emojiCount: 1,
-      reactionCount: 2,
+      reactionCount: 1,
       zapCount: 0,
       zapMsats: 0,
       lastActivityAt: 200,
@@ -347,7 +347,7 @@ describe("ingestUrlEvent reactions", () => {
       .get();
     expect(alice.data()).toMatchObject({
       pubkey: ALICE_PK,
-      reaction: "dislike",
+      reaction: "cleared",
       content: "-",
       url: PAGE,
       urlKey: key,
@@ -363,7 +363,7 @@ describe("ingestUrlEvent reactions", () => {
       source: "sweep",
     });
     expect(older).toMatchObject({ ok: true, stored: false });
-    expect(older.activity).toMatchObject({ dislikeCount: 1, likeCount: 0 });
+    expect(older.activity).toMatchObject({ dislikeCount: 0, likeCount: 0 });
     const { key } = await storedUrl(db);
     const doc = await db
       .collection(URL_ACTIVITY_COLLECTION)
@@ -372,6 +372,7 @@ describe("ingestUrlEvent reactions", () => {
       .doc(ALICE_PK)
       .get();
     expect(doc.data().content).toBe("-");
+    expect(doc.data().reaction).toBe("cleared");
     expect(doc.data().pubkey).toBe(ALICE_PK);
   });
 
@@ -662,6 +663,12 @@ describe("applyReactionChange", () => {
       dislikeCount: 0,
       emojiCount: 1,
       reactionCount: 1,
+    });
+    expect(applyReactionChange({ likeCount: 1, reactionCount: 1 }, "like", "cleared")).toEqual({
+      likeCount: 0,
+      dislikeCount: 0,
+      emojiCount: 0,
+      reactionCount: 0,
     });
   });
 });
