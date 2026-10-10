@@ -392,6 +392,38 @@ describe('Zap component relay transport', () => {
     ).rejects.toThrow('LNURL invoice amount does not match requested amount');
   });
 
+  it('does not request an invoice when the signer rejects the zap', async () => {
+    const httpGet = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        query: vi.fn(),
+        publish: vi.fn(),
+        httpGet,
+      },
+    });
+    vi.stubGlobal('window', {
+      nostr: {
+        signEvent: vi.fn().mockRejectedValue(new Error('User rejected the request')),
+      },
+    });
+
+    try {
+      await expect(
+        fetchInvoice({
+          zapEndpoint: 'https://ln.example/callback',
+          amount: BOLT11_20U_AMOUNT_MSATS,
+          authorId: '47'.repeat(32),
+          normalizedRelays: RELAYS,
+        }),
+      ).rejects.toThrow('User rejected the request');
+      expect(httpGet).not.toHaveBeenCalled();
+      expect(consoleError).toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('rejects a malformed invoice from the LNURL endpoint', async () => {
     const httpGet = vi.fn().mockResolvedValue({
       status: 200,

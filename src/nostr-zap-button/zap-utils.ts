@@ -367,12 +367,8 @@ function relaysForSignedZap(relays: string[]): string[] {
 
 const signEvent = async (zapEvent: any, anon?: boolean) => {
   if (!anon) {
-    try {
-      await ensureInitialized();
-      return await signEventWithNostrLogin(zapEvent);
-    } catch {
-      /* A signer that looked available can still fail. The receipt is anonymous. */
-    }
+    await ensureInitialized();
+    return await signEventWithNostrLogin(zapEvent);
   }
   if (!zapEvent.tags.some((tag: string[]) => tag[0] === 'anon')) {
     zapEvent.tags.push(['anon']);

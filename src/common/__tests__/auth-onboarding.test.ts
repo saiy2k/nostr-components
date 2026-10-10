@@ -8,6 +8,7 @@ import {
   getSignerUnavailableMessage,
   hasConnectedSigner,
 } from '../auth-onboarding';
+import { SignerPromptClosed } from '../nostr-login-service';
 
 describe('auth onboarding helpers', () => {
   it('returns action-aware onboarding copy', () => {
@@ -217,6 +218,25 @@ describe('createEnsureSignerForAction', () => {
       status: 'unavailable',
       publicKey: null,
       message: 'Connect a Nostr signer to follow this profile.',
+    });
+  });
+
+  it('returns dismissed when the connect panel is closed without a key', async () => {
+    const ensureSignerForAction = createEnsureSignerForAction({
+      ensureInitialized: vi.fn().mockResolvedValue(undefined),
+      getPublicKey: vi.fn().mockRejectedValue(new SignerPromptClosed()),
+      hasConnectedSigner: vi.fn().mockReturnValue(false),
+      showAuthOnboarding: vi.fn().mockResolvedValue({ status: 'connect' }),
+    });
+
+    const result = await ensureSignerForAction({
+      action: 'like',
+      theme: 'light',
+    });
+
+    expect(result).toEqual({
+      status: 'dismissed',
+      publicKey: null,
     });
   });
 
