@@ -36,6 +36,13 @@ export function hexToNpub(hex: string): string {
   }
 }
 
+/** `npub1abc…xyz` label used when a profile has no name. */
+export function shortNpub(npub: string): string {
+  if (!npub) return '';
+  if (npub.length <= 22) return npub;
+  return `${npub.slice(0, 12)}…${npub.slice(-7)}`;
+}
+
 // Could be npub, note1, naddr, nsec, etc.,
 export const decodeNip19Entity = (entity: string): any => {
   if (

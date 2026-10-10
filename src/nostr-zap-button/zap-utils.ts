@@ -690,30 +690,129 @@ function readExtensionZapCache(events: unknown[]): ZapAmountResult | null {
   };
 }
 
-function zapRowsFromReceipts(
-  events: Array<{ created_at?: number }>,
+interface CountedReceipt {
+  id: string;
+  bolt11: string;
+  requestId: string;
+  createdAt: number;
+  amountMsats: number;
+  detail: ZapDetails;
+}
+
+function tagValue(tags: unknown, name: string): string {
+  if (!Array.isArray(tags)) return '';
+  const matches = tags.filter(
+    (tag) =>
+      Array.isArray(tag) &&
+      tag[0] === name &&
+      typeof tag[1] === 'string' &&
+      tag[1].length > 0,
+  );
+  return matches.length === 1 ? String(matches[0][1]) : '';
+}
+
+function receiptCreatedAt(event: unknown): number {
+  if (!event || typeof event !== 'object') return 0;
+  const createdAt = (event as { created_at?: unknown }).created_at;
+  return typeof createdAt === 'number' && Number.isFinite(createdAt) ? createdAt : 0;
+}
+
+function earlierReceipt(left: CountedReceipt, right: CountedReceipt): CountedReceipt {
+  if (left.createdAt !== right.createdAt) {
+    return left.createdAt < right.createdAt ? left : right;
+  }
+  return left.id.localeCompare(right.id) <= 0 ? left : right;
+}
+
+/**
+ * Receipts that share an event id, bolt11, or kind-9734 id are one payment,
+ * including when the link is only through a third copy.
+ */
+function distinctReceipts(rows: CountedReceipt[]): CountedReceipt[] {
+  const parent = rows.map((_, index) => index);
+  const find = (index: number): number => {
+    let root = index;
+    while (parent[root] !== root) root = parent[root];
+    while (parent[index] !== root) {
+      const next = parent[index];
+      parent[index] = root;
+      index = next;
+    }
+    return root;
+  };
+  const union = (left: number, right: number) => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parent[rightRoot] = leftRoot;
+  };
+  const connect = (groups: Map<string, number>, key: string, index: number) => {
+    if (!key) return;
+    const previous = groups.get(key);
+    if (previous === undefined) groups.set(key, index);
+    else union(previous, index);
+  };
+
+  const ids = new Map<string, number>();
+  const bolt11s = new Map<string, number>();
+  const requestIds = new Map<string, number>();
+  rows.forEach((row, index) => {
+    connect(ids, row.id, index);
+    connect(bolt11s, row.bolt11, index);
+    connect(requestIds, row.requestId, index);
+  });
+
+  const chosen = new Map<number, CountedReceipt>();
+  rows.forEach((row, index) => {
+    const root = find(index);
+    const current = chosen.get(root);
+    chosen.set(root, current ? earlierReceipt(current, row) : row);
+  });
+  return [...chosen.values()];
+}
+
+/**
+ * Validate kind 9735 receipts and count each payment once.
+ * Relays each return their own copy of a receipt, and a second signed
+ * receipt can repeat the same bolt11 or the same zap request.
+ */
+export function aggregateZapReceipts(
+  events: unknown[],
   pubkey: string,
   provider: ZapProviderInfo,
-  expectedATag: string | string[] | undefined,
+  expectedATag?: string | string[],
 ): { totalMsats: number; zapDetails: ZapDetails[] } {
-  let totalMsats = 0;
-  const zapDetails: ZapDetails[] = [];
+  const counted: CountedReceipt[] = [];
   for (const event of events) {
+    if (!event || typeof event !== 'object') continue;
     const validated = validateZapReceipt(event as Event, {
       recipientPubkey: pubkey,
       provider,
       expectedATag,
     });
     if (!validated.ok) continue;
-    totalMsats += validated.amountMsats;
-    zapDetails.push({
-      amount: validated.amountMsats / 1000,
-      date: new Date((event.created_at || 0) * 1000),
-      authorPubkey: validated.senderPubkey,
-      comment: validated.zapRequest.content,
+    const record = event as { id?: unknown; tags?: unknown };
+    const id = typeof record.id === 'string' ? record.id.toLowerCase() : '';
+    const createdAt = receiptCreatedAt(event);
+    counted.push({
+      id,
+      bolt11: tagValue(record.tags, 'bolt11'),
+      requestId: validated.zapRequest.id.toLowerCase(),
+      createdAt,
+      amountMsats: validated.amountMsats,
+      detail: {
+        amount: validated.amountMsats / 1000,
+        date: new Date(createdAt * 1000),
+        authorPubkey: validated.senderPubkey,
+        comment: validated.zapRequest.content,
+      },
     });
   }
-  zapDetails.sort((left, right) => right.date.getTime() - left.date.getTime());
+
+  const distinct = distinctReceipts(counted);
+  const zapDetails = distinct
+    .map((row) => row.detail)
+    .sort((left, right) => right.date.getTime() - left.date.getTime());
+  const totalMsats = distinct.reduce((sum, row) => sum + row.amountMsats, 0);
   return { totalMsats, zapDetails };
 }
 
@@ -747,7 +846,7 @@ async function fetchLibraryZapAmount({
   if (answered === 0) {
     throw new Error('No relay answered the zap query');
   }
-  const { totalMsats, zapDetails } = zapRowsFromReceipts(
+  const { totalMsats, zapDetails } = aggregateZapReceipts(
     events,
     pubkey,
     provider,
@@ -840,22 +939,14 @@ export const fetchTotalZapAmount = async ({
       return { totalAmount: 0, zapDetails: [] };
     }
 
-    for (const event of events) {
-      const validated = validateZapReceipt(event, {
-        recipientPubkey: pubkey,
-        provider,
-        expectedATag,
-      });
-      if (!validated.ok) continue;
-
-      totalAmount += validated.amountMsats;
-      zapDetails.push({
-        amount: validated.amountMsats / 1000, // convert from msats to sats
-        date: new Date(event.created_at * 1000),
-        authorPubkey: validated.senderPubkey,
-        comment: validated.zapRequest.content,
-      });
-    }
+    const aggregated = aggregateZapReceipts(
+      events,
+      pubkey,
+      provider,
+      expectedATag,
+    );
+    totalAmount += aggregated.totalMsats;
+    zapDetails.push(...aggregated.zapDetails);
   } catch (error) {
     if (transport) throw error;
     console.error("Nostr-Components: Zap button: Error fetching zap receipts", error);

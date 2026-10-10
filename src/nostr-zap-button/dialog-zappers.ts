@@ -5,12 +5,11 @@ import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
 import { getZappersDialogStyles } from './dialog-zappers-style';
 import {
-  getBatchedProfileMetadata,
   extractProfileMetadataContent,
   ZapDetails,
 } from './zap-utils';
-import { escapeHtml, formatRelativeTime, hexToNpub } from '../common/utils';
-import { renderZapEntry, type EnhancedZapDetails } from './render-zap-entry';
+import { renderZapperEntry } from './render-zap-entry';
+import { loadZapperProfiles } from './zapper-profiles';
 import {
   setTrustedInnerHTML,
   setTrustedOuterHTML,
@@ -55,37 +54,12 @@ export const injectZappersDialogStyles = (
 };
 
 /**
- * Render skeleton zap entry HTML (with npub)
- */
-function renderSkeletonZapEntry(
-  zap: ZapDetails,
-  npub: string,
-  index: number,
-): string {
-  return `
-    <div class="zap-entry skeleton-entry" data-zap-index="${index}" data-author-pubkey="${escapeHtml(zap.authorPubkey)}">
-      <div class="zap-author-info">
-        <div class="skeleton-picture"></div>
-        <div class="zap-author-details">
-          <div class="zap-author-link skeleton-name">
-            ${escapeHtml(zap.authorPubkey ? npub : 'Anonymous')}
-          </div>
-          <div class="zap-amount-date">
-            ${zap.amount.toLocaleString()} ⚡ • ${formatRelativeTime(Math.floor(zap.date.getTime() / 1000))}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-/**
  * Opens the zappers dialog showing individual zap details
  */
 export async function openZappersDialog(
   params: OpenZappersModalParams,
 ): Promise<DialogComponent> {
-  const { zapDetails, theme = 'light', relays, actionId, kind } = params;
+  const { zapDetails, theme = 'light', relays, actionId } = params;
 
   // Inject styles
   injectZappersDialogStyles(theme);
@@ -104,8 +78,8 @@ export async function openZappersDialog(
     dialogComponent.setAttribute('data-theme', params.theme);
   }
 
-  // Initial content with skeleton loaders showing npubs
-  const initialContent = await renderInitialContent(zapDetails);
+  // Comments and a short npub are visible before profile names arrive.
+  const initialContent = renderInitialContent(zapDetails);
   setTrustedInnerHTML(dialogComponent, initialContent);
 
   // Show the dialog (this will create and append the actual dialog element)
@@ -133,22 +107,17 @@ export async function openZappersDialog(
 
   // Start progressive enhancement
   if (dialog && zapDetails.length > 0) {
-    enhanceZapDetailsProgressively(
-      dialog,
-      zapDetails,
-      relays,
-      actionId,
-      kind,
-    );
+    enhanceZapDetailsProgressively(dialog, zapDetails, relays, actionId);
   }
 
   return dialogComponent;
 }
 
 /**
- * Render initial dialog content with skeleton loaders showing npubs
+ * Render the zappers list. Names fall back to a short npub until kind 0 arrives.
+ * The zap comment is the kind 9734 content and is included on every row.
  */
-async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
+function renderInitialContent(zapDetails: ZapDetails[]): string {
   if (zapDetails.length === 0) {
     return `
       <div class="zappers-dialog-content">
@@ -159,19 +128,14 @@ async function renderInitialContent(zapDetails: ZapDetails[]): Promise<string> {
     `;
   }
 
-  // Convert all pubkeys to npubs for immediate display
-  const npubs = zapDetails.map((zap) =>
-    zap.authorPubkey ? hexToNpub(zap.authorPubkey) : '',
-  );
-
-  const skeletonEntries = zapDetails
-    .map((zap, index) => renderSkeletonZapEntry(zap, npubs[index], index))
+  const entries = zapDetails
+    .map((zap, index) => renderZapperEntry(zap, index))
     .join('');
 
   return `
     <div class="zappers-dialog-content">
       <div class="zappers-list">
-        ${skeletonEntries}
+        ${entries}
       </div>
     </div>
   `;
@@ -185,7 +149,6 @@ async function enhanceZapDetailsProgressively(
   zapDetails: ZapDetails[],
   relays?: string[],
   actionId?: string,
-  kind?: 'x' | 'youtube',
 ): Promise<void> {
   const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
   if (!zappersList) return;
@@ -205,72 +168,23 @@ async function enhanceZapDetailsProgressively(
   );
 
   try {
-    // Fetch all profiles in a single batched call
-    const profileResults = await getBatchedProfileMetadata(
-      uniqueAuthorIds,
-      relays,
-      actionId,
-      kind,
-    );
+    const profiles = await loadZapperProfiles(uniqueAuthorIds, relays, actionId);
 
-    // Create a map for quick lookup
-    const profileMap = new Map<string, any>();
-    profileResults.forEach((result) => {
-      profileMap.set(result.id, result.profile);
-    });
-
-    // Convert all pubkeys to npubs for display
-    const npubMap = new Map<string, string>();
-    uniqueAuthorIds.forEach((pubkey) => {
-      npubMap.set(pubkey, hexToNpub(pubkey));
-    });
-
-    // Process each zap entry
     for (let index = 0; index < zapDetails.length; index++) {
       const zap = zapDetails[index];
-      if (!zap.authorPubkey) {
-        const skeletonEntry = zappersList.querySelector(
-          `[data-zap-index="${index}"]`,
-        );
-        if (skeletonEntry) {
-          setTrustedOuterHTML(
-            skeletonEntry,
-            renderZapEntry({ ...zap, authorName: 'Anonymous' }, index),
-          );
-        }
-        continue;
-      }
-      const profile = profileMap.get(zap.authorPubkey);
-      const npub = npubMap.get(zap.authorPubkey) || zap.authorPubkey;
-
-      let enhanced: EnhancedZapDetails;
-
-      if (profile) {
-        const profileContent = extractProfileMetadataContent(profile);
-        enhanced = {
-          ...zap,
-          authorName:
-            profileContent.display_name || profileContent.name || npub,
-          authorPicture: profileContent.picture,
-          authorNpub: npub,
-        };
-      } else {
-        // Fallback if profile not found
-        enhanced = {
-          ...zap,
-          authorName: npub,
-          authorNpub: npub,
-        };
-      }
-
-      // Find the corresponding skeleton entry by index and replace it
-      const skeletonEntry = zappersList.querySelector(
-        `[data-zap-index="${index}"]`,
+      const profile = zap.authorPubkey
+        ? profiles.get(zap.authorPubkey.toLowerCase())
+        : undefined;
+      const entry = zappersList.querySelector(`[data-zap-index="${index}"]`);
+      if (!entry) continue;
+      setTrustedOuterHTML(
+        entry,
+        renderZapperEntry(
+          zap,
+          index,
+          profile ? extractProfileMetadataContent(profile) : null,
+        ),
       );
-      if (skeletonEntry) {
-        const enhancedEntry = renderZapEntry(enhanced, index);
-        setTrustedOuterHTML(skeletonEntry, enhancedEntry);
-      }
     }
 
     console.log(
@@ -280,132 +194,8 @@ async function enhanceZapDetailsProgressively(
     );
   } catch (error) {
     console.error(
-      'Nostr-Components: Zappers dialog: Error in batched profile enhancement',
+      'Nostr-Components: Zappers dialog: Error loading zapper profiles',
       error,
     );
-
-    // Fallback to individual processing if batched approach fails
-    console.log(
-      'Nostr-Components: Zappers dialog: Falling back to individual profile fetching',
-    );
-    await enhanceZapDetailsIndividually(
-      dialog,
-      zapDetails,
-      relays,
-      actionId,
-      kind,
-    );
-  }
-}
-
-/**
- * Fallback: Enhance zap details individually (original approach)
- */
-async function enhanceZapDetailsIndividually(
-  dialog: HTMLDialogElement,
-  zapDetails: ZapDetails[],
-  relays?: string[],
-  actionId?: string,
-  kind?: 'x' | 'youtube',
-): Promise<void> {
-  const zappersList = dialog.querySelector('.zappers-list') as HTMLElement;
-  if (!zappersList) return;
-
-  // Create a map to track which profiles we've already fetched
-  const profileCache = new Map<string, EnhancedZapDetails>();
-
-  // Fetch all profile metadata in parallel
-  const profilePromises = zapDetails.map(async (zap, index) => {
-    if (!zap.authorPubkey) {
-      return {
-        index,
-        enhanced: {
-          ...zap,
-          authorName: 'Anonymous',
-        },
-      };
-    }
-    const authorPubkey = zap.authorPubkey;
-    if (profileCache.has(authorPubkey)) {
-      const cachedProfile = profileCache.get(zap.authorPubkey)!;
-      return {
-        index,
-        enhanced: {
-          ...zap,
-          authorName: cachedProfile.authorName,
-          authorPicture: cachedProfile.authorPicture,
-          authorNpub: cachedProfile.authorNpub,
-        },
-      };
-    }
-
-    try {
-      const { getProfileMetadata } = await import('./zap-utils');
-      const profileMetadata = await getProfileMetadata(
-        zap.authorPubkey,
-        relays,
-        actionId,
-        kind,
-      );
-      const profileContent = extractProfileMetadataContent(profileMetadata);
-      const npub = hexToNpub(zap.authorPubkey);
-
-      const enhanced = {
-        ...zap,
-        authorName: profileContent.display_name || profileContent.name || npub,
-        authorPicture: profileContent.picture,
-        authorNpub: npub,
-      };
-
-      // Cache the profile for other entries from the same author
-      profileCache.set(zap.authorPubkey, enhanced);
-
-      return {
-        index,
-        enhanced,
-      };
-    } catch (error) {
-      console.error(
-        'Nostr-Components: Zappers dialog: Error fetching profile for',
-        zap.authorPubkey,
-        error,
-      );
-      // Fallback with just pubkey converted to npub
-      const npub = hexToNpub(zap.authorPubkey);
-      const enhanced = {
-        ...zap,
-        authorName: npub,
-        authorNpub: npub,
-      };
-
-      // Cache the fallback profile
-      profileCache.set(zap.authorPubkey, enhanced);
-
-      return {
-        index,
-        enhanced,
-      };
-    }
-  });
-
-  // Process each profile as it becomes available
-  for (const promise of profilePromises) {
-    try {
-      const { index, enhanced } = await promise;
-
-      // Find the corresponding skeleton entry by index and replace it
-      const skeletonEntry = zappersList.querySelector(
-        `[data-zap-index="${index}"]`,
-      );
-      if (skeletonEntry) {
-        const enhancedEntry = renderZapEntry(enhanced, index);
-        setTrustedOuterHTML(skeletonEntry, enhancedEntry);
-      }
-    } catch (error) {
-      console.error(
-        'Nostr-Components: Zappers dialog: Error processing profile enhancement',
-        error,
-      );
-    }
   }
 }
