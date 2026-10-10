@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type Event, type Filter } from 'nostr-tools';
-import { Relay } from 'nostr-tools/relay';
+import { Relay, useWebSocketImplementation } from 'nostr-tools/relay';
 import {
   DEFAULT_RELAYS,
   INDEXER_RELAYS,
@@ -9,6 +9,15 @@ import {
   RENDEZVOUS_RELAYS,
 } from './constants';
 import { getRelayTransport } from './relay-transport';
+
+if (typeof WebSocket !== 'undefined') {
+  useWebSocketImplementation(class extends WebSocket {
+    send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+      if (this.readyState !== WebSocket.OPEN) return;
+      super.send(data);
+    }
+  });
+}
 
 export const FUTURE_SKEW_SECONDS = 15 * 60;
 export const WRITE_RELAY_LIMIT = 3;

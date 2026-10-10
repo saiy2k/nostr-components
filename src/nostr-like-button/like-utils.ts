@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { SimplePool } from 'nostr-tools';
+import NDK, { NDKEvent, NDKRelaySet } from '@nostr-dev-kit/ndk';
+import { SimplePool, useWebSocketImplementation } from 'nostr-tools/pool';
 import { ensureInitialized, getPublicKey, signEvent as signEventWithNostrLogin } from '../common/nostr-login-service';
 import {
   getRelayTransport,
@@ -12,6 +13,15 @@ import { netLikesByPubkey } from './like-netting';
 import type { LikeCountResult, LikeDetails } from './like-netting';
 
 export type { LikeCountResult, LikeDetails };
+
+if (typeof WebSocket !== 'undefined') {
+  useWebSocketImplementation(class extends WebSocket {
+    send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+      if (this.readyState !== WebSocket.OPEN) return;
+      super.send(data);
+    }
+  });
+}
 
 export const DIRECTORY_WRITE_ERROR = 'Directory did not store the reaction';
 const LOCAL_REACTION_KEY = 'nostr-components:last-reaction';
@@ -327,6 +337,16 @@ export async function hasUserLiked(
   } finally {
     pool.close(relays);
   }
+}
+
+/** Publish a signed reaction to these relays only, not the shared NDK pool. */
+export async function publishSignedEventOnRelays(
+  ndk: NDK,
+  signedEvent: any,
+  relays: string[],
+): Promise<void> {
+  const relaySet = NDKRelaySet.fromRelayUrls(relays, ndk);
+  await new NDKEvent(ndk, signedEvent).publish(relaySet);
 }
 
 /** Publish through a host transport, falling back to the component's NDK path. */

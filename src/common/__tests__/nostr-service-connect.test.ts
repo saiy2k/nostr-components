@@ -14,14 +14,17 @@ import { finalizeEvent } from 'nostr-tools';
 // - `set explicitRelayUrls(urls)` clears the pool and recreates all relays
 //   (this is the destructive behavior at the heart of the bug)
 // - relays transition to CONNECTED (5) asynchronously after a delay
+const CONNECTING = 4;
 const CONNECTED = 5;
 // Tests can raise this beyond the service's grace period to simulate
 // unreachable relays.
 let relayConnectDelayMs = 300;
+const stayConnecting = new Set<string>();
 
 class FakeRelay {
-  status = 4; // CONNECTING
+  status = CONNECTING;
   constructor(public url: string) {
+    if (stayConnecting.has(url)) return;
     setTimeout(() => {
       this.status = CONNECTED;
     }, relayConnectDelayMs);
@@ -79,7 +82,7 @@ class FakeNDKEvent {
 
 vi.mock('@nostr-dev-kit/ndk', () => ({
   default: FakeNDK,
-  NDKRelayStatus: { CONNECTED },
+  NDKRelayStatus: { CONNECTING, CONNECTED },
   NDKKind: {},
   NDKUser: class {},
   NDKEvent: FakeNDKEvent,
@@ -113,6 +116,7 @@ async function freshService() {
 describe('NostrService.connectToNostr concurrency', () => {
   beforeEach(() => {
     relayConnectDelayMs = 300;
+    stayConnecting.clear();
     vi.useFakeTimers();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -270,6 +274,23 @@ describe('NostrService.connectToNostr concurrency', () => {
     expect(ndk.explicitRelayUrlAssignments).toBe(1);
     expect(ndk.addExplicitRelayCalls).toEqual(['wss://relay.four']);
     expect(ndk.pool.relays.size).toBe(4);
+  });
+
+  it('does not list a still-connecting relay as failed', async () => {
+    stayConnecting.add(normalize('wss://relay.two'));
+    const { service } = await freshService();
+    const warn = vi.mocked(console.warn);
+
+    const attempt = service.connectToNostr([...RELAYS]);
+    await vi.runAllTimersAsync();
+    await attempt;
+
+    const warning = warn.mock.calls
+      .map((call) => String(call[0]))
+      .find((message) => message.includes('Connected to'));
+    expect(warning).toContain('Still connecting:');
+    expect(warning).toContain('wss://relay.two');
+    expect(warning).not.toMatch(/Failed:.*relay\.two/);
   });
 
   it('rejects all concurrent callers when no relay ever connects, then allows a retry', async () => {

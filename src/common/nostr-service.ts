@@ -107,17 +107,27 @@ export class NostrService {
     }
 
     const normalizedInputRelays = relays.map(r => normalizeURL(r));
-    const failedRelays = normalizedInputRelays.filter(r => !connectedRelays.includes(r));
+    const connectingRelays = this.getConnectingRelays().filter(url =>
+      normalizedInputRelays.includes(url),
+    );
+    const accountedRelays = new Set([...connectedRelays, ...connectingRelays]);
+    const failedRelays = normalizedInputRelays.filter(url => !accountedRelays.has(url));
 
     if (connectedRelays.length === 0) {
       const error = new Error(`Failed to connect to any of ${relays.length} relay(s): ${relays.join(', ')}`);
       console.error('[NostrService]', error.message);
       throw error;
-    } else if (failedRelays.length > 0) {
+    } else if (connectingRelays.length > 0 || failedRelays.length > 0) {
+      const details = [`Working: ${connectedRelays.join(', ')}.`];
+      if (connectingRelays.length > 0) {
+        details.push(`Still connecting: ${connectingRelays.join(', ')}.`);
+      }
+      if (failedRelays.length > 0) {
+        details.push(`Failed: ${failedRelays.join(', ')}`);
+      }
       console.warn(
         `[NostrService] Connected to ${connectedRelays.length}/${relays.length} relay(s). ` +
-        `Working: ${connectedRelays.join(', ')}. ` +
-        `Failed: ${failedRelays.join(', ')}`
+        details.join(' '),
       );
     }
   }
@@ -144,6 +154,25 @@ export class NostrService {
     }
     
     return connected;
+  }
+
+  /** Relays that have a socket open but have not reached CONNECTED yet. */
+  private getConnectingRelays(): string[] {
+    const connecting: string[] = [];
+
+    try {
+      if (this.ndk.pool && this.ndk.pool.relays) {
+        for (const [url, relay] of this.ndk.pool.relays.entries()) {
+          if (relay && relay.status === NDKRelayStatus.CONNECTING) {
+            connecting.push(normalizeURL(url));
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[NostrService] Could not check relay connection status:', error);
+    }
+
+    return connecting;
   }
 
   public getRelays(): string[] {

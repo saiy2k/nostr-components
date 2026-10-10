@@ -2,7 +2,6 @@
 
 import { NostrBaseComponent } from '../base/base-component/nostr-base-component';
 import { NCStatus } from '../base/base-component/nostr-base-component';
-import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { renderLikeButton, RenderLikeButtonOptions, shouldDisableLikeButton } from './render';
 import { getLikeButtonStyles } from './style';
 import { showHelpDialog } from './dialog-help';
@@ -13,6 +12,7 @@ import {
   createLikeEvent,
   createUnlikeEvent,
   hasUserLiked, 
+  publishSignedEventOnRelays,
   publishSignedReaction,
   publishToWriteRelays,
   signEvent,
@@ -480,11 +480,13 @@ export default class NostrLike extends NostrBaseComponent {
       this.likeCount = optimisticState.likeCount;
       didApplyOptimisticUpdate = true;
       
-      // Create NDKEvent and publish
-      await publishSignedReaction(signedEvent, this.getRelays(), async () => {
-        const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
-        await ndkEvent.publish();
-      }, getTrustedActionContext(this)?.actionId);
+      await publishSignedReaction(signedEvent, this.getRelays(), () => (
+        publishSignedEventOnRelays(
+          this.nostrService.getNDK(),
+          signedEvent,
+          this.getRelays(),
+        )
+      ), getTrustedActionContext(this)?.actionId);
       void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
         console.warn('[NostrLike] Failed to publish to write relays:', error);
       });
@@ -536,11 +538,13 @@ export default class NostrLike extends NostrBaseComponent {
       this.likeCount = optimisticState.likeCount;
       didApplyOptimisticUpdate = true;
       
-      // Create NDKEvent and publish
-      await publishSignedReaction(signedEvent, this.getRelays(), async () => {
-        const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
-        await ndkEvent.publish();
-      }, getTrustedActionContext(this)?.actionId);
+      await publishSignedReaction(signedEvent, this.getRelays(), () => (
+        publishSignedEventOnRelays(
+          this.nostrService.getNDK(),
+          signedEvent,
+          this.getRelays(),
+        )
+      ), getTrustedActionContext(this)?.actionId);
       void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
         console.warn('[NostrLike] Failed to publish to write relays:', error);
       });

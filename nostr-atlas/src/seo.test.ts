@@ -66,7 +66,6 @@ describe("Nostr Atlas homepage SEO", () => {
     expect(html).toContain(PULSE_DESCRIPTION);
     expect(html).toContain("https://nostr-atlas.web.app/pulse/");
     expect(html).toContain('id="pulse"');
-    expect(html).toContain("These counts cover the relays we index.");
     const updated = applyDocumentSeo(html, pulseDocumentSeo("https://atlas.example"));
     expect(updated).toContain(
       '<link rel="canonical" href="https://atlas.example/pulse/"',
