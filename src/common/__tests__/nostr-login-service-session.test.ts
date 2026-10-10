@@ -121,4 +121,61 @@ describe('nostr login session public-key cache', () => {
     await expect(getPublicKey()).resolves.toBe(PUBLIC_KEY);
     expect(querySelector).not.toHaveBeenCalled();
   });
+
+  it('rejects when the window.nostr.js panel is closed and allows another request', async () => {
+    const frames: FrameRequestCallback[] = [];
+    let panelOpen = true;
+    const panel = {
+      querySelector(selector: string) {
+        return panelOpen && selector === '.animate-show' ? { className: 'animate-show' } : null;
+      },
+    };
+    const closeButton = { tagName: 'BUTTON', textContent: '\u292b' };
+    const host = {
+      shadowRoot: {
+        getElementById(id: string) {
+          return id === 'wnj' ? panel : null;
+        },
+      },
+    };
+    const clickListeners: Array<(event: Event) => void> = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    vi.stubGlobal('document', {
+      body: { children: [host] },
+      addEventListener(_type: string, listener: (event: Event) => void) {
+        clickListeners.push(listener);
+      },
+      removeEventListener(_type: string, listener: (event: Event) => void) {
+        const index = clickListeners.indexOf(listener);
+        if (index !== -1) clickListeners.splice(index, 1);
+      },
+    });
+    const getPublicKeyFromSigner = vi.fn(() => new Promise<string>(() => {}));
+    vi.stubGlobal('window', {
+      nostr: { isWnj: true, getPublicKey: getPublicKeyFromSigner },
+      sessionStorage: createSessionStorage({}),
+    });
+
+    const { SignerPromptClosed, getPublicKey } = await import('../nostr-login-service');
+    const first = getPublicKey();
+    await Promise.resolve();
+    clickListeners[0]?.({
+      composedPath: () => [closeButton, panel],
+    } as unknown as Event);
+    frames[0]?.(0);
+    panelOpen = false;
+    frames[1]?.(0);
+
+    await expect(first).rejects.toBeInstanceOf(SignerPromptClosed);
+    expect(getPublicKeyFromSigner).toHaveBeenCalledTimes(1);
+
+    const second = getPublicKey();
+    await Promise.resolve();
+    expect(getPublicKeyFromSigner).toHaveBeenCalledTimes(2);
+    void second;
+  });
 });

@@ -4,6 +4,7 @@ import type { Theme } from './types';
 import {
   ensureInitialized,
   getPublicKey,
+  SignerPromptClosed,
 } from './nostr-login-service';
 import { getAuthOnboardingDialogStyles } from './auth-onboarding-style';
 import { setTrustedInnerHTML } from './trusted-html';
@@ -185,6 +186,9 @@ export function createEnsureSignerForAction(
         }
         return unavailable();
       } catch (error) {
+        if (error instanceof SignerPromptClosed) {
+          return { status: 'dismissed', publicKey: null };
+        }
         console.error('[AuthOnboarding] Failed to reach connected signer:', error);
         return unavailable();
       }
@@ -214,6 +218,9 @@ export function createEnsureSignerForAction(
 
       return unavailable();
     } catch (error) {
+      if (error instanceof SignerPromptClosed) {
+        return { status: 'dismissed', publicKey: null };
+      }
       console.error('[AuthOnboarding] Failed during signer onboarding:', error);
       return unavailable();
     }

@@ -22,6 +22,17 @@ let initPromise: Promise<void> | null = null;
 let publicKeyPromise: Promise<string | null> | null = null;
 let inMemoryPublicKey: string | null = null;
 
+/** window.nostr.js 0.7.1 close control. The library does not reject getPublicKey when it is used. */
+const WNJ_PANEL_CLOSE_LABEL = '\u292b';
+
+/** The connect panel was closed without a key. Callers should treat this as a dismiss, not a signer failure. */
+export class SignerPromptClosed extends Error {
+  constructor() {
+    super('Signer prompt closed');
+    this.name = 'SignerPromptClosed';
+  }
+}
+
 /** Host transports run in the page's MAIN world, where storage is page-readable. */
 function hasHostRelayTransport(): boolean {
   return getRelayTransport() !== null;
@@ -167,7 +178,8 @@ export function isAvailable(): boolean {
 }
 
 /**
- * Get the public key from window.nostr
+ * Get the public key from window.nostr.
+ * Rejects with SignerPromptClosed when the window.nostr.js panel is closed without a key.
  * @returns Promise resolving to public key or null
  */
 export async function getPublicKey(): Promise<string | null> {
@@ -180,21 +192,105 @@ export async function getPublicKey(): Promise<string | null> {
 
     if (!isAvailable()) return getCachedPublicKey();
 
+    const nostr = (window as any).nostr;
+    // Always refresh from an available signer. A session value can belong to
+    // the account that was active before the user switched identities.
+    const pending = nostr.getPublicKey() as Promise<string>;
+    const panelClose = nostr.isWnj === true ? watchWindowNostrPanelClose() : null;
+    let released = false;
     try {
-      // Always refresh from an available signer. A session value can belong to
-      // the account that was active before the user switched identities.
-      const pubkey = await (window as any).nostr.getPublicKey();
+      const pubkey = await (panelClose
+        ? Promise.race([
+            pending,
+            panelClose.closed.then(() => {
+              if (released) return pending;
+              throw new SignerPromptClosed();
+            }),
+          ])
+        : pending);
       return cachePublicKey(pubkey);
     } catch (error) {
+      if (error instanceof SignerPromptClosed) throw error;
       console.error('Failed to get public key from window.nostr:', error);
       clearCachedPublicKey();
       return null;
+    } finally {
+      released = true;
+      panelClose?.stop();
     }
   })().finally(() => {
     publicKeyPromise = null;
   });
 
   return publicKeyPromise;
+}
+
+function windowNostrPanel(): Element | null {
+  const children = document.body?.children;
+  if (!children) return null;
+  for (let index = 0; index < children.length; index += 1) {
+    const panel = children[index]?.shadowRoot?.getElementById('wnj');
+    if (panel) return panel;
+  }
+  return null;
+}
+
+function isPanelCloseButton(node: EventTarget): boolean {
+  if (typeof node !== 'object' || node === null || !('tagName' in node)) return false;
+  const element = node as Element;
+  return element.tagName === 'BUTTON' && element.textContent === WNJ_PANEL_CLOSE_LABEL;
+}
+
+/**
+ * Resolves when the pinned window.nostr.js panel is dismissed by its close
+ * control or an outside click. A programmatic close after a successful
+ * connect does not click, so it does not settle this promise.
+ */
+function watchWindowNostrPanelClose(): { closed: Promise<void>; stop: () => void } {
+  let stopped = false;
+  let frameId = 0;
+  let removeListener = () => {};
+  const scheduleFrame = globalThis.requestAnimationFrame?.bind(globalThis)
+    ?? ((callback: FrameRequestCallback) => globalThis.setTimeout(() => callback(0), 0) as unknown as number);
+  const cancelFrame = globalThis.cancelAnimationFrame?.bind(globalThis)
+    ?? ((id: number) => globalThis.clearTimeout(id));
+
+  const closed = new Promise<void>((resolve) => {
+    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') {
+      return;
+    }
+
+    const onClick = (event: Event) => {
+      if (stopped) return;
+      const panel = windowNostrPanel();
+      if (!panel?.querySelector('.animate-show')) return;
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+      const closeButton = path.some((node) => isPanelCloseButton(node));
+      if (!closeButton && path.includes(panel)) return;
+
+      // The widget removes the panel in an animation frame queued after this
+      // click, so look on the frame after that. One frame still sees it open.
+      frameId = scheduleFrame(() => {
+        frameId = scheduleFrame(() => {
+          if (stopped) return;
+          if (windowNostrPanel()?.querySelector('.animate-show')) return;
+          resolve();
+        });
+      });
+    };
+
+    document.addEventListener('click', onClick, true);
+    removeListener = () => document.removeEventListener('click', onClick, true);
+  });
+
+  return {
+    closed,
+    stop() {
+      stopped = true;
+      removeListener();
+      if (frameId) cancelFrame(frameId);
+    },
+  };
 }
 
 /**

@@ -3668,7 +3668,8 @@ it('signs a zap request with the route relays and accepts it on the bridge', asy
       comment: '',
       authorId: profile.pubkey,
       normalizedRelays: route.zapRelays,
-      url: pageUrl
+      url: pageUrl,
+      anon: true
     });
     expect(paid.invoice).toBe(BOLT11_20U);
     await transport.query(['wss://evil.example/', 'wss://relay.damus.io/'], {
