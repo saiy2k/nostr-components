@@ -17,6 +17,10 @@ export const INDEXER_RELAYS: string[] = [...roles.indexers];
 /** Kind 0 archives used when a pubkey's own relays are not enough. */
 export const PROFILE_ARCHIVE_RELAYS: string[] = [...roles.profileArchives];
 
+/** Public directory API that stores signed kind 0 profiles. */
+export const DIRECTORY_API_ORIGIN =
+  'https://us-central1-nostr-components.cloudfunctions.net';
+
 export const DEFAULT_RELAYS = [
   'wss://relay.momostr.pink',
   'wss://relay.ditto.pub',
