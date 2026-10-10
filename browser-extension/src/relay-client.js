@@ -1575,7 +1575,12 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     viewerReactions = null;
     const writesPromise = ensureSignerRelays(event.pubkey);
     void settleWriteRelays(pool, event, writesPromise);
-    await pushUrlEvent(event, acceptedRelay);
+    try {
+      await pushUrlEvent(event, acceptedRelay);
+    } catch (_error) {
+      // The relay already accepted the reaction. A directory miss must not
+      // fail the like; the sweep can store it later.
+    }
     return null;
   }
 

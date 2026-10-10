@@ -287,11 +287,15 @@ export async function hasUserLiked(
   try {
     const transport = getRelayTransport();
     if (transport?.getLikeState) {
-      const state = await transport.getLikeState(relays, filterUrls[0]);
-      if (state?.isLiked === null || typeof state?.isLiked !== 'boolean') {
-        throw new Error('Could not check whether this page is already liked');
+      try {
+        const state = await transport.getLikeState(relays, filterUrls[0]);
+        // Null, or a failed directory read, means this browser has no saved
+        // like. Stopping here blocks the first like on X.
+        return state?.isLiked === true;
+      } catch (error) {
+        console.error("Nostr-Components: Like button: Error checking user like status", error);
+        return false;
       }
-      return state.isLiked;
     }
 
     const filter = {

@@ -2400,7 +2400,7 @@ describe('CSP-safe component and relay integration', function () {
     extension.storage.setRecentReaction = originalSetRecentReaction;
   });
 
-  it('rejects a publish when the directory does not store the reaction', async function () {
+  it('keeps a relay like when the directory does not store the reaction', async function () {
     const listeners = new Map();
     const responses = [];
     const pageWindow = {
@@ -2472,8 +2472,8 @@ describe('CSP-safe component and relay integration', function () {
       )
     });
     expect(responses[0]).toMatchObject({
-      ok: false,
-      error: 'Directory did not store the reaction'
+      ok: true,
+      result: null
     });
     globalThis.chrome.runtime.sendMessage = function (message, callback) {
       if (message.type === 'GET_URL_ACTIVITY') {

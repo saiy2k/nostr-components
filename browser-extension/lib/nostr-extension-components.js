@@ -26713,13 +26713,6 @@ ${url}`;
       dislikedCount
     };
   }
-  function viewerIsLiked(likeDetails, pubkey) {
-    const normalized = pubkey.toLowerCase();
-    const mine = likeDetails.find(
-      (detail) => detail.authorPubkey.toLowerCase() === normalized
-    );
-    return !!mine && isLikeContent(mine.content);
-  }
 
   // src/nostr-like-button/like-utils.ts
   var DIRECTORY_WRITE_ERROR = "Directory did not store the reaction";
@@ -26786,14 +26779,35 @@ ${url}`;
   function forgetLocalReaction(id) {
     writeLocalReactions(readLocalReactions().filter((row) => row.id !== id));
   }
-  function readLocalReaction(url, pubkey) {
+  function pageReactionUrls(url) {
     const urls = new Set(likeFilterUrls(url));
     const tag = likeTagUrl(url);
     if (tag) urls.add(tag);
+    if (url) urls.add(url);
+    return urls;
+  }
+  function readLocalReaction(url, pubkey) {
+    const urls = pageReactionUrls(url);
     const normalized = pubkey.toLowerCase();
     return readLocalReactions().find(
       (row) => row.pubkey === normalized && urls.has(row.url)
     ) ?? null;
+  }
+  function restoredViewerLiked(url, likeDetails, pubkey) {
+    const urls = pageReactionUrls(url);
+    const normalized = pubkey?.toLowerCase() || null;
+    const local = readLocalReactions().filter((row) => urls.has(row.url) && (!normalized || row.pubkey === normalized)).sort((a, b) => b.created_at - a.created_at || (a.id < b.id ? 1 : -1))[0];
+    const viewer = normalized || local?.pubkey || null;
+    if (!viewer) return null;
+    const relay = likeDetails.find(
+      (detail) => detail.authorPubkey.toLowerCase() === viewer
+    );
+    const relayAt = relay ? Math.floor(relay.date.getTime() / 1e3) : null;
+    if (relay && (local == null || relayAt >= local.created_at)) {
+      return relay.content === "+" || relay.content === "";
+    }
+    if (local) return local.content === "+" || local.content === "";
+    return false;
   }
   function latestViewerReaction(events) {
     let latest = null;
@@ -26876,11 +26890,13 @@ ${url}`;
     try {
       const transport = getRelayTransport();
       if (transport?.getLikeState) {
-        const state = await transport.getLikeState(relays, filterUrls[0]);
-        if (state?.isLiked === null || typeof state?.isLiked !== "boolean") {
-          throw new Error("Could not check whether this page is already liked");
+        try {
+          const state = await transport.getLikeState(relays, filterUrls[0]);
+          return state?.isLiked === true;
+        } catch (error) {
+          console.error("Nostr-Components: Like button: Error checking user like status", error);
+          return false;
         }
-        return state.isLiked;
       }
       const filter = {
         kinds: [17],
@@ -27536,10 +27552,13 @@ ${url}`;
     }
     async updateLikeCount(options) {
       const seq = ++this.loadSeq;
+      const pageUrl = this.getActionUrl();
+      if (restoredViewerLiked(pageUrl, [], getCachedPublicKey()) === true) {
+        this.isLiked = true;
+      }
       try {
         await this.ensureNostrConnected();
         if (seq !== this.loadSeq) return;
-        const pageUrl = this.getActionUrl();
         this.currentUrl = likeTagUrl(pageUrl) || "";
         if (!options?.quiet) {
           this.likeListStatus.set(1 /* Loading */);
@@ -27561,7 +27580,7 @@ ${url}`;
         const result = await fetchLikesForUrl(pageUrl, this.getRelays());
         if (seq !== this.loadSeq) return;
         this.likeCount = clampLikeCount(result.totalCount);
-        await this.applyViewerLike(result, seq);
+        await this.applyViewerLike(pageUrl, result, seq);
         if (seq !== this.loadSeq) return;
         this.cachedLikeDetails = result;
         this.likeListStatus.set(2 /* Ready */);
@@ -27575,7 +27594,7 @@ ${url}`;
         }
       }
     }
-    async applyViewerLike(result, seq) {
+    async applyViewerLike(pageUrl, result, seq) {
       if (result.isLiked === null) {
         this.isLiked = null;
         return;
@@ -27584,10 +27603,13 @@ ${url}`;
         this.isLiked = result.isLiked;
         return;
       }
-      if (!hasConnectedSigner()) return;
-      const pubkey = getCachedPublicKey() ?? await getPublicKey2();
-      if (seq !== this.loadSeq || !pubkey) return;
-      this.isLiked = viewerIsLiked(result.likeDetails, pubkey);
+      let decided = restoredViewerLiked(pageUrl, result.likeDetails, getCachedPublicKey());
+      if (decided === null && hasConnectedSigner()) {
+        const pubkey = await getPublicKey2();
+        if (seq !== this.loadSeq) return;
+        decided = restoredViewerLiked(pageUrl, result.likeDetails, pubkey);
+      }
+      if (decided !== null) this.isLiked = decided;
     }
     queueAuthoritativeCountResync() {
       this.needsResyncLikeCount = true;

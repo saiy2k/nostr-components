@@ -157,7 +157,7 @@ describe('Like component relay transport', () => {
     }], null)).toBe(false);
   });
 
-  it('throws when the host does not know whether the page is liked', async () => {
+  it('lets a click like when the host does not know the viewer state', async () => {
     const query = vi.fn();
     Object.assign(globalThis, {
       __nostrComponentsRelayTransport: {
@@ -174,8 +174,19 @@ describe('Like component relay transport', () => {
 
     await expect(
       hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
-    ).rejects.toThrow('Could not check whether this page is already liked');
+    ).resolves.toBe(false);
     expect(query).not.toHaveBeenCalled();
+
+    Object.assign(globalThis, {
+      __nostrComponentsRelayTransport: {
+        getLikeState: vi.fn().mockRejectedValue(new Error('Like count is unavailable')),
+        query,
+        publish: vi.fn(),
+      },
+    });
+    await expect(
+      hasUserLiked(STATUS_URL, 'a'.repeat(64), RELAYS),
+    ).resolves.toBe(false);
   });
 
   it('uses the newest reaction and a remembered like when the lookup is empty', async () => {

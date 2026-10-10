@@ -8869,7 +8869,10 @@
       viewerReactions = null;
       const writesPromise = ensureSignerRelays(event.pubkey);
       void settleWriteRelays(pool, event, writesPromise);
-      await pushUrlEvent(event, acceptedRelay);
+      try {
+        await pushUrlEvent(event, acceptedRelay);
+      } catch (_error) {
+      }
       return null;
     }
     function getExactTag(event, name) {
