@@ -4,6 +4,17 @@
  * Uses CSS variables from nostr-zap component for consistency
  */
 
+export function invoiceChromeVisibility(
+  hasInvoice: boolean,
+  succeeded: boolean,
+): { copy: boolean; wallet: boolean; thanks: boolean } {
+  return {
+    copy: hasInvoice && !succeeded,
+    wallet: hasInvoice && !succeeded,
+    thanks: succeeded,
+  };
+}
+
 export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
   const isDark = theme === 'dark';
   
@@ -66,6 +77,13 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       color: #7f00ff;
     }
 
+    .zap-dialog-content .copy-btn[hidden],
+    .zap-dialog-content .cta-btn[hidden],
+    .zap-dialog-content img.qr[hidden],
+    .nostr-base-dialog .success-overlay[hidden] {
+      display: none !important;
+    }
+
     .zap-dialog-content .update-zap-btn {
       background: #7f00ff;
       color: #ffffff;
@@ -73,7 +91,9 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
 
     /* === QR CODE === */
     .zap-dialog-content img.qr {
-      margin-top: 16px;
+      display: block;
+      margin: 16px auto 0;
+      cursor: pointer;
       border: 1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'};
       border-radius: 8px;
     }
@@ -140,7 +160,7 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
       position: absolute;
       inset: 0;
       background: rgba(0, 0, 0, 0.65);
-      display: flex;
+      display: none;
       justify-content: center;
       align-items: center;
       color: #ffffff;
@@ -152,8 +172,9 @@ export const getDialogStyles = (theme: 'light' | 'dark' = 'light'): string => {
     }
 
     .nostr-base-dialog.success .success-overlay {
+      display: flex;
       opacity: 1;
-      pointer-events: auto;
+      pointer-events: none;
     }
 
     /* === ANIMATIONS === */

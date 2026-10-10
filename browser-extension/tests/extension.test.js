@@ -2873,6 +2873,290 @@ describe('CSP-safe component and relay integration', function () {
     session.dispose();
   });
 
+  async function fetchBoundZapInvoice({
+    channel,
+    actionId,
+    contentUrl,
+    beforeRequest,
+    onInvoice
+  }) {
+    const listeners = new Map();
+    const responses = [];
+    const pageWindow = {
+      location: { origin: 'https://x.com' },
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      postMessage(message) {
+        responses.push(message);
+      }
+    };
+    const recipientSecret = new Uint8Array(32).fill(45);
+    const profile = finalizeEvent(
+      {
+        kind: 0,
+        created_at: 10,
+        tags: [],
+        content: JSON.stringify({ lud16: 'carol@ln-carol.example' })
+      },
+      recipientSecret
+    );
+    const recipientNpub = nip19.npubEncode(profile.pubkey);
+    const amount = BOLT11_20U_AMOUNT_MSATS;
+    const zapEvent = finalizeEvent(
+      {
+        kind: 9734,
+        created_at: 11,
+        content: '',
+        tags: [
+          ['p', profile.pubkey],
+          ['amount', String(amount)],
+          ['a', '39735:' + profile.pubkey + ':' + contentUrl],
+          ['relays',
+            'wss://relay.ditto.pub/',
+            'wss://nostr.mom/',
+            'wss://relay.damus.io/',
+            'wss://nostr.oxtr.dev/',
+            'wss://relay.nostr.wirednet.jp/'
+          ]
+        ]
+      },
+      new Uint8Array(32).fill(46)
+    );
+    globalThis.chrome = {
+      runtime: {
+        sendMessage(message, callback) {
+          if (message.type === 'LOOKUP_NOSTR_PROFILES') {
+            callback({
+              ok: true,
+              result: {
+                profiles: [{
+                  pubkey: profile.pubkey,
+                  profileEvent: profile,
+                  relayListEvent: null,
+                  zappable: true
+                }]
+              }
+            });
+            return;
+          }
+          const invoiceCallback = message.type === 'FETCH_HTTPS_JSON' &&
+            typeof message.url === 'string' &&
+            message.url.indexOf('/.well-known/lnurlp/') === -1;
+          if (invoiceCallback && typeof onInvoice === 'function' && onInvoice(recipientNpub) === 'drop') {
+            callback(undefined);
+            delete globalThis.chrome.runtime.lastError;
+            return;
+          }
+          if (message.url && message.url.indexOf('/.well-known/lnurlp/') !== -1) {
+            callback({
+              ok: true,
+              result: {
+                status: 200,
+                json: {
+                  allowsNostr: true,
+                  callback: 'https://ln-carol.example/callback',
+                  nostrPubkey: 'f'.repeat(64),
+                  minSendable: amount,
+                  maxSendable: amount,
+                  commentAllowed: 0
+                }
+              }
+            });
+            return;
+          }
+          callback({
+            ok: true,
+            result: {
+              status: 200,
+              json: { pr: BOLT11_20U }
+            }
+          });
+        }
+      }
+    };
+    const pool = { destroy: vi.fn() };
+    const session = extension.relayClient.configure(channel, {
+      pool: pool,
+      window: pageWindow
+    });
+    extension.relayClient.registerActionContext(actionId, {
+      kind: 'x',
+      url: contentUrl,
+      recipientNpub: recipientNpub
+    });
+    if (beforeRequest) beforeRequest(recipientNpub);
+    await listeners.get('message')({
+      source: pageWindow,
+      origin: 'https://x.com',
+      data: await createAuthenticatedRelayRequest(
+        channel,
+        channel.slice(0, 32),
+        'fetchZapInvoice',
+        {
+          actionId: actionId,
+          relays: ['wss://relay.damus.io'],
+          amount: amount,
+          comment: '',
+          zapEvent: zapEvent
+        }
+      )
+    });
+    return { responses: responses, session: session, recipientNpub: recipientNpub };
+  }
+
+  it('keeps the zap invoice bound when the tweet is re-registered during signing', async function () {
+    const channel = 'a1'.repeat(32);
+    const actionId = 'b1'.repeat(32);
+    const contentUrl = 'https://x.com/carol/status/9001';
+    const successorId = 'b2'.repeat(32);
+    const { responses, session } = await fetchBoundZapInvoice({
+      channel: channel,
+      actionId: actionId,
+      contentUrl: contentUrl,
+      beforeRequest(recipientNpub) {
+        extension.relayClient.revokeActionContext(actionId);
+        extension.relayClient.registerActionContext(successorId, {
+          kind: 'x',
+          url: contentUrl + '/',
+          recipientNpub: recipientNpub
+        });
+      }
+    });
+
+    expect(responses[0].ok).toBe(true);
+    expect(responses[0].result.invoice).toBe(BOLT11_20U);
+    session.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+    extension.relayClient.revokeActionContext(successorId);
+  });
+
+  it('rejects a zap invoice when signing finishes after the tweet action is gone', async function () {
+    const channel = 'a3'.repeat(32);
+    const actionId = 'b3'.repeat(32);
+    const contentUrl = 'https://x.com/carol/status/9003';
+    const { responses, session } = await fetchBoundZapInvoice({
+      channel: channel,
+      actionId: actionId,
+      contentUrl: contentUrl,
+      beforeRequest() {
+        extension.relayClient.revokeActionContext(actionId);
+      }
+    });
+
+    expect(responses[0].ok).toBe(false);
+    expect(responses[0].error).toContain('not bound to an active action');
+    session.dispose();
+  });
+
+  it('rejects a zap invoice when the tweet is replaced by a different status', async function () {
+    const channel = 'a4'.repeat(32);
+    const actionId = 'b4'.repeat(32);
+    const contentUrl = 'https://x.com/carol/status/9004';
+    const successorId = 'b5'.repeat(32);
+    const { responses, session } = await fetchBoundZapInvoice({
+      channel: channel,
+      actionId: actionId,
+      contentUrl: contentUrl,
+      beforeRequest(recipientNpub) {
+        extension.relayClient.revokeActionContext(actionId);
+        extension.relayClient.registerActionContext(successorId, {
+          kind: 'x',
+          url: 'https://x.com/carol/status/9005',
+          recipientNpub: recipientNpub
+        });
+      }
+    });
+
+    expect(responses[0].ok).toBe(false);
+    expect(responses[0].error).toContain('not bound to an active action');
+    session.dispose();
+    extension.relayClient.revokeActionContext(successorId);
+  });
+
+  it('finishes the invoice when a re-render replaces the action during the callback', async function () {
+    const channel = 'a6'.repeat(32);
+    const actionId = 'b6'.repeat(32);
+    const contentUrl = 'https://x.com/carol/status/9006';
+    const successorId = 'b7'.repeat(32);
+    const { responses, session } = await fetchBoundZapInvoice({
+      channel: channel,
+      actionId: actionId,
+      contentUrl: contentUrl,
+      onInvoice(recipientNpub) {
+        extension.relayClient.revokeActionContext(actionId);
+        extension.relayClient.registerActionContext(successorId, {
+          kind: 'x',
+          url: contentUrl,
+          recipientNpub: recipientNpub
+        });
+      }
+    });
+
+    expect(responses[0].ok).toBe(true);
+    expect(responses[0].result.invoice).toBe(BOLT11_20U);
+    session.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+    extension.relayClient.revokeActionContext(successorId);
+  });
+
+  it('does not finish an invoice after the action is revoked with no replacement', async function () {
+    const channel = 'a8'.repeat(32);
+    const actionId = 'b8'.repeat(32);
+    const contentUrl = 'https://x.com/carol/status/9008';
+    const { responses, session } = await fetchBoundZapInvoice({
+      channel: channel,
+      actionId: actionId,
+      contentUrl: contentUrl,
+      onInvoice() {
+        extension.relayClient.revokeActionContext(actionId);
+      }
+    });
+
+    expect(responses[0].ok).toBe(false);
+    expect(responses[0].error).toContain('no longer active');
+    session.dispose();
+  });
+
+  it('retries the invoice when the service worker restarts during signing', async function () {
+    const channel = 'a9'.repeat(32);
+    const actionId = 'b9'.repeat(32);
+    const contentUrl = 'https://x.com/carol/status/9009';
+    const successorId = 'ba'.repeat(32);
+    let restarted = false;
+    const { responses, session } = await fetchBoundZapInvoice({
+      channel: channel,
+      actionId: actionId,
+      contentUrl: contentUrl,
+      onInvoice(recipientNpub) {
+        if (restarted) return undefined;
+        restarted = true;
+        // The worker restart drops the in-flight HTTPS call. A focus return
+        // re-renders the tweet under a new action id before the retry.
+        extension.relayClient.revokeActionContext(actionId);
+        extension.relayClient.registerActionContext(successorId, {
+          kind: 'x',
+          url: contentUrl,
+          recipientNpub: recipientNpub
+        });
+        globalThis.chrome.runtime.lastError = {
+          message: 'The message port closed before a response was received.'
+        };
+        return 'drop';
+      }
+    });
+
+    expect(restarted).toBe(true);
+    expect(responses[0].ok).toBe(true);
+    expect(responses[0].result.invoice).toBe(BOLT11_20U);
+    session.dispose();
+    extension.relayClient.revokeActionContext(actionId);
+    extension.relayClient.revokeActionContext(successorId);
+  });
+
   it('returns a persisted YouTube reaction before starting a relay query', async function () {
     const listeners = new Map();
     const responses = [];
@@ -4111,6 +4395,217 @@ describe('timeline component integration', function () {
     }
   });
 });
+
+  it('keeps a reparented tweet action and restores its zap recipient', async function () {
+    const scheduledCallbacks = [];
+    const observerCallbacks = [];
+    const npub = nip19.npubEncode('ab'.repeat(32));
+    let articles = [];
+    const registerAction = vi.fn();
+    const revokeAction = vi.fn();
+
+    class FakeElement {
+      constructor(tagName = 'div') {
+        this.tagName = String(tagName).toLowerCase();
+        this.children = [];
+        this.dataset = {};
+        this.attributes = {};
+        this.parentElement = null;
+        this.isConnected = true;
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+        if (name.startsWith('data-')) {
+          const key = name.slice(5).replace(/-([a-z])/g, function (_match, letter) {
+            return letter.toUpperCase();
+          });
+          this.dataset[key] = String(value);
+        }
+      }
+
+      getAttribute(name) {
+        return Object.prototype.hasOwnProperty.call(this.attributes, name)
+          ? this.attributes[name]
+          : null;
+      }
+
+      appendChild(child) {
+        child.parentElement = this;
+        this.children.push(child);
+        return child;
+      }
+
+      insertBefore(child) {
+        return this.appendChild(child);
+      }
+
+      addEventListener() {}
+
+      matches(selector) {
+        return String(selector).includes('data-testid') &&
+          this.getAttribute('data-testid') === 'like';
+      }
+
+      querySelector(selector) {
+        return this.querySelectorAll(selector)[0] || null;
+      }
+
+      querySelectorAll(selector) {
+        const matches = [];
+        const visit = function (node) {
+          for (const child of node.children || []) {
+            if (child.matches?.(selector)) matches.push(child);
+            visit(child);
+          }
+        };
+        visit(this);
+        return matches;
+      }
+    }
+
+    const actionBar = new FakeElement();
+    const likeContainer = new FakeElement();
+    const likeButton = new FakeElement('button');
+    likeButton.setAttribute('data-testid', 'like');
+    likeButton.setAttribute('aria-label', 'Like');
+    likeButton.closest = function () {
+      return actionBar;
+    };
+    likeContainer.appendChild(likeButton);
+    actionBar.appendChild(likeContainer);
+    actionBar.appendChild(new FakeElement());
+    actionBar.appendChild(new FakeElement());
+    const article = new FakeElement('article');
+    article.appendChild(actionBar);
+    const statusAnchor = {
+      getAttribute() {
+        return '/alex/status/4242';
+      },
+      querySelector() {
+        return null;
+      },
+      parentElement: article
+    };
+    const articleQuery = article.querySelectorAll.bind(article);
+    article.querySelectorAll = function (selector) {
+      if (selector === 'a[href*="/status/"]') return [statusAnchor];
+      return articleQuery(selector);
+    };
+    article.querySelector = function (selector) {
+      if (String(selector).includes('data-testid')) return likeButton;
+      return articleQuery(selector)[0] || null;
+    };
+
+    globalThis.document = {
+      body: new FakeElement('body'),
+      documentElement: new FakeElement('html'),
+      createElement(tagName) {
+        return new FakeElement(tagName);
+      },
+      querySelectorAll(selector) {
+        return String(selector).includes('article') ? articles : [];
+      },
+      querySelector() {
+        return null;
+      }
+    };
+    globalThis.MutationObserver = class {
+      constructor(callback) {
+        observerCallbacks.push(callback);
+      }
+
+      observe() {}
+    };
+    globalThis.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+    };
+    globalThis.window = {
+      location: {
+        href: 'https://x.com/alex/status/4242',
+        origin: 'https://x.com',
+        hostname: 'x.com'
+      },
+      getComputedStyle() {
+        return { colorScheme: 'light' };
+      },
+      setTimeout(callback) {
+        scheduledCallbacks.push(callback);
+        return scheduledCallbacks.length;
+      },
+      requestAnimationFrame(callback) {
+        callback();
+      },
+      addEventListener() {}
+    };
+    extension.componentLoader = {
+      ready: Promise.resolve(),
+      registerAction: registerAction,
+      revokeAction: revokeAction,
+      updateAction() {},
+      hydrate() {
+        return true;
+      }
+    };
+
+    await import('../content.js?keep-zap-target');
+    await new Promise(function (resolve) {
+      setTimeout(resolve, 0);
+    });
+    scheduledCallbacks.shift()?.();
+
+    const mounted = {
+      isConnected: true,
+      dataset: {
+        statusId: '4242',
+        statusUrl: 'https://x.com/alex/status/4242',
+        zapRecipientNpub: npub
+      },
+      closest() {
+        return article;
+      },
+      matches() {
+        return true;
+      },
+      querySelectorAll() {
+        return [];
+      }
+    };
+    observerCallbacks[0]([{ removedNodes: [mounted] }]);
+    expect(revokeAction).not.toHaveBeenCalled();
+
+    const removed = {
+      isConnected: false,
+      dataset: {
+        statusId: '4242',
+        statusUrl: 'https://x.com/alex/status/4242',
+        zapRecipientNpub: npub
+      },
+      matches() {
+        return true;
+      },
+      querySelectorAll() {
+        return [];
+      }
+    };
+    articles = [article];
+    observerCallbacks[0]([{ removedNodes: [removed] }]);
+    expect(revokeAction).toHaveBeenCalledWith(removed);
+    expect(registerAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataset: expect.objectContaining({
+          statusUrl: 'https://x.com/alex/status/4242',
+          zapRecipientNpub: npub
+        })
+      }),
+      expect.objectContaining({
+        kind: 'x',
+        url: 'https://x.com/alex/status/4242',
+        recipientNpub: npub
+      })
+    );
+  });
 
 describe('YouTube component integration', function () {
   it('uses YouTube dark mode even when computed colorScheme incorrectly reports light', async function () {
