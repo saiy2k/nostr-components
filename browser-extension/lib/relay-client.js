@@ -8463,8 +8463,8 @@
           likes: countOf(activity.likeCount),
           dislikes: countOf(activity.dislikeCount),
           activityAt: Number.isFinite(Number(activity.lastActivityAt)) ? Number(activity.lastActivityAt) : null,
-          zapCount: null,
-          sats: null
+          zapCount: countOf(activity.zapCount),
+          sats: countOf(activity.zapMsats) / 1e3
         });
       }
     }
