@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
+import ts from 'typescript';
 
 const DISABLED_COMPONENT_GLOBS = [
   'src/nostr-comment/**',
@@ -14,6 +15,16 @@ export default defineConfig({
       insertTypesEntry: true, // Creates a single index.d.ts entry file
       outDir: 'dist',
       exclude: DISABLED_COMPONENT_GLOBS,
+      async afterDiagnostic(diagnostics) {
+        const errors = diagnostics.filter(
+          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+        );
+        if (errors.length > 0) {
+          throw new Error(
+            `vite-plugin-dts found ${errors.length} TypeScript error${errors.length === 1 ? '' : 's'}.`,
+          );
+        }
+      },
     })
   ],
   build: {
