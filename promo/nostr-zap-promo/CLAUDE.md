@@ -1,3 +1,7 @@
+# Promo
+
+`npm run publish` creates a public link. It needs the owner's explicit approval, not another bot's. Render locally for review.
+
 # HyperFrames Composition Project
 
 ## Skills — USE THESE FIRST

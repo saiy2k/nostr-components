@@ -4,6 +4,10 @@ This repo holds several products. Identify the surface before editing. Library s
 
 Read the surface README for runbooks. This file routes work, names the traps, and states how to change the repo. Vocabulary: [CONTEXT.md](CONTEXT.md).
 
+## Product
+
+Current launch milestone: Like and Zap on x.com and youtube.com, the Nostr Atlas directory, and Nostr crawling.
+
 ## Voice
 
 Answer only what was asked, then stop. [.cursor/rules/voice.mdc](.cursor/rules/voice.mdc).
@@ -87,18 +91,18 @@ Fixture data only. Never commit secrets, keys, `nsec`s, or `.env` files. Ask bef
 ### Browser extension
 
 - Source: `browser-extension/src/`. Load the `browser-extension/` folder unpacked in Chromium. Local notes: [browser-extension/AGENTS.md](browser-extension/AGENTS.md).
-- After source changes: `npm run build:browser-extension`, then `npm run test:browser-extension`.
+- After source changes: `npm run build:browser-extension`, then `npm run test:browser-extension`. Commit the regenerated `browser-extension/lib/` files in the same PR.
 - Leave `browser-extension/lib/` to that build.
 
 ### WordPress plugin
 
 - Source: `saiy2k-nostr-components/` PHP and blocks, plus component behavior in `src/`. Local notes: [saiy2k-nostr-components/AGENTS.md](saiy2k-nostr-components/AGENTS.md).
 - `npm run wp-build` copies bundles into `saiy2k-nostr-components/assets/`.
-- Release with `npm run wp-release`. This plugin does not deploy through Firebase.
+- `npm run wp-release` prepares a zip and SVN instructions. It does not publish. The wordpress.org `svn commit` needs the owner's approval. This plugin does not deploy through Firebase.
 
 ### Promo videos
 
-- Source: `promo/`. HyperFrames compositions only. No product deploy target.
+- Source: `promo/`. HyperFrames compositions only. No product deploy target. `npm run publish` creates a public link and needs the owner's approval.
 
 ## Shared blast radius
 
@@ -112,9 +116,56 @@ Leave these paths to their build commands: `dist/`, `storybook-static/`, `browse
 
 Root Vitest ([vitest.config.ts](vitest.config.ts)) excludes `functions/` and `backend/`. `npm test` does not cover them. Use the check command for the surface you changed.
 
+## Contracts
+
+Do not change these without the owner's approval:
+
+- URL canonicalisation in [backend/nostr-pulse/url-canonical.js](backend/nostr-pulse/url-canonical.js). [src/common/url-tags.ts](src/common/url-tags.ts) and the browser extension import it.
+- Like and zap event semantics and tags, including kind 17 `+` / `-` and the zap request and receipt tags. The behavior specs are `src/nostr-like-button/spec/` and `src/nostr-zap-button/spec/`.
+- Directory API request and response shapes in [functions/AGENTS.md](functions/AGENTS.md).
+- Firestore collections and fields the directory API and the crawler write, named in [functions/AGENTS.md](functions/AGENTS.md) and [backend/AGENTS.md](backend/AGENTS.md).
+
+## Security
+
+- No key material and no software signer in x.com or YouTube pages. Signer public keys stay in memory for the current tab. Do not write them to `sessionStorage`.
+- X Zaps require a verified, zappable directory identity. YouTube Zaps require a checksum-valid lowercase `npub` in the creator-owned channel identity area. Ignore titles, descriptions, metadata, and channel-URL mappings as payment recipients.
+- Signing, invoice requests, and payments need a trusted user event. A zap may complete only for the same URL and recipient.
+- A refused or closed signer never falls back to anonymous signing.
+- Outbound HTTPS and WebSocket from the extension, the directory API, and the crawler use public hosts only, with size, time, and URL-length caps.
+- Only NIP-57-validated zap receipts count. A like count is each pubkey's newest reaction.
+- No secrets in the repo, in `VITE_*` values, in logs, or in issue and PR text. Firestore stays closed to clients.
+- Public endpoints cap their inputs. Widening the extension's host permission needs the owner's approval.
+
 ## Deploys
 
-Deploy only when asked, and name the exact target in the command. Hosting targets are `hosting:storybook` and `hosting:atlas`. Function deploys list function names. Crawler deploys use the Cloud Run scripts. WordPress uses `npm run wp-release`.
+Every deploy and publish needs the owner's explicit approval, not another bot's. Name one target. Do not run a bare `firebase deploy`.
+
+| Action | Command |
+|--------|---------|
+| Firebase Hosting | `firebase deploy --only hosting:storybook --project nostr-components` or `hosting:atlas` |
+| Firebase Functions | `firebase deploy --only functions:<name> --project nostr-components` |
+| Firestore rules | `firebase deploy --only firestore:rules --config backend/firebase.json --project nostr-components` |
+| Firestore indexes | `firebase deploy --only firestore:indexes --project nostr-components` |
+| Cloud Run crawlers | `PROJECT_ID=nostr-components` then `backend/deploy-nostr-atlas-backfill.sh`, `deploy-nostr-atlas-frontfill.sh`, `deploy-nostr-atlas-projection.sh`, or `deploy-nostr-pulse-sweep.sh`. These scripts also create service accounts, IAM, and schedulers. |
+| npm | `npm publish` of `nostr-components` |
+| Chrome Web Store | store upload of the extension |
+| WordPress | `svn commit` after `npm run wp-release` prepares the zip |
+| Promo | `npm run publish` under `promo/` |
+
+Leave project `sat-the-standard` alone. Scripts that write production Firestore (`hide.js`, `--rebuild`, `import-web-pulse.js --write`, deleting `frontfill:` state docs) need the same approval. The unpacked extension calls the production directory API.
+
+## Definition of done
+
+- `npx tsc --noEmit -p tsconfig.json` and `npm test`, plus the check for each surface you touched. Fix type errors your change introduces. Leave an unrelated failure for its own change.
+- If `src/` or `browser-extension/src/` changed, run `npm run build:browser-extension` and commit the regenerated `browser-extension/lib/` files in the same PR.
+
+## TODOs for the owner
+
+- TODO(owner): product-goal wording and the out-of-scope list.
+- TODO(owner): whether to write down the pause on outside contributions.
+- TODO(owner): branch naming and squash-merge conventions.
+- TODO(owner): limits for real-payment QA.
+- TODO(owner): whether to add a staging project. Production today is Firebase/GCP project `nostr-components`.
 
 ## Install
 

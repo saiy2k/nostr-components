@@ -28,7 +28,7 @@ The page identity a like or a zap uses.
 ## Directory
 
 **Directory**:
-The Nostr Atlas list of creator identities that connect an X or YouTube account to a Nostr identity.
+Nostr Atlas's listing of verified creator identities. It connects an account an audience already knows to a Nostr identity.
 
 **Handle**:
 The social account a directory record is about.
@@ -37,7 +37,7 @@ The social account a directory record is about.
 A creator's signed request to connect an account to a Nostr identity. Publishing a claim does not by itself mark the account verified.
 
 **Verified**:
-The projector has checked that the account owner controls the Nostr identity. A NIP-05 address is profile metadata, not this check.
+X account ownership checked by the projector. A NIP-05 address is profile metadata, not this check.
 
 **Zappable**:
 The directory has finished checking that this identity can receive a zap. Unset until that check finishes.
@@ -60,7 +60,7 @@ The crawler pass over older relay history.
 The crawler pass forward from where it last synced.
 
 **Projection**:
-The crawler pass that turns ingested claims into directory records.
+The crawler pass that consumes the handle documents backfill and frontfill write.
 
 **Web Pulse**:
 Likes and zaps across pages, on Nostr Atlas at `/pulse/`.
