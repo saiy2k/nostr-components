@@ -1,0 +1,42 @@
+---
+description: Red then review then green, one slice at a time
+alwaysApply: true
+---
+
+# TDD
+
+One observable behavior per slice. The smallest change that satisfies the task. No speculative features. No drive-by refactors. Long form: [`tdd/SKILL.md`](../../.agents/skills/tdd/SKILL.md).
+
+## Red
+
+Read `CONTEXT.md`. Write the ADR when the Decisions step in [`AGENTS.md`](../../AGENTS.md) says to. For this change, write or update `<component folder>/spec/spec.md` in the changed component's own folder, and name the interfaces under test there. For example `src/<component>/`, `backend/<job>/`, or `functions/<area>/`. Like, Zap, and Livestream already use `src/<component>/spec/spec.md`. Do not invent a spec for behavior this change does not touch. Do not add a `docs/spec/` directory.
+
+A documentation-only or configuration-only change with no observable behavior skips the spec, the tests, the Red and Green commits, and the approval stop. Use the “Everything else” commit format in [`AGENTS.md`](../../AGENTS.md).
+
+Write tests only at those seams, and only after that spec step is done. Run the check for the surface you changed, named in [`AGENTS.md`](../../AGENTS.md). Root `npm test` does not cover `functions/` or `backend/`. The failure is at the seam — a missing public symbol or a failed assertion — not a broken test.
+
+Commit `Red: <behavior>.` on the feature branch.
+
+Then stop. The turn's last message is: spec link, seams, test file path, verbatim failure output. Implementation waits for the user to approve the tests or ask for changes.
+
+A change request amends the red commit and pushes it with `--force-with-lease`. This is the one force-push permitted without asking, because the branch is your own unmerged `cursor/*` branch. Approval is the word `green`.
+
+## Green
+
+Minimal code that makes the red tests pass. No extra tests, no speculative features, no refactoring.
+
+Run the same surface check. Commit `Green: <behavior>.`
+
+Then stop. The user reviews this commit. `refactor` starts the Refactor step. A merge instruction skips it.
+
+## Tests
+
+- One observable behavior per test, named for the behavior in `CONTEXT.md` terms — what, not how.
+- Arrange, act, assert: set up with fixtures, act once through the seam, one logical assertion.
+- Assert behavior through the public interface. Expected values are literals from the spec — never recomputed the way the implementation computes them.
+- Coverage follows the behaviors that spec states, at the interfaces it names. Edge cases only when the spec names them.
+- Mock only at system boundaries: relays, Lightning and LNURL providers, the directory HTTP API, Firestore, the clock.
+
+## Refactor
+
+Starts only when the user says `refactor`. Not part of red or green. One separate commit. Change structure only: the spec, the tests, and the observable behavior stay as they are, and the surface check stays green. Done when that commit is on the branch and the surface check is green. Skipped only when the user says to merge without a refactor.

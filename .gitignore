@@ -51,6 +51,8 @@ dist
 /nostr-components-wp/assets/
 /storybook-static/
 
-.cursor
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 .firebase
 .gstack/
