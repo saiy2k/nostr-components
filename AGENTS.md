@@ -2,7 +2,57 @@
 
 This repo holds several products. Identify the surface before editing. Library source lives in `src/`. `scripts/` is shared build and copy tooling. Other product directories are separate apps, jobs, or plugins.
 
-Read the surface README for runbooks. This file only routes work and names the traps.
+Read the surface README for runbooks. This file routes work, names the traps, and states how to change the repo. Vocabulary: [CONTEXT.md](CONTEXT.md).
+
+## Voice
+
+Answer only what was asked, then stop. [.cursor/rules/voice.mdc](.cursor/rules/voice.mdc).
+
+## Where truth lives
+
+| File | Job |
+|------|-----|
+| [CONTEXT.md](CONTEXT.md) | Vocabulary. Glossary only. |
+| [docs/adr/](docs/adr/) | Why a hard-to-reverse choice was made. |
+| [docs/spec/](docs/spec/) | New behavior: what it does, including seams. |
+| `src/nostr-like-button/spec/`, `src/nostr-zap-button/spec/` | Existing Like and Zap behavior. Leave it there. |
+
+## Code
+
+The smallest change that satisfies the task. No speculative features. No drive-by refactors. A refactor is its own step and its own commit, and it changes structure only.
+
+## Development loop
+
+1. **Vocabulary.** Read `CONTEXT.md`. Use its terms. Done when every name in the change matches the glossary, or the glossary is updated first.
+2. **Decisions.** Before the spec, write `docs/adr/NNNN-slug.md` (next unused number) only when all three hold: hard to reverse, surprising without context, and a real trade-off. The file has a title and states the context, the choice, and why. Done when all three hold and the new ADR does that, or when any one is missing and this change adds no ADR. [.cursor/rules/decisions.mdc](.cursor/rules/decisions.mdc).
+3. **Spec.** Write or update the spec for this change, including `## Seams`: `docs/spec/` for new behavior, or the existing file under `src/nostr-like-button/spec/` or `src/nostr-zap-button/spec/` when that behavior already lives there. Done when the intended behavior and the interfaces under test are stated. Do not invent a spec for behavior this change does not touch. Leave the tests unwritten until this step is done.
+4. **Red.** Write the failing tests at those seams. Run the check for the surface you changed. Commit `Red: <behavior>.` Stop for review. Done when that check fails at the seam and the user has the red output. [.cursor/rules/tdd.mdc](.cursor/rules/tdd.mdc).
+5. **Green.** Starts only after the user approves the tests. The smallest change that makes them pass. Commit `Green: <behavior>.` Done when the surface check is green.
+6. **Refactor.** After the green commit, stop. The user reviews that commit. This step starts only when the user says `refactor`. One commit of its own. Change structure only: the spec, the tests, and the observable behavior stay as they are, and the surface check stays green. Done when that commit is on the branch and the surface check is green. This step is skipped only when the user says to merge without a refactor.
+
+A feature branch may carry red commits. The branch is ready for review when the last slice's green commit passes the surface check. A refactor commit may be the tip of that branch.
+
+## Commit messages
+
+Feature slices:
+
+```
+Red: <behavior>.
+Green: <behavior>.
+Refactor: <what changed>.
+```
+
+Everything else:
+
+```
+Short summary.
+
+Optional one-sentence why.
+```
+
+## Safety
+
+Fixture data only. Never commit secrets, keys, `nsec`s, or `.env` files. Ask before destructive git. Never push to `main`. [.cursor/rules/safety-privacy.mdc](.cursor/rules/safety-privacy.mdc).
 
 ## Surfaces
 

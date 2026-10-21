@@ -1,0 +1,16 @@
+---
+description: Record hard-to-reverse choices as short ADRs
+alwaysApply: true
+---
+
+# Decisions
+
+Write an ADR when all three hold:
+
+1. Hard to reverse — changing your mind later costs real effort
+2. Surprising without context — a later reader will ask why
+3. A real trade-off — genuine alternatives, a reason for this one
+
+Skip the ADR if any one of the three is missing.
+
+Path: `docs/adr/NNNN-slug.md` (next unused number). Title plus 1–3 sentences: context, choice, why. Format: [`ADR-FORMAT.md`](../../.agents/skills/domain-modeling/ADR-FORMAT.md).

@@ -1,0 +1,14 @@
+---
+description: Fixture data only; no secrets; ask before destructive git
+alwaysApply: true
+---
+
+# Safety and privacy
+
+Use fixture data for tests and local runs.
+
+Never commit secrets, keys, `nsec`s, or `.env` files. Commit config templates only, such as `.env.example`.
+
+Ask before destructive git (`reset --hard`, `clean`, force-push, rebase of shared history). One exception: `--force-with-lease` of your own unmerged `cursor/*` branch after a red-review change request ([`tdd.mdc`](tdd.mdc)).
+
+Never push to `main`, including a force-push.
