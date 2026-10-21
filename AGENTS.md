@@ -18,7 +18,7 @@ Answer only what was asked, then stop. [.cursor/rules/voice.mdc](.cursor/rules/v
 |------|-----|
 | [CONTEXT.md](CONTEXT.md) | Vocabulary. Glossary only. |
 | [docs/adr/](docs/adr/) | Why a hard-to-reverse choice was made. |
-| `src/<component>/spec/spec.md` | What that component does. Like, Zap, and Livestream already use this path. |
+| `<component folder>/spec/spec.md` | What that component does, in its own folder. For example `src/<component>/`, `backend/<job>/`, or `functions/<area>/`. Like, Zap, and Livestream already use `src/<component>/spec/spec.md`. |
 
 ## Code
 
@@ -30,7 +30,7 @@ A documentation-only or configuration-only change with no observable behavior sk
 
 1. **Vocabulary.** Read `CONTEXT.md`. Use its terms. Done when every name in the change matches the glossary, or the glossary is updated first.
 2. **Decisions.** Before the spec, write `docs/adr/NNNN-slug.md` (next unused number) only when all three hold: hard to reverse, surprising without context, and a real trade-off. The file has a title and states the context, the choice, and why. Done when all three hold and the new ADR does that, or when any one is missing and this change adds no ADR. [.cursor/rules/decisions.mdc](.cursor/rules/decisions.mdc).
-3. **Spec.** Write or update `src/<component>/spec/spec.md` next to the component, and name the interfaces under test there. Like, Zap, and Livestream already use that path. Done when the intended behavior and those interfaces are stated. Do not invent a spec for behavior this change does not touch. Leave the tests unwritten until this step is done.
+3. **Spec.** Write or update `<component folder>/spec/spec.md` in the changed component's own folder, and name the interfaces under test there. For example `src/<component>/`, `backend/<job>/`, or `functions/<area>/`. Like, Zap, and Livestream already use `src/<component>/spec/spec.md`. Done when the intended behavior and those interfaces are stated. Do not invent a spec for behavior this change does not touch. Leave the tests unwritten until this step is done.
 4. **Red.** Write the failing tests at those seams. Run the check for the surface you changed. Commit `Red: <behavior>.` Stop for review. Done when that check fails at the seam and the user has the red output. [.cursor/rules/tdd.mdc](.cursor/rules/tdd.mdc).
 5. **Green.** Starts only after the user approves the tests. The smallest change that makes them pass. Commit `Green: <behavior>.` Done when the surface check is green.
 6. **Refactor.** After the green commit, stop. The user reviews that commit. This step starts only when the user says `refactor`. One commit of its own. Change structure only: the spec, the tests, and the observable behavior stay as they are, and the surface check stays green. Done when that commit is on the branch and the surface check is green. This step is skipped only when the user says to merge without a refactor.
