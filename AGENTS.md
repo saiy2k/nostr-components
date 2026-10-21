@@ -18,8 +18,7 @@ Answer only what was asked, then stop. [.cursor/rules/voice.mdc](.cursor/rules/v
 |------|-----|
 | [CONTEXT.md](CONTEXT.md) | Vocabulary. Glossary only. |
 | [docs/adr/](docs/adr/) | Why a hard-to-reverse choice was made. |
-| [docs/spec/](docs/spec/) | New behavior: what it does, including seams. |
-| `src/nostr-like-button/spec/`, `src/nostr-zap-button/spec/` | Existing Like and Zap behavior. Leave it there. |
+| `src/<component>/spec/spec.md` | What that component does. Like, Zap, and Livestream already use this path. |
 
 ## Code
 
@@ -29,7 +28,7 @@ The smallest change that satisfies the task. No speculative features. No drive-b
 
 1. **Vocabulary.** Read `CONTEXT.md`. Use its terms. Done when every name in the change matches the glossary, or the glossary is updated first.
 2. **Decisions.** Before the spec, write `docs/adr/NNNN-slug.md` (next unused number) only when all three hold: hard to reverse, surprising without context, and a real trade-off. The file has a title and states the context, the choice, and why. Done when all three hold and the new ADR does that, or when any one is missing and this change adds no ADR. [.cursor/rules/decisions.mdc](.cursor/rules/decisions.mdc).
-3. **Spec.** Write or update the spec for this change, including `## Seams`: `docs/spec/` for new behavior, or the existing file under `src/nostr-like-button/spec/` or `src/nostr-zap-button/spec/` when that behavior already lives there. Done when the intended behavior and the interfaces under test are stated. Do not invent a spec for behavior this change does not touch. Leave the tests unwritten until this step is done.
+3. **Spec.** Write or update `src/<component>/spec/spec.md` next to the component, and name the interfaces under test there. Like, Zap, and Livestream already use that path. Done when the intended behavior and those interfaces are stated. Do not invent a spec for behavior this change does not touch. Leave the tests unwritten until this step is done.
 4. **Red.** Write the failing tests at those seams. Run the check for the surface you changed. Commit `Red: <behavior>.` Stop for review. Done when that check fails at the seam and the user has the red output. [.cursor/rules/tdd.mdc](.cursor/rules/tdd.mdc).
 5. **Green.** Starts only after the user approves the tests. The smallest change that makes them pass. Commit `Green: <behavior>.` Done when the surface check is green.
 6. **Refactor.** After the green commit, stop. The user reviews that commit. This step starts only when the user says `refactor`. One commit of its own. Change structure only: the spec, the tests, and the observable behavior stay as they are, and the surface check stays green. Done when that commit is on the branch and the surface check is green. This step is skipped only when the user says to merge without a refactor.
@@ -121,7 +120,7 @@ Root Vitest ([vitest.config.ts](vitest.config.ts)) excludes `functions/` and `ba
 Do not change these without the owner's approval:
 
 - URL canonicalisation in [backend/nostr-pulse/url-canonical.js](backend/nostr-pulse/url-canonical.js). [src/common/url-tags.ts](src/common/url-tags.ts) and the browser extension import it.
-- Like and zap event semantics and tags, including kind 17 `+` / `-` and the zap request and receipt tags. The behavior specs are `src/nostr-like-button/spec/` and `src/nostr-zap-button/spec/`.
+- Like and zap event semantics and tags, including kind 17 `+` / `-` and the zap request and receipt tags. The behavior specs are `src/nostr-like-button/spec/spec.md` and `src/nostr-zap-button/spec/spec.md`.
 - Directory API request and response shapes in [functions/AGENTS.md](functions/AGENTS.md).
 - Firestore collections and fields the directory API and the crawler write, named in [functions/AGENTS.md](functions/AGENTS.md) and [backend/AGENTS.md](backend/AGENTS.md).
 

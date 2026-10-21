@@ -9,7 +9,7 @@ One observable behavior per slice. The smallest change that satisfies the task. 
 
 ## Red
 
-Read `CONTEXT.md`. Write the ADR when the Decisions step in [`AGENTS.md`](../../AGENTS.md) says to. For this change, write or update the spec with a `## Seams` section: `docs/spec/<capability>.md` for new behavior, or the existing file under `src/nostr-like-button/spec/` or `src/nostr-zap-button/spec/` when that behavior already lives there. Do not invent a spec for behavior this change does not touch.
+Read `CONTEXT.md`. Write the ADR when the Decisions step in [`AGENTS.md`](../../AGENTS.md) says to. For this change, write or update `src/<component>/spec/spec.md` next to the component, and name the interfaces under test there. Like, Zap, and Livestream already use that path. Do not invent a spec for behavior this change does not touch. Do not add a `docs/spec/` directory.
 
 Write tests only at those seams, and only after that spec step is done. Run the check for the surface you changed, named in [`AGENTS.md`](../../AGENTS.md). Root `npm test` does not cover `functions/` or `backend/`. The failure is at the seam — a missing public symbol or a failed assertion — not a broken test.
 
@@ -32,7 +32,7 @@ Then stop. The user reviews this commit. `refactor` starts the Refactor step. A 
 - One observable behavior per test, named for the behavior in `CONTEXT.md` terms — what, not how.
 - Arrange, act, assert: set up with fixtures, act once through the seam, one logical assertion.
 - Assert behavior through the public interface. Expected values are literals from the spec — never recomputed the way the implementation computes them.
-- Coverage follows the spec's `## Seams` section. Edge cases only when the spec names them.
+- Coverage follows the behaviors that spec states, at the interfaces it names. Edge cases only when the spec names them.
 - Mock only at system boundaries: relays, Lightning and LNURL providers, the directory HTTP API, Firestore, the clock.
 
 ## Refactor
