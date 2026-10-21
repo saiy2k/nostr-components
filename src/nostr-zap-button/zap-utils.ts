@@ -103,7 +103,9 @@ export const getProfileMetadata = async (
   }
 
   const transport = getRelayTransport();
-  if (directoryLookup && transport?.getProfiles) {
+  // directoryLookup does not narrow actionId. This check does, and it is
+  // false whenever directoryLookup is false, so the call set stays the same.
+  if (directoryLookup && actionId && transport?.getProfiles) {
     const events = await transport.getProfiles(actionId, [authorId]);
     const event = newestVerifiedProfile(events, authorId);
     if (event) profileCache.set(cacheKey, event);
