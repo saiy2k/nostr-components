@@ -5,7 +5,7 @@ Vocabulary for this repo. Glossary only.
 ## Like and Zap
 
 **Like**:
-Approval of a page. The count is each pubkey's newest reaction.
+Approval of a page.
 
 **Unlike**:
 Withdrawal of a like.
@@ -69,7 +69,7 @@ Likes and zaps across pages, on Nostr Atlas at `/pulse/`.
 The crawler job that reads relays for those page likes and zaps.
 
 **Rendezvous relay**:
-A relay used for likes and zaps when the page has no host transport.
+A relay used to publish likes and zaps.
 
 **Host transport**:
 A page-provided path for Like and Zap. On x.com and YouTube the extension may use the directory HTTP API. On any other website, Like and Zap talk only to relays.

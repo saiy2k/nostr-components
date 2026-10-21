@@ -26,6 +26,8 @@ The smallest change that satisfies the task. No speculative features. No drive-b
 
 ## Development loop
 
+A documentation-only or configuration-only change with no observable behavior skips this loop. Use the commit format under Everything else.
+
 1. **Vocabulary.** Read `CONTEXT.md`. Use its terms. Done when every name in the change matches the glossary, or the glossary is updated first.
 2. **Decisions.** Before the spec, write `docs/adr/NNNN-slug.md` (next unused number) only when all three hold: hard to reverse, surprising without context, and a real trade-off. The file has a title and states the context, the choice, and why. Done when all three hold and the new ADR does that, or when any one is missing and this change adds no ADR. [.cursor/rules/decisions.mdc](.cursor/rules/decisions.mdc).
 3. **Spec.** Write or update `src/<component>/spec/spec.md` next to the component, and name the interfaces under test there. Like, Zap, and Livestream already use that path. Done when the intended behavior and those interfaces are stated. Do not invent a spec for behavior this change does not touch. Leave the tests unwritten until this step is done.
@@ -97,7 +99,7 @@ Fixture data only. Never commit secrets, keys, `nsec`s, or `.env` files. Ask bef
 
 - Source: `saiy2k-nostr-components/` PHP and blocks, plus component behavior in `src/`. Local notes: [saiy2k-nostr-components/AGENTS.md](saiy2k-nostr-components/AGENTS.md).
 - `npm run wp-build` copies bundles into `saiy2k-nostr-components/assets/`.
-- `npm run wp-release` prepares a zip and SVN instructions. It does not publish. The wordpress.org `svn commit` needs the owner's approval. This plugin does not deploy through Firebase.
+- `npm run wp-release` prepares a zip and SVN instructions. It does not publish. The WordPress.org `svn commit` needs the owner's approval. This plugin does not deploy through Firebase.
 
 ### Promo videos
 
@@ -141,11 +143,11 @@ Every deploy and publish needs the owner's explicit approval, not another bot's.
 
 | Action | Command |
 |--------|---------|
-| Firebase Hosting | `firebase deploy --only hosting:storybook --project nostr-components` or `hosting:atlas` |
+| Firebase Hosting | `firebase deploy --only hosting:storybook --project nostr-components` or `firebase deploy --only hosting:atlas --project nostr-components` |
 | Firebase Functions | `firebase deploy --only functions:<name> --project nostr-components` |
 | Firestore rules | `firebase deploy --only firestore:rules --config backend/firebase.json --project nostr-components` |
 | Firestore indexes | `firebase deploy --only firestore:indexes --project nostr-components` |
-| Cloud Run crawlers | `PROJECT_ID=nostr-components` then `backend/deploy-nostr-atlas-backfill.sh`, `deploy-nostr-atlas-frontfill.sh`, `deploy-nostr-atlas-projection.sh`, or `deploy-nostr-pulse-sweep.sh`. These scripts also create service accounts, IAM, and schedulers. |
+| Cloud Run crawlers | `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-backfill.sh`, `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-frontfill.sh`, `PROJECT_ID=nostr-components backend/deploy-nostr-atlas-projection.sh`, or `PROJECT_ID=nostr-components backend/deploy-nostr-pulse-sweep.sh`. These scripts also create service accounts, IAM, and schedulers. |
 | npm | `npm publish` of `nostr-components` |
 | Chrome Web Store | store upload of the extension |
 | WordPress | `svn commit` after `npm run wp-release` prepares the zip |

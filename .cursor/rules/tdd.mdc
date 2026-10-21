@@ -11,6 +11,8 @@ One observable behavior per slice. The smallest change that satisfies the task. 
 
 Read `CONTEXT.md`. Write the ADR when the Decisions step in [`AGENTS.md`](../../AGENTS.md) says to. For this change, write or update `src/<component>/spec/spec.md` next to the component, and name the interfaces under test there. Like, Zap, and Livestream already use that path. Do not invent a spec for behavior this change does not touch. Do not add a `docs/spec/` directory.
 
+A documentation-only or configuration-only change with no observable behavior skips the spec, the tests, the Red and Green commits, and the approval stop. Use the “Everything else” commit format in [`AGENTS.md`](../../AGENTS.md).
+
 Write tests only at those seams, and only after that spec step is done. Run the check for the surface you changed, named in [`AGENTS.md`](../../AGENTS.md). Root `npm test` does not cover `functions/` or `backend/`. The failure is at the seam — a missing public symbol or a failed assertion — not a broken test.
 
 Commit `Red: <behavior>.` on the feature branch.
