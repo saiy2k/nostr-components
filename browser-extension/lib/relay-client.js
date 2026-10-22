@@ -8444,27 +8444,32 @@
     function rememberActivityFromIngest(activity) {
       if (!activity || !HEX_64_PATTERN.test(String(activity.urlKey || ""))) return;
       const urlKey = String(activity.urlKey).toLowerCase();
-      let found = false;
+      let hasBareRow = false;
       for (const [key, entry] of activityCache) {
         if (key !== urlKey && !key.startsWith(urlKey + ":")) continue;
-        found = true;
+        if (key === urlKey) hasBareRow = true;
         const activityAt = Number(activity.lastActivityAt);
-        entry.row = Object.assign({}, entry.row, {
+        const updates = {
           likes: countOf(activity.likeCount),
           dislikes: countOf(activity.dislikeCount),
           activityAt: Number.isFinite(activityAt) ? activityAt : null
-        });
+        };
+        if (key === urlKey) {
+          updates.zapCount = countOf(activity.zapCount);
+          updates.sats = countOf(activity.zapMsats) / 1e3;
+        }
+        entry.row = Object.assign({}, entry.row, updates);
         entry.expiresAt = Date.now() + ACTIVITY_CACHE_MS;
       }
-      if (!found) {
+      if (!hasBareRow) {
         rememberActivityRow({
           urlKey,
           recipient: null,
           likes: countOf(activity.likeCount),
           dislikes: countOf(activity.dislikeCount),
           activityAt: Number.isFinite(Number(activity.lastActivityAt)) ? Number(activity.lastActivityAt) : null,
-          zapCount: null,
-          sats: null
+          zapCount: countOf(activity.zapCount),
+          sats: countOf(activity.zapMsats) / 1e3
         });
       }
     }

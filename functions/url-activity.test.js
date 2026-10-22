@@ -131,18 +131,30 @@ function activityDb(records) {
   };
 }
 
-test("returns likes, dislikes, and one recipient's zap total", async () => {
+test("returns likes, dislikes, and zap totals (recipient-scoped and URL aggregate)", async () => {
   const db = activityDb({
-    [`nostrUrlActivity/${KEY}`]: { likeCount: 3, dislikeCount: 1 },
+    [`nostrUrlActivity/${KEY}`]: {
+      likeCount: 3,
+      dislikeCount: 1,
+      zapCount: 5,
+      zapMsats: 7000,
+    },
     [`nostrUrlActivity/${KEY}/recipients/${PUBKEY}`]: {
       count: 2,
       msats: 2500,
     },
-    [`nostrUrlActivity/${OTHER}`]: { likeCount: 4, dislikeCount: 0 },
+    [`nostrUrlActivity/${OTHER}`]: {
+      likeCount: 4,
+      dislikeCount: 0,
+      zapCount: 0,
+      zapMsats: 0,
+    },
   });
+
   const result = await getUrlActivity(db, {
-    item: [`${KEY}:${PUBKEY}`, OTHER],
+    item: [`${KEY}:${PUBKEY}`, KEY, OTHER],
   });
+
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.items, [
     {
@@ -155,13 +167,22 @@ test("returns likes, dislikes, and one recipient's zap total", async () => {
       sats: 2.5,
     },
     {
+      urlKey: KEY,
+      recipient: null,
+      likes: 3,
+      dislikes: 1,
+      activityAt: null,
+      zapCount: 5,
+      sats: 7,
+    },
+    {
       urlKey: OTHER,
       recipient: null,
       likes: 4,
       dislikes: 0,
       activityAt: null,
-      zapCount: null,
-      sats: null,
+      zapCount: 0,
+      sats: 0,
     },
   ]);
 });

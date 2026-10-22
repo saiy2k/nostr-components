@@ -71,13 +71,13 @@ function activityRow(item, url, recipient) {
     likes: countOf(url?.likeCount),
     dislikes: countOf(url?.dislikeCount),
     activityAt: Number.isFinite(Number(url?.lastActivityAt)) ? Number(url.lastActivityAt) : null,
-    zapCount: null,
-    sats: null,
+    zapCount: item.recipient
+      ? countOf(recipient?.count)
+      : countOf(url?.zapCount),
+    sats: item.recipient
+      ? satsFromMsats(recipient?.msats)
+      : satsFromMsats(url?.zapMsats),
   };
-  if (item.recipient) {
-    row.zapCount = countOf(recipient?.count);
-    row.sats = satsFromMsats(recipient?.msats);
-  }
   return row;
 }
 
