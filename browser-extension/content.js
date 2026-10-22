@@ -83,7 +83,7 @@
     }
   }
 
-  function injectIntoArticle(article) {
+  function injectIntoArticle(article, preservedRecipient) {
     const tweetInfo = extension.dom.getTweetInfo(article);
     if (!tweetInfo) {
       return;
@@ -104,14 +104,20 @@
       return;
     }
 
-    const action = extension.dom.createNostrAction(tweetInfo, theme);
+    const action = extension.dom.createNostrAction(
+      tweetInfo,
+      theme,
+      preservedRecipient
+    );
     extension.dom.insertAfterNativeLike(actionBar, action.slot);
     if (hydrationObserver) {
       hydrationObserver.observe(action.slot);
     } else {
       extension.dom.hydrateNostrAction(action.slot);
     }
-    void loadDirectoryIdentity(action.slot, tweetInfo.username);
+    if (!extension.url.isValidNpub(preservedRecipient)) {
+      void loadDirectoryIdentity(action.slot, tweetInfo.username);
+    }
   }
 
   function queryTweetArticles() {
@@ -180,6 +186,61 @@
     }, INJECT_DELAY_MS);
   }
 
+  function sameMountedTarget(slot) {
+    if (!slot || slot.isConnected !== true) return false;
+    if (slot.dataset?.nostrYoutubeAction === 'true') {
+      const info = extension.youtubeDom?.getVideoInfo?.();
+      if (!info || info.videoId !== slot.dataset.videoId) return false;
+      const context = extension.youtubeDom.findVideoContext?.(document, info);
+      const bar = context && context.actionBar;
+      return Boolean(bar && typeof bar.contains === 'function' && bar.contains(slot));
+    }
+    if (typeof slot.closest !== 'function') return false;
+    const article = slot.closest('article');
+    if (!article) return false;
+    let info = null;
+    try {
+      info = extension.dom.getTweetInfo(article);
+    } catch (_error) {
+      return false;
+    }
+    return Boolean(
+      info &&
+      info.statusId === slot.dataset.statusId &&
+      info.canonicalUrl === slot.dataset.statusUrl
+    );
+  }
+
+  function restoreTweetTarget(slot) {
+    const statusId = slot && slot.dataset ? slot.dataset.statusId : '';
+    const statusUrl = slot && slot.dataset ? slot.dataset.statusUrl : '';
+    if (!statusId || !statusUrl) return;
+    const recipient = slot.dataset.zapRecipientNpub || null;
+    let articles;
+    try {
+      articles = queryTweetArticles();
+    } catch (_error) {
+      return;
+    }
+    for (const article of articles) {
+      let info = null;
+      try {
+        info = extension.dom.getTweetInfo(article);
+      } catch (_error) {
+        info = null;
+      }
+      if (!info || info.statusId !== statusId || info.canonicalUrl !== statusUrl) {
+        continue;
+      }
+      try {
+        injectIntoArticle(article, recipient);
+      } catch (_error) {
+        // Keep scanning other tweets if this article cannot be rebuilt.
+      }
+      return;
+    }
+  }
+
   function revokeRemovedActions(records) {
     const selector =
       '[data-nostr-competency-like="true"], [data-nostr-youtube-action="true"]';
@@ -194,8 +255,22 @@
       }
     }
     for (const action of removedActions) {
+      // X removes and reinserts a tweet while nos2x is focused. A slot that
+      // is still the same status must keep its action, or the zap invoice
+      // request dies after the signer returns.
+      if (sameMountedTarget(action)) continue;
       hydrationObserver?.unobserve(action);
+      const youtube = action.dataset?.nostrYoutubeAction === 'true';
       extension.componentLoader?.revokeAction?.(action);
+      if (youtube) {
+        try {
+          processYouTubeVideo();
+        } catch (_error) {
+          // The next scheduled scan can rebuild the watch-page action.
+        }
+      } else {
+        restoreTweetTarget(action);
+      }
     }
   }
 

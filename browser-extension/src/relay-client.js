@@ -80,6 +80,9 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
   const relayHealth = new Map();
   const recentReactionsByUrl = new Map();
   const actionContexts = new Map();
+  // Last target bound to an action id. Survives revoke so a re-rendered tweet
+  // can adopt the in-flight zap without treating the old id as unauthorized.
+  const actionBindings = new Map();
   const providerMemory = new Map();
   const providerNegative = new Map();
   const providerInflight = new Map();
@@ -631,6 +634,40 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     }
   }
 
+  function boundPageUrl(value) {
+    return canonicalPageUrl(value) || value;
+  }
+
+  function sameActionBinding(left, right) {
+    return Boolean(
+      left &&
+      right &&
+      left.kind === right.kind &&
+      left.recipientPubkey === right.recipientPubkey &&
+      boundPageUrl(left.url) === boundPageUrl(right.url)
+    );
+  }
+
+  function rememberBinding(actionId, context) {
+    if (actionBindings.has(actionId)) actionBindings.delete(actionId);
+    actionBindings.set(actionId, {
+      kind: context.kind,
+      url: context.url,
+      recipientPubkey: context.recipientPubkey
+    });
+    while (actionBindings.size > 2048) {
+      actionBindings.delete(actionBindings.keys().next().value);
+    }
+  }
+
+  function activeContextForBinding(binding) {
+    if (!binding) return null;
+    for (const context of actionContexts.values()) {
+      if (sameActionBinding(context, binding)) return context;
+    }
+    return null;
+  }
+
   function registerActionContext(actionId, context) {
     if (
       !ACTION_ID_PATTERN.test(String(actionId || '')) ||
@@ -640,23 +677,26 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     ) {
       throw new Error('Invalid isolated action context');
     }
+    const canonical = canonicalPageUrl(context.url);
+    if (!canonical || !isAllowedContentUrl(canonical)) {
+      throw new Error('Invalid isolated action context');
+    }
     const next = {
       kind: context.kind,
-      url: context.url,
+      url: canonical,
       recipientPubkey: decodeRecipientNpub(context.recipientNpub)
     };
     const current = actionContexts.get(actionId);
-    if (
-      current &&
-      current.kind === next.kind &&
-      current.url === next.url &&
-      current.recipientPubkey === next.recipientPubkey
-    ) {
+    // Equivalent re-registration (X re-render, trailing slash, host alias)
+    // keeps the object in-flight requests already captured.
+    if (current && sameActionBinding(current, next)) {
       actionContexts.delete(actionId);
       actionContexts.set(actionId, current);
+      rememberBinding(actionId, current);
       return;
     }
     actionContexts.set(actionId, next);
+    rememberBinding(actionId, next);
     if (actionContexts.size > 2048) {
       actionContexts.delete(actionContexts.keys().next().value);
     }
@@ -687,7 +727,7 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     }
   }
 
-  function sendExtensionMessage(message) {
+  function sendExtensionMessageOnce(message) {
     function unwrap(response) {
       if (!response || response.ok !== true) {
         throw new Error((response && response.error) || 'Extension request failed');
@@ -716,15 +756,35 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
     return Promise.reject(new Error('Browser runtime API is not available'));
   }
 
+  function workerRestarted(error) {
+    const message = String(error && error.message || '');
+    return (
+      message.indexOf('message port closed') !== -1 ||
+      message.indexOf('Receiving end does not exist') !== -1
+    );
+  }
+
+  function sendExtensionMessage(message) {
+    // MV3 can stop the service worker while nos2x is open. The action map
+    // lives in this content script, but the invoice HTTPS call does not.
+    return sendExtensionMessageOnce(message).catch(function (error) {
+      if (!workerRestarted(error)) throw error;
+      return sendExtensionMessageOnce(message);
+    });
+  }
+
   function sendHttpsJsonRequest(url) {
     return sendExtensionMessage({ type: 'FETCH_HTTPS_JSON', url: url });
   }
 
   function getActionContext(actionId, requireRecipient) {
     const normalizedId = String(actionId || '');
-    const context = ACTION_ID_PATTERN.test(normalizedId)
+    let context = ACTION_ID_PATTERN.test(normalizedId)
       ? actionContexts.get(normalizedId)
       : null;
+    if (!context && ACTION_ID_PATTERN.test(normalizedId)) {
+      context = activeContextForBinding(actionBindings.get(normalizedId));
+    }
     if (!context || (requireRecipient && !context.recipientPubkey)) {
       throw new Error('Request is not bound to an active action');
     }
@@ -732,9 +792,15 @@ import { canonicalUrl as canonicalPageUrl } from '../../backend/nostr-pulse/url-
   }
 
   function requireCurrentActionContext(actionId, context) {
-    if (actionContexts.get(String(actionId || '')) !== context) {
-      throw new Error('Request action is no longer active');
+    const normalizedId = String(actionId || '');
+    const current = actionContexts.get(normalizedId);
+    // Same object, or the same tweet/recipient still registered after a
+    // re-render replaced this object or moved the target to a new action id.
+    if (current && (current === context || sameActionBinding(current, context))) {
+      return;
     }
+    if (activeContextForBinding(context)) return;
+    throw new Error('Request action is no longer active');
   }
 
   function profileLnurl(content) {

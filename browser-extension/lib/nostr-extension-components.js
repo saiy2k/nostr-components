@@ -291,8 +291,8 @@
         createDebug6.formatters = {};
         function selectColor(namespace) {
           let hash3 = 0;
-          for (let i3 = 0; i3 < namespace.length; i3++) {
-            hash3 = (hash3 << 5) - hash3 + namespace.charCodeAt(i3);
+          for (let i4 = 0; i4 < namespace.length; i4++) {
+            hash3 = (hash3 << 5) - hash3 + namespace.charCodeAt(i4);
             hash3 |= 0;
           }
           return createDebug6.colors[Math.abs(hash3) % createDebug6.colors.length];
@@ -788,8 +788,8 @@
             this.process(view, 0);
             pos = 0;
           }
-          for (let i3 = pos; i3 < blockLen; i3++)
-            buffer[i3] = 0;
+          for (let i4 = pos; i4 < blockLen; i4++)
+            buffer[i4] = 0;
           setBigUint64(view, blockLen - 8, BigInt(this.length * 8), isLE4);
           this.process(view, 0);
           const oview = createView(out);
@@ -800,8 +800,8 @@
           const state = this.get();
           if (outLen > state.length)
             throw new Error("_sha2: outputLen bigger than state");
-          for (let i3 = 0; i3 < outLen; i3++)
-            oview.setUint32(4 * i3, state[i3], isLE4);
+          for (let i4 = 0; i4 < outLen; i4++)
+            oview.setUint32(4 * i4, state[i4], isLE4);
         }
         digest() {
           const { buffer, outputLen } = this;
@@ -939,19 +939,19 @@
           this.H = H | 0;
         }
         process(view, offset) {
-          for (let i3 = 0; i3 < 16; i3++, offset += 4)
-            SHA256_W[i3] = view.getUint32(offset, false);
-          for (let i3 = 16; i3 < 64; i3++) {
-            const W15 = SHA256_W[i3 - 15];
-            const W2 = SHA256_W[i3 - 2];
+          for (let i4 = 0; i4 < 16; i4++, offset += 4)
+            SHA256_W[i4] = view.getUint32(offset, false);
+          for (let i4 = 16; i4 < 64; i4++) {
+            const W15 = SHA256_W[i4 - 15];
+            const W2 = SHA256_W[i4 - 2];
             const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ W15 >>> 3;
             const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
-            SHA256_W[i3] = s1 + SHA256_W[i3 - 7] + s0 + SHA256_W[i3 - 16] | 0;
+            SHA256_W[i4] = s1 + SHA256_W[i4 - 7] + s0 + SHA256_W[i4 - 16] | 0;
           }
           let { A, B, C, D, E, F, G, H } = this;
-          for (let i3 = 0; i3 < 64; i3++) {
+          for (let i4 = 0; i4 < 64; i4++) {
             const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
-            const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i3] + SHA256_W[i3] | 0;
+            const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i4] + SHA256_W[i4] | 0;
             const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
             const T2 = sigma0 + Maj(A, B, C) | 0;
             H = G;
@@ -1012,8 +1012,8 @@
     if (!u8a2(bytes4))
       throw new Error("Uint8Array expected");
     let hex2 = "";
-    for (let i3 = 0; i3 < bytes4.length; i3++) {
-      hex2 += hexes[bytes4[i3]];
+    for (let i4 = 0; i4 < bytes4.length; i4++) {
+      hex2 += hexes[bytes4[i4]];
     }
     return hex2;
   }
@@ -1033,13 +1033,13 @@
     if (len % 2)
       throw new Error("padded hex string expected, got unpadded hex of length " + len);
     const array = new Uint8Array(len / 2);
-    for (let i3 = 0; i3 < array.length; i3++) {
-      const j = i3 * 2;
+    for (let i4 = 0; i4 < array.length; i4++) {
+      const j = i4 * 2;
       const hexByte = hex2.slice(j, j + 2);
       const byte = Number.parseInt(hexByte, 16);
       if (Number.isNaN(byte) || byte < 0)
         throw new Error("Invalid byte sequence");
-      array[i3] = byte;
+      array[i4] = byte;
     }
     return array;
   }
@@ -1092,8 +1092,8 @@
   function equalBytes(b1, b2) {
     if (b1.length !== b2.length)
       return false;
-    for (let i3 = 0; i3 < b1.length; i3++)
-      if (b1[i3] !== b2[i3])
+    for (let i4 = 0; i4 < b1.length; i4++)
+      if (b1[i4] !== b2[i4])
         return false;
     return true;
   }
@@ -1120,11 +1120,11 @@
       throw new Error("hmacFn must be a function");
     let v = u8n(hashLen);
     let k = u8n(hashLen);
-    let i3 = 0;
+    let i4 = 0;
     const reset = () => {
       v.fill(1);
       k.fill(0);
-      i3 = 0;
+      i4 = 0;
     };
     const h = (...b) => hmacFn(k, v, ...b);
     const reseed = (seed = u8n()) => {
@@ -1136,7 +1136,7 @@
       v = h();
     };
     const gen = () => {
-      if (i3++ >= 1e3)
+      if (i4++ >= 1e3)
         throw new Error("drbg: tried 1000 values");
       let len = 0;
       const out = [];
@@ -1184,7 +1184,7 @@
       _1n = BigInt(1);
       _2n = BigInt(2);
       u8a2 = (a) => a instanceof Uint8Array;
-      hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i3) => i3.toString(16).padStart(2, "0"));
+      hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i4) => i4.toString(16).padStart(2, "0"));
       bitSet = (n, pos, value) => {
         return n | (value ? _1n : _0n) << BigInt(pos);
       };
@@ -1309,8 +1309,8 @@
         const n2 = Fp2.mul(n, _2n2);
         const v = Fp2.pow(n2, c1);
         const nv = Fp2.mul(n, v);
-        const i3 = Fp2.mul(Fp2.mul(nv, _2n2), v);
-        const root = Fp2.mul(nv, Fp2.sub(i3, Fp2.ONE));
+        const i4 = Fp2.mul(Fp2.mul(nv, _2n2), v);
+        const root = Fp2.mul(nv, Fp2.sub(i4, Fp2.ONE));
         if (!Fp2.eql(Fp2.sqr(root), n))
           throw new Error("Cannot find square root");
         return root;
@@ -1352,17 +1352,17 @@
   }
   function FpInvertBatch(f, nums) {
     const tmp = new Array(nums.length);
-    const lastMultiplied = nums.reduce((acc, num2, i3) => {
+    const lastMultiplied = nums.reduce((acc, num2, i4) => {
       if (f.is0(num2))
         return acc;
-      tmp[i3] = acc;
+      tmp[i4] = acc;
       return f.mul(acc, num2);
     }, f.ONE);
     const inverted = f.inv(lastMultiplied);
-    nums.reduceRight((acc, num2, i3) => {
+    nums.reduceRight((acc, num2, i4) => {
       if (f.is0(num2))
         return acc;
-      tmp[i3] = f.mul(acc, tmp[i3]);
+      tmp[i4] = f.mul(acc, tmp[i4]);
       return f.mul(acc, num2);
     }, inverted);
     return tmp;
@@ -1520,7 +1520,7 @@
         for (let window2 = 0; window2 < windows; window2++) {
           base = p;
           points.push(base);
-          for (let i3 = 1; i3 < windowSize; i3++) {
+          for (let i4 = 1; i4 < windowSize; i4++) {
             base = base.add(p);
             points.push(base);
           }
@@ -1701,7 +1701,7 @@
           throw new Error("invalid affine point");
         if (p instanceof Point3)
           throw new Error("projective point not allowed");
-        const is0 = (i3) => Fp2.eql(i3, Fp2.ZERO);
+        const is0 = (i4) => Fp2.eql(i4, Fp2.ZERO);
         if (is0(x) && is0(y))
           return Point3.ZERO;
         return new Point3(x, y, Fp2.ONE);
@@ -1720,7 +1720,7 @@
        */
       static normalizeZ(points) {
         const toInv = Fp2.invertBatch(points.map((p) => p.pz));
-        return points.map((p, i3) => p.toAffine(toInv[i3])).map(Point3.fromAffine);
+        return points.map((p, i4) => p.toAffine(toInv[i4])).map(Point3.fromAffine);
       }
       /**
        * Converts hash string or Uint8Array to Point.
@@ -1884,7 +1884,7 @@
       wNAF(n) {
         return wnaf.wNAFCached(this, pointPrecomputes2, n, (comp) => {
           const toInv = Fp2.invertBatch(comp.map((p) => p.pz));
-          return comp.map((p, i3) => p.toAffine(toInv[i3])).map(Point3.fromAffine);
+          return comp.map((p, i4) => p.toAffine(toInv[i4])).map(Point3.fromAffine);
         });
       }
       /**
@@ -2190,7 +2190,7 @@
         return point;
       }
     };
-    function getPublicKey4(privateKey, isCompressed = true) {
+    function getPublicKey5(privateKey, isCompressed = true) {
       return Point3.fromPrivateKey(privateKey).toRawBytes(isCompressed);
     }
     function isProbPub(item) {
@@ -2326,7 +2326,7 @@
     }
     return {
       CURVE,
-      getPublicKey: getPublicKey4,
+      getPublicKey: getPublicKey5,
       getSharedSecret,
       sign,
       verify,
@@ -2424,12 +2424,12 @@
           const blockLen = this.blockLen;
           const pad2 = new Uint8Array(blockLen);
           pad2.set(key.length > blockLen ? hash3.create().update(key).digest() : key);
-          for (let i3 = 0; i3 < pad2.length; i3++)
-            pad2[i3] ^= 54;
+          for (let i4 = 0; i4 < pad2.length; i4++)
+            pad2[i4] ^= 54;
           this.iHash.update(pad2);
           this.oHash = hash3.create();
-          for (let i3 = 0; i3 < pad2.length; i3++)
-            pad2[i3] ^= 54 ^ 92;
+          for (let i4 = 0; i4 < pad2.length; i4++)
+            pad2[i4] ^= 54 ^ 92;
           this.oHash.update(pad2);
           pad2.fill(0);
         }
@@ -2686,8 +2686,8 @@
     if (!u8a3(bytes4))
       throw new Error("Uint8Array expected");
     let hex2 = "";
-    for (let i3 = 0; i3 < bytes4.length; i3++) {
-      hex2 += hexes2[bytes4[i3]];
+    for (let i4 = 0; i4 < bytes4.length; i4++) {
+      hex2 += hexes2[bytes4[i4]];
     }
     return hex2;
   }
@@ -2698,13 +2698,13 @@
     if (len % 2)
       throw new Error("padded hex string expected, got unpadded hex of length " + len);
     const array = new Uint8Array(len / 2);
-    for (let i3 = 0; i3 < array.length; i3++) {
-      const j = i3 * 2;
+    for (let i4 = 0; i4 < array.length; i4++) {
+      const j = i4 * 2;
       const hexByte = hex2.slice(j, j + 2);
       const byte = Number.parseInt(hexByte, 16);
       if (Number.isNaN(byte) || byte < 0)
         throw new Error("Invalid byte sequence");
-      array[i3] = byte;
+      array[i4] = byte;
     }
     return array;
   }
@@ -2755,7 +2755,7 @@
       isLE2 = new Uint8Array(new Uint32Array([287454020]).buffer)[0] === 68;
       if (!isLE2)
         throw new Error("Non little-endian hardware is not supported");
-      hexes2 = Array.from({ length: 256 }, (v, i3) => i3.toString(16).padStart(2, "0"));
+      hexes2 = Array.from({ length: 256 }, (v, i4) => i4.toString(16).padStart(2, "0"));
       Hash2 = class {
         // Safe version that clones internal state
         clone() {
@@ -2883,8 +2883,8 @@
             this.process(view, 0);
             pos = 0;
           }
-          for (let i3 = pos; i3 < blockLen; i3++)
-            buffer[i3] = 0;
+          for (let i4 = pos; i4 < blockLen; i4++)
+            buffer[i4] = 0;
           setBigUint642(view, blockLen - 8, BigInt(this.length * 8), isLE4);
           this.process(view, 0);
           const oview = createView2(out);
@@ -2895,8 +2895,8 @@
           const state = this.get();
           if (outLen > state.length)
             throw new Error("_sha2: outputLen bigger than state");
-          for (let i3 = 0; i3 < outLen; i3++)
-            oview.setUint32(4 * i3, state[i3], isLE4);
+          for (let i4 = 0; i4 < outLen; i4++)
+            oview.setUint32(4 * i4, state[i4], isLE4);
         }
         digest() {
           const { buffer, outputLen } = this;
@@ -3034,19 +3034,19 @@
           this.H = H | 0;
         }
         process(view, offset) {
-          for (let i3 = 0; i3 < 16; i3++, offset += 4)
-            SHA256_W2[i3] = view.getUint32(offset, false);
-          for (let i3 = 16; i3 < 64; i3++) {
-            const W15 = SHA256_W2[i3 - 15];
-            const W2 = SHA256_W2[i3 - 2];
+          for (let i4 = 0; i4 < 16; i4++, offset += 4)
+            SHA256_W2[i4] = view.getUint32(offset, false);
+          for (let i4 = 16; i4 < 64; i4++) {
+            const W15 = SHA256_W2[i4 - 15];
+            const W2 = SHA256_W2[i4 - 2];
             const s0 = rotr2(W15, 7) ^ rotr2(W15, 18) ^ W15 >>> 3;
             const s1 = rotr2(W2, 17) ^ rotr2(W2, 19) ^ W2 >>> 10;
-            SHA256_W2[i3] = s1 + SHA256_W2[i3 - 7] + s0 + SHA256_W2[i3 - 16] | 0;
+            SHA256_W2[i4] = s1 + SHA256_W2[i4 - 7] + s0 + SHA256_W2[i4 - 16] | 0;
           }
           let { A, B, C, D, E, F, G, H } = this;
-          for (let i3 = 0; i3 < 64; i3++) {
+          for (let i4 = 0; i4 < 64; i4++) {
             const sigma1 = rotr2(E, 6) ^ rotr2(E, 11) ^ rotr2(E, 25);
-            const T1 = H + sigma1 + Chi2(E, F, G) + SHA256_K2[i3] + SHA256_W2[i3] | 0;
+            const T1 = H + sigma1 + Chi2(E, F, G) + SHA256_K2[i4] + SHA256_W2[i4] | 0;
             const sigma0 = rotr2(A, 2) ^ rotr2(A, 13) ^ rotr2(A, 22);
             const T2 = sigma0 + Maj2(A, B, C) | 0;
             H = G;
@@ -3102,8 +3102,8 @@
   }
   function chain(...args) {
     const wrap = (a, b) => (c) => a(b(c));
-    const encode2 = Array.from(args).reverse().reduce((acc, i3) => acc ? wrap(acc, i3.encode) : i3.encode, void 0);
-    const decode3 = args.reduce((acc, i3) => acc ? wrap(acc, i3.decode) : i3.decode, void 0);
+    const encode2 = Array.from(args).reverse().reduce((acc, i4) => acc ? wrap(acc, i4.encode) : i4.encode, void 0);
+    const decode3 = args.reduce((acc, i4) => acc ? wrap(acc, i4.decode) : i4.decode, void 0);
     return { encode: encode2, decode: decode3 };
   }
   function alphabet(alphabet2) {
@@ -3111,11 +3111,11 @@
       encode: (digits) => {
         if (!Array.isArray(digits) || digits.length && typeof digits[0] !== "number")
           throw new Error("alphabet.encode input should be an array of numbers");
-        return digits.map((i3) => {
-          assertNumber(i3);
-          if (i3 < 0 || i3 >= alphabet2.length)
-            throw new Error(`Digit index outside alphabet: ${i3} (alphabet: ${alphabet2.length})`);
-          return alphabet2[i3];
+        return digits.map((i4) => {
+          assertNumber(i4);
+          if (i4 < 0 || i4 >= alphabet2.length)
+            throw new Error(`Digit index outside alphabet: ${i4} (alphabet: ${alphabet2.length})`);
+          return alphabet2[i4];
         });
       },
       decode: (input) => {
@@ -3139,9 +3139,9 @@
       encode: (from) => {
         if (!Array.isArray(from) || from.length && typeof from[0] !== "string")
           throw new Error("join.encode input should be array of strings");
-        for (let i3 of from)
-          if (typeof i3 !== "string")
-            throw new Error(`join.encode: non-string input=${i3}`);
+        for (let i4 of from)
+          if (typeof i4 !== "string")
+            throw new Error(`join.encode: non-string input=${i4}`);
         return from.join(separator);
       },
       decode: (to) => {
@@ -3159,9 +3159,9 @@
       encode(data) {
         if (!Array.isArray(data) || data.length && typeof data[0] !== "string")
           throw new Error("padding.encode input should be array of strings");
-        for (let i3 of data)
-          if (typeof i3 !== "string")
-            throw new Error(`padding.encode: non-string input=${i3}`);
+        for (let i4 of data)
+          if (typeof i4 !== "string")
+            throw new Error(`padding.encode: non-string input=${i4}`);
         while (data.length * bits % 8)
           data.push(chr);
         return data;
@@ -3169,9 +3169,9 @@
       decode(input) {
         if (!Array.isArray(input) || input.length && typeof input[0] !== "string")
           throw new Error("padding.encode input should be array of strings");
-        for (let i3 of input)
-          if (typeof i3 !== "string")
-            throw new Error(`padding.decode: non-string input=${i3}`);
+        for (let i4 of input)
+          if (typeof i4 !== "string")
+            throw new Error(`padding.decode: non-string input=${i4}`);
         let end = input.length;
         if (end * bits % 8)
           throw new Error("Invalid padding: string should have whole number of bytes");
@@ -3208,20 +3208,20 @@
     while (true) {
       let carry = 0;
       let done = true;
-      for (let i3 = pos; i3 < digits.length; i3++) {
-        const digit = digits[i3];
+      for (let i4 = pos; i4 < digits.length; i4++) {
+        const digit = digits[i4];
         const digitBase = from * carry + digit;
         if (!Number.isSafeInteger(digitBase) || from * carry / from !== carry || digitBase - digit !== from * carry) {
           throw new Error("convertRadix: carry overflow");
         }
         carry = digitBase % to;
-        digits[i3] = Math.floor(digitBase / to);
-        if (!Number.isSafeInteger(digits[i3]) || digits[i3] * to + carry !== digitBase)
+        digits[i4] = Math.floor(digitBase / to);
+        if (!Number.isSafeInteger(digits[i4]) || digits[i4] * to + carry !== digitBase)
           throw new Error("convertRadix: carry overflow");
         if (!done)
           continue;
-        else if (!digits[i3])
-          pos = i3;
+        else if (!digits[i4])
+          pos = i4;
         else
           done = false;
       }
@@ -3229,7 +3229,7 @@
       if (done)
         break;
     }
-    for (let i3 = 0; i3 < data.length - 1 && data[i3] === 0; i3++)
+    for (let i4 = 0; i4 < data.length - 1 && data[i4] === 0; i4++)
       res.push(0);
     return res.reverse();
   }
@@ -3315,27 +3315,27 @@
   function bech32Polymod(pre) {
     const b = pre >> 25;
     let chk = (pre & 33554431) << 5;
-    for (let i3 = 0; i3 < POLYMOD_GENERATORS.length; i3++) {
-      if ((b >> i3 & 1) === 1)
-        chk ^= POLYMOD_GENERATORS[i3];
+    for (let i4 = 0; i4 < POLYMOD_GENERATORS.length; i4++) {
+      if ((b >> i4 & 1) === 1)
+        chk ^= POLYMOD_GENERATORS[i4];
     }
     return chk;
   }
   function bechChecksum(prefix, words, encodingConst = 1) {
     const len = prefix.length;
     let chk = 1;
-    for (let i3 = 0; i3 < len; i3++) {
-      const c = prefix.charCodeAt(i3);
+    for (let i4 = 0; i4 < len; i4++) {
+      const c = prefix.charCodeAt(i4);
       if (c < 33 || c > 126)
         throw new Error(`Invalid prefix (${prefix})`);
       chk = bech32Polymod(chk) ^ c >> 5;
     }
     chk = bech32Polymod(chk);
-    for (let i3 = 0; i3 < len; i3++)
-      chk = bech32Polymod(chk) ^ prefix.charCodeAt(i3) & 31;
+    for (let i4 = 0; i4 < len; i4++)
+      chk = bech32Polymod(chk) ^ prefix.charCodeAt(i4) & 31;
     for (let v of words)
       chk = bech32Polymod(chk) ^ v;
-    for (let i3 = 0; i3 < 6; i3++)
+    for (let i4 = 0; i4 < 6; i4++)
       chk = bech32Polymod(chk);
     chk ^= encodingConst;
     return BECH_ALPHABET.encode(convertRadix2([chk % 2 ** 30], 30, 5, false));
@@ -3405,16 +3405,16 @@
       base58xmr = {
         encode(data) {
           let res = "";
-          for (let i3 = 0; i3 < data.length; i3 += 8) {
-            const block = data.subarray(i3, i3 + 8);
+          for (let i4 = 0; i4 < data.length; i4 += 8) {
+            const block = data.subarray(i4, i4 + 8);
             res += base58.encode(block).padStart(XMR_BLOCK_LEN[block.length], "1");
           }
           return res;
         },
         decode(str) {
           let res = [];
-          for (let i3 = 0; i3 < str.length; i3 += 11) {
-            const slice = str.slice(i3, i3 + 11);
+          for (let i4 = 0; i4 < str.length; i4 += 11) {
+            const slice = str.slice(i4, i4 + 11);
             const blockLen = XMR_BLOCK_LEN.indexOf(slice.length);
             const block = base58.decode(slice);
             for (let j = 0; j < block.length - blockLen; j++) {
@@ -3514,8 +3514,8 @@
     if (a.length !== b.length)
       return false;
     let diff = 0;
-    for (let i3 = 0; i3 < a.length; i3++)
-      diff |= a[i3] ^ b[i3];
+    for (let i4 = 0; i4 < a.length; i4++)
+      diff |= a[i4] ^ b[i4];
     return diff === 0;
   }
   function setBigUint643(view, byteOffset, value, isLE4) {
@@ -3552,9 +3552,9 @@
     k.reverse();
     const hiBit = k[15] & 1;
     let carry = 0;
-    for (let i3 = 0; i3 < k.length; i3++) {
-      const t = k[i3];
-      k[i3] = t >>> 1 | carry;
+    for (let i4 = 0; i4 < k.length; i4++) {
+      const t = k[i4];
+      k[i4] = t >>> 1 | carry;
       carry = (t & 1) << 7;
     }
     k[0] ^= -hiBit & 225;
@@ -3613,7 +3613,7 @@
           let k2 = kView.getUint32(8, false);
           let k3 = kView.getUint32(12, false);
           const doubles = [];
-          for (let i3 = 0; i3 < 128; i3++) {
+          for (let i4 = 0; i4 < 128; i4++) {
             doubles.push({ s0: swapLE(k0), s1: swapLE(k1), s2: swapLE(k2), s3: swapLE(k3) });
             ({ s0: k0, s1: k1, s2: k2, s3: k3 } = mul2(k0, k1, k2, k3));
           }
@@ -3668,8 +3668,8 @@
           const b32 = u32(data);
           const blocks = Math.floor(data.length / BLOCK_SIZE);
           const left = data.length % BLOCK_SIZE;
-          for (let i3 = 0; i3 < blocks; i3++) {
-            this._updateBlock(b32[i3 * 4 + 0], b32[i3 * 4 + 1], b32[i3 * 4 + 2], b32[i3 * 4 + 3]);
+          for (let i4 = 0; i4 < blocks; i4++) {
+            this._updateBlock(b32[i4 * 4 + 0], b32[i4 * 4 + 1], b32[i4 * 4 + 2], b32[i4 * 4 + 3]);
           }
           if (left) {
             ZEROS16.set(data.subarray(blocks * BLOCK_SIZE));
@@ -3716,8 +3716,8 @@
           const b32 = u32(data);
           const left = data.length % BLOCK_SIZE;
           const blocks = Math.floor(data.length / BLOCK_SIZE);
-          for (let i3 = 0; i3 < blocks; i3++) {
-            this._updateBlock(swapLE(b32[i3 * 4 + 3]), swapLE(b32[i3 * 4 + 2]), swapLE(b32[i3 * 4 + 1]), swapLE(b32[i3 * 4 + 0]));
+          for (let i4 = 0; i4 < blocks; i4++) {
+            this._updateBlock(swapLE(b32[i4 * 4 + 3]), swapLE(b32[i4 * 4 + 2]), swapLE(b32[i4 * 4 + 1]), swapLE(b32[i4 * 4 + 0]));
           }
           if (left) {
             ZEROS16.set(data.subarray(blocks * BLOCK_SIZE));
@@ -3766,12 +3766,12 @@
     const T01 = new Uint32Array(256 * 256);
     const T23 = new Uint32Array(256 * 256);
     const sbox22 = new Uint16Array(256 * 256);
-    for (let i3 = 0; i3 < 256; i3++) {
+    for (let i4 = 0; i4 < 256; i4++) {
       for (let j = 0; j < 256; j++) {
-        const idx = i3 * 256 + j;
-        T01[idx] = T0[i3] ^ T1[j];
-        T23[idx] = T2[i3] ^ T3[j];
-        sbox22[idx] = sbox2[i3] << 8 | sbox2[j];
+        const idx = i4 * 256 + j;
+        T01[idx] = T0[i4] ^ T1[j];
+        T23[idx] = T2[i4] ^ T3[j];
+        sbox22[idx] = sbox2[i4] << 8 | sbox2[j];
       }
     }
     return { sbox: sbox2, sbox2: sbox22, T0, T1, T2, T3, T01, T23 };
@@ -3787,13 +3787,13 @@
     const subByte = (n) => applySbox(sbox2, n, n, n, n);
     const xk = new Uint32Array(len + 28);
     xk.set(k32);
-    for (let i3 = Nk; i3 < xk.length; i3++) {
-      let t = xk[i3 - 1];
-      if (i3 % Nk === 0)
-        t = subByte(rotr32_8(t)) ^ xPowers[i3 / Nk - 1];
-      else if (Nk > 6 && i3 % Nk === 4)
+    for (let i4 = Nk; i4 < xk.length; i4++) {
+      let t = xk[i4 - 1];
+      if (i4 % Nk === 0)
+        t = subByte(rotr32_8(t)) ^ xPowers[i4 / Nk - 1];
+      else if (Nk > 6 && i4 % Nk === 4)
         t = subByte(t);
-      xk[i3] = xk[i3 - Nk] ^ t;
+      xk[i4] = xk[i4 - Nk] ^ t;
     }
     return xk;
   }
@@ -3803,15 +3803,15 @@
     const Nk = encKey.length;
     const { sbox2 } = tableEncoding;
     const { T0, T1, T2, T3 } = tableDecoding;
-    for (let i3 = 0; i3 < Nk; i3 += 4) {
+    for (let i4 = 0; i4 < Nk; i4 += 4) {
       for (let j = 0; j < 4; j++)
-        xk[i3 + j] = encKey[Nk - i3 - 4 + j];
+        xk[i4 + j] = encKey[Nk - i4 - 4 + j];
     }
     encKey.fill(0);
-    for (let i3 = 4; i3 < Nk - 4; i3++) {
-      const x = xk[i3];
+    for (let i4 = 4; i4 < Nk - 4; i4++) {
+      const x = xk[i4];
       const w = applySbox(sbox2, x, x, x, x);
-      xk[i3] = T0[w & 255] ^ T1[w >>> 8 & 255] ^ T2[w >>> 16 & 255] ^ T3[w >>> 24];
+      xk[i4] = T0[w & 255] ^ T1[w >>> 8 & 255] ^ T2[w >>> 16 & 255] ^ T3[w >>> 24];
     }
     return xk;
   }
@@ -3826,7 +3826,7 @@
     let k = 0;
     s0 ^= xk[k++], s1 ^= xk[k++], s2 ^= xk[k++], s3 ^= xk[k++];
     const rounds = xk.length / 4 - 2;
-    for (let i3 = 0; i3 < rounds; i3++) {
+    for (let i4 = 0; i4 < rounds; i4++) {
       const t02 = xk[k++] ^ apply0123(T01, T23, s0, s1, s2, s3);
       const t12 = xk[k++] ^ apply0123(T01, T23, s1, s2, s3, s0);
       const t22 = xk[k++] ^ apply0123(T01, T23, s2, s3, s0, s1);
@@ -3844,7 +3844,7 @@
     let k = 0;
     s0 ^= xk[k++], s1 ^= xk[k++], s2 ^= xk[k++], s3 ^= xk[k++];
     const rounds = xk.length / 4 - 2;
-    for (let i3 = 0; i3 < rounds; i3++) {
+    for (let i4 = 0; i4 < rounds; i4++) {
       const t02 = xk[k++] ^ apply0123(T01, T23, s0, s3, s2, s1);
       const t12 = xk[k++] ^ apply0123(T01, T23, s1, s0, s3, s2);
       const t22 = xk[k++] ^ apply0123(T01, T23, s2, s1, s0, s3);
@@ -3875,15 +3875,15 @@
     let { s0, s1, s2, s3 } = encrypt(xk, c32[0], c32[1], c32[2], c32[3]);
     const src32 = u32(src);
     const dst32 = u32(dst);
-    for (let i3 = 0; i3 + 4 <= src32.length; i3 += 4) {
-      dst32[i3 + 0] = src32[i3 + 0] ^ s0;
-      dst32[i3 + 1] = src32[i3 + 1] ^ s1;
-      dst32[i3 + 2] = src32[i3 + 2] ^ s2;
-      dst32[i3 + 3] = src32[i3 + 3] ^ s3;
+    for (let i4 = 0; i4 + 4 <= src32.length; i4 += 4) {
+      dst32[i4 + 0] = src32[i4 + 0] ^ s0;
+      dst32[i4 + 1] = src32[i4 + 1] ^ s1;
+      dst32[i4 + 2] = src32[i4 + 2] ^ s2;
+      dst32[i4 + 3] = src32[i4 + 3] ^ s3;
       let carry = 1;
-      for (let i4 = ctr3.length - 1; i4 >= 0; i4--) {
-        carry = carry + (ctr3[i4] & 255) | 0;
-        ctr3[i4] = carry & 255;
+      for (let i5 = ctr3.length - 1; i5 >= 0; i5--) {
+        carry = carry + (ctr3[i5] & 255) | 0;
+        ctr3[i5] = carry & 255;
         carry >>>= 8;
       }
       ({ s0, s1, s2, s3 } = encrypt(xk, c32[0], c32[1], c32[2], c32[3]));
@@ -3892,8 +3892,8 @@
     if (start < srcLen) {
       const b32 = new Uint32Array([s0, s1, s2, s3]);
       const buf = u8(b32);
-      for (let i3 = start, pos = 0; i3 < srcLen; i3++, pos++)
-        dst[i3] = src[i3] ^ buf[pos];
+      for (let i4 = start, pos = 0; i4 < srcLen; i4++, pos++)
+        dst[i4] = src[i4] ^ buf[pos];
     }
     return dst;
   }
@@ -3910,11 +3910,11 @@
     const srcLen = src.length;
     let ctrNum = view.getUint32(ctrPos, isLE4);
     let { s0, s1, s2, s3 } = encrypt(xk, c32[0], c32[1], c32[2], c32[3]);
-    for (let i3 = 0; i3 + 4 <= src32.length; i3 += 4) {
-      dst32[i3 + 0] = src32[i3 + 0] ^ s0;
-      dst32[i3 + 1] = src32[i3 + 1] ^ s1;
-      dst32[i3 + 2] = src32[i3 + 2] ^ s2;
-      dst32[i3 + 3] = src32[i3 + 3] ^ s3;
+    for (let i4 = 0; i4 + 4 <= src32.length; i4 += 4) {
+      dst32[i4 + 0] = src32[i4 + 0] ^ s0;
+      dst32[i4 + 1] = src32[i4 + 1] ^ s1;
+      dst32[i4 + 2] = src32[i4 + 2] ^ s2;
+      dst32[i4 + 3] = src32[i4 + 3] ^ s3;
       ctrNum = ctrNum + 1 >>> 0;
       view.setUint32(ctrPos, ctrNum, isLE4);
       ({ s0, s1, s2, s3 } = encrypt(xk, c32[0], c32[1], c32[2], c32[3]));
@@ -3923,8 +3923,8 @@
     if (start < srcLen) {
       const b32 = new Uint32Array([s0, s1, s2, s3]);
       const buf = u8(b32);
-      for (let i3 = start, pos = 0; i3 < srcLen; i3++, pos++)
-        dst[i3] = src[i3] ^ buf[pos];
+      for (let i4 = start, pos = 0; i4 < srcLen; i4++, pos++)
+        dst[i4] = src[i4] ^ buf[pos];
     }
     return dst;
   }
@@ -3960,8 +3960,8 @@
     if (lastByte <= 0 || lastByte > 16)
       throw new Error(`aes/pcks5: wrong padding byte: ${lastByte}`);
     const out = data.subarray(0, -lastByte);
-    for (let i3 = 0; i3 < lastByte; i3++)
-      if (data[len - i3 - 1] !== lastByte)
+    for (let i4 = 0; i4 < lastByte; i4++)
+      if (data[len - i4 - 1] !== lastByte)
         throw new Error(`aes/pcks5: wrong padding`);
     return out;
   }
@@ -3970,8 +3970,8 @@
     const tmp32 = u32(tmp);
     tmp.set(left);
     const paddingByte = BLOCK_SIZE2 - left.length;
-    for (let i3 = BLOCK_SIZE2 - paddingByte; i3 < BLOCK_SIZE2; i3++)
-      tmp[i3] = paddingByte;
+    for (let i4 = BLOCK_SIZE2 - paddingByte; i4 < BLOCK_SIZE2; i4++)
+      tmp[i4] = paddingByte;
     return tmp32;
   }
   function computeTag(fn, isLE4, key, data, AAD) {
@@ -3999,14 +3999,14 @@
       POLY2 = 283;
       sbox = /* @__PURE__ */ (() => {
         let t = new Uint8Array(256);
-        for (let i3 = 0, x = 1; i3 < 256; i3++, x ^= mul22(x))
-          t[i3] = x;
+        for (let i4 = 0, x = 1; i4 < 256; i4++, x ^= mul22(x))
+          t[i4] = x;
         const box = new Uint8Array(256);
         box[0] = 99;
-        for (let i3 = 0; i3 < 255; i3++) {
-          let x = t[255 - i3];
+        for (let i4 = 0; i4 < 255; i4++) {
+          let x = t[255 - i4];
           x |= x << 8;
-          box[t[i3]] = (x ^ x >> 4 ^ x >> 5 ^ x >> 6 ^ x >> 7 ^ 99) & 255;
+          box[t[i4]] = (x ^ x >> 4 ^ x >> 5 ^ x >> 6 ^ x >> 7 ^ 99) & 255;
         }
         return box;
       })();
@@ -4017,8 +4017,8 @@
       tableDecoding = /* @__PURE__ */ genTtable(invSbox, (s) => mul(s, 11) << 24 | mul(s, 13) << 16 | mul(s, 9) << 8 | mul(s, 14));
       xPowers = /* @__PURE__ */ (() => {
         const p = new Uint8Array(16);
-        for (let i3 = 0, x = 1; i3 < 16; i3++, x = mul22(x))
-          p[i3] = x;
+        for (let i4 = 0, x = 1; i4 < 16; i4++, x = mul22(x))
+          p[i4] = x;
         return p;
       })();
       ctr = wrapCipher({ blockSize: 16, nonceLength: 16 }, function ctr2(key, nonce) {
@@ -4045,15 +4045,15 @@
             bytes3(plaintext);
             const { b, o, out: _out } = validateBlockEncrypt(plaintext, pcks5, dst);
             const xk = expandKeyLE(key);
-            let i3 = 0;
-            for (; i3 + 4 <= b.length; ) {
-              const { s0, s1, s2, s3 } = encrypt(xk, b[i3 + 0], b[i3 + 1], b[i3 + 2], b[i3 + 3]);
-              o[i3++] = s0, o[i3++] = s1, o[i3++] = s2, o[i3++] = s3;
+            let i4 = 0;
+            for (; i4 + 4 <= b.length; ) {
+              const { s0, s1, s2, s3 } = encrypt(xk, b[i4 + 0], b[i4 + 1], b[i4 + 2], b[i4 + 3]);
+              o[i4++] = s0, o[i4++] = s1, o[i4++] = s2, o[i4++] = s3;
             }
             if (pcks5) {
-              const tmp32 = padPCKS(plaintext.subarray(i3 * 4));
+              const tmp32 = padPCKS(plaintext.subarray(i4 * 4));
               const { s0, s1, s2, s3 } = encrypt(xk, tmp32[0], tmp32[1], tmp32[2], tmp32[3]);
-              o[i3++] = s0, o[i3++] = s1, o[i3++] = s2, o[i3++] = s3;
+              o[i4++] = s0, o[i4++] = s1, o[i4++] = s2, o[i4++] = s3;
             }
             xk.fill(0);
             return _out;
@@ -4064,9 +4064,9 @@
             const out = getDst(ciphertext.length, dst);
             const b = u32(ciphertext);
             const o = u32(out);
-            for (let i3 = 0; i3 + 4 <= b.length; ) {
-              const { s0, s1, s2, s3 } = decrypt(xk, b[i3 + 0], b[i3 + 1], b[i3 + 2], b[i3 + 3]);
-              o[i3++] = s0, o[i3++] = s1, o[i3++] = s2, o[i3++] = s3;
+            for (let i4 = 0; i4 + 4 <= b.length; ) {
+              const { s0, s1, s2, s3 } = decrypt(xk, b[i4 + 0], b[i4 + 1], b[i4 + 2], b[i4 + 3]);
+              o[i4++] = s0, o[i4++] = s1, o[i4++] = s2, o[i4++] = s3;
             }
             xk.fill(0);
             return validatePCKS(out, pcks5);
@@ -4083,17 +4083,17 @@
             const { b, o, out: _out } = validateBlockEncrypt(plaintext, pcks5, dst);
             const n32 = u32(iv);
             let s0 = n32[0], s1 = n32[1], s2 = n32[2], s3 = n32[3];
-            let i3 = 0;
-            for (; i3 + 4 <= b.length; ) {
-              s0 ^= b[i3 + 0], s1 ^= b[i3 + 1], s2 ^= b[i3 + 2], s3 ^= b[i3 + 3];
+            let i4 = 0;
+            for (; i4 + 4 <= b.length; ) {
+              s0 ^= b[i4 + 0], s1 ^= b[i4 + 1], s2 ^= b[i4 + 2], s3 ^= b[i4 + 3];
               ({ s0, s1, s2, s3 } = encrypt(xk, s0, s1, s2, s3));
-              o[i3++] = s0, o[i3++] = s1, o[i3++] = s2, o[i3++] = s3;
+              o[i4++] = s0, o[i4++] = s1, o[i4++] = s2, o[i4++] = s3;
             }
             if (pcks5) {
-              const tmp32 = padPCKS(plaintext.subarray(i3 * 4));
+              const tmp32 = padPCKS(plaintext.subarray(i4 * 4));
               s0 ^= tmp32[0], s1 ^= tmp32[1], s2 ^= tmp32[2], s3 ^= tmp32[3];
               ({ s0, s1, s2, s3 } = encrypt(xk, s0, s1, s2, s3));
-              o[i3++] = s0, o[i3++] = s1, o[i3++] = s2, o[i3++] = s3;
+              o[i4++] = s0, o[i4++] = s1, o[i4++] = s2, o[i4++] = s3;
             }
             xk.fill(0);
             return _out;
@@ -4106,11 +4106,11 @@
             const b = u32(ciphertext);
             const o = u32(out);
             let s0 = n32[0], s1 = n32[1], s2 = n32[2], s3 = n32[3];
-            for (let i3 = 0; i3 + 4 <= b.length; ) {
+            for (let i4 = 0; i4 + 4 <= b.length; ) {
               const ps0 = s0, ps1 = s1, ps2 = s2, ps3 = s3;
-              s0 = b[i3 + 0], s1 = b[i3 + 1], s2 = b[i3 + 2], s3 = b[i3 + 3];
+              s0 = b[i4 + 0], s1 = b[i4 + 1], s2 = b[i4 + 2], s3 = b[i4 + 3];
               const { s0: o0, s1: o1, s2: o2, s3: o3 } = decrypt(xk, s0, s1, s2, s3);
-              o[i3++] = o0 ^ ps0, o[i3++] = o1 ^ ps1, o[i3++] = o2 ^ ps2, o[i3++] = o3 ^ ps3;
+              o[i4++] = o0 ^ ps0, o[i4++] = o1 ^ ps1, o[i4++] = o2 ^ ps2, o[i4++] = o3 ^ ps3;
             }
             xk.fill(0);
             return validatePCKS(out, pcks5);
@@ -4129,20 +4129,20 @@
           const next32 = isEncrypt ? dst32 : src32;
           const n32 = u32(iv);
           let s0 = n32[0], s1 = n32[1], s2 = n32[2], s3 = n32[3];
-          for (let i3 = 0; i3 + 4 <= src32.length; ) {
+          for (let i4 = 0; i4 + 4 <= src32.length; ) {
             const { s0: e0, s1: e1, s2: e2, s3: e3 } = encrypt(xk, s0, s1, s2, s3);
-            dst32[i3 + 0] = src32[i3 + 0] ^ e0;
-            dst32[i3 + 1] = src32[i3 + 1] ^ e1;
-            dst32[i3 + 2] = src32[i3 + 2] ^ e2;
-            dst32[i3 + 3] = src32[i3 + 3] ^ e3;
-            s0 = next32[i3++], s1 = next32[i3++], s2 = next32[i3++], s3 = next32[i3++];
+            dst32[i4 + 0] = src32[i4 + 0] ^ e0;
+            dst32[i4 + 1] = src32[i4 + 1] ^ e1;
+            dst32[i4 + 2] = src32[i4 + 2] ^ e2;
+            dst32[i4 + 3] = src32[i4 + 3] ^ e3;
+            s0 = next32[i4++], s1 = next32[i4++], s2 = next32[i4++], s3 = next32[i4++];
           }
           const start = BLOCK_SIZE2 * Math.floor(src32.length / BLOCK_SIZE32);
           if (start < srcLen) {
             ({ s0, s1, s2, s3 } = encrypt(xk, s0, s1, s2, s3));
             const buf = u8(new Uint32Array([s0, s1, s2, s3]));
-            for (let i3 = start, pos = 0; i3 < srcLen; i3++, pos++)
-              dst[i3] = src[i3] ^ buf[pos];
+            for (let i4 = start, pos = 0; i4 < srcLen; i4++, pos++)
+              dst[i4] = src[i4] ^ buf[pos];
             buf.fill(0);
           }
           xk.fill(0);
@@ -4160,8 +4160,8 @@
         const tagLength = 16;
         function _computeTag(authKey, tagMask, data) {
           const tag = computeTag(ghash, false, authKey, data, AAD);
-          for (let i3 = 0; i3 < tagMask.length; i3++)
-            tag[i3] ^= tagMask[i3];
+          for (let i4 = 0; i4 < tagMask.length; i4++)
+            tag[i4] ^= tagMask[i4];
           return tag;
         }
         function deriveKeys() {
@@ -4237,10 +4237,10 @@
           let counter = 0;
           for (const derivedKey of [authKey, encKey].map(u32)) {
             const d32 = u32(derivedKey);
-            for (let i3 = 0; i3 < d32.length; i3 += 2) {
+            for (let i4 = 0; i4 < d32.length; i4 += 2) {
               const { s0: o0, s1: o1 } = encrypt(xk, s0, s1, s2, s3);
-              d32[i3 + 0] = o0;
-              d32[i3 + 1] = o1;
+              d32[i4 + 0] = o0;
+              d32[i4 + 1] = o1;
               s0 = ++counter;
             }
           }
@@ -4249,8 +4249,8 @@
         }
         function _computeTag(encKey, authKey, data) {
           const tag = computeTag(polyval, true, authKey, data, AAD);
-          for (let i3 = 0; i3 < 12; i3++)
-            tag[i3] ^= nonce[i3];
+          for (let i4 = 0; i4 < 12; i4++)
+            tag[i4] ^= nonce[i4];
           tag[15] &= 127;
           const t32 = u32(tag);
           let s0 = t32[0], s1 = t32[1], s2 = t32[2], s3 = t32[3];
@@ -4308,7 +4308,7 @@
     "node_modules/@noble/ciphers/esm/_poly1305.js"() {
       init_assert3();
       init_utils4();
-      u8to16 = (a, i3) => a[i3++] & 255 | (a[i3++] & 255) << 8;
+      u8to16 = (a, i4) => a[i4++] & 255 | (a[i4++] & 255) << 8;
       Poly1305 = class {
         constructor(key) {
           this.blockLen = 16;
@@ -4339,8 +4339,8 @@
           this.r[7] = (t5 >>> 11 | t6 << 5) & 8065;
           this.r[8] = (t6 >>> 8 | t7 << 8) & 8191;
           this.r[9] = t7 >>> 5 & 127;
-          for (let i3 = 0; i3 < 8; i3++)
-            this.pad[i3] = u8to16(key, 16 + 2 * i3);
+          for (let i4 = 0; i4 < 8; i4++)
+            this.pad[i4] = u8to16(key, 16 + 2 * i4);
         }
         process(data, offset, isLast = false) {
           const hibit = isLast ? 0 : 1 << 11;
@@ -4455,10 +4455,10 @@
           const g = new Uint16Array(10);
           let c = h[1] >>> 13;
           h[1] &= 8191;
-          for (let i3 = 2; i3 < 10; i3++) {
-            h[i3] += c;
-            c = h[i3] >>> 13;
-            h[i3] &= 8191;
+          for (let i4 = 2; i4 < 10; i4++) {
+            h[i4] += c;
+            c = h[i4] >>> 13;
+            h[i4] &= 8191;
           }
           h[0] += c * 5;
           c = h[0] >>> 13;
@@ -4470,18 +4470,18 @@
           g[0] = h[0] + 5;
           c = g[0] >>> 13;
           g[0] &= 8191;
-          for (let i3 = 1; i3 < 10; i3++) {
-            g[i3] = h[i3] + c;
-            c = g[i3] >>> 13;
-            g[i3] &= 8191;
+          for (let i4 = 1; i4 < 10; i4++) {
+            g[i4] = h[i4] + c;
+            c = g[i4] >>> 13;
+            g[i4] &= 8191;
           }
           g[9] -= 1 << 13;
           let mask = (c ^ 1) - 1;
-          for (let i3 = 0; i3 < 10; i3++)
-            g[i3] &= mask;
+          for (let i4 = 0; i4 < 10; i4++)
+            g[i4] &= mask;
           mask = ~mask;
-          for (let i3 = 0; i3 < 10; i3++)
-            h[i3] = h[i3] & mask | g[i3];
+          for (let i4 = 0; i4 < 10; i4++)
+            h[i4] = h[i4] & mask | g[i4];
           h[0] = (h[0] | h[1] << 13) & 65535;
           h[1] = (h[1] >>> 3 | h[2] << 10) & 65535;
           h[2] = (h[2] >>> 6 | h[3] << 7) & 65535;
@@ -4492,9 +4492,9 @@
           h[7] = (h[8] >>> 8 | h[9] << 5) & 65535;
           let f = h[0] + pad2[0];
           h[0] = f & 65535;
-          for (let i3 = 1; i3 < 8; i3++) {
-            f = (h[i3] + pad2[i3] | 0) + (f >>> 16) | 0;
-            h[i3] = f & 65535;
+          for (let i4 = 1; i4 < 8; i4++) {
+            f = (h[i4] + pad2[i4] | 0) + (f >>> 16) | 0;
+            h[i4] = f & 65535;
           }
         }
         update(data) {
@@ -4539,9 +4539,9 @@
           }
           this.finalize();
           let opos = 0;
-          for (let i3 = 0; i3 < 8; i3++) {
-            out[opos++] = h[i3] >>> 0;
-            out[opos++] = h[i3] >>> 8;
+          for (let i4 = 0; i4 < 8; i4++) {
+            out[opos++] = h[i4] >>> 0;
+            out[opos++] = h[i4] >>> 8;
           }
           return out;
         }
@@ -4763,8 +4763,8 @@
     out[oi++] = y14 + x14 | 0;
     out[oi++] = y15 + x15 | 0;
   }
-  function hchacha(s, k, i3, o32) {
-    let x00 = s[0], x01 = s[1], x02 = s[2], x03 = s[3], x04 = k[0], x05 = k[1], x06 = k[2], x07 = k[3], x08 = k[4], x09 = k[5], x10 = k[6], x11 = k[7], x12 = i3[0], x13 = i3[1], x14 = i3[2], x15 = i3[3];
+  function hchacha(s, k, i4, o32) {
+    let x00 = s[0], x01 = s[1], x02 = s[2], x03 = s[3], x04 = k[0], x05 = k[1], x06 = k[2], x07 = k[3], x08 = k[4], x09 = k[5], x10 = k[6], x11 = k[7], x12 = i4[0], x13 = i4[1], x14 = i4[2], x15 = i4[3];
     for (let r = 0; r < 20; r += 2) {
       x00 = x00 + x04 | 0;
       x12 = rotl(x12 ^ x00, 16);
@@ -4946,12 +4946,12 @@
           const blockLen = this.blockLen;
           const pad2 = new Uint8Array(blockLen);
           pad2.set(key.length > blockLen ? hash3.create().update(key).digest() : key);
-          for (let i3 = 0; i3 < pad2.length; i3++)
-            pad2[i3] ^= 54;
+          for (let i4 = 0; i4 < pad2.length; i4++)
+            pad2[i4] ^= 54;
           this.iHash.update(pad2);
           this.oHash = hash3.create();
-          for (let i3 = 0; i3 < pad2.length; i3++)
-            pad2[i3] ^= 54 ^ 92;
+          for (let i4 = 0; i4 < pad2.length; i4++)
+            pad2[i4] ^= 54 ^ 92;
           this.oHash.update(pad2);
           pad2.fill(0);
         }
@@ -7568,8 +7568,8 @@
   function bytesToHex3(bytes4) {
     abytes(bytes4);
     let hex2 = "";
-    for (let i3 = 0; i3 < bytes4.length; i3++) {
-      hex2 += hexes3[bytes4[i3]];
+    for (let i4 = 0; i4 < bytes4.length; i4++) {
+      hex2 += hexes3[bytes4[i4]];
     }
     return hex2;
   }
@@ -7614,14 +7614,14 @@
   }
   function concatBytes4(...arrays) {
     let sum = 0;
-    for (let i3 = 0; i3 < arrays.length; i3++) {
-      const a = arrays[i3];
+    for (let i4 = 0; i4 < arrays.length; i4++) {
+      const a = arrays[i4];
       abytes(a);
       sum += a.length;
     }
     const res = new Uint8Array(sum);
-    for (let i3 = 0, pad2 = 0; i3 < arrays.length; i3++) {
-      const a = arrays[i3];
+    for (let i4 = 0, pad2 = 0; i4 < arrays.length; i4++) {
+      const a = arrays[i4];
       res.set(a, pad2);
       pad2 += a.length;
     }
@@ -7649,7 +7649,7 @@
     "node_modules/@noble/hashes/esm/utils.js"() {
       init_crypto3();
       init_assert4();
-      hexes3 = /* @__PURE__ */ Array.from({ length: 256 }, (_, i3) => i3.toString(16).padStart(2, "0"));
+      hexes3 = /* @__PURE__ */ Array.from({ length: 256 }, (_, i4) => i4.toString(16).padStart(2, "0"));
       asciis = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 };
       Hash3 = class {
         // Safe version that clones internal state
@@ -7735,8 +7735,8 @@
             this.process(view, 0);
             pos = 0;
           }
-          for (let i3 = pos; i3 < blockLen; i3++)
-            buffer[i3] = 0;
+          for (let i4 = pos; i4 < blockLen; i4++)
+            buffer[i4] = 0;
           setBigUint644(view, blockLen - 8, BigInt(this.length * 8), isLE4);
           this.process(view, 0);
           const oview = createView4(out);
@@ -7747,8 +7747,8 @@
           const state = this.get();
           if (outLen > state.length)
             throw new Error("_sha2: outputLen bigger than state");
-          for (let i3 = 0; i3 < outLen; i3++)
-            oview.setUint32(4 * i3, state[i3], isLE4);
+          for (let i4 = 0; i4 < outLen; i4++)
+            oview.setUint32(4 * i4, state[i4], isLE4);
         }
         digest() {
           const { buffer, outputLen } = this;
@@ -7884,19 +7884,19 @@
           this.H = H | 0;
         }
         process(view, offset) {
-          for (let i3 = 0; i3 < 16; i3++, offset += 4)
-            SHA256_W3[i3] = view.getUint32(offset, false);
-          for (let i3 = 16; i3 < 64; i3++) {
-            const W15 = SHA256_W3[i3 - 15];
-            const W2 = SHA256_W3[i3 - 2];
+          for (let i4 = 0; i4 < 16; i4++, offset += 4)
+            SHA256_W3[i4] = view.getUint32(offset, false);
+          for (let i4 = 16; i4 < 64; i4++) {
+            const W15 = SHA256_W3[i4 - 15];
+            const W2 = SHA256_W3[i4 - 2];
             const s0 = rotr3(W15, 7) ^ rotr3(W15, 18) ^ W15 >>> 3;
             const s1 = rotr3(W2, 17) ^ rotr3(W2, 19) ^ W2 >>> 10;
-            SHA256_W3[i3] = s1 + SHA256_W3[i3 - 7] + s0 + SHA256_W3[i3 - 16] | 0;
+            SHA256_W3[i4] = s1 + SHA256_W3[i4 - 7] + s0 + SHA256_W3[i4 - 16] | 0;
           }
           let { A, B, C, D, E, F, G, H } = this;
-          for (let i3 = 0; i3 < 64; i3++) {
+          for (let i4 = 0; i4 < 64; i4++) {
             const sigma1 = rotr3(E, 6) ^ rotr3(E, 11) ^ rotr3(E, 25);
-            const T1 = H + sigma1 + Chi3(E, F, G) + SHA256_K3[i3] + SHA256_W3[i3] | 0;
+            const T1 = H + sigma1 + Chi3(E, F, G) + SHA256_K3[i4] + SHA256_W3[i4] | 0;
             const sigma0 = rotr3(A, 2) ^ rotr3(A, 13) ^ rotr3(A, 22);
             const T2 = sigma0 + Maj3(A, B, C) | 0;
             H = G;
@@ -7951,12 +7951,12 @@
           const blockLen = this.blockLen;
           const pad2 = new Uint8Array(blockLen);
           pad2.set(key.length > blockLen ? hash3.create().update(key).digest() : key);
-          for (let i3 = 0; i3 < pad2.length; i3++)
-            pad2[i3] ^= 54;
+          for (let i4 = 0; i4 < pad2.length; i4++)
+            pad2[i4] ^= 54;
           this.iHash.update(pad2);
           this.oHash = hash3.create();
-          for (let i3 = 0; i3 < pad2.length; i3++)
-            pad2[i3] ^= 54 ^ 92;
+          for (let i4 = 0; i4 < pad2.length; i4++)
+            pad2[i4] ^= 54 ^ 92;
           this.oHash.update(pad2);
           pad2.fill(0);
         }
@@ -8046,8 +8046,8 @@
   function bytesToHex4(bytes4) {
     abytes2(bytes4);
     let hex2 = "";
-    for (let i3 = 0; i3 < bytes4.length; i3++) {
-      hex2 += hexes4[bytes4[i3]];
+    for (let i4 = 0; i4 < bytes4.length; i4++) {
+      hex2 += hexes4[bytes4[i4]];
     }
     return hex2;
   }
@@ -8124,14 +8124,14 @@
   }
   function concatBytes5(...arrays) {
     let sum = 0;
-    for (let i3 = 0; i3 < arrays.length; i3++) {
-      const a = arrays[i3];
+    for (let i4 = 0; i4 < arrays.length; i4++) {
+      const a = arrays[i4];
       abytes2(a);
       sum += a.length;
     }
     const res = new Uint8Array(sum);
-    for (let i3 = 0, pad2 = 0; i3 < arrays.length; i3++) {
-      const a = arrays[i3];
+    for (let i4 = 0, pad2 = 0; i4 < arrays.length; i4++) {
+      const a = arrays[i4];
       res.set(a, pad2);
       pad2 += a.length;
     }
@@ -8141,8 +8141,8 @@
     if (a.length !== b.length)
       return false;
     let diff = 0;
-    for (let i3 = 0; i3 < a.length; i3++)
-      diff |= a[i3] ^ b[i3];
+    for (let i4 = 0; i4 < a.length; i4++)
+      diff |= a[i4] ^ b[i4];
     return diff === 0;
   }
   function utf8ToBytes6(str) {
@@ -8178,11 +8178,11 @@
       throw new Error("hmacFn must be a function");
     let v = u8n2(hashLen);
     let k = u8n2(hashLen);
-    let i3 = 0;
+    let i4 = 0;
     const reset = () => {
       v.fill(1);
       k.fill(0);
-      i3 = 0;
+      i4 = 0;
     };
     const h = (...b) => hmacFn(k, v, ...b);
     const reseed = (seed = u8n2()) => {
@@ -8194,7 +8194,7 @@
       v = h();
     };
     const gen = () => {
-      if (i3++ >= 1e3)
+      if (i4++ >= 1e3)
         throw new Error("drbg: tried 1000 values");
       let len = 0;
       const out = [];
@@ -8252,7 +8252,7 @@
       _0n6 = /* @__PURE__ */ BigInt(0);
       _1n6 = /* @__PURE__ */ BigInt(1);
       _2n5 = /* @__PURE__ */ BigInt(2);
-      hexes4 = /* @__PURE__ */ Array.from({ length: 256 }, (_, i3) => i3.toString(16).padStart(2, "0"));
+      hexes4 = /* @__PURE__ */ Array.from({ length: 256 }, (_, i4) => i4.toString(16).padStart(2, "0"));
       asciis2 = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 };
       isPosBig = (n) => typeof n === "bigint" && _0n6 <= n;
       bitMask2 = (n) => (_2n5 << BigInt(n - 1)) - _1n6;
@@ -8384,8 +8384,8 @@
         const n2 = Fp2.mul(n, _2n6);
         const v = Fp2.pow(n2, c1);
         const nv = Fp2.mul(n, v);
-        const i3 = Fp2.mul(Fp2.mul(nv, _2n6), v);
-        const root = Fp2.mul(nv, Fp2.sub(i3, Fp2.ONE));
+        const i4 = Fp2.mul(Fp2.mul(nv, _2n6), v);
+        const root = Fp2.mul(nv, Fp2.sub(i4, Fp2.ONE));
         if (!Fp2.eql(Fp2.sqr(root), n))
           throw new Error("Cannot find square root");
         return root;
@@ -8427,17 +8427,17 @@
   }
   function FpInvertBatch2(f, nums) {
     const tmp = new Array(nums.length);
-    const lastMultiplied = nums.reduce((acc, num2, i3) => {
+    const lastMultiplied = nums.reduce((acc, num2, i4) => {
       if (f.is0(num2))
         return acc;
-      tmp[i3] = acc;
+      tmp[i4] = acc;
       return f.mul(acc, num2);
     }, f.ONE);
     const inverted = f.inv(lastMultiplied);
-    nums.reduceRight((acc, num2, i3) => {
+    nums.reduceRight((acc, num2, i4) => {
       if (f.is0(num2))
         return acc;
-      tmp[i3] = f.mul(acc, tmp[i3]);
+      tmp[i4] = f.mul(acc, tmp[i4]);
       return f.mul(acc, num2);
     }, inverted);
     return tmp;
@@ -8575,17 +8575,17 @@
   function validateMSMPoints(points, c) {
     if (!Array.isArray(points))
       throw new Error("array expected");
-    points.forEach((p, i3) => {
+    points.forEach((p, i4) => {
       if (!(p instanceof c))
-        throw new Error("invalid point at index " + i3);
+        throw new Error("invalid point at index " + i4);
     });
   }
   function validateMSMScalars(scalars, field) {
     if (!Array.isArray(scalars))
       throw new Error("array of scalars expected");
-    scalars.forEach((s, i3) => {
+    scalars.forEach((s, i4) => {
       if (!field.isValid(s))
-        throw new Error("invalid scalar at index " + i3);
+        throw new Error("invalid scalar at index " + i4);
     });
   }
   function getW(P) {
@@ -8628,7 +8628,7 @@
         for (let window2 = 0; window2 < windows; window2++) {
           base = p;
           points.push(base);
-          for (let i3 = 1; i3 < windowSize; i3++) {
+          for (let i4 = 1; i4 < windowSize; i4++) {
             base = base.add(p);
             points.push(base);
           }
@@ -8743,11 +8743,11 @@
     const buckets = new Array(MASK + 1).fill(zero);
     const lastBits = Math.floor((fieldN.BITS - 1) / windowSize) * windowSize;
     let sum = zero;
-    for (let i3 = lastBits; i3 >= 0; i3 -= windowSize) {
+    for (let i4 = lastBits; i4 >= 0; i4 -= windowSize) {
       buckets.fill(zero);
       for (let j = 0; j < scalars.length; j++) {
         const scalar = scalars[j];
-        const wbits2 = Number(scalar >> BigInt(i3) & BigInt(MASK));
+        const wbits2 = Number(scalar >> BigInt(i4) & BigInt(MASK));
         buckets[wbits2] = buckets[wbits2].add(points[j]);
       }
       let resI = zero;
@@ -8756,7 +8756,7 @@
         resI = resI.add(sumI);
       }
       sum = sum.add(resI);
-      if (i3 !== 0)
+      if (i4 !== 0)
         for (let j = 0; j < windowSize; j++)
           sum = sum.double();
     }
@@ -8926,7 +8926,7 @@
           throw new Error("invalid affine point");
         if (p instanceof Point3)
           throw new Error("projective point not allowed");
-        const is0 = (i3) => Fp2.eql(i3, Fp2.ZERO);
+        const is0 = (i4) => Fp2.eql(i4, Fp2.ZERO);
         if (is0(x) && is0(y))
           return Point3.ZERO;
         return new Point3(x, y, Fp2.ONE);
@@ -8945,7 +8945,7 @@
        */
       static normalizeZ(points) {
         const toInv = Fp2.invertBatch(points.map((p) => p.pz));
-        return points.map((p, i3) => p.toAffine(toInv[i3])).map(Point3.fromAffine);
+        return points.map((p, i4) => p.toAffine(toInv[i4])).map(Point3.fromAffine);
       }
       /**
        * Converts hash string or Uint8Array to Point.
@@ -9396,7 +9396,7 @@
         return point;
       }
     };
-    function getPublicKey4(privateKey, isCompressed = true) {
+    function getPublicKey5(privateKey, isCompressed = true) {
       return Point3.fromPrivateKey(privateKey).toRawBytes(isCompressed);
     }
     function isProbPub(item) {
@@ -9538,7 +9538,7 @@
     }
     return {
       CURVE,
-      getPublicKey: getPublicKey4,
+      getPublicKey: getPublicKey5,
       getSharedSecret,
       sign,
       verify,
@@ -10606,8 +10606,8 @@
       exports.assertNumber = assertNumber2;
       function chain2(...args) {
         const wrap = (a, b) => (c) => a(b(c));
-        const encode2 = Array.from(args).reverse().reduce((acc, i3) => acc ? wrap(acc, i3.encode) : i3.encode, void 0);
-        const decode3 = args.reduce((acc, i3) => acc ? wrap(acc, i3.decode) : i3.decode, void 0);
+        const encode2 = Array.from(args).reverse().reduce((acc, i4) => acc ? wrap(acc, i4.encode) : i4.encode, void 0);
+        const decode3 = args.reduce((acc, i4) => acc ? wrap(acc, i4.decode) : i4.decode, void 0);
         return { encode: encode2, decode: decode3 };
       }
       function alphabet2(alphabet3) {
@@ -10615,11 +10615,11 @@
           encode: (digits) => {
             if (!Array.isArray(digits) || digits.length && typeof digits[0] !== "number")
               throw new Error("alphabet.encode input should be an array of numbers");
-            return digits.map((i3) => {
-              assertNumber2(i3);
-              if (i3 < 0 || i3 >= alphabet3.length)
-                throw new Error(`Digit index outside alphabet: ${i3} (alphabet: ${alphabet3.length})`);
-              return alphabet3[i3];
+            return digits.map((i4) => {
+              assertNumber2(i4);
+              if (i4 < 0 || i4 >= alphabet3.length)
+                throw new Error(`Digit index outside alphabet: ${i4} (alphabet: ${alphabet3.length})`);
+              return alphabet3[i4];
             });
           },
           decode: (input) => {
@@ -10643,9 +10643,9 @@
           encode: (from) => {
             if (!Array.isArray(from) || from.length && typeof from[0] !== "string")
               throw new Error("join.encode input should be array of strings");
-            for (let i3 of from)
-              if (typeof i3 !== "string")
-                throw new Error(`join.encode: non-string input=${i3}`);
+            for (let i4 of from)
+              if (typeof i4 !== "string")
+                throw new Error(`join.encode: non-string input=${i4}`);
             return from.join(separator);
           },
           decode: (to) => {
@@ -10663,9 +10663,9 @@
           encode(data) {
             if (!Array.isArray(data) || data.length && typeof data[0] !== "string")
               throw new Error("padding.encode input should be array of strings");
-            for (let i3 of data)
-              if (typeof i3 !== "string")
-                throw new Error(`padding.encode: non-string input=${i3}`);
+            for (let i4 of data)
+              if (typeof i4 !== "string")
+                throw new Error(`padding.encode: non-string input=${i4}`);
             while (data.length * bits % 8)
               data.push(chr);
             return data;
@@ -10673,9 +10673,9 @@
           decode(input) {
             if (!Array.isArray(input) || input.length && typeof input[0] !== "string")
               throw new Error("padding.encode input should be array of strings");
-            for (let i3 of input)
-              if (typeof i3 !== "string")
-                throw new Error(`padding.decode: non-string input=${i3}`);
+            for (let i4 of input)
+              if (typeof i4 !== "string")
+                throw new Error(`padding.decode: non-string input=${i4}`);
             let end = input.length;
             if (end * bits % 8)
               throw new Error("Invalid padding: string should have whole number of bytes");
@@ -10712,20 +10712,20 @@
         while (true) {
           let carry = 0;
           let done = true;
-          for (let i3 = pos; i3 < digits.length; i3++) {
-            const digit = digits[i3];
+          for (let i4 = pos; i4 < digits.length; i4++) {
+            const digit = digits[i4];
             const digitBase = from * carry + digit;
             if (!Number.isSafeInteger(digitBase) || from * carry / from !== carry || digitBase - digit !== from * carry) {
               throw new Error("convertRadix: carry overflow");
             }
             carry = digitBase % to;
-            digits[i3] = Math.floor(digitBase / to);
-            if (!Number.isSafeInteger(digits[i3]) || digits[i3] * to + carry !== digitBase)
+            digits[i4] = Math.floor(digitBase / to);
+            if (!Number.isSafeInteger(digits[i4]) || digits[i4] * to + carry !== digitBase)
               throw new Error("convertRadix: carry overflow");
             if (!done)
               continue;
-            else if (!digits[i3])
-              pos = i3;
+            else if (!digits[i4])
+              pos = i4;
             else
               done = false;
           }
@@ -10733,7 +10733,7 @@
           if (done)
             break;
         }
-        for (let i3 = 0; i3 < data.length - 1 && data[i3] === 0; i3++)
+        for (let i4 = 0; i4 < data.length - 1 && data[i4] === 0; i4++)
           res.push(0);
         return res.reverse();
       }
@@ -10838,8 +10838,8 @@
             const payload = data.slice(0, -len);
             const newChecksum = fn(payload).slice(0, len);
             const oldChecksum = data.slice(-len);
-            for (let i3 = 0; i3 < len; i3++)
-              if (newChecksum[i3] !== oldChecksum[i3])
+            for (let i4 = 0; i4 < len; i4++)
+              if (newChecksum[i4] !== oldChecksum[i4])
                 throw new Error("Invalid checksum");
             return payload;
           }
@@ -10860,16 +10860,16 @@
       exports.base58xmr = {
         encode(data) {
           let res = "";
-          for (let i3 = 0; i3 < data.length; i3 += 8) {
-            const block = data.subarray(i3, i3 + 8);
+          for (let i4 = 0; i4 < data.length; i4 += 8) {
+            const block = data.subarray(i4, i4 + 8);
             res += exports.base58.encode(block).padStart(XMR_BLOCK_LEN2[block.length], "1");
           }
           return res;
         },
         decode(str) {
           let res = [];
-          for (let i3 = 0; i3 < str.length; i3 += 11) {
-            const slice = str.slice(i3, i3 + 11);
+          for (let i4 = 0; i4 < str.length; i4 += 11) {
+            const slice = str.slice(i4, i4 + 11);
             const blockLen = XMR_BLOCK_LEN2.indexOf(slice.length);
             const block = exports.base58.decode(slice);
             for (let j = 0; j < block.length - blockLen; j++) {
@@ -10888,27 +10888,27 @@
       function bech32Polymod2(pre) {
         const b = pre >> 25;
         let chk = (pre & 33554431) << 5;
-        for (let i3 = 0; i3 < POLYMOD_GENERATORS2.length; i3++) {
-          if ((b >> i3 & 1) === 1)
-            chk ^= POLYMOD_GENERATORS2[i3];
+        for (let i4 = 0; i4 < POLYMOD_GENERATORS2.length; i4++) {
+          if ((b >> i4 & 1) === 1)
+            chk ^= POLYMOD_GENERATORS2[i4];
         }
         return chk;
       }
       function bechChecksum2(prefix, words, encodingConst = 1) {
         const len = prefix.length;
         let chk = 1;
-        for (let i3 = 0; i3 < len; i3++) {
-          const c = prefix.charCodeAt(i3);
+        for (let i4 = 0; i4 < len; i4++) {
+          const c = prefix.charCodeAt(i4);
           if (c < 33 || c > 126)
             throw new Error(`Invalid prefix (${prefix})`);
           chk = bech32Polymod2(chk) ^ c >> 5;
         }
         chk = bech32Polymod2(chk);
-        for (let i3 = 0; i3 < len; i3++)
-          chk = bech32Polymod2(chk) ^ prefix.charCodeAt(i3) & 31;
+        for (let i4 = 0; i4 < len; i4++)
+          chk = bech32Polymod2(chk) ^ prefix.charCodeAt(i4) & 31;
         for (let v of words)
           chk = bech32Polymod2(chk) ^ v;
-        for (let i3 = 0; i3 < 6; i3++)
+        for (let i4 = 0; i4 < 6; i4++)
           chk = bech32Polymod2(chk);
         chk ^= encodingConst;
         return BECH_ALPHABET2.encode(convertRadix22([chk % 2 ** 30], 30, 5, false));
@@ -11075,9 +11075,9 @@
         metadata: 27
       };
       var TAGNAMES = {};
-      for (let i3 = 0, keys = Object.keys(TAGCODES); i3 < keys.length; i3++) {
-        const currentName = keys[i3];
-        const currentCode = TAGCODES[keys[i3]].toString();
+      for (let i4 = 0, keys = Object.keys(TAGCODES); i4 < keys.length; i4++) {
+        const currentName = keys[i4];
+        const currentCode = TAGCODES[keys[i4]].toString();
         TAGNAMES[currentCode] = currentName;
       }
       var TAGPARSERS = {
@@ -12094,8 +12094,8 @@
     if (typeof this.pubkey !== "string") return false;
     if (!this.pubkey.match(PUBKEY_REGEX)) return false;
     if (!Array.isArray(this.tags)) return false;
-    for (let i3 = 0; i3 < this.tags.length; i3++) {
-      const tag = this.tags[i3];
+    for (let i4 = 0; i4 < this.tags.length; i4++) {
+      const tag = this.tags[i4];
       if (!Array.isArray(tag)) return false;
       for (let j = 0; j < tag.length; j++) {
         if (typeof tag[j] === "object") return false;
@@ -12157,9 +12157,9 @@
     const data = {};
     if (tag.length === 2) {
       const parts = tag[1].split(" ");
-      for (let i3 = 0; i3 < parts.length; i3 += 2) {
-        const key = parts[i3];
-        const value = parts[i3 + 1];
+      for (let i4 = 0; i4 < parts.length; i4 += 2) {
+        const key = parts[i4];
+        const value = parts[i4 + 1];
         if (key === "fallback") {
           if (!data.fallback) data.fallback = [];
           data.fallback.push(value);
@@ -13943,8 +13943,8 @@
             return [];
           }
           const filterCount = filters[0].length;
-          for (let i3 = 0; i3 < filterCount; i3++) {
-            const allFiltersAtIndex = filters.map((filter) => filter[i3]);
+          for (let i4 = 0; i4 < filterCount; i4++) {
+            const allFiltersAtIndex = filters.map((filter) => filter[i4]);
             mergedFilters.push(...mergeFilters(allFiltersAtIndex));
           }
           return mergedFilters;
@@ -16448,8 +16448,8 @@
             this.position = strToPosition(tag[3]);
             this.dimension = strToDimension(tag[4]);
             const props = {};
-            for (let i3 = 5; i3 < tag.length; i3++) {
-              const [key, ...rest] = tag[i3].split(" ");
+            for (let i4 = 5; i4 < tag.length; i4++) {
+              const [key, ...rest] = tag[i4].split(" ");
               props[key] = rest.join(" ");
             }
             if (Object.keys(props).length > 0) {
@@ -16680,10 +16680,10 @@
           const stickers = this.stickers;
           if (index < 0 || index >= stickers.length) return;
           let stickerCount = 0;
-          for (let i3 = 0; i3 < this.tags.length; i3++) {
-            if (this.tags[i3][0] === "sticker") {
+          for (let i4 = 0; i4 < this.tags.length; i4++) {
+            if (this.tags[i4][0] === "sticker") {
               if (stickerCount === index) {
-                this.tags.splice(i3, 1);
+                this.tags.splice(i4, 1);
                 break;
               }
               stickerCount++;
@@ -18446,8 +18446,8 @@
          */
         async trackUsers(items, skipCache = false) {
           const promises = [];
-          for (let i3 = 0; i3 < items.length; i3 += 400) {
-            const slice = items.slice(i3, i3 + 400);
+          for (let i4 = 0; i4 < items.length; i4 += 400) {
+            const slice = items.slice(i4, i4 + 400);
             const pubkeys = slice.map((item) => getKeyFromItem(item)).filter((pubkey) => !this.data.has(pubkey));
             if (pubkeys.length === 0) continue;
             for (const pubkey of pubkeys) {
@@ -19354,18 +19354,84 @@
     publicKeyPromise = (async () => {
       await ensureInitialized();
       if (!isAvailable()) return getCachedPublicKey();
+      const nostr = window.nostr;
+      const pending = nostr.getPublicKey();
+      const panelClose = nostr.isWnj === true ? watchWindowNostrPanelClose() : null;
+      let released = false;
       try {
-        const pubkey = await window.nostr.getPublicKey();
+        const pubkey = await (panelClose ? Promise.race([
+          pending,
+          panelClose.closed.then(() => {
+            if (released) return pending;
+            throw new SignerPromptClosed();
+          })
+        ]) : pending);
         return cachePublicKey(pubkey);
       } catch (error) {
+        if (error instanceof SignerPromptClosed) throw error;
         console.error("Failed to get public key from window.nostr:", error);
         clearCachedPublicKey();
         return null;
+      } finally {
+        released = true;
+        panelClose?.stop();
       }
     })().finally(() => {
       publicKeyPromise = null;
     });
     return publicKeyPromise;
+  }
+  function windowNostrPanel() {
+    const children = document.body?.children;
+    if (!children) return null;
+    for (let index = 0; index < children.length; index += 1) {
+      const panel = children[index]?.shadowRoot?.getElementById("wnj");
+      if (panel) return panel;
+    }
+    return null;
+  }
+  function isPanelCloseButton(node) {
+    if (typeof node !== "object" || node === null || !("tagName" in node)) return false;
+    const element = node;
+    return element.tagName === "BUTTON" && element.textContent === WNJ_PANEL_CLOSE_LABEL;
+  }
+  function watchWindowNostrPanelClose() {
+    let stopped = false;
+    let frameId = 0;
+    let removeListener = () => {
+    };
+    const scheduleFrame = globalThis.requestAnimationFrame?.bind(globalThis) ?? ((callback) => globalThis.setTimeout(() => callback(0), 0));
+    const cancelFrame = globalThis.cancelAnimationFrame?.bind(globalThis) ?? ((id) => globalThis.clearTimeout(id));
+    const closed = new Promise((resolve) => {
+      if (typeof document === "undefined" || typeof document.addEventListener !== "function") {
+        return;
+      }
+      const onClick = (event) => {
+        if (stopped) return;
+        const panel = windowNostrPanel();
+        if (!panel?.querySelector(".animate-show")) return;
+        const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+        const closeButton = path.some((node) => isPanelCloseButton(node));
+        if (!closeButton && path.includes(panel)) return;
+        frameId = scheduleFrame(() => {
+          frameId = scheduleFrame(() => {
+            if (stopped) return;
+            if (windowNostrPanel()?.querySelector(".animate-show")) return;
+            resolve();
+          });
+        });
+      };
+      document.addEventListener("click", onClick, true);
+      removeListener = () => document.removeEventListener("click", onClick, true);
+    });
+    return {
+      closed,
+      stop() {
+        stopped = true;
+        removeListener();
+        if (frameId) cancelFrame(frameId);
+      }
+    };
   }
   async function signEvent(event) {
     await ensureInitialized();
@@ -19381,7 +19447,7 @@
       throw error;
     }
   }
-  var WINDOW_NOSTR_JS_SRC, WINDOW_NOSTR_JS_SRI, PUBLIC_KEY_SESSION_KEY, PUBLIC_KEY_PATTERN, isInitialized, initPromise, publicKeyPromise, inMemoryPublicKey;
+  var WINDOW_NOSTR_JS_SRC, WINDOW_NOSTR_JS_SRI, PUBLIC_KEY_SESSION_KEY, PUBLIC_KEY_PATTERN, isInitialized, initPromise, publicKeyPromise, inMemoryPublicKey, WNJ_PANEL_CLOSE_LABEL, SignerPromptClosed;
   var init_nostr_login_service = __esm({
     "src/common/nostr-login-service.ts"() {
       "use strict";
@@ -19394,6 +19460,13 @@
       initPromise = null;
       publicKeyPromise = null;
       inMemoryPublicKey = null;
+      WNJ_PANEL_CLOSE_LABEL = "\u292B";
+      SignerPromptClosed = class extends Error {
+        constructor() {
+          super("Signer prompt closed");
+          this.name = "SignerPromptClosed";
+        }
+      };
     }
   });
 
@@ -19520,6 +19593,9 @@
       ch.port2.postMessage(0);
       ch.port1.start();
     });
+  }
+  function useWebSocketImplementation(websocketImplementation) {
+    _WebSocket3 = websocketImplementation;
   }
   var verifiedSymbol2, isRecord2, utf8Decoder3, utf8Encoder3, QueueNode2, Queue3, JS2, i2, generateSecretKey2, getPublicKey3, finalizeEvent2, verifyEvent2, ClientAuth2, AbstractRelay2, Subscription2, _WebSocket3, Relay;
   var init_relay = __esm({
@@ -20188,6 +20264,14 @@
       init_relay();
       init_constants();
       init_relay_transport();
+      if (typeof WebSocket !== "undefined") {
+        useWebSocketImplementation(class extends WebSocket {
+          send(data) {
+            if (this.readyState !== WebSocket.OPEN) return;
+            super.send(data);
+          }
+        });
+      }
       FUTURE_SKEW_SECONDS = 15 * 60;
       WRITE_RELAY_LIMIT = 3;
       ZAP_RELAY_LIMIT = 8;
@@ -21187,11 +21271,8 @@
       buildUrlATag = (pubkey, url) => `39735:${pubkey}:${zapTagUrl(url)}`;
       signEvent2 = async (zapEvent, anon) => {
         if (!anon) {
-          try {
-            await ensureInitialized();
-            return await signEvent(zapEvent);
-          } catch {
-          }
+          await ensureInitialized();
+          return await signEvent(zapEvent);
         }
         if (!zapEvent.tags.some((tag) => tag[0] === "anon")) {
           zapEvent.tags.push(["anon"]);
@@ -22508,8 +22589,8 @@
           const childNodes = getChildNodes(currentNode) || currentNode.childNodes;
           if (childNodes && parentNode) {
             const childCount = childNodes.length;
-            for (let i3 = childCount - 1; i3 >= 0; --i3) {
-              const childClone = cloneNode(childNodes[i3], true);
+            for (let i4 = childCount - 1; i4 >= 0; --i4) {
+              const childClone = cloneNode(childNodes[i4], true);
               childClone.__removalCount = (currentNode.__removalCount || 0) + 1;
               parentNode.insertBefore(childClone, getNextSibling(currentNode));
             }
@@ -23399,8 +23480,8 @@
           return (this.buffer[bufIndex] >>> 7 - index % 8 & 1) === 1;
         },
         put: function(num2, length) {
-          for (let i3 = 0; i3 < length; i3++) {
-            this.putBit((num2 >>> length - i3 - 1 & 1) === 1);
+          for (let i4 = 0; i4 < length; i4++) {
+            this.putBit((num2 >>> length - i4 - 1 & 1) === 1);
           }
         },
         getLengthInBits: function() {
@@ -23460,8 +23541,8 @@
         const size = getSymbolSize(version);
         const intervals = size === 145 ? 26 : Math.ceil((size - 13) / (2 * posCount - 2)) * 2;
         const positions = [size - 7];
-        for (let i3 = 1; i3 < posCount - 1; i3++) {
-          positions[i3] = positions[i3 - 1] - intervals;
+        for (let i4 = 1; i4 < posCount - 1; i4++) {
+          positions[i4] = positions[i4 - 1] - intervals;
         }
         positions.push(6);
         return positions.reverse();
@@ -23470,14 +23551,14 @@
         const coords = [];
         const pos = exports.getRowColCoords(version);
         const posLength = pos.length;
-        for (let i3 = 0; i3 < posLength; i3++) {
+        for (let i4 = 0; i4 < posLength; i4++) {
           for (let j = 0; j < posLength; j++) {
-            if (i3 === 0 && j === 0 || // top-left
-            i3 === 0 && j === posLength - 1 || // bottom-left
-            i3 === posLength - 1 && j === 0) {
+            if (i4 === 0 && j === 0 || // top-left
+            i4 === 0 && j === posLength - 1 || // bottom-left
+            i4 === posLength - 1 && j === 0) {
               continue;
             }
-            coords.push([pos[i3], pos[j]]);
+            coords.push([pos[i4], pos[j]]);
           }
         }
         return coords;
@@ -23592,28 +23673,28 @@
       exports.getPenaltyN4 = function getPenaltyN4(data) {
         let darkCount = 0;
         const modulesCount = data.data.length;
-        for (let i3 = 0; i3 < modulesCount; i3++) darkCount += data.data[i3];
+        for (let i4 = 0; i4 < modulesCount; i4++) darkCount += data.data[i4];
         const k = Math.abs(Math.ceil(darkCount * 100 / modulesCount / 5) - 10);
         return k * PenaltyScores.N4;
       };
-      function getMaskAt(maskPattern, i3, j) {
+      function getMaskAt(maskPattern, i4, j) {
         switch (maskPattern) {
           case exports.Patterns.PATTERN000:
-            return (i3 + j) % 2 === 0;
+            return (i4 + j) % 2 === 0;
           case exports.Patterns.PATTERN001:
-            return i3 % 2 === 0;
+            return i4 % 2 === 0;
           case exports.Patterns.PATTERN010:
             return j % 3 === 0;
           case exports.Patterns.PATTERN011:
-            return (i3 + j) % 3 === 0;
+            return (i4 + j) % 3 === 0;
           case exports.Patterns.PATTERN100:
-            return (Math.floor(i3 / 2) + Math.floor(j / 3)) % 2 === 0;
+            return (Math.floor(i4 / 2) + Math.floor(j / 3)) % 2 === 0;
           case exports.Patterns.PATTERN101:
-            return i3 * j % 2 + i3 * j % 3 === 0;
+            return i4 * j % 2 + i4 * j % 3 === 0;
           case exports.Patterns.PATTERN110:
-            return (i3 * j % 2 + i3 * j % 3) % 2 === 0;
+            return (i4 * j % 2 + i4 * j % 3) % 2 === 0;
           case exports.Patterns.PATTERN111:
-            return (i3 * j % 3 + (i3 + j) % 2) % 2 === 0;
+            return (i4 * j % 3 + (i4 + j) % 2) % 2 === 0;
           default:
             throw new Error("bad maskPattern:" + maskPattern);
         }
@@ -24014,16 +24095,16 @@
       var LOG_TABLE = new Uint8Array(256);
       (function initTables() {
         let x = 1;
-        for (let i3 = 0; i3 < 255; i3++) {
-          EXP_TABLE[i3] = x;
-          LOG_TABLE[x] = i3;
+        for (let i4 = 0; i4 < 255; i4++) {
+          EXP_TABLE[i4] = x;
+          LOG_TABLE[x] = i4;
           x <<= 1;
           if (x & 256) {
             x ^= 285;
           }
         }
-        for (let i3 = 255; i3 < 512; i3++) {
-          EXP_TABLE[i3] = EXP_TABLE[i3 - 255];
+        for (let i4 = 255; i4 < 512; i4++) {
+          EXP_TABLE[i4] = EXP_TABLE[i4 - 255];
         }
       })();
       exports.log = function log(n) {
@@ -24046,9 +24127,9 @@
       var GF = require_galois_field();
       exports.mul = function mul3(p1, p2) {
         const coeff = new Uint8Array(p1.length + p2.length - 1);
-        for (let i3 = 0; i3 < p1.length; i3++) {
+        for (let i4 = 0; i4 < p1.length; i4++) {
           for (let j = 0; j < p2.length; j++) {
-            coeff[i3 + j] ^= GF.mul(p1[i3], p2[j]);
+            coeff[i4 + j] ^= GF.mul(p1[i4], p2[j]);
           }
         }
         return coeff;
@@ -24057,8 +24138,8 @@
         let result = new Uint8Array(divident);
         while (result.length - divisor.length >= 0) {
           const coeff = result[0];
-          for (let i3 = 0; i3 < divisor.length; i3++) {
-            result[i3] ^= GF.mul(divisor[i3], coeff);
+          for (let i4 = 0; i4 < divisor.length; i4++) {
+            result[i4] ^= GF.mul(divisor[i4], coeff);
           }
           let offset = 0;
           while (offset < result.length && result[offset] === 0) offset++;
@@ -24068,8 +24149,8 @@
       };
       exports.generateECPolynomial = function generateECPolynomial(degree) {
         let poly = new Uint8Array([1]);
-        for (let i3 = 0; i3 < degree; i3++) {
-          poly = exports.mul(poly, new Uint8Array([1, GF.exp(i3)]));
+        for (let i4 = 0; i4 < degree; i4++) {
+          poly = exports.mul(poly, new Uint8Array([1, GF.exp(i4)]));
         }
         return poly;
       };
@@ -24357,15 +24438,15 @@
         return NumericData.getBitsLength(this.data.length);
       };
       NumericData.prototype.write = function write(bitBuffer) {
-        let i3, group, value;
-        for (i3 = 0; i3 + 3 <= this.data.length; i3 += 3) {
-          group = this.data.substr(i3, 3);
+        let i4, group, value;
+        for (i4 = 0; i4 + 3 <= this.data.length; i4 += 3) {
+          group = this.data.substr(i4, 3);
           value = parseInt(group, 10);
           bitBuffer.put(value, 10);
         }
-        const remainingNum = this.data.length - i3;
+        const remainingNum = this.data.length - i4;
         if (remainingNum > 0) {
-          group = this.data.substr(i3);
+          group = this.data.substr(i4);
           value = parseInt(group, 10);
           bitBuffer.put(value, remainingNum * 3 + 1);
         }
@@ -24439,14 +24520,14 @@
         return AlphanumericData.getBitsLength(this.data.length);
       };
       AlphanumericData.prototype.write = function write(bitBuffer) {
-        let i3;
-        for (i3 = 0; i3 + 2 <= this.data.length; i3 += 2) {
-          let value = ALPHA_NUM_CHARS.indexOf(this.data[i3]) * 45;
-          value += ALPHA_NUM_CHARS.indexOf(this.data[i3 + 1]);
+        let i4;
+        for (i4 = 0; i4 + 2 <= this.data.length; i4 += 2) {
+          let value = ALPHA_NUM_CHARS.indexOf(this.data[i4]) * 45;
+          value += ALPHA_NUM_CHARS.indexOf(this.data[i4 + 1]);
           bitBuffer.put(value, 11);
         }
         if (this.data.length % 2) {
-          bitBuffer.put(ALPHA_NUM_CHARS.indexOf(this.data[i3]), 6);
+          bitBuffer.put(ALPHA_NUM_CHARS.indexOf(this.data[i4]), 6);
         }
       };
       module.exports = AlphanumericData;
@@ -24475,8 +24556,8 @@
         return ByteData.getBitsLength(this.data.length);
       };
       ByteData.prototype.write = function(bitBuffer) {
-        for (let i3 = 0, l = this.data.length; i3 < l; i3++) {
-          bitBuffer.put(this.data[i3], 8);
+        for (let i4 = 0, l = this.data.length; i4 < l; i4++) {
+          bitBuffer.put(this.data[i4], 8);
         }
       };
       module.exports = ByteData;
@@ -24502,16 +24583,16 @@
         return KanjiData.getBitsLength(this.data.length);
       };
       KanjiData.prototype.write = function(bitBuffer) {
-        let i3;
-        for (i3 = 0; i3 < this.data.length; i3++) {
-          let value = Utils.toSJIS(this.data[i3]);
+        let i4;
+        for (i4 = 0; i4 < this.data.length; i4++) {
+          let value = Utils.toSJIS(this.data[i4]);
           if (value >= 33088 && value <= 40956) {
             value -= 33088;
           } else if (value >= 57408 && value <= 60351) {
             value -= 49472;
           } else {
             throw new Error(
-              "Invalid SJIS character: " + this.data[i3] + "\nMake sure your charset is UTF-8"
+              "Invalid SJIS character: " + this.data[i4] + "\nMake sure your charset is UTF-8"
             );
           }
           value = (value >>> 8 & 255) * 192 + (value & 255);
@@ -24698,8 +24779,8 @@
       }
       function buildNodes(segs) {
         const nodes = [];
-        for (let i3 = 0; i3 < segs.length; i3++) {
-          const seg = segs[i3];
+        for (let i4 = 0; i4 < segs.length; i4++) {
+          const seg = segs[i4];
           switch (seg.mode) {
             case Mode.NUMERIC:
               nodes.push([
@@ -24732,12 +24813,12 @@
         const table = {};
         const graph = { start: {} };
         let prevNodeIds = ["start"];
-        for (let i3 = 0; i3 < nodes.length; i3++) {
-          const nodeGroup = nodes[i3];
+        for (let i4 = 0; i4 < nodes.length; i4++) {
+          const nodeGroup = nodes[i4];
           const currentNodeIds = [];
           for (let j = 0; j < nodeGroup.length; j++) {
             const node = nodeGroup[j];
-            const key = "" + i3 + j;
+            const key = "" + i4 + j;
             currentNodeIds.push(key);
             table[key] = { node, lastCount: 0 };
             graph[key] = {};
@@ -24796,8 +24877,8 @@
         const graph = buildGraph(nodes, version);
         const path = dijkstra.find_path(graph.map, "start", "end");
         const optimizedSegs = [];
-        for (let i3 = 1; i3 < path.length - 1; i3++) {
-          optimizedSegs.push(graph.table[path[i3]].node);
+        for (let i4 = 1; i4 < path.length - 1; i4++) {
+          optimizedSegs.push(graph.table[path[i4]].node);
         }
         return exports.fromArray(mergeSegments(optimizedSegs));
       };
@@ -24828,9 +24909,9 @@
       function setupFinderPattern(matrix, version) {
         const size = matrix.size;
         const pos = FinderPattern.getPositions(version);
-        for (let i3 = 0; i3 < pos.length; i3++) {
-          const row = pos[i3][0];
-          const col = pos[i3][1];
+        for (let i4 = 0; i4 < pos.length; i4++) {
+          const row = pos[i4][0];
+          const col = pos[i4][1];
           for (let r = -1; r <= 7; r++) {
             if (row + r <= -1 || size <= row + r) continue;
             for (let c = -1; c <= 7; c++) {
@@ -24854,9 +24935,9 @@
       }
       function setupAlignmentPattern(matrix, version) {
         const pos = AlignmentPattern.getPositions(version);
-        for (let i3 = 0; i3 < pos.length; i3++) {
-          const row = pos[i3][0];
-          const col = pos[i3][1];
+        for (let i4 = 0; i4 < pos.length; i4++) {
+          const row = pos[i4][0];
+          const col = pos[i4][1];
           for (let r = -2; r <= 2; r++) {
             for (let c = -2; c <= 2; c++) {
               if (r === -2 || r === 2 || c === -2 || c === 2 || r === 0 && c === 0) {
@@ -24872,10 +24953,10 @@
         const size = matrix.size;
         const bits = Version.getEncodedBits(version);
         let row, col, mod3;
-        for (let i3 = 0; i3 < 18; i3++) {
-          row = Math.floor(i3 / 3);
-          col = i3 % 3 + size - 8 - 3;
-          mod3 = (bits >> i3 & 1) === 1;
+        for (let i4 = 0; i4 < 18; i4++) {
+          row = Math.floor(i4 / 3);
+          col = i4 % 3 + size - 8 - 3;
+          mod3 = (bits >> i4 & 1) === 1;
           matrix.set(row, col, mod3, true);
           matrix.set(col, row, mod3, true);
         }
@@ -24883,22 +24964,22 @@
       function setupFormatInfo(matrix, errorCorrectionLevel, maskPattern) {
         const size = matrix.size;
         const bits = FormatInfo.getEncodedBits(errorCorrectionLevel, maskPattern);
-        let i3, mod3;
-        for (i3 = 0; i3 < 15; i3++) {
-          mod3 = (bits >> i3 & 1) === 1;
-          if (i3 < 6) {
-            matrix.set(i3, 8, mod3, true);
-          } else if (i3 < 8) {
-            matrix.set(i3 + 1, 8, mod3, true);
+        let i4, mod3;
+        for (i4 = 0; i4 < 15; i4++) {
+          mod3 = (bits >> i4 & 1) === 1;
+          if (i4 < 6) {
+            matrix.set(i4, 8, mod3, true);
+          } else if (i4 < 8) {
+            matrix.set(i4 + 1, 8, mod3, true);
           } else {
-            matrix.set(size - 15 + i3, 8, mod3, true);
+            matrix.set(size - 15 + i4, 8, mod3, true);
           }
-          if (i3 < 8) {
-            matrix.set(8, size - i3 - 1, mod3, true);
-          } else if (i3 < 9) {
-            matrix.set(8, 15 - i3 - 1 + 1, mod3, true);
+          if (i4 < 8) {
+            matrix.set(8, size - i4 - 1, mod3, true);
+          } else if (i4 < 9) {
+            matrix.set(8, 15 - i4 - 1 + 1, mod3, true);
           } else {
-            matrix.set(8, 15 - i3 - 1, mod3, true);
+            matrix.set(8, 15 - i4 - 1, mod3, true);
           }
         }
         matrix.set(size - 8, 8, 1, true);
@@ -24952,8 +25033,8 @@
           buffer.putBit(0);
         }
         const remainingByte = (dataTotalCodewordsBits - buffer.getLengthInBits()) / 8;
-        for (let i3 = 0; i3 < remainingByte; i3++) {
-          buffer.put(i3 % 2 ? 17 : 236, 8);
+        for (let i4 = 0; i4 < remainingByte; i4++) {
+          buffer.put(i4 % 2 ? 17 : 236, 8);
         }
         return createCodewords(buffer, version, errorCorrectionLevel);
       }
@@ -24983,17 +25064,17 @@
         }
         const data = new Uint8Array(totalCodewords);
         let index = 0;
-        let i3, r;
-        for (i3 = 0; i3 < maxDataSize; i3++) {
+        let i4, r;
+        for (i4 = 0; i4 < maxDataSize; i4++) {
           for (r = 0; r < ecTotalBlocks; r++) {
-            if (i3 < dcData[r].length) {
-              data[index++] = dcData[r][i3];
+            if (i4 < dcData[r].length) {
+              data[index++] = dcData[r][i4];
             }
           }
         }
-        for (i3 = 0; i3 < ecCount; i3++) {
+        for (i4 = 0; i4 < ecCount; i4++) {
           for (r = 0; r < ecTotalBlocks; r++) {
-            data[index++] = ecData[r][i3];
+            data[index++] = ecData[r][i4];
           }
         }
         return data;
@@ -25131,12 +25212,12 @@
         const symbolSize = Math.floor((size + opts.margin * 2) * scale);
         const scaledMargin = opts.margin * scale;
         const palette = [opts.color.light, opts.color.dark];
-        for (let i3 = 0; i3 < symbolSize; i3++) {
+        for (let i4 = 0; i4 < symbolSize; i4++) {
           for (let j = 0; j < symbolSize; j++) {
-            let posDst = (i3 * symbolSize + j) * 4;
+            let posDst = (i4 * symbolSize + j) * 4;
             let pxColor = opts.color.light;
-            if (i3 >= scaledMargin && j >= scaledMargin && i3 < symbolSize - scaledMargin && j < symbolSize - scaledMargin) {
-              const iSrc = Math.floor((i3 - scaledMargin) / scale);
+            if (i4 >= scaledMargin && j >= scaledMargin && i4 < symbolSize - scaledMargin && j < symbolSize - scaledMargin) {
+              const iSrc = Math.floor((i4 - scaledMargin) / scale);
               const jSrc = Math.floor((j - scaledMargin) / scale);
               pxColor = palette[data[iSrc * size + jSrc] ? 1 : 0];
             }
@@ -25222,18 +25303,18 @@
         let moveBy = 0;
         let newRow = false;
         let lineLength = 0;
-        for (let i3 = 0; i3 < data.length; i3++) {
-          const col = Math.floor(i3 % size);
-          const row = Math.floor(i3 / size);
+        for (let i4 = 0; i4 < data.length; i4++) {
+          const col = Math.floor(i4 % size);
+          const row = Math.floor(i4 / size);
           if (!col && !newRow) newRow = true;
-          if (data[i3]) {
+          if (data[i4]) {
             lineLength++;
-            if (!(i3 > 0 && col > 0 && data[i3 - 1])) {
+            if (!(i4 > 0 && col > 0 && data[i4 - 1])) {
               path += newRow ? svgCmd("M", col + margin, 0.5 + row + margin) : svgCmd("m", moveBy, 0);
               moveBy = 0;
               newRow = false;
             }
-            if (!(col + 1 < size && data[i3 + 1])) {
+            if (!(col + 1 < size && data[i4 + 1])) {
               path += svgCmd("h", lineLength);
               lineLength = 0;
             }
@@ -25403,14 +25484,25 @@
         connectedRelays = this.getConnectedRelays();
       }
       const normalizedInputRelays = relays.map((r) => normalizeURL2(r));
-      const failedRelays = normalizedInputRelays.filter((r) => !connectedRelays.includes(r));
+      const connectingRelays = this.getConnectingRelays().filter(
+        (url) => normalizedInputRelays.includes(url)
+      );
+      const accountedRelays = /* @__PURE__ */ new Set([...connectedRelays, ...connectingRelays]);
+      const failedRelays = normalizedInputRelays.filter((url) => !accountedRelays.has(url));
       if (connectedRelays.length === 0) {
         const error = new Error(`Failed to connect to any of ${relays.length} relay(s): ${relays.join(", ")}`);
         console.error("[NostrService]", error.message);
         throw error;
-      } else if (failedRelays.length > 0) {
+      } else if (connectingRelays.length > 0 || failedRelays.length > 0) {
+        const details = [`Working: ${connectedRelays.join(", ")}.`];
+        if (connectingRelays.length > 0) {
+          details.push(`Still connecting: ${connectingRelays.join(", ")}.`);
+        }
+        if (failedRelays.length > 0) {
+          details.push(`Failed: ${failedRelays.join(", ")}`);
+        }
         console.warn(
-          `[NostrService] Connected to ${connectedRelays.length}/${relays.length} relay(s). Working: ${connectedRelays.join(", ")}. Failed: ${failedRelays.join(", ")}`
+          `[NostrService] Connected to ${connectedRelays.length}/${relays.length} relay(s). ` + details.join(" ")
         );
       }
     }
@@ -25434,6 +25526,22 @@
         console.warn("[NostrService] Could not check relay connection status:", error);
       }
       return connected;
+    }
+    /** Relays that have a socket open but have not reached CONNECTED yet. */
+    getConnectingRelays() {
+      const connecting = [];
+      try {
+        if (this.ndk.pool && this.ndk.pool.relays) {
+          for (const [url, relay] of this.ndk.pool.relays.entries()) {
+            if (relay && relay.status === NDKRelayStatus.CONNECTING) {
+              connecting.push(normalizeURL2(url));
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("[NostrService] Could not check relay connection status:", error);
+      }
+      return connecting;
     }
     getRelays() {
       const explicitRelays2 = this.ndk.explicitRelayUrls;
@@ -25927,9 +26035,6 @@ ${url}`;
     }
   };
 
-  // src/nostr-like-button/nostr-like.ts
-  init_dist();
-
   // src/nostr-like-button/render.ts
   init_utils8();
   function shouldDisableLikeButton({
@@ -25948,7 +26053,6 @@ ${url}`;
     likeCount,
     hasLikes = false,
     isCountLoading = false,
-    theme = "light",
     compact = false
   }) {
     if (isError && !compact) {
@@ -25956,7 +26060,7 @@ ${url}`;
     }
     const liked = isLiked === true;
     const unknown = isLiked === null;
-    const iconContent = getThumbsUpIcon(liked, theme);
+    const iconContent = getThumbsUpIcon(liked);
     const textContent = compact || unknown ? "" : liked ? `<span>Liked</span>` : `<span>${escapeHtml(buttonText)}</span>`;
     return renderContainer(
       iconContent,
@@ -25967,7 +26071,8 @@ ${url}`;
       isLoading,
       isCountLoading,
       compact,
-      isError
+      isError,
+      errorMessage
     );
   }
   function renderError(errorMessage) {
@@ -25988,11 +26093,11 @@ ${url}`;
     </div>
   `;
   }
-  function renderContainer(iconContent, textContent, likeCount, hasLikes = false, isLiked = false, isLoading = false, isCountLoading = false, compact = false, isError = false) {
+  function renderContainer(iconContent, textContent, likeCount, hasLikes = false, isLiked = false, isLoading = false, isCountLoading = false, compact = false, isError = false, errorMessage = "") {
     let countHtml = "";
     if (isCountLoading) {
       countHtml = '<span class="like-count skeleton"></span>';
-    } else if (likeCount > 0) {
+    } else if (!compact || likeCount > 0) {
       const label = likeCount === 1 ? "like" : "likes";
       const countText = compact ? String(likeCount) : `${likeCount} ${label}`;
       const canOpenLikers = hasLikes && !compact;
@@ -26002,9 +26107,12 @@ ${url}`;
     const unknown = isLiked === null;
     const buttonClass = liked ? "nostr-like-button liked" : "nostr-like-button";
     const disabledAttrs = isLoading ? ' disabled aria-busy="true"' : "";
-    const actionLabel = isError ? "Nostr Like failed. Select to retry." : unknown ? "Like state unknown" : liked ? "Unlike this post with Nostr" : "Like this post with Nostr";
+    const actionLabel = escapeHtml(
+      isError ? errorMessage || "Nostr Like failed. Select to retry." : unknown ? "Like state unknown" : liked ? "Unlike this post with Nostr" : "Like this post with Nostr"
+    );
     const pressed = unknown ? ' aria-pressed="mixed"' : liked ? ' aria-pressed="true"' : ' aria-pressed="false"';
     const helpIconHtml = compact ? "" : `<button type="button" class="help-icon" aria-label="What is a like?" title="What is a like?">?</button>`;
+    const compactErrorHtml = compact && isError ? `<span class="compact-error">${actionLabel}</span>` : "";
     return `
     <div class="nostr-like-button-container">
       <button type="button" class="${buttonClass}" aria-label="${actionLabel}" title="${actionLabel}"${disabledAttrs}${pressed}>
@@ -26012,24 +26120,22 @@ ${url}`;
         ${isLoading && !compact ? '<span class="button-text-skeleton"></span>' : textContent}
         ${compact ? countHtml : ""}
       </button>
+      ${compactErrorHtml}
       ${compact ? "" : countHtml} ${helpIconHtml}
     </div>
   `;
   }
-  function getThumbsUpIcon(isLiked, theme = "light") {
-    const likedColor = theme === "dark" ? "#8ab4f8" : "#1877f2";
-    const outlineColor = theme === "dark" ? "#e0e7ff" : "#0d46a1";
+  function getThumbsUpIcon(isLiked) {
     if (isLiked) {
       return `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100" width="24" height="24">
-      <path d="M93.6,53.1c2.6-1.5,4.2-4.4,3.8-7.6c-0.5-4-4.2-6.8-8.2-6.8l-25,0c0.2-0.5,0.5-1.2,0.7-1.8c1.5-3.8,4.3-10.8,4.3-18 c0-8.1-5.7-13-9.6-13.3C57.2,5.5,55.4,7,55,9.7c-0.7,5.1-4.1,12.6-5.5,15.5c-0.4,0.9-0.9,1.7-1.6,2.4c-2.3,2.6-8.1,9-13.6,12.8 c0,0.2,0.1,0.5,0.1,0.7v47.9c0,0.4-0.1,0.8-0.1,1.2c9.4,2.7,17.9,4,27.2,4l21.3,0c3.7,0,7.2-2.5,7.9-6.1c0.6-3-0.5-5.7-2.5-7.5 c3.4-0.8,6-3.9,6-7.5c0-2.3-1-4.4-2.7-5.8c3.4-0.8,6-3.9,6-7.5C97.5,57,96,54.5,93.6,53.1z" fill="${likedColor}"/>
-      <path d="M23.4,36.9H6.7c-2.3,0-4.2,1.9-4.2,4.2v47.9c0,2.3,1.9,4.2,4.2,4.2h16.7c2.3,0,4.2-1.9,4.2-4.2V41.2 C27.6,38.8,25.8,36.9,23.4,36.9z M15.1,85.9c-2.4,0-4.4-2-4.4-4.4s2-4.4,4.4-4.4c2.4,0,4.4,2,4.4,4.4S17.5,85.9,15.1,85.9z" fill="${likedColor}"/>
-    </svg>`;
-    } else {
-      return `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100" width="24" height="24">
-      <path d="M93.6,53.1c2.6-1.5,4.2-4.4,3.8-7.6c-0.5-4-4.2-6.8-8.2-6.8l-25,0c0.2-0.5,0.5-1.2,0.7-1.8c1.5-3.8,4.3-10.8,4.3-18 c0-8.1-5.7-13-9.6-13.3C57.2,5.5,55.4,7,55,9.7c-0.7,5.1-4.1,12.6-5.5,15.5c-0.4,0.9-0.9,1.7-1.6,2.4c-2.3,2.6-8.1,9-13.6,12.8 c0,0.2,0.1,0.5,0.1,0.7v47.9c0,0.4-0.1,0.8-0.1,1.2c9.4,2.7,17.9,4,27.2,4l21.3,0c3.7,0,7.2-2.5,7.9-6.1c0.6-3-0.5-5.7-2.5-7.5 c3.4-0.8,6-3.9,6-7.5c0-2.3-1-4.4-2.7-5.8c3.4-0.8,6-3.9,6-7.5C97.5,57,96,54.5,93.6,53.1z" fill="none" stroke="${outlineColor}" stroke-width="2"/>
-      <path d="M23.4,36.9H6.7c-2.3,0-4.2,1.9-4.2,4.2v47.9c0,2.3,1.9,4.2,4.2,4.2h16.7c2.3,0,4.2-1.9,4.2-4.2V41.2 C27.6,38.8,25.8,36.9,23.4,36.9z M15.1,85.9c-2.4,0-4.4-2-4.4-4.4s2-4.4,4.4-4.4c2.4,0,4.4,2,4.4,4.4S17.5,85.9,15.1,85.9z" fill="none" stroke="${outlineColor}" stroke-width="2"/>
+      <path d="M93.6,53.1c2.6-1.5,4.2-4.4,3.8-7.6c-0.5-4-4.2-6.8-8.2-6.8l-25,0c0.2-0.5,0.5-1.2,0.7-1.8c1.5-3.8,4.3-10.8,4.3-18 c0-8.1-5.7-13-9.6-13.3C57.2,5.5,55.4,7,55,9.7c-0.7,5.1-4.1,12.6-5.5,15.5c-0.4,0.9-0.9,1.7-1.6,2.4c-2.3,2.6-8.1,9-13.6,12.8 c0,0.2,0.1,0.5,0.1,0.7v47.9c0,0.4-0.1,0.8-0.1,1.2c9.4,2.7,17.9,4,27.2,4l21.3,0c3.7,0,7.2-2.5,7.9-6.1c0.6-3-0.5-5.7-2.5-7.5 c3.4-0.8,6-3.9,6-7.5c0-2.3-1-4.4-2.7-5.8c3.4-0.8,6-3.9,6-7.5C97.5,57,96,54.5,93.6,53.1z" fill="currentColor"/>
+      <path d="M23.4,36.9H6.7c-2.3,0-4.2,1.9-4.2,4.2v47.9c0,2.3,1.9,4.2,4.2,4.2h16.7c2.3,0,4.2-1.9,4.2-4.2V41.2 C27.6,38.8,25.8,36.9,23.4,36.9z M15.1,85.9c-2.4,0-4.4-2-4.4-4.4s2-4.4,4.4-4.4c2.4,0,4.4,2,4.4,4.4S17.5,85.9,15.1,85.9z" fill="currentColor"/>
     </svg>`;
     }
+    return `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100" width="24" height="24">
+    <path d="M93.6,53.1c2.6-1.5,4.2-4.4,3.8-7.6c-0.5-4-4.2-6.8-8.2-6.8l-25,0c0.2-0.5,0.5-1.2,0.7-1.8c1.5-3.8,4.3-10.8,4.3-18 c0-8.1-5.7-13-9.6-13.3C57.2,5.5,55.4,7,55,9.7c-0.7,5.1-4.1,12.6-5.5,15.5c-0.4,0.9-0.9,1.7-1.6,2.4c-2.3,2.6-8.1,9-13.6,12.8 c0,0.2,0.1,0.5,0.1,0.7v47.9c0,0.4-0.1,0.8-0.1,1.2c9.4,2.7,17.9,4,27.2,4l21.3,0c3.7,0,7.2-2.5,7.9-6.1c0.6-3-0.5-5.7-2.5-7.5 c3.4-0.8,6-3.9,6-7.5c0-2.3-1-4.4-2.7-5.8c3.4-0.8,6-3.9,6-7.5C97.5,57,96,54.5,93.6,53.1z" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M23.4,36.9H6.7c-2.3,0-4.2,1.9-4.2,4.2v47.9c0,2.3,1.9,4.2,4.2,4.2h16.7c2.3,0,4.2-1.9,4.2-4.2V41.2 C27.6,38.8,25.8,36.9,23.4,36.9z M15.1,85.9c-2.4,0-4.4-2-4.4-4.4s2-4.4,4.4-4.4c2.4,0,4.4,2,4.4,4.4S17.5,85.9,15.1,85.9z" fill="none" stroke="currentColor" stroke-width="2"/>
+  </svg>`;
   }
 
   // src/common/base-styles.ts
@@ -26250,6 +26356,13 @@ ${url}`;
       font-size: var(--nostrc-like-btn-font-size);
     }
 
+    :host([data-theme="dark"]:not([compact])) {
+      --nostrc-like-btn-liked-bg: #12345a;
+      --nostrc-like-btn-liked-color: #e8f2ff;
+      --nostrc-like-btn-liked-border: #8ab4f8;
+      --nostrc-like-btn-liked-hover-bg: #1a3f6b;
+    }
+
     /* Compact action-row mode used by dense host UIs such as X timelines. */
     :host([compact]) {
       --nostrc-icon-height: 18px;
@@ -26287,14 +26400,15 @@ ${url}`;
     :host([compact]) .nostr-like-button-container {
       justify-content: center;
       gap: 2px;
-      width: 100%;
-      min-width: 0;
+      flex: 0 0 auto;
+      width: auto;
     }
 
     :host([compact]) .nostr-like-button {
       box-sizing: border-box;
-      flex: 1 1 auto;
-      width: 100%;
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 34px;
       border-radius: 9999px;
       justify-content: center;
       cursor: pointer;
@@ -26394,7 +26508,19 @@ ${url}`;
     :host([compact].is-error) .nostr-like-button-container {
       border: 0;
       padding: 0;
-      color: var(--nostrc-like-btn-color);
+    }
+
+    :host([compact].is-error) .nostr-like-button,
+    :host([compact].is-error) .nostr-like-button:hover {
+      color: var(--nostrc-color-error-text);
+      box-shadow: inset 0 0 0 1px var(--nostrc-color-error-text);
+    }
+
+    :host([compact].is-error) .compact-error {
+      color: var(--nostrc-color-error-text);
+      font-size: 13px;
+      line-height: 16px;
+      white-space: nowrap;
     }
 
     .nostr-like-button-container {
@@ -26476,6 +26602,11 @@ ${url}`;
       text-decoration: underline;
       text-decoration-color: transparent;
       transition: text-decoration-color 0.2s ease, color 0.2s ease;
+    }
+
+    :host(:not([compact])) .like-count {
+      display: inline-block;
+      min-width: 80px;
     }
 
     /* Clickable like count */
@@ -26652,11 +26783,11 @@ ${url}`;
     }
     setTrustedInnerHTML(dialogComponent, `
     <div class="help-content">
-      <p>Like any webpage to show your appreciation! Your likes are stored on Nostr, a decentralized network you control\u2014no accounts needed.</p>
+      <p>Like any webpage to show your appreciation! Connect a Nostr signer once to save your likes on Nostr and carry them with you across the web. There is no site-specific account to create.</p>
       <ul>
         <li>Like any webpage or article</li>
         <li>See who liked the content</li>
-        <li>Works with a browser extension like <a href="https://getalby.com" target="_blank" rel="noopener noreferrer">Alby</a> or nos2x</li>
+        <li>Set up once with a signer such as <a href="https://getalby.com" target="_blank" rel="noopener noreferrer">Alby</a> or nos2x</li>
       </ul>
     </div>
   `);
@@ -26667,7 +26798,853 @@ ${url}`;
   init_utils8();
 
   // src/nostr-like-button/like-utils.ts
-  init_esm2();
+  init_dist();
+
+  // node_modules/nostr-tools/lib/esm/pool.js
+  init_secp256k1();
+  init_utils3();
+  init_sha2562();
+  var verifiedSymbol3 = Symbol("verified");
+  var isRecord3 = (obj) => obj instanceof Object;
+  function validateEvent4(event) {
+    if (!isRecord3(event))
+      return false;
+    if (typeof event.kind !== "number")
+      return false;
+    if (typeof event.content !== "string")
+      return false;
+    if (typeof event.created_at !== "number")
+      return false;
+    if (typeof event.pubkey !== "string")
+      return false;
+    if (!event.pubkey.match(/^[a-f0-9]{64}$/))
+      return false;
+    if (!Array.isArray(event.tags))
+      return false;
+    for (let i22 = 0; i22 < event.tags.length; i22++) {
+      let tag = event.tags[i22];
+      if (!Array.isArray(tag))
+        return false;
+      for (let j = 0; j < tag.length; j++) {
+        if (typeof tag[j] === "object")
+          return false;
+      }
+    }
+    return true;
+  }
+  var utf8Decoder4 = new TextDecoder("utf-8");
+  var utf8Encoder4 = new TextEncoder();
+  function normalizeURL5(url) {
+    if (url.indexOf("://") === -1)
+      url = "wss://" + url;
+    let p = new URL(url);
+    p.pathname = p.pathname.replace(/\/+/g, "/");
+    if (p.pathname.endsWith("/"))
+      p.pathname = p.pathname.slice(0, -1);
+    if (p.port === "80" && p.protocol === "ws:" || p.port === "443" && p.protocol === "wss:")
+      p.port = "";
+    p.searchParams.sort();
+    p.hash = "";
+    return p.toString();
+  }
+  var QueueNode3 = class {
+    value;
+    next = null;
+    prev = null;
+    constructor(message) {
+      this.value = message;
+    }
+  };
+  var Queue4 = class {
+    first;
+    last;
+    constructor() {
+      this.first = null;
+      this.last = null;
+    }
+    enqueue(value) {
+      const newNode = new QueueNode3(value);
+      if (!this.last) {
+        this.first = newNode;
+        this.last = newNode;
+      } else if (this.last === this.first) {
+        this.last = newNode;
+        this.last.prev = this.first;
+        this.first.next = newNode;
+      } else {
+        newNode.prev = this.last;
+        this.last.next = newNode;
+        this.last = newNode;
+      }
+      return true;
+    }
+    dequeue() {
+      if (!this.first)
+        return null;
+      if (this.first === this.last) {
+        const target2 = this.first;
+        this.first = null;
+        this.last = null;
+        return target2.value;
+      }
+      const target = this.first;
+      this.first = target.next;
+      return target.value;
+    }
+  };
+  var JS3 = class {
+    generateSecretKey() {
+      return schnorr.utils.randomPrivateKey();
+    }
+    getPublicKey(secretKey) {
+      return bytesToHex2(schnorr.getPublicKey(secretKey));
+    }
+    finalizeEvent(t, secretKey) {
+      const event = t;
+      event.pubkey = bytesToHex2(schnorr.getPublicKey(secretKey));
+      event.id = getEventHash4(event);
+      event.sig = bytesToHex2(schnorr.sign(getEventHash4(event), secretKey));
+      event[verifiedSymbol3] = true;
+      return event;
+    }
+    verifyEvent(event) {
+      if (typeof event[verifiedSymbol3] === "boolean")
+        return event[verifiedSymbol3];
+      const hash3 = getEventHash4(event);
+      if (hash3 !== event.id) {
+        event[verifiedSymbol3] = false;
+        return false;
+      }
+      try {
+        const valid = schnorr.verify(event.sig, hash3, event.pubkey);
+        event[verifiedSymbol3] = valid;
+        return valid;
+      } catch (err) {
+        event[verifiedSymbol3] = false;
+        return false;
+      }
+    }
+  };
+  function serializeEvent3(evt) {
+    if (!validateEvent4(evt))
+      throw new Error("can't serialize event with wrong or missing properties");
+    return JSON.stringify([0, evt.pubkey, evt.created_at, evt.kind, evt.tags, evt.content]);
+  }
+  function getEventHash4(event) {
+    let eventHash = sha2562(utf8Encoder4.encode(serializeEvent3(event)));
+    return bytesToHex2(eventHash);
+  }
+  var i3 = new JS3();
+  var generateSecretKey3 = i3.generateSecretKey;
+  var getPublicKey4 = i3.getPublicKey;
+  var finalizeEvent3 = i3.finalizeEvent;
+  var verifyEvent3 = i3.verifyEvent;
+  var ClientAuth3 = 22242;
+  function matchFilter3(filter, event) {
+    if (filter.ids && filter.ids.indexOf(event.id) === -1) {
+      return false;
+    }
+    if (filter.kinds && filter.kinds.indexOf(event.kind) === -1) {
+      return false;
+    }
+    if (filter.authors && filter.authors.indexOf(event.pubkey) === -1) {
+      return false;
+    }
+    for (let f in filter) {
+      if (f[0] === "#") {
+        let tagName = f.slice(1);
+        let values = filter[`#${tagName}`];
+        if (values && !event.tags.find(([t, v]) => t === f.slice(1) && values.indexOf(v) !== -1))
+          return false;
+      }
+    }
+    if (filter.since && event.created_at < filter.since)
+      return false;
+    if (filter.until && event.created_at > filter.until)
+      return false;
+    return true;
+  }
+  function matchFilters3(filters, event) {
+    for (let i22 = 0; i22 < filters.length; i22++) {
+      if (matchFilter3(filters[i22], event)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  function getHex643(json, field) {
+    let len = field.length + 3;
+    let idx = json.indexOf(`"${field}":`) + len;
+    let s = json.slice(idx).indexOf(`"`) + idx + 1;
+    return json.slice(s, s + 64);
+  }
+  function getSubscriptionId3(json) {
+    let idx = json.slice(0, 22).indexOf(`"EVENT"`);
+    if (idx === -1)
+      return null;
+    let pstart = json.slice(idx + 7 + 1).indexOf(`"`);
+    if (pstart === -1)
+      return null;
+    let start = idx + 7 + 1 + pstart;
+    let pend = json.slice(start + 1, 80).indexOf(`"`);
+    if (pend === -1)
+      return null;
+    let end = start + 1 + pend;
+    return json.slice(start + 1, end);
+  }
+  function makeAuthEvent3(relayURL, challenge3) {
+    return {
+      kind: ClientAuth3,
+      created_at: Math.floor(Date.now() / 1e3),
+      tags: [
+        ["relay", relayURL],
+        ["challenge", challenge3]
+      ],
+      content: ""
+    };
+  }
+  async function yieldThread3() {
+    return new Promise((resolve) => {
+      const ch = new MessageChannel();
+      const handler = () => {
+        ch.port1.removeEventListener("message", handler);
+        resolve();
+      };
+      ch.port1.addEventListener("message", handler);
+      ch.port2.postMessage(0);
+      ch.port1.start();
+    });
+  }
+  var alwaysTrue2 = (t) => {
+    t[verifiedSymbol3] = true;
+    return true;
+  };
+  var AbstractRelay3 = class {
+    url;
+    _connected = false;
+    onclose = null;
+    onnotice = (msg) => console.debug(`NOTICE from ${this.url}: ${msg}`);
+    _onauth = null;
+    baseEoseTimeout = 4400;
+    connectionTimeout = 4400;
+    publishTimeout = 4400;
+    openSubs = /* @__PURE__ */ new Map();
+    connectionTimeoutHandle;
+    connectionPromise;
+    openCountRequests = /* @__PURE__ */ new Map();
+    openEventPublishes = /* @__PURE__ */ new Map();
+    ws;
+    incomingMessageQueue = new Queue4();
+    queueRunning = false;
+    challenge;
+    authPromise;
+    serial = 0;
+    verifyEvent;
+    _WebSocket;
+    constructor(url, opts) {
+      this.url = normalizeURL5(url);
+      this.verifyEvent = opts.verifyEvent;
+      this._WebSocket = opts.websocketImplementation || WebSocket;
+    }
+    static async connect(url, opts) {
+      const relay = new AbstractRelay3(url, opts);
+      await relay.connect();
+      return relay;
+    }
+    closeAllSubscriptions(reason) {
+      for (let [_, sub] of this.openSubs) {
+        sub.close(reason);
+      }
+      this.openSubs.clear();
+      for (let [_, ep] of this.openEventPublishes) {
+        ep.reject(new Error(reason));
+      }
+      this.openEventPublishes.clear();
+      for (let [_, cr] of this.openCountRequests) {
+        cr.reject(new Error(reason));
+      }
+      this.openCountRequests.clear();
+    }
+    get connected() {
+      return this._connected;
+    }
+    async connect() {
+      if (this.connectionPromise)
+        return this.connectionPromise;
+      this.challenge = void 0;
+      this.authPromise = void 0;
+      this.connectionPromise = new Promise((resolve, reject) => {
+        this.connectionTimeoutHandle = setTimeout(() => {
+          reject("connection timed out");
+          this.connectionPromise = void 0;
+          this.onclose?.();
+          this.closeAllSubscriptions("relay connection timed out");
+        }, this.connectionTimeout);
+        try {
+          this.ws = new this._WebSocket(this.url);
+        } catch (err) {
+          reject(err);
+          return;
+        }
+        this.ws.onopen = () => {
+          clearTimeout(this.connectionTimeoutHandle);
+          this._connected = true;
+          resolve();
+        };
+        this.ws.onerror = (ev) => {
+          reject(ev.message || "websocket error");
+          if (this._connected) {
+            this._connected = false;
+            this.connectionPromise = void 0;
+            this.onclose?.();
+            this.closeAllSubscriptions("relay connection errored");
+          }
+        };
+        this.ws.onclose = async () => {
+          if (this._connected) {
+            this._connected = false;
+            this.connectionPromise = void 0;
+            this.onclose?.();
+            this.closeAllSubscriptions("relay connection closed");
+          }
+        };
+        this.ws.onmessage = this._onmessage.bind(this);
+      });
+      return this.connectionPromise;
+    }
+    async runQueue() {
+      this.queueRunning = true;
+      while (true) {
+        if (false === this.handleNext()) {
+          break;
+        }
+        await yieldThread3();
+      }
+      this.queueRunning = false;
+    }
+    handleNext() {
+      const json = this.incomingMessageQueue.dequeue();
+      if (!json) {
+        return false;
+      }
+      const subid = getSubscriptionId3(json);
+      if (subid) {
+        const so = this.openSubs.get(subid);
+        if (!so) {
+          return;
+        }
+        const id = getHex643(json, "id");
+        const alreadyHave = so.alreadyHaveEvent?.(id);
+        so.receivedEvent?.(this, id);
+        if (alreadyHave) {
+          return;
+        }
+      }
+      try {
+        let data = JSON.parse(json);
+        switch (data[0]) {
+          case "EVENT": {
+            const so = this.openSubs.get(data[1]);
+            const event = data[2];
+            if (this.verifyEvent(event) && matchFilters3(so.filters, event)) {
+              so.onevent(event);
+            }
+            return;
+          }
+          case "COUNT": {
+            const id = data[1];
+            const payload = data[2];
+            const cr = this.openCountRequests.get(id);
+            if (cr) {
+              cr.resolve(payload.count);
+              this.openCountRequests.delete(id);
+            }
+            return;
+          }
+          case "EOSE": {
+            const so = this.openSubs.get(data[1]);
+            if (!so)
+              return;
+            so.receivedEose();
+            return;
+          }
+          case "OK": {
+            const id = data[1];
+            const ok = data[2];
+            const reason = data[3];
+            const ep = this.openEventPublishes.get(id);
+            if (ep) {
+              clearTimeout(ep.timeout);
+              if (ok)
+                ep.resolve(reason);
+              else
+                ep.reject(new Error(reason));
+              this.openEventPublishes.delete(id);
+            }
+            return;
+          }
+          case "CLOSED": {
+            const id = data[1];
+            const so = this.openSubs.get(id);
+            if (!so)
+              return;
+            so.closed = true;
+            so.close(data[2]);
+            return;
+          }
+          case "NOTICE":
+            this.onnotice(data[1]);
+            return;
+          case "AUTH": {
+            this.challenge = data[1];
+            this.authPromise = void 0;
+            this._onauth?.(data[1]);
+            return;
+          }
+        }
+      } catch (err) {
+        return;
+      }
+    }
+    async send(message) {
+      if (!this.connectionPromise)
+        throw new Error("sending on closed connection");
+      this.connectionPromise.then(() => {
+        this.ws?.send(message);
+      });
+    }
+    async auth(signAuthEvent) {
+      if (!this.challenge)
+        throw new Error("can't perform auth, no challenge was received");
+      if (this.authPromise)
+        return this.authPromise;
+      const evt = await signAuthEvent(makeAuthEvent3(this.url, this.challenge));
+      this.authPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          const ep = this.openEventPublishes.get(evt.id);
+          if (ep) {
+            ep.reject(new Error("auth timed out"));
+            this.openEventPublishes.delete(evt.id);
+          }
+        }, this.publishTimeout);
+        this.openEventPublishes.set(evt.id, { resolve, reject, timeout });
+      });
+      this.send('["AUTH",' + JSON.stringify(evt) + "]");
+      return this.authPromise;
+    }
+    async publish(event) {
+      const ret = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          const ep = this.openEventPublishes.get(event.id);
+          if (ep) {
+            ep.reject(new Error("publish timed out"));
+            this.openEventPublishes.delete(event.id);
+          }
+        }, this.publishTimeout);
+        this.openEventPublishes.set(event.id, { resolve, reject, timeout });
+      });
+      this.send('["EVENT",' + JSON.stringify(event) + "]");
+      return ret;
+    }
+    async count(filters, params) {
+      this.serial++;
+      const id = params?.id || "count:" + this.serial;
+      const ret = new Promise((resolve, reject) => {
+        this.openCountRequests.set(id, { resolve, reject });
+      });
+      this.send('["COUNT","' + id + '",' + JSON.stringify(filters).substring(1));
+      return ret;
+    }
+    subscribe(filters, params) {
+      const subscription = this.prepareSubscription(filters, params);
+      subscription.fire();
+      return subscription;
+    }
+    prepareSubscription(filters, params) {
+      this.serial++;
+      const id = params.id || (params.label ? params.label + ":" : "sub:") + this.serial;
+      const subscription = new Subscription3(this, id, filters, params);
+      this.openSubs.set(id, subscription);
+      return subscription;
+    }
+    close() {
+      this.closeAllSubscriptions("relay connection closed by us");
+      this._connected = false;
+      this.ws?.close();
+    }
+    _onmessage(ev) {
+      this.incomingMessageQueue.enqueue(ev.data);
+      if (!this.queueRunning) {
+        this.runQueue();
+      }
+    }
+  };
+  var Subscription3 = class {
+    relay;
+    id;
+    closed = false;
+    eosed = false;
+    filters;
+    alreadyHaveEvent;
+    receivedEvent;
+    onevent;
+    oneose;
+    onclose;
+    eoseTimeout;
+    eoseTimeoutHandle;
+    constructor(relay, id, filters, params) {
+      this.relay = relay;
+      this.filters = filters;
+      this.id = id;
+      this.alreadyHaveEvent = params.alreadyHaveEvent;
+      this.receivedEvent = params.receivedEvent;
+      this.eoseTimeout = params.eoseTimeout || relay.baseEoseTimeout;
+      this.oneose = params.oneose;
+      this.onclose = params.onclose;
+      this.onevent = params.onevent || ((event) => {
+        console.warn(
+          `onevent() callback not defined for subscription '${this.id}' in relay ${this.relay.url}. event received:`,
+          event
+        );
+      });
+    }
+    fire() {
+      this.relay.send('["REQ","' + this.id + '",' + JSON.stringify(this.filters).substring(1));
+      this.eoseTimeoutHandle = setTimeout(this.receivedEose.bind(this), this.eoseTimeout);
+    }
+    receivedEose() {
+      if (this.eosed)
+        return;
+      clearTimeout(this.eoseTimeoutHandle);
+      this.eosed = true;
+      this.oneose?.();
+    }
+    close(reason = "closed by caller") {
+      if (!this.closed && this.relay.connected) {
+        this.relay.send('["CLOSE",' + JSON.stringify(this.id) + "]");
+        this.closed = true;
+      }
+      this.relay.openSubs.delete(this.id);
+      this.onclose?.(reason);
+    }
+  };
+  var AbstractSimplePool2 = class {
+    relays = /* @__PURE__ */ new Map();
+    seenOn = /* @__PURE__ */ new Map();
+    trackRelays = false;
+    verifyEvent;
+    trustedRelayURLs = /* @__PURE__ */ new Set();
+    _WebSocket;
+    constructor(opts) {
+      this.verifyEvent = opts.verifyEvent;
+      this._WebSocket = opts.websocketImplementation;
+    }
+    async ensureRelay(url, params) {
+      url = normalizeURL5(url);
+      let relay = this.relays.get(url);
+      if (!relay) {
+        relay = new AbstractRelay3(url, {
+          verifyEvent: this.trustedRelayURLs.has(url) ? alwaysTrue2 : this.verifyEvent,
+          websocketImplementation: this._WebSocket
+        });
+        if (params?.connectionTimeout)
+          relay.connectionTimeout = params.connectionTimeout;
+        this.relays.set(url, relay);
+      }
+      await relay.connect();
+      return relay;
+    }
+    close(relays) {
+      relays.map(normalizeURL5).forEach((url) => {
+        this.relays.get(url)?.close();
+      });
+    }
+    subscribe(relays, filter, params) {
+      return this.subscribeMap(
+        relays.map((url) => ({ url, filter })),
+        params
+      );
+    }
+    subscribeMany(relays, filters, params) {
+      return this.subscribeMap(
+        relays.flatMap((url) => filters.map((filter) => ({ url, filter }))),
+        params
+      );
+    }
+    subscribeMap(requests, params) {
+      if (this.trackRelays) {
+        params.receivedEvent = (relay, id) => {
+          let set = this.seenOn.get(id);
+          if (!set) {
+            set = /* @__PURE__ */ new Set();
+            this.seenOn.set(id, set);
+          }
+          set.add(relay);
+        };
+      }
+      const _knownIds = /* @__PURE__ */ new Set();
+      const subs = [];
+      const eosesReceived = [];
+      let handleEose = (i22) => {
+        if (eosesReceived[i22])
+          return;
+        eosesReceived[i22] = true;
+        if (eosesReceived.filter((a) => a).length === requests.length) {
+          params.oneose?.();
+          handleEose = () => {
+          };
+        }
+      };
+      const closesReceived = [];
+      let handleClose = (i22, reason) => {
+        if (closesReceived[i22])
+          return;
+        handleEose(i22);
+        closesReceived[i22] = reason;
+        if (closesReceived.filter((a) => a).length === requests.length) {
+          params.onclose?.(closesReceived);
+          handleClose = () => {
+          };
+        }
+      };
+      const localAlreadyHaveEventHandler = (id) => {
+        if (params.alreadyHaveEvent?.(id)) {
+          return true;
+        }
+        const have = _knownIds.has(id);
+        _knownIds.add(id);
+        return have;
+      };
+      const allOpened = Promise.all(
+        requests.map(async ({ url, filter }, i22) => {
+          url = normalizeURL5(url);
+          let relay;
+          try {
+            relay = await this.ensureRelay(url, {
+              connectionTimeout: params.maxWait ? Math.max(params.maxWait * 0.8, params.maxWait - 1e3) : void 0
+            });
+          } catch (err) {
+            handleClose(i22, err?.message || String(err));
+            return;
+          }
+          let subscription = relay.subscribe([filter], {
+            ...params,
+            oneose: () => handleEose(i22),
+            onclose: (reason) => {
+              if (reason.startsWith("auth-required:") && params.doauth) {
+                relay.auth(params.doauth).then(() => {
+                  relay.subscribe([filter], {
+                    ...params,
+                    oneose: () => handleEose(i22),
+                    onclose: (reason2) => {
+                      handleClose(i22, reason2);
+                    },
+                    alreadyHaveEvent: localAlreadyHaveEventHandler,
+                    eoseTimeout: params.maxWait
+                  });
+                }).catch((err) => {
+                  handleClose(i22, `auth was required and attempted, but failed with: ${err}`);
+                });
+              } else {
+                handleClose(i22, reason);
+              }
+            },
+            alreadyHaveEvent: localAlreadyHaveEventHandler,
+            eoseTimeout: params.maxWait
+          });
+          subs.push(subscription);
+        })
+      );
+      return {
+        async close() {
+          await allOpened;
+          subs.forEach((sub) => {
+            sub.close();
+          });
+        }
+      };
+    }
+    subscribeManyMap(requests, params) {
+      if (this.trackRelays) {
+        params.receivedEvent = (relay, id) => {
+          let set = this.seenOn.get(id);
+          if (!set) {
+            set = /* @__PURE__ */ new Set();
+            this.seenOn.set(id, set);
+          }
+          set.add(relay);
+        };
+      }
+      const _knownIds = /* @__PURE__ */ new Set();
+      const subs = [];
+      const relaysLength = Object.keys(requests).length;
+      const eosesReceived = [];
+      let handleEose = (i22) => {
+        if (eosesReceived[i22])
+          return;
+        eosesReceived[i22] = true;
+        if (eosesReceived.filter((a) => a).length === relaysLength) {
+          params.oneose?.();
+          handleEose = () => {
+          };
+        }
+      };
+      const closesReceived = [];
+      let handleClose = (i22, reason) => {
+        if (closesReceived[i22])
+          return;
+        handleEose(i22);
+        closesReceived[i22] = reason;
+        if (closesReceived.filter((a) => a).length === relaysLength) {
+          params.onclose?.(closesReceived);
+          handleClose = () => {
+          };
+        }
+      };
+      const localAlreadyHaveEventHandler = (id) => {
+        if (params.alreadyHaveEvent?.(id)) {
+          return true;
+        }
+        const have = _knownIds.has(id);
+        _knownIds.add(id);
+        return have;
+      };
+      const allOpened = Promise.all(
+        Object.entries(requests).map(async (req, i22, arr) => {
+          if (arr.indexOf(req) !== i22) {
+            handleClose(i22, "duplicate url");
+            return;
+          }
+          let [url, filters] = req;
+          url = normalizeURL5(url);
+          let relay;
+          try {
+            relay = await this.ensureRelay(url, {
+              connectionTimeout: params.maxWait ? Math.max(params.maxWait * 0.8, params.maxWait - 1e3) : void 0
+            });
+          } catch (err) {
+            handleClose(i22, err?.message || String(err));
+            return;
+          }
+          let subscription = relay.subscribe(filters, {
+            ...params,
+            oneose: () => handleEose(i22),
+            onclose: (reason) => {
+              if (reason.startsWith("auth-required:") && params.doauth) {
+                relay.auth(params.doauth).then(() => {
+                  relay.subscribe(filters, {
+                    ...params,
+                    oneose: () => handleEose(i22),
+                    onclose: (reason2) => {
+                      handleClose(i22, reason2);
+                    },
+                    alreadyHaveEvent: localAlreadyHaveEventHandler,
+                    eoseTimeout: params.maxWait
+                  });
+                }).catch((err) => {
+                  handleClose(i22, `auth was required and attempted, but failed with: ${err}`);
+                });
+              } else {
+                handleClose(i22, reason);
+              }
+            },
+            alreadyHaveEvent: localAlreadyHaveEventHandler,
+            eoseTimeout: params.maxWait
+          });
+          subs.push(subscription);
+        })
+      );
+      return {
+        async close() {
+          await allOpened;
+          subs.forEach((sub) => {
+            sub.close();
+          });
+        }
+      };
+    }
+    subscribeEose(relays, filter, params) {
+      const subcloser = this.subscribe(relays, filter, {
+        ...params,
+        oneose() {
+          subcloser.close();
+        }
+      });
+      return subcloser;
+    }
+    subscribeManyEose(relays, filters, params) {
+      const subcloser = this.subscribeMany(relays, filters, {
+        ...params,
+        oneose() {
+          subcloser.close();
+        }
+      });
+      return subcloser;
+    }
+    async querySync(relays, filter, params) {
+      return new Promise(async (resolve) => {
+        const events = [];
+        this.subscribeEose(relays, filter, {
+          ...params,
+          onevent(event) {
+            events.push(event);
+          },
+          onclose(_) {
+            resolve(events);
+          }
+        });
+      });
+    }
+    async get(relays, filter, params) {
+      filter.limit = 1;
+      const events = await this.querySync(relays, filter, params);
+      events.sort((a, b) => b.created_at - a.created_at);
+      return events[0] || null;
+    }
+    publish(relays, event) {
+      return relays.map(normalizeURL5).map(async (url, i22, arr) => {
+        if (arr.indexOf(url) !== i22) {
+          return Promise.reject("duplicate url");
+        }
+        let r = await this.ensureRelay(url);
+        return r.publish(event).then((reason) => {
+          if (this.trackRelays) {
+            let set = this.seenOn.get(event.id);
+            if (!set) {
+              set = /* @__PURE__ */ new Set();
+              this.seenOn.set(event.id, set);
+            }
+            set.add(r);
+          }
+          return reason;
+        });
+      });
+    }
+    listConnectionStatus() {
+      const map = /* @__PURE__ */ new Map();
+      this.relays.forEach((relay, url) => map.set(url, relay.connected));
+      return map;
+    }
+    destroy() {
+      this.relays.forEach((conn) => conn.close());
+      this.relays = /* @__PURE__ */ new Map();
+    }
+  };
+  var _WebSocket4;
+  try {
+    _WebSocket4 = WebSocket;
+  } catch {
+  }
+  function useWebSocketImplementation2(websocketImplementation) {
+    _WebSocket4 = websocketImplementation;
+  }
+  var SimplePool2 = class extends AbstractSimplePool2 {
+    constructor() {
+      super({ verifyEvent: verifyEvent3, websocketImplementation: _WebSocket4 });
+    }
+  };
+
+  // src/nostr-like-button/like-utils.ts
   init_nostr_login_service();
   init_relay_transport();
   init_relay_routing();
@@ -26715,6 +27692,14 @@ ${url}`;
   }
 
   // src/nostr-like-button/like-utils.ts
+  if (typeof WebSocket !== "undefined") {
+    useWebSocketImplementation2(class extends WebSocket {
+      send(data) {
+        if (this.readyState !== WebSocket.OPEN) return;
+        super.send(data);
+      }
+    });
+  }
   var DIRECTORY_WRITE_ERROR = "Directory did not store the reaction";
   var LOCAL_REACTION_KEY = "nostr-components:last-reaction";
   var LOCAL_REACTION_LIMIT = 20;
@@ -26837,7 +27822,7 @@ ${url}`;
     if (filterUrls.length === 0) {
       return netLikesByPubkey([]);
     }
-    const pool = new SimplePool();
+    const pool = new SimplePool2();
     try {
       const filter = {
         kinds: [17],
@@ -26881,7 +27866,7 @@ ${url}`;
     return createReactionEvent(url, "-");
   }
   async function hasUserLiked(url, userPubkey, relays) {
-    const pool = new SimplePool();
+    const pool = new SimplePool2();
     const filterUrls = likeFilterUrls(url);
     if (filterUrls.length === 0) {
       pool.close(relays);
@@ -26925,6 +27910,10 @@ ${url}`;
       pool.close(relays);
     }
   }
+  async function publishSignedEventOnRelays(ndk, signedEvent, relays) {
+    const relaySet = NDKRelaySet.fromRelayUrls(relays, ndk);
+    await new NDKEvent(ndk, signedEvent).publish(relaySet);
+  }
   async function publishSignedReaction(event, relays, publishWithNdk, actionId) {
     const transport = getRelayTransport();
     if (transport) {
@@ -26949,7 +27938,7 @@ ${url}`;
     );
     const extra = targets.filter((relay) => !base.has(relay));
     if (extra.length === 0) return;
-    const pool = new SimplePool();
+    const pool = new SimplePool2();
     try {
       await Promise.allSettled(pool.publish(extra, event));
     } finally {
@@ -27226,6 +28215,9 @@ ${url}`;
           }
           return unavailable();
         } catch (error) {
+          if (error instanceof SignerPromptClosed) {
+            return { status: "dismissed", publicKey: null };
+          }
           console.error("[AuthOnboarding] Failed to reach connected signer:", error);
           return unavailable();
         }
@@ -27248,6 +28240,9 @@ ${url}`;
         }
         return unavailable();
       } catch (error) {
+        if (error instanceof SignerPromptClosed) {
+          return { status: "dismissed", publicKey: null };
+        }
         console.error("[AuthOnboarding] Failed during signer onboarding:", error);
         return unavailable();
       }
@@ -27753,10 +28748,11 @@ ${url}`;
         this.isLiked = optimisticState.isLiked;
         this.likeCount = optimisticState.likeCount;
         didApplyOptimisticUpdate = true;
-        await publishSignedReaction(signedEvent, this.getRelays(), async () => {
-          const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
-          await ndkEvent.publish();
-        }, getTrustedActionContext(this)?.actionId);
+        await publishSignedReaction(signedEvent, this.getRelays(), () => publishSignedEventOnRelays(
+          this.nostrService.getNDK(),
+          signedEvent,
+          this.getRelays()
+        ), getTrustedActionContext(this)?.actionId);
         void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
           console.warn("[NostrLike] Failed to publish to write relays:", error);
         });
@@ -27796,10 +28792,11 @@ ${url}`;
         this.isLiked = optimisticState.isLiked;
         this.likeCount = optimisticState.likeCount;
         didApplyOptimisticUpdate = true;
-        await publishSignedReaction(signedEvent, this.getRelays(), async () => {
-          const ndkEvent = new NDKEvent(this.nostrService.getNDK(), signedEvent);
-          await ndkEvent.publish();
-        }, getTrustedActionContext(this)?.actionId);
+        await publishSignedReaction(signedEvent, this.getRelays(), () => publishSignedEventOnRelays(
+          this.nostrService.getNDK(),
+          signedEvent,
+          this.getRelays()
+        ), getTrustedActionContext(this)?.actionId);
         void publishToWriteRelays(signedEvent, this.getRelays()).catch((error) => {
           console.warn("[NostrLike] Failed to publish to write relays:", error);
         });
@@ -28042,6 +29039,13 @@ ${url}`;
   init_dialog_component();
 
   // src/nostr-zap-button/dialog-zap-style.ts
+  function invoiceChromeVisibility(hasInvoice, succeeded) {
+    return {
+      copy: hasInvoice && !succeeded,
+      wallet: hasInvoice && !succeeded,
+      thanks: succeeded
+    };
+  }
   var getDialogStyles = (theme = "light") => {
     const isDark = theme === "dark";
     return `
@@ -28103,6 +29107,13 @@ ${url}`;
       color: #7f00ff;
     }
 
+    .zap-dialog-content .copy-btn[hidden],
+    .zap-dialog-content .cta-btn[hidden],
+    .zap-dialog-content img.qr[hidden],
+    .nostr-base-dialog .success-overlay[hidden] {
+      display: none !important;
+    }
+
     .zap-dialog-content .update-zap-btn {
       background: #7f00ff;
       color: #ffffff;
@@ -28110,7 +29121,9 @@ ${url}`;
 
     /* === QR CODE === */
     .zap-dialog-content img.qr {
-      margin-top: 16px;
+      display: block;
+      margin: 16px auto 0;
+      cursor: pointer;
       border: 1px solid ${isDark ? "#3a3a3a" : "#e2e8f0"};
       border-radius: 8px;
     }
@@ -28177,7 +29190,7 @@ ${url}`;
       position: absolute;
       inset: 0;
       background: rgba(0, 0, 0, 0.65);
-      display: flex;
+      display: none;
       justify-content: center;
       align-items: center;
       color: #ffffff;
@@ -28189,8 +29202,9 @@ ${url}`;
     }
 
     .nostr-base-dialog.success .success-overlay {
+      display: flex;
       opacity: 1;
-      pointer-events: auto;
+      pointer-events: none;
     }
 
     /* === ANIMATIONS === */
@@ -28216,6 +29230,36 @@ ${url}`;
     style.textContent = getDialogStyles(theme);
     document.head.appendChild(style);
   };
+  function applyInvoiceChrome(dialog, hasInvoice, succeeded) {
+    const content = dialog.querySelector(".zap-dialog-content");
+    if (hasInvoice || succeeded) content?.setAttribute("data-has-invoice", "true");
+    else content?.removeAttribute("data-has-invoice");
+    const visibility = invoiceChromeVisibility(hasInvoice, succeeded);
+    content?.classList.toggle("has-invoice", visibility.copy);
+    dialog.classList.toggle("success", visibility.thanks);
+    const copy = dialog.querySelector(".copy-btn");
+    const wallet = dialog.querySelector(".cta-btn");
+    const thanks = dialog.querySelector(".success-overlay");
+    const qr = dialog.querySelector("img.qr");
+    if (copy) {
+      copy.hidden = !visibility.copy;
+      copy.style.display = visibility.copy ? "" : "none";
+    }
+    if (wallet) {
+      wallet.hidden = !visibility.wallet;
+      wallet.style.display = visibility.wallet ? "" : "none";
+    }
+    if (qr) {
+      qr.hidden = !visibility.copy;
+      qr.style.display = visibility.copy ? "" : "none";
+    }
+    if (thanks) {
+      thanks.hidden = !visibility.thanks;
+      thanks.style.display = visibility.thanks ? "" : "none";
+      thanks.style.opacity = visibility.thanks ? "1" : "0";
+      thanks.style.pointerEvents = "none";
+    }
+  }
   async function init(params) {
     const { npub: npub2, relays, cachedDialogComponent, buttonColor, fixedAmount, defaultAmount, initialAmount, url } = params;
     const npubHex = decodeNpub(npub2);
@@ -28225,18 +29269,16 @@ ${url}`;
     if (cachedDialogComponent) {
       const cachedDialog = cachedDialogComponent.getDialogElement();
       if (cachedDialog?.isConnected && cachedDialog.open) {
-        cachedDialog.classList.remove("success");
-        const controls = cachedDialog.querySelectorAll(".amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn");
+        const content = cachedDialog.querySelector(".zap-dialog-content");
+        const failed = Boolean(cachedDialog.querySelector(".zap-error-message"));
+        const hadInvoice = content?.getAttribute("data-has-invoice") === "true" && !failed;
+        applyInvoiceChrome(cachedDialog, hadInvoice, false);
+        const controls = cachedDialog.querySelectorAll(".amount-buttons, .update-zap-container, .comment-container");
         controls.forEach((el) => {
           if (el instanceof HTMLElement) el.style.display = "";
         });
         const updateZapBtn2 = cachedDialog.querySelector(".update-zap-btn");
         if (updateZapBtn2) updateZapBtn2.style.display = "";
-        const successOverlay = cachedDialog.querySelector(".success-overlay");
-        if (successOverlay) {
-          successOverlay.style.opacity = "0";
-          successOverlay.style.pointerEvents = "none";
-        }
         cachedDialogComponent.showModal();
         return cachedDialogComponent;
       }
@@ -28366,6 +29408,7 @@ ${url}`;
       }
       const activePayBtn = dialog2.querySelector(".cta-btn");
       if (activePayBtn) activePayBtn.disabled = true;
+      applyInvoiceChrome(dialog2, false, false);
       dialog2.classList.add("loading");
       try {
         const invoice = await loadInvoice(
@@ -28383,9 +29426,10 @@ ${url}`;
         if (invoice.trim().length === 0) {
           console.error("Invoice is empty, cannot generate QR code");
           qrImg.alt = "No invoice available";
-          qrImg.style.display = "none";
+          applyInvoiceChrome(dialog2, false, false);
           return;
         }
+        applyInvoiceChrome(dialog2, true, false);
         try {
           const src = await qrImgSrc(invoice);
           if (requestSeq !== invoiceRequestSeq) return;
@@ -28419,18 +29463,15 @@ ${url}`;
             errorDiv.className = "zap-error-message";
             errorDiv.style.cssText = "color: #dc3545; padding: 12px; margin: 16px 0; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px;";
             errorDiv.textContent = errorMsg;
-            const qrImg2 = dialogContent.querySelector("img.qr");
-            if (qrImg2 && qrImg2.parentNode) {
-              qrImg2.parentNode.insertBefore(errorDiv, qrImg2);
+            const qrImg = dialogContent.querySelector("img.qr");
+            if (qrImg && qrImg.parentNode) {
+              qrImg.parentNode.insertBefore(errorDiv, qrImg);
             } else {
               dialogContent.insertBefore(errorDiv, dialogContent.firstChild);
             }
           }
         }
-        const qrImg = dialog2.querySelector("img.qr");
-        if (qrImg) {
-          qrImg.style.display = "none";
-        }
+        applyInvoiceChrome(dialog2, false, false);
         const payBtn = dialog2.querySelector(".cta-btn");
         if (payBtn) {
           payBtn.disabled = true;
@@ -28461,12 +29502,12 @@ ${url}`;
           <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
           <button type="button" class="add-comment-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Add</button>
         </div>`}
-        <img class="qr" width="240" height="240" alt="QR Code" style="cursor:pointer;display:block;margin:0 auto;" />
+        <img class="qr" width="240" height="240" alt="QR Code" hidden />
         <br />
-        <button type="button" class="copy-btn">Copy invoice</button>
-        <button type="button" class="cta-btn" disabled>Open in wallet</button>
+        <button type="button" class="copy-btn" hidden>Copy invoice</button>
+        <button type="button" class="cta-btn" hidden disabled>Open in wallet</button>
         <div class="loading-overlay"><div class="loader"></div></div>
-        <div class="success-overlay">\u26A1 Thank you!</div>
+        <div class="success-overlay" hidden>\u26A1 Thank you!</div>
       </div>
   `);
     dialogComponent.showModal();
@@ -28564,11 +29605,8 @@ ${url}`;
       const comment = paidComment;
       const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
       const amountSats = amountMsats != null ? amountMsats / 1e3 : selectedAmount;
-      dialog.classList.add("success");
-      const overlay = dialog.querySelector(".success-overlay");
-      overlay.style.opacity = "1";
-      overlay.style.pointerEvents = "none";
-      const controls = dialog.querySelectorAll(".amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn");
+      applyInvoiceChrome(dialog, true, true);
+      const controls = dialog.querySelectorAll(".amount-buttons, .update-zap-container, .comment-container");
       controls.forEach((el) => {
         if (el instanceof HTMLElement) el.style.display = "none";
       });
@@ -30467,7 +31505,7 @@ ${url}`;
     const pendingSet = pending.set.bind(pending);
     const pendingDelete = pending.delete.bind(pending);
     const pageOrigin = pageWindow.location.origin;
-    function isRecord3(value) {
+    function isRecord4(value) {
       return Boolean(value) && typeof value === "object" && !arrayIsArray(value);
     }
     function canonicalJson(value) {
@@ -30490,7 +31528,7 @@ ${url}`;
         }
         return `[${joinArray(items, ",")}]`;
       }
-      if (!isRecord3(value)) {
+      if (!isRecord4(value)) {
         throw new ErrorConstructor("Relay bridge value is not serializable");
       }
       const keys = sortArray(objectKeys(value));
@@ -30595,7 +31633,7 @@ ${url}`;
       } catch {
         return;
       }
-      if (!isRecord3(message) || message.source !== RESPONSE_SOURCE || !testPattern(
+      if (!isRecord4(message) || message.source !== RESPONSE_SOURCE || !testPattern(
         REQUEST_ID_PATTERN,
         StringConstructor(message.requestId || "")
       ) || !testPattern(
@@ -30646,7 +31684,7 @@ ${url}`;
       const out = [];
       for (let index = 0; index < rows.length; index += 1) {
         const row = rows[index];
-        if (!isRecord3(row)) continue;
+        if (!isRecord4(row)) continue;
         const createdAt = typeof row.createdAt === "number" ? row.createdAt : 0;
         pushArray(out, {
           amount: row.amount,

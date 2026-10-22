@@ -150,7 +150,7 @@
     );
   }
 
-  function createNostrAction(tweetInfo, theme) {
+  function createNostrAction(tweetInfo, theme, recipientNpub) {
     const slot = document.createElement('div');
     slot.className = 'nostr-competency-action-slot';
     slot.setAttribute('data-nostr-competency-like', 'true');
@@ -159,11 +159,16 @@
     slot.setAttribute('data-directory-status', 'loading');
     slot.setAttribute('data-status-url', tweetInfo.canonicalUrl);
     slot.setAttribute('data-theme', theme);
+    const recipient = extension.url.isValidNpub(recipientNpub) ? recipientNpub : null;
+    if (recipient) {
+      slot.setAttribute('data-zap-recipient-npub', recipient);
+      slot.setAttribute('data-directory-status', 'verified');
+    }
     extension.componentLoader?.registerAction?.(slot, {
       kind: 'x',
       url: tweetInfo.canonicalUrl,
       theme: theme,
-      recipientNpub: null
+      recipientNpub: recipient
     });
     // X treats unhandled clicks inside a tweet as navigation. Contain clicks
     // across the full action slot, including loading and re-render gaps.

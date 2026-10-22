@@ -3,7 +3,7 @@
 // Import for side effects to register the custom element
 import '../base/dialog-component/dialog-component';
 import type { DialogComponent } from '../base/dialog-component/dialog-component';
-import { getDialogStyles } from './dialog-zap-style';
+import { getDialogStyles, invoiceChromeVisibility } from './dialog-zap-style';
 import { decodeNpub } from '../common/utils';
 import { setTrustedInnerHTML } from '../common/trusted-html';
 import {
@@ -81,6 +81,41 @@ export const injectCSS = (theme: 'light' | 'dark' = 'light') => {
  * Opens (or re-opens) the zap modal. Returns the DialogComponent so the caller
  * can cache it between clicks.
  */
+function applyInvoiceChrome(
+  dialog: HTMLElement,
+  hasInvoice: boolean,
+  succeeded: boolean,
+): void {
+  const content = dialog.querySelector('.zap-dialog-content');
+  if (hasInvoice || succeeded) content?.setAttribute('data-has-invoice', 'true');
+  else content?.removeAttribute('data-has-invoice');
+  const visibility = invoiceChromeVisibility(hasInvoice, succeeded);
+  content?.classList.toggle('has-invoice', visibility.copy);
+  dialog.classList.toggle('success', visibility.thanks);
+  const copy = dialog.querySelector('.copy-btn') as HTMLElement | null;
+  const wallet = dialog.querySelector('.cta-btn') as HTMLElement | null;
+  const thanks = dialog.querySelector('.success-overlay') as HTMLElement | null;
+  const qr = dialog.querySelector('img.qr') as HTMLElement | null;
+  if (copy) {
+    copy.hidden = !visibility.copy;
+    copy.style.display = visibility.copy ? '' : 'none';
+  }
+  if (wallet) {
+    wallet.hidden = !visibility.wallet;
+    wallet.style.display = visibility.wallet ? '' : 'none';
+  }
+  if (qr) {
+    qr.hidden = !visibility.copy;
+    qr.style.display = visibility.copy ? '' : 'none';
+  }
+  if (thanks) {
+    thanks.hidden = !visibility.thanks;
+    thanks.style.display = visibility.thanks ? '' : 'none';
+    thanks.style.opacity = visibility.thanks ? '1' : '0';
+    thanks.style.pointerEvents = 'none';
+  }
+}
+
 export async function init(params: OpenZapModalParams): Promise<DialogComponent> {
   const { npub, relays, cachedDialogComponent, buttonColor, fixedAmount, defaultAmount, initialAmount, url } = params;
   const npubHex = decodeNpub(npub);
@@ -93,22 +128,16 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
   if (cachedDialogComponent) {
     const cachedDialog = cachedDialogComponent.getDialogElement();
     if (cachedDialog?.isConnected && cachedDialog.open) {
-      // remove success class if it exists
-      cachedDialog.classList.remove('success');
-      // show all controls that might have been hidden
-      const controls = cachedDialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn');
+      const content = cachedDialog.querySelector('.zap-dialog-content');
+      const failed = Boolean(cachedDialog.querySelector('.zap-error-message'));
+      const hadInvoice = content?.getAttribute('data-has-invoice') === 'true' && !failed;
+      applyInvoiceChrome(cachedDialog, hadInvoice, false);
+      const controls = cachedDialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container');
       controls.forEach(el => {
         if (el instanceof HTMLElement) el.style.display = '';
       });
-      // reset the update button
       const updateZapBtn = cachedDialog.querySelector('.update-zap-btn') as HTMLButtonElement | null;
       if (updateZapBtn) updateZapBtn.style.display = '';
-      // reset success overlay opacity if it was previously shown
-      const successOverlay = cachedDialog.querySelector('.success-overlay') as HTMLElement | null;
-      if (successOverlay) {
-        successOverlay.style.opacity = '0';
-        successOverlay.style.pointerEvents = 'none';
-      }
 
       cachedDialogComponent.showModal();
       return cachedDialogComponent;
@@ -263,6 +292,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     }
     const activePayBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement | null;
     if (activePayBtn) activePayBtn.disabled = true;
+    applyInvoiceChrome(dialog, false, false);
     dialog.classList.add('loading');
     try {
       const invoice = await loadInvoice(
@@ -284,9 +314,10 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
       if (invoice.trim().length === 0) {
         console.error('Invoice is empty, cannot generate QR code');
         qrImg.alt = 'No invoice available';
-        qrImg.style.display = 'none';
+        applyInvoiceChrome(dialog, false, false);
         return;
       }
+      applyInvoiceChrome(dialog, true, false);
       
       try {
         const src = await qrImgSrc(invoice);
@@ -331,12 +362,7 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
           }
         }
       }
-      // Hide QR image on error
-      const qrImg = dialog.querySelector('img.qr') as HTMLImageElement;
-      if (qrImg) {
-        qrImg.style.display = 'none';
-      }
-      // Disable pay button
+      applyInvoiceChrome(dialog, false, false);
       const payBtn = dialog.querySelector('.cta-btn') as HTMLButtonElement;
       if (payBtn) {
         payBtn.disabled = true;
@@ -379,12 +405,12 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
           <input type="text" placeholder="Comment (optional)" class="comment-input" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px" />
           <button type="button" class="add-comment-btn" style="padding:8px 12px;border:none;border-radius:6px;background:#7f00ff;color:#fff">Add</button>
         </div>`}
-        <img class="qr" width="240" height="240" alt="QR Code" style="cursor:pointer;display:block;margin:0 auto;" />
+        <img class="qr" width="240" height="240" alt="QR Code" hidden />
         <br />
-        <button type="button" class="copy-btn">Copy invoice</button>
-        <button type="button" class="cta-btn" disabled>Open in wallet</button>
+        <button type="button" class="copy-btn" hidden>Copy invoice</button>
+        <button type="button" class="cta-btn" hidden disabled>Open in wallet</button>
         <div class="loading-overlay"><div class="loader"></div></div>
-        <div class="success-overlay">⚡ Thank you!</div>
+        <div class="success-overlay" hidden>⚡ Thank you!</div>
       </div>
   `);
 
@@ -512,13 +538,8 @@ export async function init(params: OpenZapModalParams): Promise<DialogComponent>
     const amountMsats = invoice ? getBolt11AmountMsats(invoice) : null;
     const amountSats = amountMsats != null ? amountMsats / 1000 : selectedAmount;
 
-    dialog.classList.add('success');
-    const overlay = dialog.querySelector('.success-overlay') as HTMLElement;
-    overlay.style.opacity = '1';
-    // Ensure overlay does not block interactions (close button)
-    overlay.style.pointerEvents = 'none';
-    // hide other controls for clarity
-    const controls = dialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container, .cta-btn, .copy-btn');
+    applyInvoiceChrome(dialog, true, true);
+    const controls = dialog.querySelectorAll('.amount-buttons, .update-zap-container, .comment-container');
     controls.forEach(el => {
       if (el instanceof HTMLElement) el.style.display = 'none';
     });
