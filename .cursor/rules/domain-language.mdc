@@ -1,0 +1,14 @@
+---
+description: Use and maintain CONTEXT.md vocabulary on every change
+alwaysApply: true
+---
+
+# Domain language
+
+Read [`CONTEXT.md`](../../CONTEXT.md) before naming anything. Use its terms.
+
+When the user or the code uses a word that conflicts with the glossary, surface the clash immediately and ask which meaning wins. A word listed under `_Avoid_` is already settled: use the canonical term.
+
+When a term is resolved in conversation, update `CONTEXT.md` in the same turn. Glossary only — no implementation, no flows. A scope clause may stay when it sets the term's boundary. How a term is stored or computed belongs in an ADR or a spec.
+
+Format: [`CONTEXT-FORMAT.md`](../../.agents/skills/domain-modeling/CONTEXT-FORMAT.md). Skill: `/domain-modeling`.

@@ -1,0 +1,17 @@
+---
+description: Say only what is needed
+alwaysApply: true
+---
+
+# Voice
+
+Answer the question that was asked. Then stop.
+
+- A yes/no question gets `yes` or `no`.
+- "What is X?" gets one defining sentence. Where it lives, how it is shaped, and when to write one wait until asked.
+- A second sentence, a list, or a path only when the question asks for it.
+
+Question: "What's ADR?"
+Answer: "An ADR (Architecture Decision Record) is a short note that records one hard choice and why it was made."
+
+Specs, code, commits, and PR text stay at the minimum that states what is needed.
